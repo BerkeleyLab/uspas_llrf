@@ -11,6 +11,7 @@ ifeq ($(BOARD), arty_a7)
 endif
 ifeq ($(BOARD), marble)
 	ARGS += --with-bist
+	ARGS += --spd-dump targets/sdram_spd.txt
 endif
 
 all: $(TOP_SRC)
