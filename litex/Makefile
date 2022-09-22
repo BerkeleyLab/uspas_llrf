@@ -1,27 +1,37 @@
 .PHONY: all load clean flash
 
-BOARD = marble
-TOP_SRC = $(BOARD).py
+PLATFORM = berkeleylab_marble
+TOP_SRC = marble.py
+BIOS_FILE = build/$(PLATFORM)/software/bios/bios.bin
+GATEWARE = build/$(PLATFORM)/gateware/$(PLATFORM).bit
+FIRMWARE = firmware/firmware.bin
 
 ARGS = --with-etherbone \
 		--csr-csv build/csr.csv \
+ARGS += --with-bist
+ARGS += --spd-dump targets/sdram_spd.txt
 
-ifeq ($(BOARD), arty_a7)
-	ARGS += --variant a7-100
-endif
-ifeq ($(BOARD), marble)
-	ARGS += --with-bist
-	ARGS += --spd-dump targets/sdram_spd.txt
-endif
+all: $(GATEWARE) $(FIRMWARE)
 
-all: $(TOP_SRC)
-	python $< $(ARGS) --build
+SRC = $(TOP_SRC)
+$(BIOS_FILE): $(SRC)
+	python3 $< --no-compile-gateware
 
-load: $(TOP_SRC)
-	python $< $(ARGS) --load
+$(FIRMWARE): $(BIOS_FILE)
+	$(MAKE) -C firmware
 
-flash: $(TOP_SRC)
-	python $< $(ARGS) --flash
+$(GATEWARE): $(BIOS_FILE)
+	python3 $(TOP_SRC) $(ARGS) --build
+
+bios: $(BIOS_FILE)
+firmware: $(FIRMWARE)
+gateware: $(GATEWARE)
+
+load: $(GATEWARE)
+	python $(TOP_SRC) $(ARGS) --load
+
+flash: $(FIRMWARE)
+	python $(TOP_SRC) $(ARGS) --flash
 
 clean:
 	rm -rf build
