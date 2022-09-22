@@ -4,11 +4,13 @@ BOARD = marble
 TOP_SRC = $(BOARD).py
 
 ARGS = --with-etherbone \
-		--with-bist \
 		--csr-csv build/csr.csv \
 
 ifeq ($(BOARD), arty_a7)
 	ARGS += --variant a7-100
+endif
+ifeq ($(BOARD), marble)
+	ARGS += --with-bist
 endif
 
 all: $(TOP_SRC)
