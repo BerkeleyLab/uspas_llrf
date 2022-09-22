@@ -1,5 +1,5 @@
-build/
+litex/build/
 *.pyc
 *.vcd
-csr.csv
+*csr.csv
 .vscode/
