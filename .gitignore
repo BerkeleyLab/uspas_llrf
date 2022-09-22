@@ -3,3 +3,9 @@ litex/build/
 *.vcd
 *csr.csv
 .vscode/
+litex/firmware/firmware.bin
+litex/firmware/firmware.elf
+litex/firmware/*.map
+litex/firmware/*.d
+litex/firmware/*.o
+litex/prog

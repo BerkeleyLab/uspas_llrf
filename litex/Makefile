@@ -28,10 +28,10 @@ firmware: $(FIRMWARE)
 gateware: $(GATEWARE)
 
 load:
-	python load.py --bit_file=$(GATEWARE)
+	python3 load.py --bit_file=$(GATEWARE)
 
 flash: $(FIRMWARE)
-	python $(TOP_SRC) $(ARGS) --flash
+	python3 $(TOP_SRC) $(ARGS) --flash
 
 UART_PORT = /dev/cu.usbserial-0000162
 boot:
