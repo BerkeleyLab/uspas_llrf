@@ -1,4 +1,4 @@
-.PHONY: all load clean flash
+.PHONY: all load clean flash boot
 
 PLATFORM = berkeleylab_marble
 TOP_SRC = marble.py
@@ -7,7 +7,7 @@ GATEWARE = build/$(PLATFORM)/gateware/$(PLATFORM).bit
 FIRMWARE = firmware/firmware.bin
 
 ARGS = --with-etherbone \
-		--csr-csv build/csr.csv \
+		--csr-csv build/csr.csv
 ARGS += --with-bist
 ARGS += --spd-dump targets/sdram_spd.txt
 
@@ -27,11 +27,15 @@ bios: $(BIOS_FILE)
 firmware: $(FIRMWARE)
 gateware: $(GATEWARE)
 
-load: $(GATEWARE)
-	python $(TOP_SRC) $(ARGS) --load
+load:
+	python load.py --bit_file=$(GATEWARE)
 
 flash: $(FIRMWARE)
 	python $(TOP_SRC) $(ARGS) --flash
+
+UART_PORT = /dev/cu.usbserial-0000162
+boot:
+	litex_term $(UART_PORT) --serial-boot --kernel=$(FIRMWARE)
 
 clean:
 	rm -rf build

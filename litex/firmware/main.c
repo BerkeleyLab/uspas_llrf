@@ -118,7 +118,7 @@ static void i2c_test(void)
 
 static void eth_reset(void)
 {
-    ethphy_crg_reset_write(1);
+    // ethphy_crg_reset_write(1);
     printf(" %s: eth phy reset done.\n", __func__);
 }
 
