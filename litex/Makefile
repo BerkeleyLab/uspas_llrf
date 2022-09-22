@@ -1,10 +1,11 @@
 .PHONY: all load clean flash
 
-TOP_SRC = arty_a7.py
+# TOP_SRC = arty_a7.py
+TOP_SRC = marble.py
 ARGS = --with-etherbone \
-		--eth-ip 192.168.19.50 \
-		--csr-csv csr.csv \
-		--variant a7-100
+		--with-bist \
+		--csr-csv build/csr.csv \
+		# --variant a7-100
 
 all:
 	python $(TOP_SRC) $(ARGS) --build
