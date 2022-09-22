@@ -1,20 +1,24 @@
 .PHONY: all load clean flash
 
-# TOP_SRC = arty_a7.py
-TOP_SRC = marble.py
+BOARD = marble
+TOP_SRC = $(BOARD).py
+
 ARGS = --with-etherbone \
 		--with-bist \
 		--csr-csv build/csr.csv \
-		# --variant a7-100
 
-all:
-	python $(TOP_SRC) $(ARGS) --build
+ifeq ($(BOARD), arty_a7)
+	ARGS += --variant a7-100
+endif
 
-load:
-	python $(TOP_SRC) $(ARGS) --load
+all: $(TOP_SRC)
+	python $< $(ARGS) --build
 
-flash:
-	python $(TOP_SRC) $(ARGS) --flash
+load: $(TOP_SRC)
+	python $< $(ARGS) --load
+
+flash: $(TOP_SRC)
+	python $< $(ARGS) --flash
 
 clean:
 	rm -rf build
