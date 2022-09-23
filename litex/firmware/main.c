@@ -10,12 +10,30 @@
 #include <libliteeth/udp.h>
 
 
-#define I2C_ADR_PCA9548 0x70
+// i2c device address (7bit)
+#define I2C_ADR_PCA9548     0x70
+#define I2C_ADR_FMC1        0x50   // M24C02, GA0=0, GA1=0
+#define I2C_ADR_INA219_A    0x42  // I2C_CH_APPL: U57
+#define I2C_ADR_INA219_B    0x41  // I2C_CH_APPL: U32
+#define I2C_ADR_INA219_C    0x40  // I2C_CH_APPL: U17
+#define I2C_ADR_PCA9555_A   0x22  // I2C_CH_APPL: U34
+#define I2C_ADR_PCA9555_B   0x21  // I2C_CH_APPL: U39
+#define I2C_ADR_ADN4600     0x48  // I2C_CH_CLK:  U2
 
-// static bool i2c_mux_set(uint8_t ch)
-// {
-//     return i2c_write(I2C_ADR_PCA9548, ch, 0, 0);
-// }
+// i2c multiplexer channels
+#define I2C_CH_FMC1     (1<<0)
+#define I2C_CH_FMC2     (1<<1)
+#define I2C_CH_CLK      (1<<2)
+#define I2C_CH_SDRAM    (1<<3)
+#define I2C_CH_QSFP1    (1<<4)
+#define I2C_CH_QSFP2    (1<<5)
+#define I2C_CH_APPL     (1<<6)
+
+
+static bool i2c_mux_set(uint8_t ch)
+{
+    return i2c_write(I2C_ADR_PCA9548, ch, 0, 0);
+}
 
 static void i2c_scan(void)
 {
@@ -26,6 +44,36 @@ static void i2c_scan(void)
     }
     printf("]\n");
 }
+
+static bool i2c_init(void)
+{
+    bool ret = true;
+    unsigned char *buf;
+    // unsigned char pca_addr[2] = {I2C_ADR_PCA9555_A, I2C_ADR_PCA9555_B};
+    buf = malloc(32);
+
+    i2c_reset();
+    printf(" %s: === Switching to APP: ===\n", __func__);
+    ret &= i2c_mux_set(I2C_CH_APPL);
+    i2c_scan();
+
+    printf(" %s: === Switching to SDRAM: ===\n", __func__);
+    ret &= i2c_mux_set(I2C_CH_SDRAM);
+    i2c_scan();
+
+    printf(" %s: === Switching to CLK: ===\n", __func__);
+    ret &= i2c_mux_set(I2C_CH_CLK);
+    i2c_scan();
+
+    printf(" %s: === Switching to FMC1: ===\n", __func__);
+    ret &= i2c_mux_set(I2C_CH_FMC1);
+    i2c_scan();
+
+    free(buf);
+    printf(" %s:                  %s\n", __func__, ret ? "PASS": "FAIL");
+    return ret;
+}
+
 
 static char *readstr(void)
 {
@@ -113,7 +161,7 @@ static void freq_test(void)
 
 static void i2c_test(void)
 {
-    i2c_scan();
+    i2c_init();
 }
 
 static void eth_reset(void)
