@@ -65,6 +65,15 @@ static bool i2c_init(void)
     ret &= i2c_mux_set(I2C_CH_CLK);
     i2c_scan();
 
+    i2c_read(I2C_ADR_ADN4600, 0x40, buf, 2, false);
+    printf(" %s: ADN4600 XPT 0x40:    %#8x\n", __func__, buf[0]);
+    printf(" %s: ADN4600 XPT 0x41:    %#8x\n", __func__, buf[1]);
+    i2c_read(I2C_ADR_ADN4600, 0x50, buf, 8, false);
+    printf(" %s: ADN4600 XPT 0x50:    %#8x\n", __func__, buf[0]);
+    printf(" %s: ADN4600 XPT 0x51:    %#8x\n", __func__, buf[1]);
+    printf(" %s: ADN4600 XPT 0x54:    %#8x\n", __func__, buf[4]);
+    printf(" %s: ADN4600 XPT 0x55:    %#8x\n", __func__, buf[5]);
+
     printf(" %s: === Switching to FMC1: ===\n", __func__);
     ret &= i2c_mux_set(I2C_CH_FMC1);
     i2c_scan();
