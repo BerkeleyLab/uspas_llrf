@@ -48,8 +48,9 @@ static void i2c_scan(void)
 static bool i2c_init(void)
 {
     bool ret = true;
+    unsigned char wbuf[2];
     unsigned char *buf;
-    // unsigned char pca_addr[2] = {I2C_ADR_PCA9555_A, I2C_ADR_PCA9555_B};
+    unsigned char pca_addr[2] = {I2C_ADR_PCA9555_A, I2C_ADR_PCA9555_B};
     buf = malloc(32);
 
     i2c_reset();
@@ -65,10 +66,14 @@ static bool i2c_init(void)
     ret &= i2c_mux_set(I2C_CH_CLK);
     i2c_scan();
 
-    i2c_read(I2C_ADR_ADN4600, 0x40, buf, 2, false);
+    wbuf[0] = (2 << 4) | (1 << 3);  // broadcast FPGA_REF_CLK0 at IN2
+    wbuf[1] = 1;
+    ret &= i2c_write(I2C_ADR_ADN4600, 0x40, wbuf, 2);
+
+    ret &= i2c_read(I2C_ADR_ADN4600, 0x40, buf, 2, false);
     printf(" %s: ADN4600 XPT 0x40:    %#8x\n", __func__, buf[0]);
     printf(" %s: ADN4600 XPT 0x41:    %#8x\n", __func__, buf[1]);
-    i2c_read(I2C_ADR_ADN4600, 0x50, buf, 8, false);
+    ret &= i2c_read(I2C_ADR_ADN4600, 0x50, buf, 8, false);
     printf(" %s: ADN4600 XPT 0x50:    %#8x\n", __func__, buf[0]);
     printf(" %s: ADN4600 XPT 0x51:    %#8x\n", __func__, buf[1]);
     printf(" %s: ADN4600 XPT 0x54:    %#8x\n", __func__, buf[4]);

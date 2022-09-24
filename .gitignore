@@ -8,4 +8,6 @@ litex/firmware/firmware.elf
 litex/firmware/*.map
 litex/firmware/*.d
 litex/firmware/*.o
-litex/prog
+litex/prog/bscan_spi*.bit
+litex/prog/openocd_xc7*.cfg
+litex/update.sh

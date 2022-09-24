@@ -27,6 +27,10 @@ bios: $(BIOS_FILE)
 firmware: $(FIRMWARE)
 gateware: $(GATEWARE)
 
+# Disabled until OTP of S25FL128S is tested
+# flash-gateware:
+# 	python3 flash.py --mode=gateware
+
 load:
 	python3 load.py --bit_file=$(GATEWARE)
 
