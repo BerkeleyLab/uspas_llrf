@@ -1,0 +1,29 @@
+#ifndef SETTINGS_H
+#define SETTINGS_H
+/* ----------------------------- */
+/*  Global settings file */
+/* ----------------------------- */
+
+// Base addresses of Peripherals
+#define BASE_GPIO              0x01000000
+#define BASE_UART0             0x02000000    // Debug UART
+#define BASE_LOCALBUS          0x03000000    // Localbus Bridge
+#define BASE_XADC              0x04000000
+#define BASE_ZEST              0x05000000    // zest if
+#define BASE_I2C               BASE_GPIO
+
+#define F_CLK                   125000000     // [Hz]
+
+#define BOOTLOADER_DELAY    (F_CLK/1000)  // How long to wait in the bootloader
+
+// GPIO PIN assignments (must match top.v)
+#define PIN_I2C_SDA             0
+#define PIN_I2C_SCL             1
+#define PIN_PCA9548_RST         2
+#define I2C_DELAY_US            3           //~half a clock period [us]
+
+#define DEBUG_PRINT 0
+#define debug_printf(...) \
+        do { if (DEBUG_PRINT) printf(__VA_ARGS__); } while (0)
+
+#endif
