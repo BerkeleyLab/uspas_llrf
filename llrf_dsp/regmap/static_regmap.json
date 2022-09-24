@@ -1,0 +1,178 @@
+{
+    "llrf_rom": {
+        "access": "r",
+        "addr_width": 11,
+        "base_addr": "0x08000",
+        "data_width": 32,
+        "sign": "signed"
+    },
+    "circle_data": {
+        "base_addr": "0x20000",
+        "addr_width": 16,
+        "access": "r",
+        "data_width": 24,
+        "sign": "signed"
+    },
+    "mon_amp": {
+        "base_addr": "0x13000",
+        "addr_width": 4,
+        "access": "r",
+        "data_width": 16,
+        "sign": "signed",
+        "description": ""
+    },
+    "mon_phs": {
+        "base_addr": "0x13010",
+        "addr_width": 4,
+        "access": "r",
+        "data_width": 17,
+        "sign": "signed"
+    },
+    "loop_amp_err": {
+        "base_addr": "0x13020",
+        "addr_width": 0,
+        "access": "r",
+        "data_width": 15,
+        "sign": "signed"
+    },
+    "loop_phs_err": {
+        "base_addr": "0x13021",
+        "addr_width": 0,
+        "access": "r",
+        "data_width": 15,
+        "sign": "signed"
+    },
+    "inlk_hi": {
+        "base_addr": "0x13030",
+        "addr_width": 0,
+        "access": "r",
+        "data_width": 10,
+        "sign": "unsigned"
+    },
+    "inlk_lo": {
+        "base_addr": "0x13031",
+        "addr_width": 0,
+        "access": "r",
+        "data_width": 10,
+        "sign": "unsigned"
+    },
+    "inlk_status": {
+        "base_addr": "0x13032",
+        "addr_width": 0,
+        "access": "r",
+        "data_width": 10,
+        "sign": "unsigned"
+    },
+    "inlk_latch": {
+        "base_addr": "0x13033",
+        "addr_width": 0,
+        "access": "r",
+        "data_width": 10,
+        "sign": "unsigned"
+    },
+    "inlk_permit": {
+        "base_addr": "0x13034",
+        "addr_width": 0,
+        "access": "r",
+        "data_width": 1,
+        "sign": "unsigned"
+    },
+    "arc_permit_raw": {
+        "base_addr": "0x13035",
+        "addr_width": 0,
+        "access": "r",
+        "data_width": 3,
+        "sign": "unsigned"
+    },
+    "arc_permit_latch": {
+        "base_addr": "0x13036",
+        "addr_width": 0,
+        "access": "r",
+        "data_width": 3,
+        "sign": "unsigned"
+    },
+    "arc_permit_sum": {
+        "base_addr": "0x13037",
+        "addr_width": 0,
+        "access": "r",
+        "data_width": 1,
+        "sign": "unsigned"
+    },
+    "dsp_slow_cbuf_stat1": {
+        "access": "r",
+        "addr_width": 0,
+        "base_addr": "0x12011",
+        "data_width": 16,
+        "sign": "unsigned"
+    },
+    "dsp_slow_cbuf_stat2": {
+        "access": "r",
+        "addr_width": 0,
+        "base_addr": "0x12012",
+        "data_width": 16,
+        "sign": "unsigned"
+    },
+    "dsp_slow_cbuf_count": {
+        "access": "r",
+        "addr_width": 0,
+        "base_addr": "0x12013",
+        "data_width": 16,
+        "sign": "unsigned"
+    },
+    "dsp_slow_tag": {
+        "access": "r",
+        "addr_width": 0,
+        "base_addr": "0x12014",
+        "data_width": 16,
+        "sign": "unsigned"
+    },
+    "dsp_slow_tag_old": {
+        "access": "r",
+        "addr_width": 0,
+        "base_addr": "0x12015",
+        "data_width": 16,
+        "sign": "unsigned"
+    },
+    "dsp_slow_adc_min": {
+        "access": "r",
+        "addr_width": 3,
+        "base_addr": "0x12016",
+        "data_width": 16,
+        "sign": "signed"
+    },
+    "dsp_slow_adc_max": {
+        "access": "r",
+        "addr_width": 3,
+        "base_addr": "0x1201e",
+        "data_width": 16,
+        "sign": "signed"
+    },
+    "dsp_slow_evr_seconds": {
+        "access": "r",
+        "addr_width": 1,
+        "base_addr": 73766,
+        "data_width": 16,
+        "sign": "unsigned"
+    },
+    "dsp_slow_evr_evticks": {
+        "access": "r",
+        "addr_width": 1,
+        "base_addr": 73768,
+        "data_width": 16,
+        "sign": "unsigned"
+    },
+    "dsp_slow_timestamp": {
+        "access": "r",
+        "addr_width": 3,
+        "base_addr": "0x1202A",
+        "data_width": 8,
+        "sign": "unsigned"
+    },
+    "llrf_circle_ready": {
+        "access": "r",
+        "addr_width": 0,
+        "base_addr": "0x10800",
+        "data_width": 2,
+        "sign": "unsigned"
+    }
+}

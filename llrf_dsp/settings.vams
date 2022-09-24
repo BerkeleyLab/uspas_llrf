@@ -1,0 +1,9 @@
+`define DSP_CLK_CYCLE   8.7206
+`define EVR_CLK_CYCLE   7.9939   // DSP_CLK_CYCLE*11/12
+`define CORDIC_GAIN     1.64676
+`define NUM_DDS         4
+`define DEN_DDS         11
+`define CIC_BASE_PERIOD 22       // multiple of 11, > 2*N_CH, >= cordic delay
+`define LO_AMP          74840    // < 2^17 / 1.64676
+`define SHIFT_BASE      7
+`define SHIFT_INLK      12
