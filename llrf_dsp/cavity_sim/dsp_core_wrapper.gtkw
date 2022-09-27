@@ -1,0 +1,89 @@
+[*]
+[*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
+[*] Thu Nov 19 19:48:44 2020
+[*]
+[dumpfile] "/home/shree/alsu-llrf/llrf_dsp/dsp_core_wrapper.vcd"
+[dumpfile_mtime] "Thu Nov 19 19:47:21 2020"
+[dumpfile_size] 272911629
+[savefile] "/home/shree/alsu-llrf/llrf_dsp/dsp_core_wrapper.gtkw"
+[timestart] 0
+[size] 1920 1016
+[pos] 0 0
+*-14.392194 99900 19990 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP.
+[treeopen] TOP.dsp_core_wrapper.
+[treeopen] TOP.dsp_core_wrapper.dut.
+[treeopen] TOP.dsp_core_wrapper.dut.piloop.
+[sst_width] 287
+[signals_width] 289
+[sst_expanded] 1
+[sst_vpaned_height] 294
+@8420
+TOP.clk
+TOP.cav_field[15:0]
+TOP.dac_out[15:0]
+TOP.dds_phase_shift[18:0]
+@8600
+-
+@8420
+TOP.loop_reset
+TOP.loop_control
+@8600
+-
+@8420
+TOP.amp_setpoint[17:0]
+TOP.phs_setpoint[17:0]
+@8600
+-
+@8420
+TOP.dsp_core_wrapper.dut.piloop.Kp_amp[17:0]
+TOP.dsp_core_wrapper.dut.piloop.Kp_phs[17:0]
+TOP.Ki_over_Kp[17:0]
+@8600
+-
+@8420
+TOP.dsp_core_wrapper.dut.field_i[16:0]
+TOP.dsp_core_wrapper.dut.field_q[16:0]
+@8600
+-
+@8420
+TOP.dsp_core_wrapper.dut.drive_i[17:0]
+TOP.dsp_core_wrapper.dut.drive_q[17:0]
+@8600
+-
+@8420
+TOP.dsp_core_wrapper.dut.measured_i[17:0]
+TOP.dsp_core_wrapper.dut.measured_q[17:0]
+TOP.dsp_core_wrapper.dut.measured_amp[17:0]
+TOP.dsp_core_wrapper.dut.measured_phs[18:0]
+@8600
+-Piloop
+@8420
+TOP.dsp_core_wrapper.dut.piloop.measured_amp[17:0]
+TOP.dsp_core_wrapper.dut.piloop.measured_phs[17:0]
+@8600
+-
+@8420
+TOP.dsp_core_wrapper.dut.piloop.err_amp[18:0]
+TOP.dsp_core_wrapper.dut.piloop.err_phs[18:0]
+TOP.dsp_core_wrapper.dut.piloop.err1_amp[17:0]
+TOP.dsp_core_wrapper.dut.piloop.err1_phs[17:0]
+@8600
+-
+@8420
+TOP.dsp_core_wrapper.dut.piloop.prop_out_g_amp[17:0]
+TOP.dsp_core_wrapper.dut.piloop.prop_out_g_phs[17:0]
+TOP.dsp_core_wrapper.dut.piloop.integrator_out_amp[20:0]
+TOP.dsp_core_wrapper.dut.piloop.integrator_out_phs[20:0]
+@8600
+-
+@8420
+TOP.dsp_core_wrapper.dut.piloop.pi_out_amp[17:0]
+TOP.dsp_core_wrapper.dut.piloop.pi_out_phs_s[18:0]
+TOP.dsp_core_wrapper.dut.piloop.pi_out_i[17:0]
+@8421
+TOP.dsp_core_wrapper.dut.piloop.pi_out_q[17:0]
+@200
+-
+[pattern_trace] 1
+[pattern_trace] 0

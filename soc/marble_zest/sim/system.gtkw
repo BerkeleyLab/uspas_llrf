@@ -1,0 +1,139 @@
+[timestart] 0
+[size] 1392 877
+[pos] -1 -1
+*-25.441275 35528000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] system_tb.
+[treeopen] system_tb.uut.
+[treeopen] system_tb.uut.cpu_inst.
+[treeopen] system_tb.uut.mem_inst.
+[treeopen] system_tb.uut.xadc_i.
+[sst_width] 229
+[signals_width] 345
+[sst_expanded] 1
+[sst_vpaned_height] 413
+@800200
+-cpu
+@22
+system_tb.uut.cpu_inst.picorv32_core.count_cycle[63:0]
+@28
+system_tb.uut.cpu_inst.reset
+@820
+system_tb.uut.cpu_inst.picorv32_core.dbg_ascii_state[127:0]
+system_tb.uut.cpu_inst.picorv32_core.dbg_ascii_instr[63:0]
+@22
+system_tb.uut.cpu_inst.picorv32_core.dbg_insn_addr[31:0]
+system_tb.uut.cpu_inst.mem_addr[31:0]
+system_tb.uut.cpu_inst.mem_wdata[31:0]
+system_tb.uut.cpu_inst.mem_wstrb[3:0]
+@c00022
+system_tb.uut.cpu_inst.mem_rdata[31:0]
+@28
+(0)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(1)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(2)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(3)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(4)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(5)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(6)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(7)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(8)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(9)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(10)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(11)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(12)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(13)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(14)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(15)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(16)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(17)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(18)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(19)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(20)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(21)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(22)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(23)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(24)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(25)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(26)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(27)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(28)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(29)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(30)system_tb.uut.cpu_inst.mem_rdata[31:0]
+(31)system_tb.uut.cpu_inst.mem_rdata[31:0]
+@1401200
+-group_end
+@28
+system_tb.uut.cpu_inst.mem_valid
+system_tb.uut.cpu_inst.mem_ready
+@1000200
+-cpu
+@c00200
+-i2c_slave
+@1401200
+-i2c_slave
+@c00022
+system_tb.gpio_z[31:0]
+@28
+(0)system_tb.gpio_z[31:0]
+(1)system_tb.gpio_z[31:0]
+(2)system_tb.gpio_z[31:0]
+(3)system_tb.gpio_z[31:0]
+(4)system_tb.gpio_z[31:0]
+(5)system_tb.gpio_z[31:0]
+(6)system_tb.gpio_z[31:0]
+(7)system_tb.gpio_z[31:0]
+(8)system_tb.gpio_z[31:0]
+(9)system_tb.gpio_z[31:0]
+(10)system_tb.gpio_z[31:0]
+(11)system_tb.gpio_z[31:0]
+(12)system_tb.gpio_z[31:0]
+(13)system_tb.gpio_z[31:0]
+(14)system_tb.gpio_z[31:0]
+(15)system_tb.gpio_z[31:0]
+(16)system_tb.gpio_z[31:0]
+(17)system_tb.gpio_z[31:0]
+(18)system_tb.gpio_z[31:0]
+(19)system_tb.gpio_z[31:0]
+(20)system_tb.gpio_z[31:0]
+(21)system_tb.gpio_z[31:0]
+(22)system_tb.gpio_z[31:0]
+(23)system_tb.gpio_z[31:0]
+(24)system_tb.gpio_z[31:0]
+(25)system_tb.gpio_z[31:0]
+(26)system_tb.gpio_z[31:0]
+(27)system_tb.gpio_z[31:0]
+(28)system_tb.gpio_z[31:0]
+(29)system_tb.gpio_z[31:0]
+(30)system_tb.gpio_z[31:0]
+(31)system_tb.gpio_z[31:0]
+@1401200
+-group_end
+@800200
+-xadc
+@22
+system_tb.uut.xadc_i.mem_addr[31:0]
+@28
+system_tb.uut.xadc_i.mem_read
+@22
+system_tb.uut.xadc_i.mem_rdata[31:0]
+@28
+system_tb.uut.xadc_i.mem_ready
+@1000200
+-xadc
+@800200
+-lb_merge
+@28
+system_tb.uut.lb_merge_busy
+@22
+system_tb.uut.lb_merge_rdata[31:0]
+@28
+system_tb.uut.lb_merge_read
+system_tb.uut.lb_merge_rvalid
+@22
+system_tb.uut.lb_merge_wdata[31:0]
+@28
+system_tb.uut.lb_merge_write
+@1000200
+-lb_merge
+[pattern_trace] 1
+[pattern_trace] 0

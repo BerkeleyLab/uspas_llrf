@@ -1,0 +1,62 @@
+[timestart] 0
+[size] 959 1016
+[pos] -1 -1
+*-24.963133 25806840 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] ntw_analyzer_tb.
+[sst_width] 297
+[signals_width] 243
+[sst_expanded] 1
+[sst_vpaned_height] 292
+@28
+ntw_analyzer_tb.clk
+@420
+ntw_analyzer_tb.cc
+@28
+ntw_analyzer_tb.ntw_analyzer.trig
+@200
+-
+@28
+ntw_analyzer_tb.n
+ntw_analyzer_tb.d
+ntw_analyzer_tb.f_ref
+ntw_analyzer_tb.q
+ntw_analyzer_tb.r
+ntw_analyzer_tb.m
+@200
+-
+@420
+ntw_analyzer_tb.ntw_analyzer.amp_setpoint[17:0]
+ntw_analyzer_tb.ntw_analyzer.phs_setpoint[17:0]
+ntw_analyzer_tb.ntw_analyzer.ext_amp_enable
+ntw_analyzer_tb.ntw_analyzer.ext_phs_enable
+@200
+-
+@24
+ntw_analyzer_tb.ntw_analyzer.lo_amp[17:0]
+ntw_analyzer_tb.ntw_lo_amp[17:0]
+ntw_analyzer_tb.ntw_analyzer.modulo[11:0]
+ntw_analyzer_tb.ntw_analyzer.phase_step_l[11:0]
+ntw_analyzer_tb.ntw_analyzer.phase_step_h[24:0]
+ntw_analyzer_tb.ntw_analyzer.phase[18:0]
+@200
+-
+@10420
+ntw_analyzer_tb.ntw_analyzer.cosa[17:0]
+ntw_analyzer_tb.ntw_analyzer.sina[17:0]
+@200
+-
+@10420
+ntw_analyzer_tb.cosc[17:0]
+ntw_analyzer_tb.sinc[17:0]
+@200
+-
+@421
+ntw_analyzer_tb.npt
+@8420
+ntw_analyzer_tb.ntw_analyzer.amp_stp_ntw[17:0]
+ntw_analyzer_tb.ntw_analyzer.phs_stp_ntw[17:0]
+@28
+ntw_analyzer_tb.variance
+ntw_analyzer_tb.err
+[pattern_trace] 1
+[pattern_trace] 0

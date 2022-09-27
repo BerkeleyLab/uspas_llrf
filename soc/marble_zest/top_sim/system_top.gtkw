@@ -1,0 +1,70 @@
+[timestart] 0
+[size] 1207 1175
+[pos] -1 -1
+*-24.914301 38560000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] system_top_tb.
+[treeopen] system_top_tb.dut.
+[treeopen] system_top_tb.dut.system_inst.
+[treeopen] system_top_tb.dut.system_inst.cpu_inst.
+[treeopen] system_top_tb.dut.zest_inst.
+[treeopen] system_top_tb.dut.zest_inst.ic_map[0].
+[treeopen] system_top_tb.dut.zest_inst.ic_map[1].
+[treeopen] system_top_tb.dut.zest_inst.spi_master.
+[sst_width] 213
+[signals_width] 257
+[sst_expanded] 1
+[sst_vpaned_height] 614
+@800200
+-cpu
+@22
+system_top_tb.dut.system_inst.cpu_inst.picorv32_core.count_cycle[63:0]
+@28
+system_top_tb.reset
+@820
+system_top_tb.dut.system_inst.cpu_inst.picorv32_core.dbg_ascii_instr[63:0]
+@22
+system_top_tb.dut.system_inst.cpu_inst.picorv32_core.dbg_insn_addr[31:0]
+system_top_tb.dut.system_inst.cpu_inst.picorv32_core.dbg_insn_imm[31:0]
+system_top_tb.dut.system_inst.cpu_inst.picorv32_core.dbg_insn_opcode[31:0]
+system_top_tb.dut.system_inst.cpu_inst.picorv32_core.dbg_insn_rd[4:0]
+system_top_tb.dut.system_inst.cpu_inst.mem_addr[31:0]
+system_top_tb.dut.system_inst.cpu_inst.mem_wdata[31:0]
+system_top_tb.dut.system_inst.cpu_inst.mem_wstrb[3:0]
+system_top_tb.dut.system_inst.cpu_inst.picorv32_core.mem_rdata[31:0]
+@28
+system_top_tb.dut.system_inst.cpu_inst.mem_ready
+system_top_tb.dut.system_inst.cpu_inst.mem_valid
+@1000200
+-cpu
+@820
+system_top_tb.urx_tdata0[7:0]
+@800200
+-zest
+@28
+system_top_tb.dut.zest_inst.LMK_DATAUWIRE
+system_top_tb.dut.zest_inst.LMK_LEUWIRE
+@22
+system_top_tb.dut.zest_inst.ic_csb[6:0]
+@28
+system_top_tb.dut.zest_inst.SCLK
+system_top_tb.dut.zest_inst.SDI
+system_top_tb.dut.ZEST_ADC_CSB_0
+system_top_tb.dut.ZEST_ADC_CSB_1
+system_top_tb.dut.ZEST_ADC_SDIO
+system_top_tb.dut.ZEST_ADC_SDIO_DIR
+@1000200
+-zest
+@28
+system_top_tb.dut.zest_inst.bufr_reset[1:0]
+system_top_tb.dut.zest_inst.ic_map[0].dco_buf_i.clk_reset
+system_top_tb.dut.zest_inst.ic_map[1].dco_buf_i.clk_reset
+@24
+system_top_tb.dut.zest_inst.spi_master.spi_dio_bridge_i.bit_dat[5:0]
+system_top_tb.dut.zest_inst.spi_master.spi_dio_bridge_i.cfg_nbits[5:0]
+system_top_tb.dut.zest_inst.spi_master.spi_dio_bridge_i.cnt[5:0]
+@28
+system_top_tb.dut.zest_inst.wfm_i.adc_trigger
+@22
+system_top_tb.dut.zest_inst.wfm_i.adc_wfm_len[4:0]
+[pattern_trace] 1
+[pattern_trace] 0

@@ -1,0 +1,73 @@
+## First column is pin name listed in Marble.xdc
+## Second column is pin name as needed by application
+
+# RGMII Rx
+RGMII_RX_CLK  RGMII_RX_CLK
+RGMII_RX_DV   RGMII_RX_CTRL
+RGMII_RXD0    {RGMII_RXD[0]}
+RGMII_RXD1    {RGMII_RXD[1]}
+RGMII_RXD2    {RGMII_RXD[2]}
+RGMII_RXD3    {RGMII_RXD[3]}
+
+# RGMII Tx
+RGMII_TX_CLK  RGMII_TX_CLK
+RGMII_TX_EN   RGMII_TX_CTRL
+RGMII_TXD0    {RGMII_TXD[0]}
+RGMII_TXD1    {RGMII_TXD[1]}
+RGMII_TXD2    {RGMII_TXD[2]}
+RGMII_TXD3    {RGMII_TXD[3]}
+
+# I2C, shared access with microcontroller
+I2C_FPGA_SDA     I2C_SDA
+I2C_FPGA_SCL     I2C_SCL
+I2C_FPGA_SW_RST  I2C_RST
+
+# UART to USB
+FPGA_TxD  UART_RX
+FPGA_RxD  UART_TX
+FPGA_RTS  UART_CTS
+
+# Miscellaneous
+PHY_RSTn   PHY_RSTN
+
+# Pmod2 J12
+Pmod1_0    {PMOD1[0]}
+Pmod1_1    {PMOD1[1]}
+Pmod1_2    {PMOD1[2]}
+Pmod1_3    {PMOD1[3]}
+Pmod1_4    {PMOD1[4]}
+Pmod1_5    {PMOD1[5]}
+Pmod1_6    {PMOD1[6]}
+Pmod1_7    {PMOD1[7]}
+
+# Pmod2 J13
+Pmod2_0    {PMOD2[0]}
+Pmod2_1    {PMOD2[1]}
+Pmod2_2    {PMOD2[2]}
+Pmod2_3    {PMOD2[3]}
+Pmod2_4    {PMOD2[4]}
+Pmod2_5    {PMOD2[5]}
+Pmod2_6    {PMOD2[6]}
+Pmod2_7    {PMOD2[7]}
+
+# Literal output follows
+
+# Truly special:
+#   125 MHz from U20 CDCM61004 routed through GBX_MUX to any one of four MGT_CLK_* pairs
+#   This configuration is for MGT_CLK_0 (bank 116 MGTREFCLK0)
+set_property -dict {PACKAGE_PIN D6} [get_ports GTPREFCLK_P]
+set_property -dict {PACKAGE_PIN D5} [get_ports GTPREFCLK_N]
+
+# Special pin properties for RGMII
+# Invalid to flag RGMII_RX_CLK as IOB TRUE
+set_property IOB TRUE [get_ports {RGMII_RX_CTRL}]
+set_property IOB TRUE [get_ports {RGMII_RXD*}]
+set_property IOB TRUE [get_ports {RGMII_TX*}]
+set_property SLEW FAST [get_ports {RGMII_TX*}]
+
+# Bank 0 setup
+set_property CFGBVS VCCO [current_design]
+set_property CONFIG_VOLTAGE 2.5 [current_design]
+
+set_property -dict {DRIVE 4 SLEW FAST PULLTYPE PULLDOWN} [get_ports {PMOD1*}]
+set_property -dict {DRIVE 4 SLEW FAST PULLTYPE PULLDOWN} [get_ports {PMOD2*}]
