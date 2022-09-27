@@ -13,6 +13,7 @@
 #define BASE_I2C               BASE_GPIO
 
 #define F_CLK                   125000000     // [Hz]
+#define FCNT_WIDTH              16
 
 #define BOOTLOADER_DELAY    (F_CLK/1000)  // How long to wait in the bootloader
 

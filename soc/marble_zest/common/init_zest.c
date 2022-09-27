@@ -1,3 +1,4 @@
+#include "settings.h"
 #include "zest.h"
 
 t_reg32 regmap_lmk01801[] = {
@@ -91,18 +92,18 @@ t_reg32 regmap_amc7823[] = {
     { (1<<6) | 0xd, 0x8010}, // # PWR Down: only enable ADC and PREFB
 };
 
+# define FCNT_EXP 500 * 11 / 12 * (1<<FCNT_WIDTH) / 4 / 125
 // DSP_CLK, ADC0_DIV, ADC1_DIV, DAC_DCO
-// uint16_t fcnt_exp = 60074; // 500 * 11 / 48 / 125 * (1<<16);
 uint16_t fcnt_exp[4] = {
-    60074,
-    60074,
-    60074,
-    60074
+    FCNT_EXP,
+    FCNT_EXP,
+    FCNT_EXP,
+    FCNT_EXP
 };
 
 // ADC0_DIV, ADC1_DIV, DAC_DCO, AD9781_SMP
 uint8_t phs_center[4] = {
-    70, 64, 64, 12
+    70, 64, 32, 17
 };
 
 const t_zest_init zest_init_data = {
