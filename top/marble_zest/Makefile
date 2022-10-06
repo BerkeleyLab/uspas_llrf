@@ -40,7 +40,7 @@ $(TARGET)_top.bit: system_top.xdc $(TARGET)_top.v $(IP_EXPAND) $(APP_SOC_SYN_DIR
 
 #: Program bitstream
 system_config:
-	openocd -f $(BOARD_SUPPORT_DIR)/marblemini/marble.cfg -c "transport select jtag; init; xc7_program xc7.tap; pld load 0  $(TARGET)_top.bit; exit"
+	openocd -f marble.cfg -c "transport select jtag; init; xc7_program xc7.tap; pld load 0  $(TARGET)_top.bit; exit"
 
 CLEAN += system_top.xdc $(TARGET)_top.bin $(TARGET)_top.bit $(IP_BIT_D)
 CLEAN_DIRS += .Xil _xilinx
