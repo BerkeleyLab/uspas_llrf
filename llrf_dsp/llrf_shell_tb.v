@@ -308,6 +308,9 @@ endtask
     reg inlk_check=0;
     initial begin
         while (!init_done);
+        $display("---- Frequency settings ----");
+        $display("%20s = %12d", "NUM_DDS", `NUM_DDS);
+        $display("%20s = %12d", "DEN_DDS", `DEN_DDS);
         $display("---- Set Registers ----");
         lb_write_task(DDS_PHASE_STEP, phase_step);
         lb_write_task(DDS_PHASE_SHIFT, phase_shift);

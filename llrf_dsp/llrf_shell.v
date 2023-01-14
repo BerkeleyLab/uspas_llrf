@@ -380,7 +380,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .buf_count      (cbuf_count),
         .buf_ready      (llrf_circle_ready),
         .data_in        (adc_data_in),
-        .evr_timestamp  (),
+        .evr_timestamp  (64'h0),
 
         .slow_snap      (cbuf_transferred),
         .slow_ready     (slow_ready)
