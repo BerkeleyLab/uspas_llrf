@@ -142,53 +142,6 @@ end
 
     reg pass =1;
     reg signed [17:0] setpoint_done = 0;
-    reg [31:0] ramp_time = 0;
-
-    task set_ramp(
-        input [17:0] steps,
-        input signed [17:0] rate,
-        input real rtime,
-        input signed [17:0] start,
-        output [31:0] ramp_time_i
-    );
-        begin
-            @(posedge lb_clk);
-            lb_write_task(RAMP_RATE, rate);
-            lb_write_task(RAMP_STEPS, steps);
-            lb_write_task(PHASE_RAMP_TIME, $ceil((rtime/steps)*P_T));
-            lb_write_task(PHS_SETPOINT, start);
-            lb_write_task(PHS_LOOP_ENABLE, 1);
-            lb_write_task(PHASE_RAMP_ENABLE, 1);
-            setpoint_done <= dut.phs_setpoint + (dut.ramp_steps*dut.ramp_rate); // inclusive of start, considers steps
-            lb_write_task(PHS_LOOP_RESET, 0);
-            lb_write_task(TIMING_EVG_EVCODE, 5);
-            @(posedge lb_clk);
-        end
-    endtask
-
-    task ramp_check(
-        input [17:0] steps,
-        input signed [17:0] rate,
-        input real rtime,
-        input signed [17:0] start
-    );
-        begin
-            set_ramp(steps, rate, rtime, start, ramp_time);
-            @(posedge dsp_clk);
-            @(posedge dsp_clk);
-
-            // Wait until RAMP_FINISH = 1
-            rdata = 0;
-            while (rdata != 1) lb_read_task(RAMP_FINISH, rdata);
-
-            pass <= dut.phs_ramp_setpoint == setpoint_done;
-            $display("Time: %g ns, Initial Setpoint = %d, Final Setpoint = %d, Expected Final Setpoint = %d, at rate = %d, %s ", $time, start, dut.phs_ramp_setpoint, setpoint_done, rate, pass ? "OK": "FAIL");
-
-            lb_write_task(PHS_LOOP_ENABLE, 0);
-            lb_write_task(PHS_LOOP_RESET, 1);
-            lb_write_task(PHASE_RAMP_ENABLE, 0);
-        end
-    endtask
 
     // no actual check here
     task generate_ntw(
@@ -330,9 +283,6 @@ endtask
     real amp_expect;
     real phs_expect;
     reg init_done=0;
-
-    reg signed [17:0] ramp_rate = 0;
-    reg [17:0] ramp_steps = 0;
 
     initial begin
         $display("---- Init settings ----");

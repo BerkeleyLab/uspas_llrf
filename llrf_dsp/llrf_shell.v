@@ -118,11 +118,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [0:0] amp_loop_reset; top-level
 // reg [0:0] phs_loop_reset; top-level
 // reg [0:0] dsp_reset; top-level
-// reg signed [17:0] ramp_rate; top-level
-// reg [17:0] ramp_steps; top-level
-// reg [0:0] phase_ramp_enable; top-level
-// reg [31:0] phase_ramp_time; top-level
-// reg [14:0] error_threshold; top-level
 // reg [11:0] pulse_high_len; top-level
 // reg [0:0] pulse_mode; top-level
 // reg [0:0] dac_permit; top-level
@@ -219,8 +214,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     localparam WAVE_TRIG_ALWAYS = 0,
                WAVE_TRIG_ORBIT  = 1;
 
-    localparam WAVE_TRIG_PHRAMP = 2;
-
     wire evr_orbit;
     wire [63:0] evr_orbit_ts;
     wire [63:0] dsp_live_ts;
@@ -234,10 +227,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             WAVE_TRIG_ORBIT: begin
                 wave_trig = evr_orbit;
                 wave_timestamp = evr_orbit_ts;
-            end
-            WAVE_TRIG_PHRAMP: begin
-                wave_trig = phase_ramp_wave;
-                wave_timestamp = phase_ramp_ts;
             end
             default: begin // WAVE_TRIG_ALWAYS
                 wave_trig = cbuf_sync;
@@ -446,14 +435,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire signed [17:0] phs_setpoint_ntw;
     wire signed [14:0] err_out_amp;
     wire signed [14:0] err_out_phs;
-    wire signed [17:0] phs_ramp_setpoint;
-    wire signed [17:0] phs_setpoint_i =  phase_ramp_enable ? phs_ramp_setpoint : (ntw_phs_enable && phs_loop_enable) ? phs_setpoint_ntw : phs_setpoint;
+    wire signed [17:0] phs_setpoint_i =  (ntw_phs_enable && phs_loop_enable) ? phs_setpoint_ntw : phs_setpoint;
     wire signed [17:0] amp_setpoint_i =  (ntw_amp_enable && amp_loop_enable) ? amp_setpoint_ntw : amp_setpoint;
-
-    wire ramping;
-    wire ramp_start;
-    wire [0:0] ramp_finish;
-    wire [0:0] ramp_timeout;
 
     // ---------------------
     // Instantiate dsp_core
@@ -479,38 +462,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .phs_loop_reset   (phs_loop_reset),
         .err_out_amp      (err_out_amp),
         .err_out_phs      (err_out_phs)
-    );
-
-    reg [1:0] ramp_finish_i = 2'b00;
-    reg ramp_start_i = 0;
-    always @(posedge dsp_clk) begin
-        ramp_finish_i[0] <= ramp_finish | ramp_timeout;  // for normal mode
-        ramp_finish_i[1] <= ramp_finish_i[0];
-        if (ramp_finish_i == 2'b01) begin
-            ramp_start_i <= 0;
-        end else if (ramp_start & ~ramp_start_i) begin
-            ramp_start_i <= 1;
-        end
-    end
-
-    // ----------------------
-    // Phase-ramping feature
-    // ----------------------
-    phase_ramp #(.KW(18), .EW(15)) phase_ramp (
-        .clk               (dsp_clk),
-        .reset             (phs_loop_reset),
-        .enable            (phs_loop_enable),
-        .ramp_start        (ramp_start_i & wave_trig),
-        .steps             (ramp_steps),
-        .ramp_rate         (ramp_rate),
-        .setpoint_start    (phs_setpoint),
-        .error             (err_out_phs),
-        .error_threshold   (error_threshold),
-        .phase_ramp_time   (phase_ramp_time),
-        .setpoint_finish   (phs_ramp_setpoint),
-        .ramp_finish       (ramp_finish),
-        .ramping_i         (ramping),
-        .timeout_i         (ramp_timeout)
     );
 
     // ----------------------
@@ -601,9 +552,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             4'h6: reg_bank_0 <= evr_sync_status;
             4'h7: reg_bank_0 <= evr_live_pps_tick;
             4'h8: reg_bank_0 <= evr_clk_frequency;
-            4'h9: reg_bank_0 <= ramp_finish;
-            4'ha: reg_bank_0 <= ramp_timeout;
-            4'hb: reg_bank_0 <= phs_ramp_setpoint;
             4'hc: reg_bank_0 <= amp_setpoint_ntw;
             4'hd: reg_bank_0 <= phs_setpoint_ntw;
             4'he: reg_bank_0 <= ntw_cos_debug;
