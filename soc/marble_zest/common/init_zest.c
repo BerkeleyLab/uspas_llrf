@@ -73,7 +73,7 @@ t_reg32 regmap_ad9781[] = {
     {0x03, 0x00},
     {0x04, 0x00},
     {0x05, 0x0c},    // measured SMP
-    {0x0a, 0x05},    // mix mode
+    {0x0a, 0x00},    // normal mode
     // {0x0b, 0xff},    // DAC1 FSC, Ifs = 31.66mA
     // {0x0c, 0x03},    // DAC1 FSC, Ifs = 31.66mA
     // {0x0f, 0xff},    // DAC2 FSC, Ifs = 31.66mA
