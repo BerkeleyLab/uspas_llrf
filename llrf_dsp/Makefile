@@ -1,4 +1,5 @@
 include ../dir_list.mk
+include $(TOP)settings.mk
 include $(BUILD_DIR)/top_rules.mk
 include $(CORDIC_DIR)/rules.mk
 LB_AW       = 17    # should be LB_HI
@@ -9,9 +10,6 @@ vpath %.v $(DSP_DIR)
 VFLAGS_DEP += -y$(DSP_DIR) -y$(CORDIC_DIR) -y.
 VFLAGS_DEP += -I$(AUTOGEN_DIR) -y$(AUTOGEN_DIR)
 VFLAGS += $(VFLAGS_DEP)
-ifneq ($(FREQ_SETTING_SIRIUS),)
-VFLAGS += -DFREQ_SETTING_SIRIUS
-endif
 
 .PHONY: all clean
 all: $(TEST_BENCH) $(CHECKS)
