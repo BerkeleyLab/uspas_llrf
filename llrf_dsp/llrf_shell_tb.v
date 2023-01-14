@@ -41,8 +41,7 @@ end
     // --------------------------------------------------------------
     //  Generate Clocks
     // --------------------------------------------------------------
-    reg lb_clk=0, dsp_clk=0, evr_clk=0;
-    always #(`EVR_CLK_CYCLE/2) evr_clk = ~evr_clk;
+    reg lb_clk=0, dsp_clk=0;
     always #(CLK_CYCLE/2) lb_clk = ~lb_clk;
     // --------------------------------------------------------------
     //  LocalBus functions
@@ -142,53 +141,6 @@ end
 
     reg pass =1;
     reg signed [17:0] setpoint_done = 0;
-    reg [31:0] ramp_time = 0;
-
-    task set_ramp(
-        input [17:0] steps,
-        input signed [17:0] rate,
-        input real rtime,
-        input signed [17:0] start,
-        output [31:0] ramp_time_i
-    );
-        begin
-            @(posedge lb_clk);
-            lb_write_task(RAMP_RATE, rate);
-            lb_write_task(RAMP_STEPS, steps);
-            lb_write_task(PHASE_RAMP_TIME, $ceil((rtime/steps)*P_T));
-            lb_write_task(PHS_SETPOINT, start);
-            lb_write_task(PHS_LOOP_ENABLE, 1);
-            lb_write_task(PHASE_RAMP_ENABLE, 1);
-            setpoint_done <= dut.phs_setpoint + (dut.ramp_steps*dut.ramp_rate); // inclusive of start, considers steps
-            lb_write_task(PHS_LOOP_RESET, 0);
-            lb_write_task(TIMING_EVG_EVCODE, 5);
-            @(posedge lb_clk);
-        end
-    endtask
-
-    task ramp_check(
-        input [17:0] steps,
-        input signed [17:0] rate,
-        input real rtime,
-        input signed [17:0] start
-    );
-        begin
-            set_ramp(steps, rate, rtime, start, ramp_time);
-            @(posedge dsp_clk);
-            @(posedge dsp_clk);
-
-            // Wait until RAMP_FINISH = 1
-            rdata = 0;
-            while (rdata != 1) lb_read_task(RAMP_FINISH, rdata);
-
-            pass <= dut.phs_ramp_setpoint == setpoint_done;
-            $display("Time: %g ns, Initial Setpoint = %d, Final Setpoint = %d, Expected Final Setpoint = %d, at rate = %d, %s ", $time, start, dut.phs_ramp_setpoint, setpoint_done, rate, pass ? "OK": "FAIL");
-
-            lb_write_task(PHS_LOOP_ENABLE, 0);
-            lb_write_task(PHS_LOOP_RESET, 1);
-            lb_write_task(PHASE_RAMP_ENABLE, 0);
-        end
-    endtask
 
     // no actual check here
     task generate_ntw(
@@ -249,9 +201,6 @@ endtask
     // ---------------------
     // DUT
     // ---------------------
-    wire [15:0] evg_txd;
-    wire [1:0]  evg_txk;
-
     wire [N_ADC*DW-1:0] adc_in_flat;
     wire [15:0] dac_a_out;
     wire [15:0] dac_b_out;
@@ -277,16 +226,7 @@ endtask
         .drive_permit_in (1'b1),
         .slow_permit_in (1'b1),
 
-        .arc_permit_in  (3'b111),
-
-        .evg_tx_out_clk (evr_clk),
-        .evg_txd        (evg_txd),
-        .evg_txk        (evg_txk),
-
-        .evr_rx_out_clk (evr_clk),
-        .evr_rxd        (evg_txd),
-        .evr_rxk        (evg_txk),
-        .evr_pll_locked (1'b1)
+        .arc_permit_in  (3'b111)
     );
 
     assign adc_in_flat = {{((N_ADC-3)*DW){1'b0}}, dac_a_out, {DW{1'b0}}, dac_a_out, adc};
@@ -331,9 +271,6 @@ endtask
     real phs_expect;
     reg init_done=0;
 
-    reg signed [17:0] ramp_rate = 0;
-    reg [17:0] ramp_steps = 0;
-
     initial begin
         $display("---- Init settings ----");
         wave_samp_per = 1;
@@ -371,6 +308,9 @@ endtask
     reg inlk_check=0;
     initial begin
         while (!init_done);
+        $display("---- Frequency settings ----");
+        $display("%20s = %12d", "NUM_DDS", `NUM_DDS);
+        $display("%20s = %12d", "DEN_DDS", `DEN_DDS);
         $display("---- Set Registers ----");
         lb_write_task(DDS_PHASE_STEP, phase_step);
         lb_write_task(DDS_PHASE_SHIFT, phase_shift);
@@ -512,51 +452,6 @@ endtask
         fail |= $abs(wfm_phs - phs_expect) > 0.1;
         $display("Time: %g ns, Inlk Readout: adc_phs_1 = %8.2f deg, expect = %8.1f, %s",
             $time, wfm_phs, phs_expect, fail ? "FAIL":"OK");
-
-        $display("---- Check EVR link ----");
-        // Demonstrate triggering waveform off of orbit clock
-        lb_write_task(WAVE_TRIG_SEL, 1);
-        while (!rdata[0]) lb_read_task(LLRF_CIRCLE_READY, rdata);
-        // Read slow EVR timestamp and forever cycle-counter
-        lb_read_task(DSP_SLOW_EVR_SECONDS_1, rdata);
-        $display("Time: %g ns, Slow Readout: EVR seconds[1]:     %8d", $time, rdata);
-        lb_read_task(DSP_SLOW_EVR_EVTICKS_1, rdata);
-        $display("Time: %g ns, Slow Readout: EVR ticks[1]:       %8d", $time, rdata);
-        lb_read_task(DSP_SLOW_TIMESTAMP_0, rdata);
-        $display("Time: %g ns, Slow Readout: Cycle timestamp[0]: %8d", $time, rdata);
-
-        lb_write_task(CIRCLE_BUF_FLIP, 1); // readout waveform
-
-        // Exercise event handling, orbit and timestamp locking
-        rdata = 0;
-        while (!rdata) lb_read_task(EVR_TIMESTAMP_VALID, rdata);
-        fail |= (rdata != 32'h1);
-        $display("Time: %g ns, EVR: timestamp_valid    = %12d, expect = %8d, %s",
-            $time, rdata, 1, fail ? "FAIL":"OK");
-
-        lb_write_task(TIMING_EVG_EVCODE, 6);
-        rdata = 0;
-        while (!rdata) lb_read_task(EVR_EVCNT, rdata);
-        fail |= (rdata != 32'h1);
-        $display("Time: %g ns, EVR: evr_evcnt          = %12d, expect = %8d, %s",
-            $time, rdata, 1, fail ? "FAIL":"OK");
-        rdata = 0;
-        while (!rdata) lb_read_task(EVR_SYNC_STATUS, rdata);
-        fail |= (rdata != 32'h7);
-        $display("Time: %g ns, EVR: evr_sync_status    = %12d, expect = %8d, %s",
-            $time, rdata, 7, fail ? "FAIL":"OK");
-        rdata = 0;
-        while (!rdata) lb_read_task(EVR_LIVE_PPS_TICK, rdata);
-        fail |= ((rdata < 2047) || (rdata > 2049));
-        $display("Time: %g ns, EVR: evr_live_pps_tick  = %12d, expect = %8d, %s",
-            $time, rdata, 2048, fail ? "FAIL":"OK");
-        #(`EVR_CLK_CYCLE*1024);  // wait so we can get another PPS event
-        rdata = 0;
-        while (!rdata) lb_read_task(EVR_LIVE_PPS_TICK, rdata);
-        fail |= ((rdata < 2047) || (rdata > 2049));
-        $display("Time: %g ns, EVR: evr_live_pps_tick  = %12d, expect = %8d, %s",
-            $time, rdata, 2048, fail ? "FAIL":"OK");
-
 
         $display("---- Check Close Loop Amp Response ----");
         // may override init register values here

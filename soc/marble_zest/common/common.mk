@@ -1,5 +1,5 @@
 include $(PICORV_DIR)/rules.mk
-
+include $(TOP)settings.mk
 APP_COMMON_DIR = $(APP_SOC_DIR)/common
 INC_DIR       += -I$(MARBLE_DIR)/firmware -I$(ZEST_DIR)/firmware
 VIVADO_BASE    = $(dir $(shell which vivado))..
