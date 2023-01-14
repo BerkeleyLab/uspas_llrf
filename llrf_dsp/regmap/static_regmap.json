@@ -147,27 +147,6 @@
         "data_width": 16,
         "sign": "signed"
     },
-    "dsp_slow_evr_seconds": {
-        "access": "r",
-        "addr_width": 1,
-        "base_addr": 73766,
-        "data_width": 16,
-        "sign": "unsigned"
-    },
-    "dsp_slow_evr_evticks": {
-        "access": "r",
-        "addr_width": 1,
-        "base_addr": 73768,
-        "data_width": 16,
-        "sign": "unsigned"
-    },
-    "dsp_slow_timestamp": {
-        "access": "r",
-        "addr_width": 3,
-        "base_addr": "0x1202A",
-        "data_width": 8,
-        "sign": "unsigned"
-    },
     "llrf_circle_ready": {
         "access": "r",
         "addr_width": 0,

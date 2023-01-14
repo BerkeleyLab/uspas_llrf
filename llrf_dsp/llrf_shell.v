@@ -13,9 +13,6 @@
 // 13010 to 13017   phs out
 // 20000 to 2ffff   Circular buffer
 
-`define TEST_EVG // TODO: Replace with `SIMULATE once done with loopback bench-testing
-// `define SIMULATE
-
 module llrf_shell #(
     parameter CIC_BASE_PERIOD = `CIC_BASE_PERIOD,
     parameter SHIFT_BASE = `SHIFT_BASE,
@@ -49,7 +46,6 @@ module llrf_shell #(
     input                drive_permit_in,  // From RF Drive Control
     input                slow_permit_in,   // From Master Interlock PLC
     output               fast_permit_out,  // To Master Interlock PLC, RF Drive Control
-    output               evg_permit_out,   // To MRF EVG
     output               hpa_permit_out,   // To HPA
 
     // ---------------------
@@ -57,21 +53,7 @@ module llrf_shell #(
     // ---------------------
     input [2:0]          arc_permit_in,
     output [2:0]         arc_test_out,
-    output               arc_reset_out,
-
-    // ---------------------
-    // MRF Fiber interface
-    // ---------------------
-`ifdef TEST_EVG
-    input                evg_tx_out_clk,
-    output [15:0]        evg_txd,
-    output [1:0]         evg_txk,
-`endif
-
-    input                evr_rx_out_clk,
-    input [15:0]         evr_rxd,
-    input [1:0]          evr_rxk,
-    input                evr_pll_locked
+    output               arc_reset_out
 );
 localparam LB_DW = 32;
 localparam LB_ADW = 18;
@@ -98,7 +80,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 
 // reg [7:0] dsp_tag; top-level
 // reg [15:0] cbuf_post_delay; top-level
-// reg [1:0] wave_trig_sel; top-level; 2-bits for future functionality
 // reg [6:0] wave_samp_per; top-level
 // reg [9:0] chan_keep; top-level
 // reg [2:0] wave_shift; top-level
@@ -127,7 +108,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [31:0] ntw_phase_step_h; top-level
 // reg [11:0] ntw_phase_step_l; top-level
 // reg [11:0] ntw_modulo; top-level
-// EVR event code mask. 0 = unmasked (allowed), 1 = masked (disallowed)
 
 `AUTOMATIC_decode
 
@@ -214,26 +194,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     localparam WAVE_TRIG_ALWAYS = 0,
                WAVE_TRIG_ORBIT  = 1;
 
-    wire evr_orbit;
-    wire [63:0] evr_orbit_ts;
-    wire [63:0] dsp_live_ts;
-    wire phase_ramp_wave;
-    wire [63:0] phase_ramp_ts;
-
-    reg wave_trig;
-    reg [63:0] wave_timestamp;
-    always @(*) begin
-        case (wave_trig_sel)
-            WAVE_TRIG_ORBIT: begin
-                wave_trig = evr_orbit;
-                wave_timestamp = evr_orbit_ts;
-            end
-            default: begin // WAVE_TRIG_ALWAYS
-                wave_trig = cbuf_sync;
-                wave_timestamp = dsp_live_ts;
-            end
-        endcase
-    end
+    wire wave_trig = cbuf_sync;
 
     reg cbuf_write=1;
     reg cbuf_start=0;
@@ -419,7 +380,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .buf_count      (cbuf_count),
         .buf_ready      (llrf_circle_ready),
         .data_in        (adc_data_in),
-        .evr_timestamp  (wave_timestamp),
+        .evr_timestamp  (),
 
         .slow_snap      (cbuf_transferred),
         .slow_ready     (slow_ready)
@@ -526,15 +487,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // Read-only address space decoding
     // ---------------------
     wire [31:0] git_rev_id = GIT_REV_ID;
-    // EVR Status Registers
-    wire [0:0]  evr_timestamp_valid;
-    wire [27:0] evr_clk_frequency;
-    wire [2:0]  evr_sync_status;
-    wire [31:0] evr_orbit_ts_lo = evr_orbit_ts[31:0];
-    wire [31:0] evr_orbit_ts_hi = evr_orbit_ts[63:32];
-    wire [31:0] evr_live_pps_tick;
-    wire [15:0] evr_evcnt;
-    wire [0:0] evr_pll_lock = evr_pll_locked;
 
     reg [LB_DW-1:0] lb_rdata_r=0;
     reg [LB_ADW-1:0] lb_addr_d1=0;
@@ -544,14 +496,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     always @(posedge lb_clk) begin
         case (lb_addr[3:0])
             4'h0: reg_bank_0 <= git_rev_id;
-            4'h1: reg_bank_0 <= evr_pll_lock;
-            4'h2: reg_bank_0 <= evr_timestamp_valid;
-            4'h3: reg_bank_0 <= evr_orbit_ts_lo;
-            4'h4: reg_bank_0 <= evr_orbit_ts_hi;
-            4'h5: reg_bank_0 <= evr_evcnt;
-            4'h6: reg_bank_0 <= evr_sync_status;
-            4'h7: reg_bank_0 <= evr_live_pps_tick;
-            4'h8: reg_bank_0 <= evr_clk_frequency;
             4'hc: reg_bank_0 <= amp_setpoint_ntw;
             4'hd: reg_bank_0 <= phs_setpoint_ntw;
             4'he: reg_bank_0 <= ntw_cos_debug;
@@ -583,43 +527,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     end
 
     assign lb_rdata = lb_rdata_r;
-    assign evg_permit_out = 1'b1;
     assign hpa_permit_out = 1'b1;
     assign fast_permit_out = 1'b0; // inlk_permit_out
-
-    // ---------------------
-    // Instantiate Timing Core
-    // ---------------------
-    `ifdef TEST_EVG
-        localparam C_TEST_EVG = 1;
-        wire evg_tx_out_clk_l = evg_tx_out_clk;
-    `else
-        localparam C_TEST_EVG = 0;
-        wire evg_tx_out_clk_l = 1'b0
-    `endif
-
-    timing_core #(.TEST_EVG(C_TEST_EVG), .DSP_EV1(5)) timing // auto
-    (
-        .lb_clk              (lb_clk),
-        .evg_clk             (evg_tx_out_clk_l),
-        .evg_txd             (evg_txd),
-        .evg_txk             (evg_txk),
-        .evr_clk             (evr_rx_out_clk),
-        .evr_rxd             (evr_rxd),
-        .evr_rxk             (evr_rxk),
-        .evr_evcnt           (evr_evcnt),
-        .evr_timestamp_valid (evr_timestamp_valid),
-        .evr_clk_frequency   (evr_clk_frequency),
-        .evr_sync_status     (evr_sync_status),
-        .dsp_clk             (dsp_clk),
-        .dsp_orbit           (evr_orbit),
-        .dsp_orbit_ts        (evr_orbit_ts),
-        .dsp_live_ts         (dsp_live_ts),
-        .dsp_live_pps_tick   (evr_live_pps_tick),
-        .dsp_event1          (ramp_start),
-        .dsp_event2          (),
-        .phase_ramp_wave     (phase_ramp_wave),
-        .phase_ramp_ts       (phase_ramp_ts),
-        `AUTOMATIC_timing);
 
 endmodule

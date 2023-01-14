@@ -232,12 +232,7 @@ llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) dsp (
     .dac_data_b_out (dac_b_out),
 
     .drive_permit_in (1'b1),
-    .slow_permit_in (1'b1),
-
-    .evr_rx_out_clk (1'b0),
-    .evr_rxd        (16'h0),
-    .evr_rxk        (2'h0),
-    .evr_pll_locked (1'b0)
+    .slow_permit_in (1'b1)
 );
 
 // ----------------------------------
