@@ -2,8 +2,8 @@ include ../dir_list.mk
 include $(BUILD_DIR)/top_rules.mk
 include $(CORDIC_DIR)/rules.mk
 LB_AW       = 17    # should be LB_HI
-TEST_BENCH  = llrf_shell_tb fdownconvert_als_tb dsp_core_tb
-CHECKS      = fdownconvert_als_check dsp_core_check llrf_shell_check
+TEST_BENCH  = llrf_shell_tb noniq_ddc_tb dsp_core_tb
+CHECKS      = noniq_ddc_check dsp_core_check llrf_shell_check
 
 vpath %.v $(DSP_DIR) $(SERIAL_IO_DIR)/EVG_EVR
 VFLAGS_DEP += -y$(DSP_DIR) -y$(CORDIC_DIR) -y$(SERIAL_IO_DIR)/EVG_EVR -y.

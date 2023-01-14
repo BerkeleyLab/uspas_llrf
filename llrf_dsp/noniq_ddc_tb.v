@@ -2,7 +2,7 @@
 `include "constants.vams"
 `include "settings.vams"
 
-module fdownconvert_als_tb;
+module noniq_ddc_tb;
 parameter N = 100;                  // n-th sample from ADC
 parameter FDOWN_WAIT = 11;          // fdownconvert latency, in clock cycles
 parameter N1 = 113;                  // change input phase
@@ -16,10 +16,10 @@ integer out_file;
 reg pass=1;
 initial begin
     $display("##################################################");
-    $display("    ---- Checking fdownconvert_als.v ----");
+    $display("    ---- Checking noniq_ddc.v ----");
     if ($test$plusargs("vcd")) begin
-        $dumpfile("fdownconvert_als.vcd");
-        $dumpvars(5,fdownconvert_als_tb);
+        $dumpfile("noniq_ddc.vcd");
+        $dumpvars(5,noniq_ddc_tb);
     end
 
     for (cc=0; cc<N+25; cc=cc+1) begin
@@ -75,7 +75,7 @@ cordicg_b22 #(.nstg(20), .width(18)) dds_cordicg_i(
 
 wire i_sel;
 wire signed [16:0] field_iq;
-fdownconvert_als #(.ODW(17)) dut(
+noniq_ddc #(.ODW(17)) dut(
     .clk        (clk),
     .cosd       (cosd),
     .sind       (sind),
