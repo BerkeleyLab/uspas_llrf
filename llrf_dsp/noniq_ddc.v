@@ -13,7 +13,7 @@
 // | I | =  |  sin[n + 1]\theta   -sin n\theta |  X  | a_data[n]   |
 // | Q |    | -cos[n + 1]\theta    cos n\theta |     | a_data[n+1] |
 // Larry Doolittle, LBNL, 2014
-module fdownconvert_als #(
+module noniq_ddc #(
     parameter ODW=16
 ) (
 	input clk,  // timespec 6.66 ns

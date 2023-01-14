@@ -7,7 +7,7 @@ VLATOR_ARGS = -Wno-PINMISSING -Wno-WIDTH -Wno-UNUSED
 all: dsp_core_wrapper_check
 
 ##### dsp_core #####
-obj_dir/Vdsp_core_wrapper: dsp_core_check.cpp dsp_core_wrapper.v ../dsp_core.v cordicg_b22.v ../fdownconvert_als.v ../pi_scalar.v
+obj_dir/Vdsp_core_wrapper: dsp_core_check.cpp dsp_core_wrapper.v ../dsp_core.v cordicg_b22.v ../noniq_ddc.v ../pi_scalar.v
 	$(VERILATOR) --trace $(VLATOR_ARGS) -cc --timescale-override 1ns/1ns\
 		--exe -I$. -I$(CORDIC_DIR) -I$(DSP_DIR) -I.. $^
 	MAKEFLAGS="" $(MAKE) -C $(dir $@) -f $(notdir $@).mk

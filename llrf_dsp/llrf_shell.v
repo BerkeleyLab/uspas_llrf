@@ -14,6 +14,7 @@
 // 20000 to 2ffff   Circular buffer
 
 `define TEST_EVG // TODO: Replace with `SIMULATE once done with loopback bench-testing
+// `define SIMULATE
 
 module llrf_shell #(
     parameter CIC_BASE_PERIOD = `CIC_BASE_PERIOD,
@@ -146,33 +147,29 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .phase_step_l   (dds_phase_step[11: 0]),
         .modulo         (dds_modulo)
     );
+
+    // LO for RX (feedback)
     cordicg_b22 #(.nstg(20), .width(18)) dds_cordicg_i(
         .clk            (dsp_clk),
         .opin           (2'b00),
         .xin            (18'd`LO_AMP),
         .yin            (18'd0),
-        // compensate waveform phase response back to adc: -40.9 / 360 * 2**19
-        .phasein        (dds_phase_acc  + dds_phase_shift + 19'd59565),
+        .phasein        (dds_phase_acc  + dds_phase_shift + `N_PHASE_SHIFT),
         .xout           (cosd),
         .yout           (sind)
     );
 
-    // add LO phase by 3 * (4/11 * 360) % 360 = 32.72 deg
-    // to align waveform and dsp_core measurements
+    // LO for waveform
     wire signed [DWLO-1:0] cosdd, sindd;
-    reg_delay #(.dw(DWLO), .len(3)) reg_delay_cosd (
-        .clk        (dsp_clk),
-        .reset      (1'b0),
-        .gate       (1'b1),
-        .din        (cosd),
-        .dout       (cosdd)
-    );
-    reg_delay #(.dw(DWLO), .len(3)) reg_delay_sind (
-        .clk        (dsp_clk),
-        .reset      (1'b0),
-        .gate       (1'b1),
-        .din        (sind),
-        .dout       (sindd)
+    cordicg_b22 #(.nstg(20), .width(18)) dds_cordicg_cbuf(
+        .clk            (dsp_clk),
+        .opin           (2'b00),
+        .xin            (18'd`LO_AMP),
+        .yin            (18'd0),
+        // compensate for CIC
+        .phasein        (dds_phase_acc  + dds_phase_shift + `CIC_PHASE_COMP),
+        .xout           (cosdd),
+        .yout           (sindd)
     );
 
     wire [2*N_CH*(DW+DAVR)-1:0] iq_in_flat;
@@ -366,7 +363,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [N_CH-1:0] inlk_lo;
     wire inlk_permit_out;
 
-    mon_inlk_als #(.N_CH(N_CH)) inlk // auto
+    monitor_inlk #(.N_CH(N_CH)) inlk // auto
        (.clk            (dsp_clk),
        .mon_data        (inlk_data),
        .mon_valid       (inlk_dval),
@@ -487,13 +484,13 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     reg [1:0] ramp_finish_i = 2'b00;
     reg ramp_start_i = 0;
     always @(posedge dsp_clk) begin
-	    ramp_finish_i[0] <= ramp_finish | ramp_timeout;  // for normal mode
-	    ramp_finish_i[1] <= ramp_finish_i[0];
-	    if (ramp_finish_i == 2'b01) begin
-		    ramp_start_i <= 0;
-	    end else if (ramp_start & ~ramp_start_i) begin
-		    ramp_start_i <= 1;
-	    end
+        ramp_finish_i[0] <= ramp_finish | ramp_timeout;  // for normal mode
+        ramp_finish_i[1] <= ramp_finish_i[0];
+        if (ramp_finish_i == 2'b01) begin
+            ramp_start_i <= 0;
+        end else if (ramp_start & ~ramp_start_i) begin
+            ramp_start_i <= 1;
+        end
     end
 
     // ----------------------
@@ -578,7 +575,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // Read-only address space decoding
     // ---------------------
     wire [31:0] git_rev_id = GIT_REV_ID;
-
     // EVR Status Registers
     wire [0:0]  evr_timestamp_valid;
     wire [27:0] evr_clk_frequency;

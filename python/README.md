@@ -8,7 +8,7 @@
 
 * Write register
 
-    python test.py [leep://192.168.19.122:803] reg chak_eepp=0x3ff
+    python test.py [leep://192.168.19.122:803] reg chak_keep=0x3ff
 
 * Plot ADC waveforms
 

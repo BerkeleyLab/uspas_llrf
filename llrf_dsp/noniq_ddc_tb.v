@@ -2,12 +2,10 @@
 `include "constants.vams"
 `include "settings.vams"
 
-module fdownconvert_als_tb;
+module noniq_ddc_tb;
 parameter N = 100;                  // n-th sample from ADC
 parameter FDOWN_WAIT = 11;          // fdownconvert latency, in clock cycles
 parameter N1 = 113;                  // change input phase
-parameter DUT_AMP_GAIN = 2.8424;    // Emperical
-parameter DUT_PHS_GAIN = 0;         // Emperical
 
 parameter real AMP_ACCURACY = 0.001;// < 0.1% RMS
 parameter real PHS_ACCURACY = 0.1;  // < 0.1 deg RMS
@@ -18,10 +16,10 @@ integer out_file;
 reg pass=1;
 initial begin
     $display("##################################################");
-    $display("    ---- Checking fdownconvert_als.v ----");
+    $display("    ---- Checking noniq_ddc.v ----");
     if ($test$plusargs("vcd")) begin
-        $dumpfile("fdownconvert_als.vcd");
-        $dumpvars(5,fdownconvert_als_tb);
+        $dumpfile("noniq_ddc.vcd");
+        $dumpvars(5,noniq_ddc_tb);
     end
 
     for (cc=0; cc<N+25; cc=cc+1) begin
@@ -77,7 +75,7 @@ cordicg_b22 #(.nstg(20), .width(18)) dds_cordicg_i(
 
 wire i_sel;
 wire signed [16:0] field_iq;
-fdownconvert_als #(.ODW(17)) dut(
+noniq_ddc #(.ODW(17)) dut(
     .clk        (clk),
     .cosd       (cosd),
     .sind       (sind),
@@ -134,8 +132,9 @@ always @(posedge clk) begin
     # 1;
     expect_i = ampi * $cos(phsi);
     expect_q = ampi * $sin(phsi);
-    amp_out = $hypot(field_i, field_q) / DUT_AMP_GAIN;
-    phs_out = $atan2(field_q, field_i);
+    amp_out = $hypot(field_i, field_q) / `DDC_AMP_GAIN;
+    phs_out = $atan2(field_q, field_i) - `DDC_PHS_GAIN;
+    // phs_out = $atan2(field_q, field_i) - 10;
     if (cc == N + FDOWN_WAIT || cc == N1 + FDOWN_WAIT) begin
         $display("cc = %4d:", cc);
         $display("  Mathematical Expect: I: %8.1f, Q: %8.1f, Amp = %8.1f, Phs = %8.1f deg",

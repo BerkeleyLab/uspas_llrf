@@ -12,6 +12,7 @@ litex/prog/bscan_spi*.bit
 litex/prog/openocd_xc7*.cfg
 litex/prog/openocd_marblemini.cfg
 litex/update.sh
+*_tb
 *__pycache__
 *_dep/
 *_autogen/
