@@ -39,3 +39,7 @@ udp_rgmii/rtefi_preblob.vh
 udp_rgmii/udp_rgmii_expand.v
 top/marble_zest/top.xdc
 top/marble_zest/system_top.xdc
+soc/marble_zest/synth/system_expand.v
+soc/marble_zest/synth/system32.dat
+soc/marble_zest/synth/zest_fmc_dp.xdc
+soc/marble_zest/synth/zest_pinmap.txt
