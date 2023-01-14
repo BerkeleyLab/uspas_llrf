@@ -363,7 +363,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [N_CH-1:0] inlk_lo;
     wire inlk_permit_out;
 
-    mon_inlk_als #(.N_CH(N_CH)) inlk // auto
+    monitor_inlk #(.N_CH(N_CH)) inlk // auto
        (.clk            (dsp_clk),
        .mon_data        (inlk_data),
        .mon_valid       (inlk_dval),

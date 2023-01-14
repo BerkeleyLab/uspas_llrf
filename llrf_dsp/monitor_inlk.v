@@ -1,4 +1,4 @@
-module mon_inlk_als #(
+module monitor_inlk #(
     parameter N_CH = 10
 ) (
     input           clk,
