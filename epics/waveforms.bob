@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <display version="2.0.0">
   <name>alsu_llrf</name>
+  <macros>
+    <P>USPAS:LLRF:</P>
+  </macros>
   <width>1024</width>
   <height>1024</height>
   <widget type="label" version="2.0.0">
     <name>Label</name>
     <class>TITLE</class>
-    <text>$(P)</text>
+    <text>USPAS LLRF Demo</text>
     <x use_class="true">0</x>
     <y use_class="true">0</y>
     <width>550</width>
@@ -93,7 +96,7 @@
     <y>91</y>
     <width>420</width>
     <height>240</height>
-    <title>CavCel Amp</title>
+    <title>CavCel (ADC5) Amp</title>
     <show_legend>false</show_legend>
     <x_axis>
       <title></title>
@@ -157,7 +160,7 @@
     <y>331</y>
     <width>420</width>
     <height>240</height>
-    <title>CavCel Phs</title>
+    <title>CavCel (ADC5) Phs</title>
     <show_legend>false</show_legend>
     <x_axis>
       <title></title>
@@ -306,7 +309,7 @@
     </widget>
     <widget type="label" version="2.0.0">
       <name>Label_3</name>
-      <text>Master Osc</text>
+      <text>ADC8</text>
       <y>30</y>
       <height>30</height>
       <horizontal_alignment>2</horizontal_alignment>
@@ -314,7 +317,7 @@
     </widget>
     <widget type="label" version="2.0.0">
       <name>Label_4</name>
-      <text>Cavity Fwd</text>
+      <text>ADC7</text>
       <y>60</y>
       <height>30</height>
       <horizontal_alignment>2</horizontal_alignment>
@@ -322,7 +325,7 @@
     </widget>
     <widget type="label" version="2.0.0">
       <name>Label_5</name>
-      <text>Cavity Rev</text>
+      <text>ADC6</text>
       <y>90</y>
       <height>30</height>
       <horizontal_alignment>2</horizontal_alignment>
@@ -330,7 +333,7 @@
     </widget>
     <widget type="label" version="2.0.0">
       <name>Label_6</name>
-      <text>Cavity Cell</text>
+      <text>ADC5</text>
       <y>120</y>
       <height>30</height>
       <horizontal_alignment>2</horizontal_alignment>
@@ -338,7 +341,7 @@
     </widget>
     <widget type="label" version="2.0.0">
       <name>Label_7</name>
-      <text>Circulator Fwd</text>
+      <text>ADC4</text>
       <y>150</y>
       <height>30</height>
       <horizontal_alignment>2</horizontal_alignment>
@@ -346,7 +349,7 @@
     </widget>
     <widget type="label" version="2.0.0">
       <name>Label_8</name>
-      <text>Circulator Rev</text>
+      <text>ADC3</text>
       <y>180</y>
       <height>30</height>
       <horizontal_alignment>2</horizontal_alignment>
@@ -354,7 +357,7 @@
     </widget>
     <widget type="label" version="2.0.0">
       <name>Label_9</name>
-      <text>Test Load Fwd</text>
+      <text>ADC2</text>
       <y>210</y>
       <height>30</height>
       <horizontal_alignment>2</horizontal_alignment>
@@ -362,7 +365,7 @@
     </widget>
     <widget type="label" version="2.0.0">
       <name>Label_10</name>
-      <text>Test Load Rev</text>
+      <text>ADC0</text>
       <y>240</y>
       <height>30</height>
       <horizontal_alignment>2</horizontal_alignment>
@@ -370,7 +373,7 @@
     </widget>
     <widget type="label" version="2.0.0">
       <name>Label_11</name>
-      <text>DAC1 Out</text>
+      <text>DAC Q1</text>
       <y>270</y>
       <height>30</height>
       <horizontal_alignment>2</horizontal_alignment>
@@ -378,7 +381,7 @@
     </widget>
     <widget type="label" version="2.0.0">
       <name>Label_12</name>
-      <text>DAC2 Out</text>
+      <text>DAC Q2</text>
       <y>300</y>
       <height>30</height>
       <horizontal_alignment>2</horizontal_alignment>
@@ -625,26 +628,6 @@
       <vertical_alignment>1</vertical_alignment>
     </widget>
   </widget>
-  <widget type="textupdate" version="2.0.0">
-    <name>Text Update_21</name>
-    <pv_name>$(P)ACQ_TAG1_RBV</pv_name>
-    <x>880</x>
-    <y>61</y>
-    <width>40</width>
-    <height>30</height>
-    <horizontal_alignment>2</horizontal_alignment>
-    <vertical_alignment>1</vertical_alignment>
-  </widget>
-  <widget type="textupdate" version="2.0.0">
-    <name>Text Update_22</name>
-    <pv_name>$(P)ACQ_TAG2_RBV</pv_name>
-    <x>940</x>
-    <y>61</y>
-    <width>40</width>
-    <height>30</height>
-    <horizontal_alignment>2</horizontal_alignment>
-    <vertical_alignment>1</vertical_alignment>
-  </widget>
   <widget type="group" version="2.0.0">
     <name>Loop Set points</name>
     <x>2</x>
@@ -769,7 +752,7 @@
   <widget type="scaledslider" version="2.0.0">
     <name>Scaled Slider</name>
     <pv_name>$(P)ACQ_DECIM</pv_name>
-    <x>680</x>
+    <x>630</x>
     <y>61</y>
     <width>150</width>
     <height>30</height>
@@ -781,7 +764,7 @@
   <widget type="label" version="2.0.0">
     <name>Label_1</name>
     <text>Waveform Decimation</text>
-    <x>580</x>
+    <x>540</x>
     <y>61</y>
     <height>30</height>
     <horizontal_alignment>1</horizontal_alignment>
@@ -807,8 +790,8 @@
   <widget type="textupdate" version="2.0.0">
     <name>Text Update_28</name>
     <pv_name>$(P)reg_git_rev_id_RBV</pv_name>
-    <x>890</x>
-    <y>30</y>
+    <x>910</x>
+    <y>10</y>
     <width>110</width>
     <height>21</height>
     <format>4</format>
@@ -817,9 +800,9 @@
   <widget type="label" version="2.0.0">
     <name>Label_33</name>
     <text>git rev id</text>
-    <x>920</x>
+    <x>850</x>
     <y>10</y>
-    <width>70</width>
+    <width>60</width>
     <height>21</height>
   </widget>
   <widget type="group" version="2.0.0">
@@ -1524,5 +1507,22 @@
     <y>398</y>
     <width>80</width>
     <vertical_alignment>1</vertical_alignment>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Text Update_20</name>
+    <pv_name>$(P)ACQ_SAMP_PERIOD</pv_name>
+    <x>940</x>
+    <y>61</y>
+    <width>70</width>
+    <height>21</height>
+    <precision>5</precision>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Label_59</name>
+    <text>Sample Period [us]</text>
+    <x>790</x>
+    <y>61</y>
+    <width>138</width>
+    <height>21</height>
   </widget>
 </display>
