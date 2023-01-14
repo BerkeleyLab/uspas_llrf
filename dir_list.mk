@@ -10,3 +10,4 @@ ZEST_DIR           = $(BOARD_SUPPORT_DIR)/zest_soc
 HARDWARE            = marble
 
 include $(BEDROCK_DIR)/dir_list.mk
+include $(TOP)settings.mk
