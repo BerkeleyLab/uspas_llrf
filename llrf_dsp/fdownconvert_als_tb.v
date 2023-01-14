@@ -6,8 +6,6 @@ module fdownconvert_als_tb;
 parameter N = 100;                  // n-th sample from ADC
 parameter FDOWN_WAIT = 11;          // fdownconvert latency, in clock cycles
 parameter N1 = 113;                  // change input phase
-parameter DUT_AMP_GAIN = 2.8424;    // Emperical
-parameter DUT_PHS_GAIN = 0;         // Emperical
 
 parameter real AMP_ACCURACY = 0.001;// < 0.1% RMS
 parameter real PHS_ACCURACY = 0.1;  // < 0.1 deg RMS
@@ -134,8 +132,9 @@ always @(posedge clk) begin
     # 1;
     expect_i = ampi * $cos(phsi);
     expect_q = ampi * $sin(phsi);
-    amp_out = $hypot(field_i, field_q) / DUT_AMP_GAIN;
-    phs_out = $atan2(field_q, field_i);
+    amp_out = $hypot(field_i, field_q) / `DDC_AMP_GAIN;
+    phs_out = $atan2(field_q, field_i) - `DDC_PHS_GAIN;
+    // phs_out = $atan2(field_q, field_i) - 10;
     if (cc == N + FDOWN_WAIT || cc == N1 + FDOWN_WAIT) begin
         $display("cc = %4d:", cc);
         $display("  Mathematical Expect: I: %8.1f, Q: %8.1f, Amp = %8.1f, Phs = %8.1f deg",

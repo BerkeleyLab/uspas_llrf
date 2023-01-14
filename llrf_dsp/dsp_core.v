@@ -77,15 +77,17 @@ cordicg_b22 #(.nstg(20), .width(KW)) rx_cordic (
     .opin      (2'b01),
     .xin       (field_i),
     .yin       (field_q),
-    .phasein   (19'h0),
+    .phasein   (19'h0 + `RX_PHS_OFF),
     .xout      (amp_measured_raw),
     .phaseout  (phs_measured_raw)
 );
 
 // Amp/Phs PI loop
 wire signed [KW-1:0] amp_measured = amp_measured_raw;
-// compensate measured 130 deg Rx phase gain
-wire signed [KW-1:0] phs_measured = phs_measured_raw[KW:1] - 18'd94663 - 18'd29768;
+// compensate measured Rx phase gain of 0.76 deg
+// wire signed [KW-1:0] phs_measured = phs_measured_raw[KW:1] + 18'd553;
+// wire signed [KW-1:0] phs_measured = phs_measured_raw[KW:1] + `RX_PHS_OFF;
+wire signed [KW-1:0] phs_measured = phs_measured_raw[KW:1];
 
 wire signed [KW-1:0] drive_amp;
 pi_scalar #(.KW(KW), .EW(EW), .WRAP(0)) pi_amp (
@@ -107,7 +109,7 @@ pi_scalar #(.KW(KW), .EW(EW), .WRAP(1)) pi_phs (
     .enable     (phs_loop_enable),
     .Kp         (Kp_phs),
     .Ki         (Ki_phs),
-    .setpoint   (phs_setpoint + 18'd73),  // cancel 0.1 deg phase gain
+    .setpoint   (phs_setpoint),
     .measured   (phs_measured),
     .err_out    (err_out_phs),
     .drive      (drive_phs)
@@ -116,8 +118,8 @@ pi_scalar #(.KW(KW), .EW(EW), .WRAP(1)) pi_phs (
 wire signed [KW-1:0] drive_i;
 wire signed [KW-1:0] drive_q;
 
-// compensate measured 49.19 deg phase gain, plus 40.9 deg lo shift
-wire signed [KW:0] phasein = {drive_phs, 1'b0} - 19'd71652 - 19'd59565;
+// compensate measured lo shift
+wire signed [KW:0] phasein = {drive_phs, 1'b0} + `N_PHASE_SHIFT - `P_PHASE_SHIFT;
 cordicg_b22 #(.nstg(20), .width(KW)) tx_cordic (
     .clk        (clk),
     .opin       (2'b00),

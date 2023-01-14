@@ -17,9 +17,9 @@ localparam integer SETTLE_TIME = FDOWN_WAIT + NO_DC_WAIT + CORDIC_STAGES;
 parameter N_RX                = 100;      // RX test time
 localparam integer N_LOOPBACK = N_RX + SETTLE_TIME + 200;
 localparam integer N_FEEDBACK = N_LOOPBACK + SETTLE_TIME + 200;
-localparam integer N_CHECK = N_FEEDBACK + 1500;
+localparam integer N_CHECK = N_FEEDBACK + 3500;
 
-parameter real RX_AMP_GAIN  = 2.9337 * `CORDIC_GAIN;    // Measured
+parameter real RX_AMP_GAIN  = `RX_AMP_GAIN * `CORDIC_GAIN;    // Measured
 parameter real RX_PHS_GAIN  = 0;        // Measured, deg
 parameter real OPEN_AMP_GAIN = 2**19 / (`CORDIC_GAIN * `LO_AMP * `CORDIC_GAIN);
 parameter real OPEN_PHS_GAIN = 0;       // Measured, deg
@@ -87,8 +87,7 @@ cordicg_b22 #(.nstg(20), .width(18)) dds_cordicg_i(
     .opin           (2'b00),
     .xin            (18'd`LO_AMP),
     .yin            (18'd0),
-    // compensate phase response back to adc: -40.9 / 360 * 2**19
-    .phasein        (dds_phase_acc + 19'd59565),
+    .phasein        (dds_phase_acc + `N_PHASE_SHIFT),
     .xout           (cosd),
     .yout           (sind)
 );

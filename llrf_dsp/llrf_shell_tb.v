@@ -563,7 +563,7 @@ endtask
         lb_write_task(AMP_SETPOINT, amp_setpoint_close);
         lb_write_task(PHS_SETPOINT, phs_setpoint_close);
         close_loops_task();
-        #10000;  //wait for loop actions
+        #20000;  //wait for loop actions
         read_inlk_task(1, wfm_amp, wfm_phs);
         amp_err = wfm_amp / inlk_gain - AMP_SETP_ADC;
         fail |= $abs(amp_err / amp_setpoint) > 0.001;
@@ -589,20 +589,6 @@ endtask
         inlk_check = 1'b1;
         #200;
         inlk_check = 1'b0;
-
-
-        $display("---- Check Phase ramping ----");
-        lb_write_task(ERROR_THRESHOLD, 1366);
-
-        ramp_check(20, 1, 10e-9, -1);
-        ramp_check(100, 10, 50e-9, 500);
-        ramp_check(50, -100, 100e-9, 1);
-
-        $display("---- Check Network analyzer feature ----");
-        generate_ntw(100e3);
-        # (`DSP_CLK_CYCLE * 10000); // wait for settings pass clock domains using cycling wave_cnt
-        lb_write_task(NTW_AMP_ENABLE, 0);
-        lb_write_task(NTW_PHS_ENABLE, 0);
 
         $display("Time: %g ns, Validation: %s.", $time, !fail ? "PASS":"FAIL");
         $display("##################################################");

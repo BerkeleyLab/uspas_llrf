@@ -1,9 +1,33 @@
-`define DSP_CLK_CYCLE   8.7206
-`define EVR_CLK_CYCLE   7.9939   // DSP_CLK_CYCLE*11/12
+//`define FREQ_SETTING_SIRIUS
+
+`ifndef FREQ_SETTING_SIRIUS
+    `define DSP_CLK_CYCLE       8.7206      // F_CLK = 500 * 11 / 12 / 4 = 114.58MHz
+    `define NUM_DDS             4
+    `define DEN_DDS             11
+    `define CIC_BASE_PERIOD     22          // multiple of 11, > 2*N_CH, >= cordic delay
+    `define P_PHASE_SHIFT       19'd190650  // 4/11 * (1<<19)
+    `define N_PHASE_SHIFT       19'd333637  // (1 - 4/11) * (1<<19)
+    `define CIC_PHASE_COMP      19'd11913   // CIC phase offset: 8.18 deg
+    `define RX_AMP_GAIN         2.9366      // for feedabck, measured (due to FIR filter)
+    `define RX_PHS_OFF          19'd1107    // 0.76 deg / 360 * (1<<19)
+    `define DDC_AMP_GAIN        2.8424      // for monitor, measured  (see fdownconvert)
+    `define DDC_PHS_GAIN        0           // radian
+`else
+    `define DSP_CLK_CYCLE       8.3478      // F_CLK = 500 * 23/24/4 = 119.8 MHz
+    `define NUM_DDS             4
+    `define DEN_DDS             23
+    `define CIC_BASE_PERIOD     23          // multiple of 23, > 2*N_CH, >= cordic delay
+    `define P_PHASE_SHIFT       19'd0       // 4/23 * (1<<19)
+    `define N_PHASE_SHIFT       19'd433107  // (1 - 4/23) * (1<<19)
+    `define CIC_PHASE_COMP      19'd643957  // CIC phase offset: 82.17 deg
+    `define RX_AMP_GAIN         3.4426      // for feedabck, measured
+    `define RX_PHS_OFF          19'd437533  // -59.57 deg / 360 * (1<<19)
+    `define DDC_AMP_GAIN        3.3396      // for monitor, measured
+    `define DDC_PHS_GAIN        1.0927279   // `NUM_DDS/`DEN_DDS * 2*`M_PI radian, 1 cycle
+`endif
+
 `define CORDIC_GAIN     1.64676
-`define NUM_DDS         4
-`define DEN_DDS         11
-`define CIC_BASE_PERIOD 22       // multiple of 11, > 2*N_CH, >= cordic delay
-`define LO_AMP          74840    // < 2^17 / 1.64676
+`define EVR_CLK_CYCLE   `DSP_CLK_CYCLE*11/12    // XXX remove
+`define LO_AMP          74840    // must < (2^17 / `CORDIC_GAIN)
 `define SHIFT_BASE      7
 `define SHIFT_INLK      12
