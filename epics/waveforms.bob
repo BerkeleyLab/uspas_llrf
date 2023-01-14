@@ -1,0 +1,1528 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>alsu_llrf</name>
+  <width>1024</width>
+  <height>1024</height>
+  <widget type="label" version="2.0.0">
+    <name>Label</name>
+    <class>TITLE</class>
+    <text>$(P)</text>
+    <x use_class="true">0</x>
+    <y use_class="true">0</y>
+    <width>550</width>
+    <height>31</height>
+    <font use_class="true">
+      <font name="Header 1" family="Liberation Sans" style="BOLD" size="22.0">
+      </font>
+    </font>
+    <foreground_color use_class="true">
+      <color name="Text" red="0" green="0" blue="0">
+      </color>
+    </foreground_color>
+    <transparent use_class="true">true</transparent>
+    <horizontal_alignment>1</horizontal_alignment>
+    <vertical_alignment>1</vertical_alignment>
+  </widget>
+  <widget type="xyplot" version="2.0.0">
+    <name>X/Y Plot</name>
+    <x>580</x>
+    <y>571</y>
+    <width>420</width>
+    <height>420</height>
+    <title>CavCel I/Q</title>
+    <show_legend>false</show_legend>
+    <x_axis>
+      <title>I</title>
+      <autoscale>false</autoscale>
+      <log_scale>false</log_scale>
+      <minimum>-21000.0</minimum>
+      <maximum>21000.0</maximum>
+      <show_grid>true</show_grid>
+      <title_font>
+        <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
+        </font>
+      </title_font>
+      <scale_font>
+        <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
+        </font>
+      </scale_font>
+      <visible>true</visible>
+    </x_axis>
+    <y_axes>
+      <y_axis>
+        <title>Q</title>
+        <autoscale>false</autoscale>
+        <log_scale>false</log_scale>
+        <minimum>-21000.0</minimum>
+        <maximum>21000.0</maximum>
+        <show_grid>true</show_grid>
+        <title_font>
+          <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
+          </font>
+        </title_font>
+        <scale_font>
+          <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
+          </font>
+        </scale_font>
+        <visible>true</visible>
+      </y_axis>
+    </y_axes>
+    <traces>
+      <trace>
+        <name>$(traces[0].y_pv)</name>
+        <x_pv>$(P)CavCel:IWF</x_pv>
+        <y_pv>$(P)CavCel:QWF</y_pv>
+        <err_pv></err_pv>
+        <axis>0</axis>
+        <trace_type>1</trace_type>
+        <color>
+          <color red="0" green="0" blue="255">
+          </color>
+        </color>
+        <line_width>5</line_width>
+        <line_style>0</line_style>
+        <point_type>0</point_type>
+        <point_size>10</point_size>
+        <visible>true</visible>
+      </trace>
+    </traces>
+  </widget>
+  <widget type="xyplot" version="2.0.0">
+    <name>X/Y Plot_1</name>
+    <x>580</x>
+    <y>91</y>
+    <width>420</width>
+    <height>240</height>
+    <title>CavCel Amp</title>
+    <show_legend>false</show_legend>
+    <x_axis>
+      <title></title>
+      <autoscale>true</autoscale>
+      <log_scale>false</log_scale>
+      <minimum>0.0</minimum>
+      <maximum>100.0</maximum>
+      <show_grid>false</show_grid>
+      <title_font>
+        <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
+        </font>
+      </title_font>
+      <scale_font>
+        <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
+        </font>
+      </scale_font>
+      <visible>true</visible>
+    </x_axis>
+    <y_axes>
+      <y_axis>
+        <title></title>
+        <autoscale>true</autoscale>
+        <log_scale>false</log_scale>
+        <minimum>0.0</minimum>
+        <maximum>100.0</maximum>
+        <show_grid>true</show_grid>
+        <title_font>
+          <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
+          </font>
+        </title_font>
+        <scale_font>
+          <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
+          </font>
+        </scale_font>
+        <visible>true</visible>
+      </y_axis>
+    </y_axes>
+    <traces>
+      <trace>
+        <name>$(traces[0].y_pv)</name>
+        <x_pv>$(P)CavCel:TWF</x_pv>
+        <y_pv>$(P)CavCel:AWF</y_pv>
+        <err_pv></err_pv>
+        <axis>0</axis>
+        <trace_type>1</trace_type>
+        <color>
+          <color red="0" green="0" blue="255">
+          </color>
+        </color>
+        <line_width>1</line_width>
+        <line_style>0</line_style>
+        <point_type>0</point_type>
+        <point_size>10</point_size>
+        <visible>true</visible>
+      </trace>
+    </traces>
+  </widget>
+  <widget type="xyplot" version="2.0.0">
+    <name>X/Y Plot_2</name>
+    <x>580</x>
+    <y>331</y>
+    <width>420</width>
+    <height>240</height>
+    <title>CavCel Phs</title>
+    <show_legend>false</show_legend>
+    <x_axis>
+      <title></title>
+      <autoscale>true</autoscale>
+      <log_scale>false</log_scale>
+      <minimum>0.0</minimum>
+      <maximum>100.0</maximum>
+      <show_grid>false</show_grid>
+      <title_font>
+        <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
+        </font>
+      </title_font>
+      <scale_font>
+        <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
+        </font>
+      </scale_font>
+      <visible>true</visible>
+    </x_axis>
+    <y_axes>
+      <y_axis>
+        <title></title>
+        <autoscale>true</autoscale>
+        <log_scale>false</log_scale>
+        <minimum>0.0</minimum>
+        <maximum>100.0</maximum>
+        <show_grid>true</show_grid>
+        <title_font>
+          <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
+          </font>
+        </title_font>
+        <scale_font>
+          <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
+          </font>
+        </scale_font>
+        <visible>true</visible>
+      </y_axis>
+    </y_axes>
+    <traces>
+      <trace>
+        <name>$(traces[0].y_pv)</name>
+        <x_pv>$(P)CavCel:TWF</x_pv>
+        <y_pv>$(P)CavCel:PWF</y_pv>
+        <err_pv></err_pv>
+        <axis>0</axis>
+        <trace_type>1</trace_type>
+        <color>
+          <color red="0" green="0" blue="255">
+          </color>
+        </color>
+        <line_width>1</line_width>
+        <line_style>0</line_style>
+        <point_type>0</point_type>
+        <point_size>10</point_size>
+        <visible>true</visible>
+      </trace>
+    </traces>
+  </widget>
+  <widget type="group" version="2.0.0">
+    <name>RF Channels</name>
+    <x>2</x>
+    <y>32</y>
+    <width>526</width>
+    <height>366</height>
+    <transparent>true</transparent>
+    <widget type="byte_monitor" version="2.0.0">
+      <name>Byte Monitor</name>
+      <pv_name>$(P)ACQ_MASK</pv_name>
+      <x>180</x>
+      <y>30</y>
+      <width>30</width>
+      <height>300</height>
+      <numBits>10</numBits>
+      <bitReverse>true</bitReverse>
+      <horizontal>false</horizontal>
+      <square>true</square>
+    </widget>
+    <widget type="bool_button" version="2.0.0">
+      <name>Boolean Button</name>
+      <pv_name>$(P)MasOsc:ENABLE</pv_name>
+      <x>110</x>
+      <y>30</y>
+      <width>60</width>
+    </widget>
+    <widget type="bool_button" version="2.0.0">
+      <name>Boolean Button_1</name>
+      <pv_name>$(P)CavFwd:ENABLE</pv_name>
+      <x>110</x>
+      <y>60</y>
+      <width>60</width>
+    </widget>
+    <widget type="bool_button" version="2.0.0">
+      <name>Boolean Button_2</name>
+      <pv_name>$(P)CavRev:ENABLE</pv_name>
+      <x>110</x>
+      <y>90</y>
+      <width>60</width>
+    </widget>
+    <widget type="bool_button" version="2.0.0">
+      <name>Boolean Button_3</name>
+      <pv_name>$(P)CavCel:ENABLE</pv_name>
+      <x>110</x>
+      <y>120</y>
+      <width>60</width>
+    </widget>
+    <widget type="bool_button" version="2.0.0">
+      <name>Boolean Button_4</name>
+      <pv_name>$(P)CirFwd:ENABLE</pv_name>
+      <x>110</x>
+      <y>150</y>
+      <width>60</width>
+    </widget>
+    <widget type="bool_button" version="2.0.0">
+      <name>Boolean Button_5</name>
+      <pv_name>$(P)CirRev:ENABLE</pv_name>
+      <x>110</x>
+      <y>180</y>
+      <width>60</width>
+    </widget>
+    <widget type="bool_button" version="2.0.0">
+      <name>Boolean Button_6</name>
+      <pv_name>$(P)TstRev:ENABLE</pv_name>
+      <x>110</x>
+      <y>240</y>
+      <width>60</width>
+    </widget>
+    <widget type="bool_button" version="2.0.0">
+      <name>Boolean Button_7</name>
+      <pv_name>$(P)TstFwd:ENABLE</pv_name>
+      <x>110</x>
+      <y>210</y>
+      <width>60</width>
+    </widget>
+    <widget type="bool_button" version="2.0.0">
+      <name>Boolean Button_8</name>
+      <pv_name>$(P)Dac2Out:ENABLE</pv_name>
+      <x>110</x>
+      <y>300</y>
+      <width>60</width>
+    </widget>
+    <widget type="bool_button" version="2.0.0">
+      <name>Boolean Button_9</name>
+      <pv_name>$(P)Dac1Out:ENABLE</pv_name>
+      <x>110</x>
+      <y>270</y>
+      <width>60</width>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_3</name>
+      <text>Master Osc</text>
+      <y>30</y>
+      <height>30</height>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_4</name>
+      <text>Cavity Fwd</text>
+      <y>60</y>
+      <height>30</height>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_5</name>
+      <text>Cavity Rev</text>
+      <y>90</y>
+      <height>30</height>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_6</name>
+      <text>Cavity Cell</text>
+      <y>120</y>
+      <height>30</height>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_7</name>
+      <text>Circulator Fwd</text>
+      <y>150</y>
+      <height>30</height>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_8</name>
+      <text>Circulator Rev</text>
+      <y>180</y>
+      <height>30</height>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_9</name>
+      <text>Test Load Fwd</text>
+      <y>210</y>
+      <height>30</height>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_10</name>
+      <text>Test Load Rev</text>
+      <y>240</y>
+      <height>30</height>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_11</name>
+      <text>DAC1 Out</text>
+      <y>270</y>
+      <height>30</height>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_12</name>
+      <text>DAC2 Out</text>
+      <y>300</y>
+      <height>30</height>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update</name>
+      <pv_name>$(P)MonAmp3</pv_name>
+      <x>220</x>
+      <y>120</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_1</name>
+      <pv_name>$(P)MonAmp2</pv_name>
+      <x>220</x>
+      <y>90</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_2</name>
+      <pv_name>$(P)MonAmp1</pv_name>
+      <x>220</x>
+      <y>60</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_3</name>
+      <pv_name>$(P)MonAmp0</pv_name>
+      <x>220</x>
+      <y>30</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_4</name>
+      <pv_name>$(P)MonAmp7</pv_name>
+      <x>220</x>
+      <y>240</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_5</name>
+      <pv_name>$(P)MonAmp6</pv_name>
+      <x>220</x>
+      <y>210</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_6</name>
+      <pv_name>$(P)MonAmp5</pv_name>
+      <x>220</x>
+      <y>180</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_7</name>
+      <pv_name>$(P)MonAmp4</pv_name>
+      <x>220</x>
+      <y>150</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_8</name>
+      <pv_name>$(P)MonAmp9</pv_name>
+      <x>220</x>
+      <y>300</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_9</name>
+      <pv_name>$(P)MonAmp8</pv_name>
+      <x>220</x>
+      <y>270</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_10</name>
+      <pv_name>$(P)MonPhs3</pv_name>
+      <x>340</x>
+      <y>120</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_11</name>
+      <pv_name>$(P)MonPhs2</pv_name>
+      <x>340</x>
+      <y>90</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_12</name>
+      <pv_name>$(P)MonPhs1</pv_name>
+      <x>340</x>
+      <y>60</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_13</name>
+      <pv_name>$(P)MonPhs0</pv_name>
+      <x>340</x>
+      <y>30</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_14</name>
+      <pv_name>$(P)MonPhs7</pv_name>
+      <x>340</x>
+      <y>240</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_15</name>
+      <pv_name>$(P)MonPhs6</pv_name>
+      <x>340</x>
+      <y>210</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_16</name>
+      <pv_name>$(P)MonPhs5</pv_name>
+      <x>340</x>
+      <y>180</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_17</name>
+      <pv_name>$(P)MonPhs4</pv_name>
+      <x>340</x>
+      <y>150</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_18</name>
+      <pv_name>$(P)MonPhs9</pv_name>
+      <x>340</x>
+      <y>300</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_19</name>
+      <pv_name>$(P)MonPhs8</pv_name>
+      <x>340</x>
+      <y>270</y>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="byte_monitor" version="2.0.0">
+      <name>Byte Monitor_1</name>
+      <pv_name>$(P)reg_inlk_hi_RBV</pv_name>
+      <x>450</x>
+      <y>30</y>
+      <width>20</width>
+      <height>300</height>
+      <numBits>10</numBits>
+      <bitReverse>true</bitReverse>
+      <horizontal>false</horizontal>
+      <square>true</square>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_30</name>
+      <text>Hi</text>
+      <x>450</x>
+      <width>20</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="byte_monitor" version="2.0.0">
+      <name>Byte Monitor_3</name>
+      <pv_name>$(P)reg_inlk_lo_RBV</pv_name>
+      <x>470</x>
+      <y>30</y>
+      <width>20</width>
+      <height>300</height>
+      <numBits>10</numBits>
+      <bitReverse>true</bitReverse>
+      <horizontal>false</horizontal>
+      <square>true</square>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_31</name>
+      <text>Lo</text>
+      <x>470</x>
+      <width>20</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Text Update_21</name>
+    <pv_name>$(P)ACQ_TAG1_RBV</pv_name>
+    <x>880</x>
+    <y>61</y>
+    <width>40</width>
+    <height>30</height>
+    <horizontal_alignment>2</horizontal_alignment>
+    <vertical_alignment>1</vertical_alignment>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Text Update_22</name>
+    <pv_name>$(P)ACQ_TAG2_RBV</pv_name>
+    <x>940</x>
+    <y>61</y>
+    <width>40</width>
+    <height>30</height>
+    <horizontal_alignment>2</horizontal_alignment>
+    <vertical_alignment>1</vertical_alignment>
+  </widget>
+  <widget type="group" version="2.0.0">
+    <name>Loop Set points</name>
+    <x>2</x>
+    <y>410</y>
+    <width>526</width>
+    <height>96</height>
+    <transparent>true</transparent>
+    <widget type="scaledslider" version="2.0.0">
+      <name>Scaled Slider_1</name>
+      <pv_name>$(P)Loop:AmpSetp</pv_name>
+      <x>50</x>
+      <width>360</width>
+      <height>30</height>
+      <show_hihi>false</show_hihi>
+      <show_high>false</show_high>
+      <show_low>false</show_low>
+      <show_lolo>false</show_lolo>
+      <increment>500.0</increment>
+      <maximum>30825.0</maximum>
+      <limits_from_pv>false</limits_from_pv>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_2</name>
+      <text>Amp</text>
+      <width>50</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="scaledslider" version="2.0.0">
+      <name>Scaled Slider_2</name>
+      <pv_name>$(P)Loop:PhsSetp</pv_name>
+      <x>50</x>
+      <y>30</y>
+      <width>360</width>
+      <height>30</height>
+      <show_hihi>false</show_hihi>
+      <show_high>false</show_high>
+      <show_low>false</show_low>
+      <show_lolo>false</show_lolo>
+      <minimum>-180.0</minimum>
+      <maximum>180.0</maximum>
+      <limits_from_pv>false</limits_from_pv>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_13</name>
+      <text>Phs</text>
+      <y>30</y>
+      <width>50</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textentry" version="3.0.0">
+      <name>Text Entry_12</name>
+      <pv_name>$(P)Loop:AmpSetp</pv_name>
+      <x>410</x>
+      <width>80</width>
+      <height>30</height>
+      <precision>0</precision>
+    </widget>
+    <widget type="textentry" version="3.0.0">
+      <name>Text Entry_13</name>
+      <pv_name>$(P)Loop:PhsSetp</pv_name>
+      <x>410</x>
+      <y>30</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>0</precision>
+    </widget>
+  </widget>
+  <widget type="stripchart" version="2.0.0">
+    <name>Strip Chart_1</name>
+    <x>20</x>
+    <y>810</y>
+    <width>529</width>
+    <height>210</height>
+    <show_toolbar>false</show_toolbar>
+    <y_axes>
+      <y_axis>
+        <title></title>
+        <autoscale>true</autoscale>
+        <log_scale>false</log_scale>
+        <minimum>0.0</minimum>
+        <maximum>100.0</maximum>
+        <show_grid>false</show_grid>
+        <visible>true</visible>
+      </y_axis>
+    </y_axes>
+    <traces>
+      <trace>
+        <name>$(traces[0].y_pv)</name>
+        <y_pv>$(P)MonPhs3</y_pv>
+        <axis>0</axis>
+        <trace_type>2</trace_type>
+        <color>
+          <color red="0" green="0" blue="255">
+          </color>
+        </color>
+        <line_width>2</line_width>
+        <point_type>0</point_type>
+        <point_size>10</point_size>
+        <visible>true</visible>
+      </trace>
+    </traces>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Label_24</name>
+    <text>DSP Reset</text>
+    <x>540</x>
+    <y>10</y>
+    <width>80</width>
+    <vertical_alignment>1</vertical_alignment>
+  </widget>
+  <widget type="bool_button" version="2.0.0">
+    <name>Boolean Button_12</name>
+    <pv_name>$(P)reg_dsp_reset</pv_name>
+    <x>620</x>
+    <y>10</y>
+    <width>60</width>
+    <height>20</height>
+    <mode>1</mode>
+  </widget>
+  <widget type="scaledslider" version="2.0.0">
+    <name>Scaled Slider</name>
+    <pv_name>$(P)ACQ_DECIM</pv_name>
+    <x>680</x>
+    <y>61</y>
+    <width>150</width>
+    <height>30</height>
+    <show_hihi>false</show_hihi>
+    <show_high>false</show_high>
+    <show_low>false</show_low>
+    <show_lolo>false</show_lolo>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Label_1</name>
+    <text>Waveform Decimation</text>
+    <x>580</x>
+    <y>61</y>
+    <height>30</height>
+    <horizontal_alignment>1</horizontal_alignment>
+    <vertical_alignment>1</vertical_alignment>
+  </widget>
+  <widget type="bool_button" version="2.0.0">
+    <name>Boolean Button_13</name>
+    <pv_name>$(P)reg_inlk_reset_inlk</pv_name>
+    <x>620</x>
+    <y>31</y>
+    <width>60</width>
+    <height>20</height>
+    <mode>1</mode>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Label_32</name>
+    <text>Inlk Reset</text>
+    <x>540</x>
+    <y>31</y>
+    <width>80</width>
+    <vertical_alignment>1</vertical_alignment>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Text Update_28</name>
+    <pv_name>$(P)reg_git_rev_id_RBV</pv_name>
+    <x>890</x>
+    <y>30</y>
+    <width>110</width>
+    <height>21</height>
+    <format>4</format>
+    <show_units>false</show_units>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Label_33</name>
+    <text>git rev id</text>
+    <x>920</x>
+    <y>10</y>
+    <width>70</width>
+    <height>21</height>
+  </widget>
+  <widget type="group" version="2.0.0">
+    <name>Phase Loop</name>
+    <x>160</x>
+    <y>506</y>
+    <width>144</width>
+    <height>196</height>
+    <style>1</style>
+    <transparent>true</transparent>
+    <widget type="bool_button" version="2.0.0">
+      <name>Boolean Button_16</name>
+      <pv_name>$(P)reg_phs_loop_reset</pv_name>
+      <x>92</x>
+      <y>28</y>
+      <width>50</width>
+      <mode>1</mode>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_45</name>
+      <text>Reset</text>
+      <y>28</y>
+      <width>50</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="bool_button" version="2.0.0">
+      <name>Boolean Button_17</name>
+      <pv_name>$(P)reg_phs_loop_enable</pv_name>
+      <x>92</x>
+      <width>50</width>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_46</name>
+      <text>Enable</text>
+      <width>50</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_40</name>
+      <text>Kp</text>
+      <y>86</y>
+      <width>40</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textentry" version="3.0.0">
+      <name>Text Entry_8</name>
+      <pv_name>$(P)reg_Kp_phs</pv_name>
+      <x>40</x>
+      <y>86</y>
+      <width>50</width>
+      <height>30</height>
+      <precision>0</precision>
+      <show_units>false</show_units>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_38</name>
+      <pv_name>$(P)reg_Kp_phs_RBV</pv_name>
+      <x>90</x>
+      <y>86</y>
+      <width>50</width>
+      <height>30</height>
+      <precision>0</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_41</name>
+      <text>Ki</text>
+      <y>116</y>
+      <width>40</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textentry" version="3.0.0">
+      <name>Text Entry_9</name>
+      <pv_name>$(P)reg_Ki_phs</pv_name>
+      <x>40</x>
+      <y>116</y>
+      <width>50</width>
+      <height>30</height>
+      <precision>0</precision>
+      <show_units>false</show_units>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_39</name>
+      <pv_name>$(P)reg_Ki_phs_RBV</pv_name>
+      <x>90</x>
+      <y>116</y>
+      <width>50</width>
+      <height>30</height>
+      <precision>0</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_42</name>
+      <text>Error</text>
+      <y>146</y>
+      <width>40</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_40</name>
+      <pv_name>$(P)reg_loop_phs_err_RBV</pv_name>
+      <x>90</x>
+      <y>146</y>
+      <width>50</width>
+      <height>30</height>
+      <precision>1</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_25</name>
+      <pv_name>$(P)reg_phs_setpoint_RBV</pv_name>
+      <x>90</x>
+      <y>56</y>
+      <width>50</width>
+      <height>30</height>
+      <precision>0</precision>
+      <show_units>false</show_units>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_44</name>
+      <text>Setp</text>
+      <y>56</y>
+      <width>40</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textentry" version="3.0.0">
+      <name>Text Entry_11</name>
+      <pv_name>$(P)reg_phs_setpoint</pv_name>
+      <x>40</x>
+      <y>56</y>
+      <width>50</width>
+      <height>30</height>
+      <precision>0</precision>
+      <show_units>false</show_units>
+    </widget>
+  </widget>
+  <widget type="group" version="2.0.0">
+    <name>Amplitude Loop</name>
+    <x>10</x>
+    <y>506</y>
+    <width>144</width>
+    <height>196</height>
+    <style>1</style>
+    <transparent>true</transparent>
+    <widget type="bool_button" version="2.0.0">
+      <name>Boolean Button_18</name>
+      <pv_name>$(P)reg_amp_loop_reset</pv_name>
+      <x>92</x>
+      <y>28</y>
+      <width>50</width>
+      <mode>1</mode>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_47</name>
+      <text>Reset</text>
+      <y>28</y>
+      <width>50</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="bool_button" version="2.0.0">
+      <name>Boolean Button_19</name>
+      <pv_name>$(P)reg_amp_loop_enable</pv_name>
+      <x>92</x>
+      <width>50</width>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_48</name>
+      <text>Enable</text>
+      <width>50</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_37</name>
+      <text>Kp</text>
+      <y>86</y>
+      <width>40</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textentry" version="3.0.0">
+      <name>Text Entry_6</name>
+      <pv_name>$(P)reg_Kp_amp</pv_name>
+      <x>40</x>
+      <y>86</y>
+      <width>50</width>
+      <height>30</height>
+      <precision>0</precision>
+      <show_units>false</show_units>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_35</name>
+      <pv_name>$(P)reg_Kp_amp_RBV</pv_name>
+      <x>90</x>
+      <y>86</y>
+      <width>50</width>
+      <height>30</height>
+      <precision>0</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_38</name>
+      <text>Ki</text>
+      <y>116</y>
+      <width>40</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textentry" version="3.0.0">
+      <name>Text Entry_7</name>
+      <pv_name>$(P)reg_Ki_amp</pv_name>
+      <x>40</x>
+      <y>116</y>
+      <width>50</width>
+      <height>30</height>
+      <precision>0</precision>
+      <show_units>false</show_units>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_36</name>
+      <pv_name>$(P)reg_Ki_amp_RBV</pv_name>
+      <x>90</x>
+      <y>116</y>
+      <width>50</width>
+      <height>30</height>
+      <precision>0</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_39</name>
+      <text>Error</text>
+      <y>146</y>
+      <width>40</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_37</name>
+      <pv_name>$(P)reg_loop_amp_err_RBV</pv_name>
+      <x>90</x>
+      <y>146</y>
+      <width>50</width>
+      <height>30</height>
+      <precision>1</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_24</name>
+      <pv_name>$(P)reg_amp_setpoint_RBV</pv_name>
+      <x>90</x>
+      <y>56</y>
+      <width>50</width>
+      <height>30</height>
+      <precision>0</precision>
+      <show_units>false</show_units>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textentry" version="3.0.0">
+      <name>Text Entry_10</name>
+      <pv_name>$(P)reg_amp_setpoint</pv_name>
+      <x>40</x>
+      <y>56</y>
+      <width>50</width>
+      <height>30</height>
+      <precision>0</precision>
+      <show_units>false</show_units>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_43</name>
+      <text>Setp</text>
+      <y>56</y>
+      <width>40</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+  </widget>
+  <widget type="group" version="2.0.0">
+    <name>RF Power Interlocks Limits</name>
+    <x>2</x>
+    <y>710</y>
+    <width>310</width>
+    <height>96</height>
+    <transparent>true</transparent>
+    <widget type="label" version="2.0.0">
+      <name>Label_27</name>
+      <text>Inlk High</text>
+      <width>60</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textentry" version="3.0.0">
+      <name>Text Entry_2</name>
+      <pv_name>$(P)reg_inlk_amp_hi</pv_name>
+      <x>82</x>
+      <width>192</width>
+      <height>30</height>
+      <precision>0</precision>
+      <show_units>false</show_units>
+    </widget>
+    <widget type="textentry" version="3.0.0">
+      <name>Text Entry_3</name>
+      <pv_name>$(P)reg_inlk_amp_lo</pv_name>
+      <x>82</x>
+      <y>30</y>
+      <width>192</width>
+      <height>30</height>
+      <precision>0</precision>
+      <show_units>false</show_units>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_28</name>
+      <text>Inlk Low</text>
+      <y>30</y>
+      <width>60</width>
+      <height>30</height>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+  </widget>
+  <widget type="group" version="2.0.0">
+    <name>Statistics</name>
+    <x>312</x>
+    <y>506</y>
+    <width>260</width>
+    <height>289</height>
+    <style>1</style>
+    <transparent>true</transparent>
+    <widget type="bool_button" version="2.0.0">
+      <name>Boolean Button_20</name>
+      <x>147</x>
+      <y>175</y>
+      <width>1</width>
+      <height>1</height>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_53</name>
+      <pv_name>$(P)Dac1Out:ASTD</pv_name>
+      <x>90</x>
+      <y>209</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <show_units>false</show_units>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_54</name>
+      <pv_name>$(P)Dac1Out:PSTD</pv_name>
+      <x>178</x>
+      <y>209</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_57</name>
+      <text>DAC1 Out</text>
+      <y>209</y>
+      <width>80</width>
+      <height>30</height>
+      <font>
+        <font family="Liberation Sans" style="REGULAR" size="12.0">
+        </font>
+      </font>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_58</name>
+      <text>DAC2 Out</text>
+      <y>239</y>
+      <width>80</width>
+      <height>30</height>
+      <font>
+        <font family="Liberation Sans" style="REGULAR" size="12.0">
+        </font>
+      </font>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_55</name>
+      <pv_name>$(P)Dac2Out:ASTD</pv_name>
+      <x>90</x>
+      <y>239</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <show_units>false</show_units>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_56</name>
+      <pv_name>$(P)Dac2Out:PSTD</pv_name>
+      <x>178</x>
+      <y>239</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_41</name>
+      <pv_name>$(P)MasOsc:ASTD</pv_name>
+      <x>90</x>
+      <y>29</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <show_units>false</show_units>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_49</name>
+      <text>Circulator Rev</text>
+      <y>179</y>
+      <width>80</width>
+      <height>30</height>
+      <font>
+        <font family="Liberation Sans" style="REGULAR" size="12.0">
+        </font>
+      </font>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_50</name>
+      <text>Circulator Fwd</text>
+      <y>149</y>
+      <width>80</width>
+      <height>30</height>
+      <font>
+        <font family="Liberation Sans" style="REGULAR" size="12.0">
+        </font>
+      </font>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_51</name>
+      <text>Cavity Cell</text>
+      <y>119</y>
+      <width>80</width>
+      <height>30</height>
+      <font>
+        <font family="Liberation Sans" style="REGULAR" size="12.0">
+        </font>
+      </font>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_52</name>
+      <text>Cavity Rev</text>
+      <y>89</y>
+      <width>80</width>
+      <height>30</height>
+      <font>
+        <font family="Liberation Sans" style="REGULAR" size="12.0">
+        </font>
+      </font>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_53</name>
+      <text>Cavity Fwd</text>
+      <y>59</y>
+      <width>80</width>
+      <height>30</height>
+      <font>
+        <font family="Liberation Sans" style="REGULAR" size="12.0">
+        </font>
+      </font>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_54</name>
+      <text>Master Osc</text>
+      <y>29</y>
+      <width>80</width>
+      <height>30</height>
+      <font>
+        <font family="Liberation Sans" style="REGULAR" size="12.0">
+        </font>
+      </font>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_42</name>
+      <pv_name>$(P)CavFwd:ASTD</pv_name>
+      <x>90</x>
+      <y>59</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <show_units>false</show_units>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_43</name>
+      <pv_name>$(P)CavRev:ASTD</pv_name>
+      <x>90</x>
+      <y>89</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <show_units>false</show_units>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_44</name>
+      <pv_name>$(P)CavCel:ASTD</pv_name>
+      <x>90</x>
+      <y>119</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <show_units>false</show_units>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_45</name>
+      <pv_name>$(P)CirFwd:ASTD</pv_name>
+      <x>90</x>
+      <y>149</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <show_units>false</show_units>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_46</name>
+      <pv_name>$(P)CirRev:ASTD</pv_name>
+      <x>90</x>
+      <y>179</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <show_units>false</show_units>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_47</name>
+      <pv_name>$(P)MasOsc:PSTD</pv_name>
+      <x>178</x>
+      <y>29</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_48</name>
+      <pv_name>$(P)CavFwd:PSTD</pv_name>
+      <x>178</x>
+      <y>59</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_49</name>
+      <pv_name>$(P)CavRev:PSTD</pv_name>
+      <x>178</x>
+      <y>89</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_50</name>
+      <pv_name>$(P)CavCel:PSTD</pv_name>
+      <x>178</x>
+      <y>119</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_51</name>
+      <pv_name>$(P)CirFwd:PSTD</pv_name>
+      <x>178</x>
+      <y>149</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="textupdate" version="2.0.0">
+      <name>Text Update_52</name>
+      <pv_name>$(P)CirRev:PSTD</pv_name>
+      <x>178</x>
+      <y>179</y>
+      <width>80</width>
+      <height>30</height>
+      <precision>2</precision>
+      <horizontal_alignment>2</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_55</name>
+      <text>Amp RMS</text>
+      <x>90</x>
+      <width>80</width>
+      <height>30</height>
+      <horizontal_alignment>1</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+    <widget type="label" version="2.0.0">
+      <name>Label_56</name>
+      <text>Phs RMS</text>
+      <x>178</x>
+      <width>80</width>
+      <height>30</height>
+      <horizontal_alignment>1</horizontal_alignment>
+      <vertical_alignment>1</vertical_alignment>
+    </widget>
+  </widget>
+  <widget type="bool_button" version="2.0.0">
+    <name>Boolean Button_14</name>
+    <pv_name>$(P)reg_dac_permit</pv_name>
+    <x>780</x>
+    <y>10</y>
+    <width>60</width>
+    <height>20</height>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Label_34</name>
+    <text>dac permit</text>
+    <x>700</x>
+    <y>10</y>
+    <width>80</width>
+    <vertical_alignment>1</vertical_alignment>
+  </widget>
+  <widget type="bool_button" version="2.0.0">
+    <name>Boolean Button_15</name>
+    <pv_name>$(P)reg_pulse_mode</pv_name>
+    <x>280</x>
+    <y>398</y>
+    <width>60</width>
+    <height>20</height>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Label_35</name>
+    <text>pulse_mode</text>
+    <x>200</x>
+    <y>398</y>
+    <width>80</width>
+    <vertical_alignment>1</vertical_alignment>
+  </widget>
+  <widget type="textentry" version="3.0.0">
+    <name>Text Entry_14</name>
+    <pv_name>$(P)reg_pulse_high_len</pv_name>
+    <x>460</x>
+    <y>398</y>
+    <width>50</width>
+    <precision>0</precision>
+    <show_units>false</show_units>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Label_36</name>
+    <text>pulsewidth</text>
+    <x>370</x>
+    <y>398</y>
+    <width>80</width>
+    <vertical_alignment>1</vertical_alignment>
+  </widget>
+</display>
