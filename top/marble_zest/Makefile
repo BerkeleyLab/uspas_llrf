@@ -1,6 +1,5 @@
 XILINX_TOOL = VIVADO
 include ../../dir_list.mk
-include $(TOP)settings.mk
 
 include $(BUILD_DIR)/top_rules.mk
 include $(APP_SOC_DIR)/common/common.mk
