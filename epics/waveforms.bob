@@ -28,8 +28,8 @@
   </widget>
   <widget type="xyplot" version="2.0.0">
     <name>CavIQPlot</name>
-    <x>710</x>
-    <y>91</y>
+    <x>700</x>
+    <y>110</y>
     <width>420</width>
     <height>420</height>
     <title>CavCel I/Q</title>
@@ -38,8 +38,8 @@
       <title>I</title>
       <autoscale>false</autoscale>
       <log_scale>false</log_scale>
-      <minimum>-1000.0</minimum>
-      <maximum>1000.0</maximum>
+      <minimum>-21000.0</minimum>
+      <maximum>21000.0</maximum>
       <show_grid>true</show_grid>
       <title_font>
         <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
@@ -56,8 +56,8 @@
         <title>Q</title>
         <autoscale>false</autoscale>
         <log_scale>false</log_scale>
-        <minimum>-1000.0</minimum>
-        <maximum>1000.0</maximum>
+        <minimum>-21000.0</minimum>
+        <maximum>21000.0</maximum>
         <show_grid>true</show_grid>
         <title_font>
           <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
@@ -503,14 +503,15 @@
   <widget type="group" version="2.0.0">
     <name>Loop Set points</name>
     <x>2</x>
-    <y>410</y>
+    <y>398</y>
     <width>526</width>
-    <height>96</height>
+    <height>116</height>
     <transparent>true</transparent>
     <widget type="scaledslider" version="2.0.0">
       <name>Scaled Slider_1</name>
       <pv_name>$(P)Loop:AmpSetp</pv_name>
       <x>50</x>
+      <y>4</y>
       <width>360</width>
       <height>30</height>
       <show_hihi>false</show_hihi>
@@ -524,15 +525,17 @@
     <widget type="label" version="2.0.0">
       <name>Label_2</name>
       <text>Amp</text>
+      <y>4</y>
       <width>50</width>
       <height>30</height>
+      <horizontal_alignment>1</horizontal_alignment>
       <vertical_alignment>1</vertical_alignment>
     </widget>
     <widget type="scaledslider" version="2.0.0">
       <name>Scaled Slider_2</name>
       <pv_name>$(P)Loop:PhsSetp</pv_name>
       <x>50</x>
-      <y>30</y>
+      <y>44</y>
       <width>360</width>
       <height>30</height>
       <show_hihi>false</show_hihi>
@@ -546,16 +549,17 @@
     <widget type="label" version="2.0.0">
       <name>Label_13</name>
       <text>Phs</text>
-      <y>30</y>
+      <y>44</y>
       <width>50</width>
       <height>30</height>
+      <horizontal_alignment>1</horizontal_alignment>
       <vertical_alignment>1</vertical_alignment>
     </widget>
     <widget type="textentry" version="3.0.0">
       <name>Text Entry_12</name>
       <pv_name>$(P)Loop:AmpSetp</pv_name>
-      <x>410</x>
-      <width>80</width>
+      <x>420</x>
+      <width>70</width>
       <height>30</height>
       <precision>0</precision>
       <horizontal_alignment>1</horizontal_alignment>
@@ -563,36 +567,19 @@
     <widget type="textentry" version="3.0.0">
       <name>Text Entry_13</name>
       <pv_name>$(P)Loop:PhsSetp</pv_name>
-      <x>410</x>
-      <y>30</y>
-      <width>80</width>
+      <x>420</x>
+      <y>44</y>
+      <width>70</width>
       <height>30</height>
       <precision>0</precision>
       <horizontal_alignment>1</horizontal_alignment>
     </widget>
   </widget>
-  <widget type="label" version="2.0.0">
-    <name>Label_24</name>
-    <text>DSP Reset</text>
-    <x>540</x>
-    <y>10</y>
-    <width>80</width>
-    <vertical_alignment>1</vertical_alignment>
-  </widget>
-  <widget type="bool_button" version="2.0.0">
-    <name>Boolean Button_12</name>
-    <pv_name>$(P)reg_dsp_reset</pv_name>
-    <x>620</x>
-    <y>10</y>
-    <width>60</width>
-    <height>20</height>
-    <mode>1</mode>
-  </widget>
   <widget type="scaledslider" version="2.0.0">
     <name>Scaled Slider</name>
     <pv_name>$(P)ACQ_DECIM</pv_name>
     <x>630</x>
-    <y>61</y>
+    <y>80</y>
     <width>150</width>
     <height>30</height>
     <show_hihi>false</show_hihi>
@@ -602,9 +589,10 @@
   </widget>
   <widget type="label" version="2.0.0">
     <name>Label_1</name>
-    <text>Waveform Decimation</text>
+    <text>Decimation</text>
     <x>540</x>
-    <y>61</y>
+    <y>80</y>
+    <width>80</width>
     <height>30</height>
     <horizontal_alignment>1</horizontal_alignment>
     <vertical_alignment>1</vertical_alignment>
@@ -612,10 +600,9 @@
   <widget type="textupdate" version="2.0.0">
     <name>Text Update_28</name>
     <pv_name>$(P)reg_git_rev_id_RBV</pv_name>
-    <x>1000</x>
+    <x>1020</x>
     <y>10</y>
-    <width>110</width>
-    <height>21</height>
+    <width>90</width>
     <format>4</format>
     <show_units>false</show_units>
     <horizontal_alignment>1</horizontal_alignment>
@@ -623,16 +610,17 @@
   </widget>
   <widget type="label" version="2.0.0">
     <name>Label_33</name>
-    <text>git rev id</text>
-    <x>940</x>
+    <text>git rev</text>
+    <x>960</x>
     <y>10</y>
     <width>60</width>
-    <height>21</height>
+    <horizontal_alignment>1</horizontal_alignment>
+    <vertical_alignment>1</vertical_alignment>
   </widget>
   <widget type="group" version="2.0.0">
     <name>Phase Loop</name>
-    <x>551</x>
-    <y>305</y>
+    <x>550</x>
+    <y>320</y>
     <width>144</width>
     <height>196</height>
     <style>1</style>
@@ -777,7 +765,7 @@
   <widget type="group" version="2.0.0">
     <name>Amplitude Loop</name>
     <x>550</x>
-    <y>110</y>
+    <y>120</y>
     <width>144</width>
     <height>196</height>
     <style>1</style>
@@ -922,42 +910,44 @@
   <widget type="bool_button" version="2.0.0">
     <name>Boolean Button_15</name>
     <pv_name>$(P)reg_pulse_mode</pv_name>
-    <x>280</x>
-    <y>398</y>
+    <x>630</x>
     <width>60</width>
-    <height>20</height>
   </widget>
   <widget type="label" version="2.0.0">
     <name>Label_35</name>
-    <text>pulse_mode</text>
-    <x>200</x>
-    <y>398</y>
+    <text>Pulse Mode</text>
+    <x>540</x>
     <width>80</width>
+    <height>30</height>
     <vertical_alignment>1</vertical_alignment>
   </widget>
   <widget type="textentry" version="3.0.0">
     <name>Text Entry_14</name>
     <pv_name>$(P)reg_pulse_high_len</pv_name>
-    <x>460</x>
-    <y>398</y>
-    <width>50</width>
+    <x>790</x>
+    <y>40</y>
+    <width>40</width>
     <precision>0</precision>
     <show_units>false</show_units>
+    <horizontal_alignment>1</horizontal_alignment>
   </widget>
   <widget type="label" version="2.0.0">
     <name>Label_36</name>
-    <text>pulsewidth</text>
-    <x>370</x>
-    <y>398</y>
+    <text>Pulse width</text>
+    <x>540</x>
+    <y>40</y>
     <width>80</width>
+    <height>30</height>
+    <horizontal_alignment>1</horizontal_alignment>
     <vertical_alignment>1</vertical_alignment>
   </widget>
   <widget type="textupdate" version="2.0.0">
     <name>Text Update_20</name>
     <pv_name>$(P)ACQ_SAMP_PERIOD</pv_name>
-    <x>1010</x>
-    <y>61</y>
-    <width>78</width>
+    <x>960</x>
+    <y>80</y>
+    <width>80</width>
+    <height>30</height>
     <precision>5</precision>
     <horizontal_alignment>1</horizontal_alignment>
     <vertical_alignment>1</vertical_alignment>
@@ -965,15 +955,17 @@
   <widget type="label" version="2.0.0">
     <name>Label_59</name>
     <text>Sample Period</text>
-    <x>890</x>
-    <y>61</y>
+    <x>850</x>
+    <y>80</y>
     <width>98</width>
-    <height>21</height>
+    <height>30</height>
+    <horizontal_alignment>1</horizontal_alignment>
+    <vertical_alignment>1</vertical_alignment>
   </widget>
   <widget type="group" version="2.0.0">
     <name>Group_Dac1Amp</name>
     <x>30</x>
-    <y>510</y>
+    <y>530</y>
     <width>540</width>
     <height>240</height>
     <style>3</style>
@@ -1097,7 +1089,7 @@ plot.setPropertyValue("y_axes[0].maximum", 32767)
   <widget type="group" version="2.0.0">
     <name>Group_Dac1Phs</name>
     <x>30</x>
-    <y>750</y>
+    <y>770</y>
     <width>540</width>
     <height>240</height>
     <style>3</style>
@@ -1221,7 +1213,7 @@ plot.setPropertyValue("y_axes[0].autoscale", True)
   <widget type="group" version="2.0.0">
     <name>Group_CavPhs</name>
     <x>590</x>
-    <y>750</y>
+    <y>770</y>
     <width>538</width>
     <height>240</height>
     <style>3</style>
@@ -1230,7 +1222,7 @@ plot.setPropertyValue("y_axes[0].autoscale", True)
       <name>CavPhsPlot</name>
       <width>538</width>
       <height>240</height>
-      <title>CavCel (ADC5) Phs</title>
+      <title>Phase [deg]</title>
       <show_legend>false</show_legend>
       <x_axis>
         <title>Time [µs]</title>
@@ -1270,7 +1262,7 @@ plot.setPropertyValue("y_axes[0].autoscale", True)
       </y_axes>
       <traces>
         <trace>
-          <name>Phase [deg]</name>
+          <name>$(traces[0].y_pv)</name>
           <x_pv>$(P)CavCel:TWF</x_pv>
           <y_pv>$(P)CavCel:PWF</y_pv>
           <err_pv></err_pv>
@@ -1345,7 +1337,7 @@ plot.setPropertyValue("y_axes[0].autoscale", True)
   <widget type="group" version="2.0.0">
     <name>Group_CavAmp</name>
     <x>590</x>
-    <y>510</y>
+    <y>530</y>
     <width>540</width>
     <height>240</height>
     <style>3</style>
@@ -1354,7 +1346,7 @@ plot.setPropertyValue("y_axes[0].autoscale", True)
       <name>CavAmpPlot</name>
       <width>540</width>
       <height>240</height>
-      <title>CavCel (ADC5) Amp</title>
+      <title>Amp [count]</title>
       <show_legend>false</show_legend>
       <x_axis>
         <title>Time [µs]</title>
@@ -1379,7 +1371,7 @@ plot.setPropertyValue("y_axes[0].autoscale", True)
           <autoscale>false</autoscale>
           <log_scale>false</log_scale>
           <minimum>0.0</minimum>
-          <maximum>32767.0</maximum>
+          <maximum>1000.0</maximum>
           <show_grid>true</show_grid>
           <title_font>
             <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
@@ -1394,7 +1386,7 @@ plot.setPropertyValue("y_axes[0].autoscale", True)
       </y_axes>
       <traces>
         <trace>
-          <name>Amp [count]</name>
+          <name>$(traces[0].y_pv)</name>
           <x_pv>$(P)CavCel:TWF</x_pv>
           <y_pv>$(P)CavCel:AWF</y_pv>
           <err_pv></err_pv>
@@ -1469,18 +1461,103 @@ plot.setPropertyValue("y_axes[0].maximum", 32767)
   <widget type="label" version="2.0.0">
     <name>Label_49</name>
     <text>µs</text>
-    <x>1100</x>
-    <y>61</y>
+    <x>1050</x>
+    <y>80</y>
     <width>20</width>
+    <height>29</height>
+    <horizontal_alignment>1</horizontal_alignment>
+    <vertical_alignment>1</vertical_alignment>
   </widget>
   <widget type="textupdate" version="2.0.0">
     <name>Text Update_21</name>
     <pv_name>$(P)ACQ_DECIM</pv_name>
     <x>790</x>
-    <y>61</y>
+    <y>80</y>
     <width>40</width>
+    <height>30</height>
     <precision>0</precision>
     <show_units>false</show_units>
+    <horizontal_alignment>1</horizontal_alignment>
+    <vertical_alignment>1</vertical_alignment>
+  </widget>
+  <widget type="scaledslider" version="2.0.0">
+    <name>Scaled Slider_3</name>
+    <pv_name>$(P)reg_pulse_high_len</pv_name>
+    <x>630</x>
+    <y>40</y>
+    <width>150</width>
+    <height>30</height>
+    <show_minor_ticks>false</show_minor_ticks>
+    <show_hihi>false</show_hihi>
+    <show_high>false</show_high>
+    <show_low>false</show_low>
+    <show_lolo>false</show_lolo>
+    <maximum>4095.0</maximum>
+    <limits_from_pv>false</limits_from_pv>
+  </widget>
+  <widget type="combo" version="2.0.0">
+    <name>Combo Box</name>
+    <pv_name>loc://plot_chan&lt;String&gt;("ADC5")</pv_name>
+    <x>960</x>
+    <y>40</y>
+    <width>150</width>
+    <actions>
+    </actions>
+    <scripts>
+      <script file="EmbeddedPy">
+        <text><![CDATA[# Embedded python script
+from org.csstudio.display.builder.runtime.script import PVUtil, ScriptUtil
+
+pv_map = {
+	"ADC8": u"USPAS:LLRF:MasOsc",
+	"ADC7": u"USPAS:LLRF:CavFwd",
+	"ADC6": u"USPAS:LLRF:CavRev",
+	"ADC5": u"USPAS:LLRF:CavCel",
+	"ADC4": u"USPAS:LLRF:CirFwd",
+	"ADC3": u"USPAS:LLRF:CirRev",
+	"ADC2": u"USPAS:LLRF:TstFwd",
+	"ADC1": u"USPAS:LLRF:TstRev",
+	"DAC Q1": u"USPAS:LLRF:Dac1Out",
+	"DAC Q2": u"USPAS:LLRF:Dac2Out"
+}
+
+plot1 = widget.getDisplayModel().runtimeChildren().getChildByName("CavAmpPlot")
+plot2 = widget.getDisplayModel().runtimeChildren().getChildByName("CavPhsPlot")
+
+key = PVUtil.getString(pvs[0])
+
+if key in pv_map:
+	print(key, pv_map[key])
+	plot1.setPropertyValue("traces[0].y_pv", pv_map[key]  + ":AWF")
+	plot1.setPropertyValue("traces[0].name", key)
+	plot2.setPropertyValue("traces[0].y_pv", pv_map[key]  + ":PWF")
+	plot2.setPropertyValue("traces[0].name", key)
+
+	# plot1.setPropertyValue("traces[0].y_pv", PVUtil.getString(pvs[0]))]]></text>
+        <pv_name>$(pv_name)</pv_name>
+      </script>
+    </scripts>
+    <items>
+      <item>ADC8</item>
+      <item>ADC7</item>
+      <item>ADC6</item>
+      <item>ADC5</item>
+      <item>ADC4</item>
+      <item>ADC3</item>
+      <item>ADC2</item>
+      <item>ADC1</item>
+      <item>DAC Q1</item>
+      <item>DAC Q2</item>
+    </items>
+    <items_from_pv>false</items_from_pv>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Label_50</name>
+    <text>Plot Channel</text>
+    <x>840</x>
+    <y>40</y>
+    <width>120</width>
+    <height>30</height>
     <horizontal_alignment>1</horizontal_alignment>
     <vertical_alignment>1</vertical_alignment>
   </widget>

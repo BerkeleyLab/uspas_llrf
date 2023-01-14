@@ -1,7 +1,15 @@
+[*]
+[*] GTKWave Analyzer v3.3.107 (w)1999-2020 BSI
+[*] Sat Jan 14 20:55:13 2023
+[*]
+[dumpfile] "/Users/QDu/work/USPAS_LLRF/llrf_fw/llrf_dsp/llrf_shell.vcd"
+[dumpfile_mtime] "Sat Jan 14 20:47:56 2023"
+[dumpfile_size] 180331012
+[savefile] "/Users/QDu/work/USPAS_LLRF/llrf_fw/llrf_dsp/llrf_shell.gtkw"
 [timestart] 0
 [size] 1186 1016
-[pos] -1 -1
-*-23.951851 101304600 37971240 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -326 -393
+*-23.915337 471662 37971240 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] llrf_shell_tb.
 [treeopen] llrf_shell_tb.dut.
 [treeopen] llrf_shell_tb.dut.slow_bridge_i.gen_minmax[0].
@@ -9,7 +17,7 @@
 [sst_width] 228
 [signals_width] 323
 [sst_expanded] 1
-[sst_vpaned_height] 414
+[sst_vpaned_height] 777
 @420
 llrf_shell_tb.cc
 llrf_shell_tb.adc_cc
@@ -98,7 +106,7 @@ llrf_shell_tb.dut.slow_bridge_i.timestamp[7:0]
 llrf_shell_tb.dut.slow_bridge_i.slow_dsp_data[15:0]
 @1401200
 -slow
-@c00200
+@800200
 -DSP
 @420
 llrf_shell_tb.dut.dsp.cav_field[15:0]
@@ -111,7 +119,11 @@ llrf_shell_tb.dut.dsp.amp_setpoint[17:0]
 llrf_shell_tb.dut.err_out_amp[14:0]
 llrf_shell_tb.dut.err_out_phs[14:0]
 llrf_shell_tb.dut.dsp.phs_setpoint[17:0]
-@1401200
+@22
+llrf_shell_tb.dut.dsp.drive_amp[17:0]
+@23
+llrf_shell_tb.dut.dsp.drive_phs[17:0]
+@1000200
 -DSP
 @c00200
 -inlk
