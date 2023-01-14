@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <display version="2.0.0">
-  <name>alsu_llrf</name>
+  <name>uspas_llrf</name>
   <macros>
     <P>USPAS:LLRF:</P>
   </macros>
-  <width>1024</width>
+  <width>1150</width>
   <height>1024</height>
   <widget type="label" version="2.0.0">
     <name>Label</name>
@@ -27,9 +27,9 @@
     <vertical_alignment>1</vertical_alignment>
   </widget>
   <widget type="xyplot" version="2.0.0">
-    <name>X/Y Plot</name>
-    <x>580</x>
-    <y>571</y>
+    <name>CavIQPlot</name>
+    <x>710</x>
+    <y>91</y>
     <width>420</width>
     <height>420</height>
     <title>CavCel I/Q</title>
@@ -38,8 +38,8 @@
       <title>I</title>
       <autoscale>false</autoscale>
       <log_scale>false</log_scale>
-      <minimum>-21000.0</minimum>
-      <maximum>21000.0</maximum>
+      <minimum>-1000.0</minimum>
+      <maximum>1000.0</maximum>
       <show_grid>true</show_grid>
       <title_font>
         <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
@@ -56,8 +56,8 @@
         <title>Q</title>
         <autoscale>false</autoscale>
         <log_scale>false</log_scale>
-        <minimum>-21000.0</minimum>
-        <maximum>21000.0</maximum>
+        <minimum>-1000.0</minimum>
+        <maximum>1000.0</maximum>
         <show_grid>true</show_grid>
         <title_font>
           <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
@@ -83,134 +83,6 @@
           </color>
         </color>
         <line_width>5</line_width>
-        <line_style>0</line_style>
-        <point_type>0</point_type>
-        <point_size>10</point_size>
-        <visible>true</visible>
-      </trace>
-    </traces>
-  </widget>
-  <widget type="xyplot" version="2.0.0">
-    <name>X/Y Plot_1</name>
-    <x>580</x>
-    <y>91</y>
-    <width>420</width>
-    <height>240</height>
-    <title>CavCel (ADC5) Amp</title>
-    <show_legend>false</show_legend>
-    <x_axis>
-      <title></title>
-      <autoscale>true</autoscale>
-      <log_scale>false</log_scale>
-      <minimum>0.0</minimum>
-      <maximum>100.0</maximum>
-      <show_grid>false</show_grid>
-      <title_font>
-        <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
-        </font>
-      </title_font>
-      <scale_font>
-        <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
-        </font>
-      </scale_font>
-      <visible>true</visible>
-    </x_axis>
-    <y_axes>
-      <y_axis>
-        <title></title>
-        <autoscale>true</autoscale>
-        <log_scale>false</log_scale>
-        <minimum>0.0</minimum>
-        <maximum>100.0</maximum>
-        <show_grid>true</show_grid>
-        <title_font>
-          <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
-          </font>
-        </title_font>
-        <scale_font>
-          <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
-          </font>
-        </scale_font>
-        <visible>true</visible>
-      </y_axis>
-    </y_axes>
-    <traces>
-      <trace>
-        <name>$(traces[0].y_pv)</name>
-        <x_pv>$(P)CavCel:TWF</x_pv>
-        <y_pv>$(P)CavCel:AWF</y_pv>
-        <err_pv></err_pv>
-        <axis>0</axis>
-        <trace_type>1</trace_type>
-        <color>
-          <color red="0" green="0" blue="255">
-          </color>
-        </color>
-        <line_width>1</line_width>
-        <line_style>0</line_style>
-        <point_type>0</point_type>
-        <point_size>10</point_size>
-        <visible>true</visible>
-      </trace>
-    </traces>
-  </widget>
-  <widget type="xyplot" version="2.0.0">
-    <name>X/Y Plot_2</name>
-    <x>580</x>
-    <y>331</y>
-    <width>420</width>
-    <height>240</height>
-    <title>CavCel (ADC5) Phs</title>
-    <show_legend>false</show_legend>
-    <x_axis>
-      <title></title>
-      <autoscale>true</autoscale>
-      <log_scale>false</log_scale>
-      <minimum>0.0</minimum>
-      <maximum>100.0</maximum>
-      <show_grid>false</show_grid>
-      <title_font>
-        <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
-        </font>
-      </title_font>
-      <scale_font>
-        <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
-        </font>
-      </scale_font>
-      <visible>true</visible>
-    </x_axis>
-    <y_axes>
-      <y_axis>
-        <title></title>
-        <autoscale>true</autoscale>
-        <log_scale>false</log_scale>
-        <minimum>0.0</minimum>
-        <maximum>100.0</maximum>
-        <show_grid>true</show_grid>
-        <title_font>
-          <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
-          </font>
-        </title_font>
-        <scale_font>
-          <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
-          </font>
-        </scale_font>
-        <visible>true</visible>
-      </y_axis>
-    </y_axes>
-    <traces>
-      <trace>
-        <name>$(traces[0].y_pv)</name>
-        <x_pv>$(P)CavCel:TWF</x_pv>
-        <y_pv>$(P)CavCel:PWF</y_pv>
-        <err_pv></err_pv>
-        <axis>0</axis>
-        <trace_type>1</trace_type>
-        <color>
-          <color red="0" green="0" blue="255">
-          </color>
-        </color>
-        <line_width>1</line_width>
         <line_style>0</line_style>
         <point_type>0</point_type>
         <point_size>10</point_size>
@@ -686,6 +558,7 @@
       <width>80</width>
       <height>30</height>
       <precision>0</precision>
+      <horizontal_alignment>1</horizontal_alignment>
     </widget>
     <widget type="textentry" version="3.0.0">
       <name>Text Entry_13</name>
@@ -695,42 +568,8 @@
       <width>80</width>
       <height>30</height>
       <precision>0</precision>
+      <horizontal_alignment>1</horizontal_alignment>
     </widget>
-  </widget>
-  <widget type="stripchart" version="2.0.0">
-    <name>Strip Chart_1</name>
-    <x>20</x>
-    <y>810</y>
-    <width>529</width>
-    <height>210</height>
-    <show_toolbar>false</show_toolbar>
-    <y_axes>
-      <y_axis>
-        <title></title>
-        <autoscale>true</autoscale>
-        <log_scale>false</log_scale>
-        <minimum>0.0</minimum>
-        <maximum>100.0</maximum>
-        <show_grid>false</show_grid>
-        <visible>true</visible>
-      </y_axis>
-    </y_axes>
-    <traces>
-      <trace>
-        <name>$(traces[0].y_pv)</name>
-        <y_pv>$(P)MonPhs3</y_pv>
-        <axis>0</axis>
-        <trace_type>2</trace_type>
-        <color>
-          <color red="0" green="0" blue="255">
-          </color>
-        </color>
-        <line_width>2</line_width>
-        <point_type>0</point_type>
-        <point_size>10</point_size>
-        <visible>true</visible>
-      </trace>
-    </traces>
   </widget>
   <widget type="label" version="2.0.0">
     <name>Label_24</name>
@@ -770,45 +609,30 @@
     <horizontal_alignment>1</horizontal_alignment>
     <vertical_alignment>1</vertical_alignment>
   </widget>
-  <widget type="bool_button" version="2.0.0">
-    <name>Boolean Button_13</name>
-    <pv_name>$(P)reg_inlk_reset_inlk</pv_name>
-    <x>620</x>
-    <y>31</y>
-    <width>60</width>
-    <height>20</height>
-    <mode>1</mode>
-  </widget>
-  <widget type="label" version="2.0.0">
-    <name>Label_32</name>
-    <text>Inlk Reset</text>
-    <x>540</x>
-    <y>31</y>
-    <width>80</width>
-    <vertical_alignment>1</vertical_alignment>
-  </widget>
   <widget type="textupdate" version="2.0.0">
     <name>Text Update_28</name>
     <pv_name>$(P)reg_git_rev_id_RBV</pv_name>
-    <x>910</x>
+    <x>1000</x>
     <y>10</y>
     <width>110</width>
     <height>21</height>
     <format>4</format>
     <show_units>false</show_units>
+    <horizontal_alignment>1</horizontal_alignment>
+    <vertical_alignment>1</vertical_alignment>
   </widget>
   <widget type="label" version="2.0.0">
     <name>Label_33</name>
     <text>git rev id</text>
-    <x>850</x>
+    <x>940</x>
     <y>10</y>
     <width>60</width>
     <height>21</height>
   </widget>
   <widget type="group" version="2.0.0">
     <name>Phase Loop</name>
-    <x>160</x>
-    <y>506</y>
+    <x>551</x>
+    <y>305</y>
     <width>144</width>
     <height>196</height>
     <style>1</style>
@@ -952,8 +776,8 @@
   </widget>
   <widget type="group" version="2.0.0">
     <name>Amplitude Loop</name>
-    <x>10</x>
-    <y>506</y>
+    <x>550</x>
+    <y>110</y>
     <width>144</width>
     <height>196</height>
     <style>1</style>
@@ -1095,386 +919,6 @@
       <vertical_alignment>1</vertical_alignment>
     </widget>
   </widget>
-  <widget type="group" version="2.0.0">
-    <name>RF Power Interlocks Limits</name>
-    <x>2</x>
-    <y>710</y>
-    <width>310</width>
-    <height>96</height>
-    <transparent>true</transparent>
-    <widget type="label" version="2.0.0">
-      <name>Label_27</name>
-      <text>Inlk High</text>
-      <width>60</width>
-      <height>30</height>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textentry" version="3.0.0">
-      <name>Text Entry_2</name>
-      <pv_name>$(P)reg_inlk_amp_hi</pv_name>
-      <x>82</x>
-      <width>192</width>
-      <height>30</height>
-      <precision>0</precision>
-      <show_units>false</show_units>
-    </widget>
-    <widget type="textentry" version="3.0.0">
-      <name>Text Entry_3</name>
-      <pv_name>$(P)reg_inlk_amp_lo</pv_name>
-      <x>82</x>
-      <y>30</y>
-      <width>192</width>
-      <height>30</height>
-      <precision>0</precision>
-      <show_units>false</show_units>
-    </widget>
-    <widget type="label" version="2.0.0">
-      <name>Label_28</name>
-      <text>Inlk Low</text>
-      <y>30</y>
-      <width>60</width>
-      <height>30</height>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-  </widget>
-  <widget type="group" version="2.0.0">
-    <name>Statistics</name>
-    <x>312</x>
-    <y>506</y>
-    <width>260</width>
-    <height>289</height>
-    <style>1</style>
-    <transparent>true</transparent>
-    <widget type="bool_button" version="2.0.0">
-      <name>Boolean Button_20</name>
-      <x>147</x>
-      <y>175</y>
-      <width>1</width>
-      <height>1</height>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_53</name>
-      <pv_name>$(P)Dac1Out:ASTD</pv_name>
-      <x>90</x>
-      <y>209</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <show_units>false</show_units>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_54</name>
-      <pv_name>$(P)Dac1Out:PSTD</pv_name>
-      <x>178</x>
-      <y>209</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="label" version="2.0.0">
-      <name>Label_57</name>
-      <text>DAC1 Out</text>
-      <y>209</y>
-      <width>80</width>
-      <height>30</height>
-      <font>
-        <font family="Liberation Sans" style="REGULAR" size="12.0">
-        </font>
-      </font>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="label" version="2.0.0">
-      <name>Label_58</name>
-      <text>DAC2 Out</text>
-      <y>239</y>
-      <width>80</width>
-      <height>30</height>
-      <font>
-        <font family="Liberation Sans" style="REGULAR" size="12.0">
-        </font>
-      </font>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_55</name>
-      <pv_name>$(P)Dac2Out:ASTD</pv_name>
-      <x>90</x>
-      <y>239</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <show_units>false</show_units>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_56</name>
-      <pv_name>$(P)Dac2Out:PSTD</pv_name>
-      <x>178</x>
-      <y>239</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_41</name>
-      <pv_name>$(P)MasOsc:ASTD</pv_name>
-      <x>90</x>
-      <y>29</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <show_units>false</show_units>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="label" version="2.0.0">
-      <name>Label_49</name>
-      <text>Circulator Rev</text>
-      <y>179</y>
-      <width>80</width>
-      <height>30</height>
-      <font>
-        <font family="Liberation Sans" style="REGULAR" size="12.0">
-        </font>
-      </font>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="label" version="2.0.0">
-      <name>Label_50</name>
-      <text>Circulator Fwd</text>
-      <y>149</y>
-      <width>80</width>
-      <height>30</height>
-      <font>
-        <font family="Liberation Sans" style="REGULAR" size="12.0">
-        </font>
-      </font>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="label" version="2.0.0">
-      <name>Label_51</name>
-      <text>Cavity Cell</text>
-      <y>119</y>
-      <width>80</width>
-      <height>30</height>
-      <font>
-        <font family="Liberation Sans" style="REGULAR" size="12.0">
-        </font>
-      </font>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="label" version="2.0.0">
-      <name>Label_52</name>
-      <text>Cavity Rev</text>
-      <y>89</y>
-      <width>80</width>
-      <height>30</height>
-      <font>
-        <font family="Liberation Sans" style="REGULAR" size="12.0">
-        </font>
-      </font>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="label" version="2.0.0">
-      <name>Label_53</name>
-      <text>Cavity Fwd</text>
-      <y>59</y>
-      <width>80</width>
-      <height>30</height>
-      <font>
-        <font family="Liberation Sans" style="REGULAR" size="12.0">
-        </font>
-      </font>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="label" version="2.0.0">
-      <name>Label_54</name>
-      <text>Master Osc</text>
-      <y>29</y>
-      <width>80</width>
-      <height>30</height>
-      <font>
-        <font family="Liberation Sans" style="REGULAR" size="12.0">
-        </font>
-      </font>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_42</name>
-      <pv_name>$(P)CavFwd:ASTD</pv_name>
-      <x>90</x>
-      <y>59</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <show_units>false</show_units>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_43</name>
-      <pv_name>$(P)CavRev:ASTD</pv_name>
-      <x>90</x>
-      <y>89</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <show_units>false</show_units>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_44</name>
-      <pv_name>$(P)CavCel:ASTD</pv_name>
-      <x>90</x>
-      <y>119</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <show_units>false</show_units>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_45</name>
-      <pv_name>$(P)CirFwd:ASTD</pv_name>
-      <x>90</x>
-      <y>149</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <show_units>false</show_units>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_46</name>
-      <pv_name>$(P)CirRev:ASTD</pv_name>
-      <x>90</x>
-      <y>179</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <show_units>false</show_units>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_47</name>
-      <pv_name>$(P)MasOsc:PSTD</pv_name>
-      <x>178</x>
-      <y>29</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_48</name>
-      <pv_name>$(P)CavFwd:PSTD</pv_name>
-      <x>178</x>
-      <y>59</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_49</name>
-      <pv_name>$(P)CavRev:PSTD</pv_name>
-      <x>178</x>
-      <y>89</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_50</name>
-      <pv_name>$(P)CavCel:PSTD</pv_name>
-      <x>178</x>
-      <y>119</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_51</name>
-      <pv_name>$(P)CirFwd:PSTD</pv_name>
-      <x>178</x>
-      <y>149</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="textupdate" version="2.0.0">
-      <name>Text Update_52</name>
-      <pv_name>$(P)CirRev:PSTD</pv_name>
-      <x>178</x>
-      <y>179</y>
-      <width>80</width>
-      <height>30</height>
-      <precision>2</precision>
-      <horizontal_alignment>2</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="label" version="2.0.0">
-      <name>Label_55</name>
-      <text>Amp RMS</text>
-      <x>90</x>
-      <width>80</width>
-      <height>30</height>
-      <horizontal_alignment>1</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-    <widget type="label" version="2.0.0">
-      <name>Label_56</name>
-      <text>Phs RMS</text>
-      <x>178</x>
-      <width>80</width>
-      <height>30</height>
-      <horizontal_alignment>1</horizontal_alignment>
-      <vertical_alignment>1</vertical_alignment>
-    </widget>
-  </widget>
-  <widget type="bool_button" version="2.0.0">
-    <name>Boolean Button_14</name>
-    <pv_name>$(P)reg_dac_permit</pv_name>
-    <x>780</x>
-    <y>10</y>
-    <width>60</width>
-    <height>20</height>
-  </widget>
-  <widget type="label" version="2.0.0">
-    <name>Label_34</name>
-    <text>dac permit</text>
-    <x>700</x>
-    <y>10</y>
-    <width>80</width>
-    <vertical_alignment>1</vertical_alignment>
-  </widget>
   <widget type="bool_button" version="2.0.0">
     <name>Boolean Button_15</name>
     <pv_name>$(P)reg_pulse_mode</pv_name>
@@ -1511,18 +955,533 @@
   <widget type="textupdate" version="2.0.0">
     <name>Text Update_20</name>
     <pv_name>$(P)ACQ_SAMP_PERIOD</pv_name>
-    <x>940</x>
+    <x>1010</x>
     <y>61</y>
-    <width>70</width>
-    <height>21</height>
+    <width>78</width>
     <precision>5</precision>
+    <horizontal_alignment>1</horizontal_alignment>
+    <vertical_alignment>1</vertical_alignment>
   </widget>
   <widget type="label" version="2.0.0">
     <name>Label_59</name>
-    <text>Sample Period [us]</text>
+    <text>Sample Period</text>
+    <x>890</x>
+    <y>61</y>
+    <width>98</width>
+    <height>21</height>
+  </widget>
+  <widget type="group" version="2.0.0">
+    <name>Group_Dac1Amp</name>
+    <x>30</x>
+    <y>510</y>
+    <width>540</width>
+    <height>240</height>
+    <style>3</style>
+    <transparent>true</transparent>
+    <widget type="xyplot" version="2.0.0">
+      <name>Dac1AmpPlot</name>
+      <width>540</width>
+      <height>240</height>
+      <title>DAC (Q1) Amp</title>
+      <show_legend>false</show_legend>
+      <x_axis>
+        <title>Time [µs]</title>
+        <autoscale>true</autoscale>
+        <log_scale>false</log_scale>
+        <minimum>0.0</minimum>
+        <maximum>100.0</maximum>
+        <show_grid>false</show_grid>
+        <title_font>
+          <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
+          </font>
+        </title_font>
+        <scale_font>
+          <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
+          </font>
+        </scale_font>
+        <visible>true</visible>
+      </x_axis>
+      <y_axes>
+        <y_axis>
+          <title></title>
+          <autoscale>false</autoscale>
+          <log_scale>false</log_scale>
+          <minimum>0.0</minimum>
+          <maximum>32768.0</maximum>
+          <show_grid>true</show_grid>
+          <title_font>
+            <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
+            </font>
+          </title_font>
+          <scale_font>
+            <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
+            </font>
+          </scale_font>
+          <visible>true</visible>
+        </y_axis>
+      </y_axes>
+      <traces>
+        <trace>
+          <name>Amp [count]</name>
+          <x_pv>$(P)Dac1Out:TWF</x_pv>
+          <y_pv>$(P)Dac1Out:AWF</y_pv>
+          <err_pv></err_pv>
+          <axis>0</axis>
+          <trace_type>1</trace_type>
+          <color>
+            <color red="0" green="0" blue="255">
+            </color>
+          </color>
+          <line_width>1</line_width>
+          <line_style>0</line_style>
+          <point_type>0</point_type>
+          <point_size>10</point_size>
+          <visible>true</visible>
+        </trace>
+      </traces>
+    </widget>
+    <widget type="action_button" version="3.0.0">
+      <name>Action Button_1</name>
+      <actions>
+        <action type="execute">
+          <script file="EmbeddedPy">
+            <text><![CDATA[from org.csstudio.display.builder.runtime.script import ScriptUtil
+
+# 'widget' is this button.
+# Fetch plot widget based on its name
+plot = widget.getDisplayModel().runtimeChildren().getChildByName("Dac1AmpPlot")
+
+# The widget's "autoscale" option is still 'true',
+# not updated from the plot as user zooms in.
+# Force update by changing falue to false, then true again.
+plot.setPropertyValue("y_axes[0].autoscale", False)
+plot.setPropertyValue("y_axes[0].autoscale", True)
+]]></text>
+          </script>
+          <description>Autoscale</description>
+        </action>
+      </actions>
+      <x>460</x>
+      <width>70</width>
+      <height>16</height>
+      <tooltip>$(actions)</tooltip>
+    </widget>
+    <widget type="action_button" version="3.0.0">
+      <name>Action Button_2</name>
+      <actions>
+        <action type="execute">
+          <script file="EmbeddedPy">
+            <text><![CDATA[from org.csstudio.display.builder.runtime.script import ScriptUtil
+
+# 'widget' is this button.
+# Fetch plot widget based on its name
+plot = widget.getDisplayModel().runtimeChildren().getChildByName("Dac1AmpPlot")
+
+# The widget's "autoscale" option is still 'true',
+# not updated from the plot as user zooms in.
+# Force update by changing falue to false, then true again.
+plot.setPropertyValue("y_axes[0].autoscale", False)
+plot.setPropertyValue("y_axes[0].minimum", 0)
+plot.setPropertyValue("y_axes[0].maximum", 32767)
+]]></text>
+          </script>
+          <description>Fullscale</description>
+        </action>
+      </actions>
+      <x>390</x>
+      <width>70</width>
+      <height>16</height>
+      <tooltip>$(actions)</tooltip>
+    </widget>
+  </widget>
+  <widget type="group" version="2.0.0">
+    <name>Group_Dac1Phs</name>
+    <x>30</x>
+    <y>750</y>
+    <width>540</width>
+    <height>240</height>
+    <style>3</style>
+    <transparent>true</transparent>
+    <widget type="xyplot" version="2.0.0">
+      <name>Dac1PhsPlot</name>
+      <width>540</width>
+      <height>240</height>
+      <title>DAC (Q1) Phs</title>
+      <show_legend>false</show_legend>
+      <x_axis>
+        <title>Time [µs]</title>
+        <autoscale>true</autoscale>
+        <log_scale>false</log_scale>
+        <minimum>0.0</minimum>
+        <maximum>100.0</maximum>
+        <show_grid>false</show_grid>
+        <title_font>
+          <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
+          </font>
+        </title_font>
+        <scale_font>
+          <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
+          </font>
+        </scale_font>
+        <visible>true</visible>
+      </x_axis>
+      <y_axes>
+        <y_axis>
+          <title></title>
+          <autoscale>false</autoscale>
+          <log_scale>false</log_scale>
+          <minimum>-180.0</minimum>
+          <maximum>180.0</maximum>
+          <show_grid>true</show_grid>
+          <title_font>
+            <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
+            </font>
+          </title_font>
+          <scale_font>
+            <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
+            </font>
+          </scale_font>
+          <visible>true</visible>
+        </y_axis>
+      </y_axes>
+      <traces>
+        <trace>
+          <name>Phase [deg]</name>
+          <x_pv>$(P)Dac1Out:TWF</x_pv>
+          <y_pv>$(P)Dac1Out:PWF</y_pv>
+          <err_pv></err_pv>
+          <axis>0</axis>
+          <trace_type>1</trace_type>
+          <color>
+            <color red="0" green="0" blue="255">
+            </color>
+          </color>
+          <line_width>1</line_width>
+          <line_style>0</line_style>
+          <point_type>0</point_type>
+          <point_size>10</point_size>
+          <visible>true</visible>
+        </trace>
+      </traces>
+    </widget>
+    <widget type="action_button" version="3.0.0">
+      <name>Action Button_3</name>
+      <actions>
+        <action type="execute">
+          <script file="EmbeddedPy">
+            <text><![CDATA[from org.csstudio.display.builder.runtime.script import ScriptUtil
+
+# 'widget' is this button.
+# Fetch plot widget based on its name
+plot = widget.getDisplayModel().runtimeChildren().getChildByName("Dac1PhsPlot")
+
+# The widget's "autoscale" option is still 'true',
+# not updated from the plot as user zooms in.
+# Force update by changing falue to false, then true again.
+plot.setPropertyValue("y_axes[0].autoscale", False)
+plot.setPropertyValue("y_axes[0].minimum", -180)
+plot.setPropertyValue("y_axes[0].maximum", 180)
+]]></text>
+          </script>
+          <description>Fullscale</description>
+        </action>
+      </actions>
+      <x>390</x>
+      <width>70</width>
+      <height>16</height>
+      <tooltip>$(actions)</tooltip>
+    </widget>
+    <widget type="action_button" version="3.0.0">
+      <name>Action Button_4</name>
+      <actions>
+        <action type="execute">
+          <script file="EmbeddedPy">
+            <text><![CDATA[from org.csstudio.display.builder.runtime.script import ScriptUtil
+
+# 'widget' is this button.
+# Fetch plot widget based on its name
+plot = widget.getDisplayModel().runtimeChildren().getChildByName("Dac1PhsPlot")
+
+# The widget's "autoscale" option is still 'true',
+# not updated from the plot as user zooms in.
+# Force update by changing falue to false, then true again.
+plot.setPropertyValue("y_axes[0].autoscale", False)
+plot.setPropertyValue("y_axes[0].autoscale", True)
+]]></text>
+          </script>
+          <description>Autoscale</description>
+        </action>
+      </actions>
+      <x>460</x>
+      <width>70</width>
+      <height>16</height>
+      <tooltip>$(actions)</tooltip>
+    </widget>
+  </widget>
+  <widget type="group" version="2.0.0">
+    <name>Group_CavPhs</name>
+    <x>590</x>
+    <y>750</y>
+    <width>538</width>
+    <height>240</height>
+    <style>3</style>
+    <transparent>true</transparent>
+    <widget type="xyplot" version="2.0.0">
+      <name>CavPhsPlot</name>
+      <width>538</width>
+      <height>240</height>
+      <title>CavCel (ADC5) Phs</title>
+      <show_legend>false</show_legend>
+      <x_axis>
+        <title>Time [µs]</title>
+        <autoscale>true</autoscale>
+        <log_scale>false</log_scale>
+        <minimum>0.0</minimum>
+        <maximum>100.0</maximum>
+        <show_grid>false</show_grid>
+        <title_font>
+          <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
+          </font>
+        </title_font>
+        <scale_font>
+          <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
+          </font>
+        </scale_font>
+        <visible>true</visible>
+      </x_axis>
+      <y_axes>
+        <y_axis>
+          <title></title>
+          <autoscale>false</autoscale>
+          <log_scale>false</log_scale>
+          <minimum>-180.0</minimum>
+          <maximum>180.0</maximum>
+          <show_grid>true</show_grid>
+          <title_font>
+            <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
+            </font>
+          </title_font>
+          <scale_font>
+            <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
+            </font>
+          </scale_font>
+          <visible>true</visible>
+        </y_axis>
+      </y_axes>
+      <traces>
+        <trace>
+          <name>Phase [deg]</name>
+          <x_pv>$(P)CavCel:TWF</x_pv>
+          <y_pv>$(P)CavCel:PWF</y_pv>
+          <err_pv></err_pv>
+          <axis>0</axis>
+          <trace_type>1</trace_type>
+          <color>
+            <color red="0" green="0" blue="255">
+            </color>
+          </color>
+          <line_width>1</line_width>
+          <line_style>0</line_style>
+          <point_type>0</point_type>
+          <point_size>10</point_size>
+          <visible>true</visible>
+        </trace>
+      </traces>
+    </widget>
+    <widget type="action_button" version="3.0.0">
+      <name>Action Button_6</name>
+      <actions>
+        <action type="execute">
+          <script file="EmbeddedPy">
+            <text><![CDATA[from org.csstudio.display.builder.runtime.script import ScriptUtil
+
+# 'widget' is this button.
+# Fetch plot widget based on its name
+plot = widget.getDisplayModel().runtimeChildren().getChildByName("CavPhsPlot")
+
+# The widget's "autoscale" option is still 'true',
+# not updated from the plot as user zooms in.
+# Force update by changing falue to false, then true again.
+plot.setPropertyValue("y_axes[0].autoscale", False)
+plot.setPropertyValue("y_axes[0].minimum", -180)
+plot.setPropertyValue("y_axes[0].maximum", 180)
+]]></text>
+          </script>
+          <description>Fullscale</description>
+        </action>
+      </actions>
+      <x>390</x>
+      <width>70</width>
+      <height>16</height>
+      <tooltip>$(actions)</tooltip>
+    </widget>
+    <widget type="action_button" version="3.0.0">
+      <name>Action Button_7</name>
+      <actions>
+        <action type="execute">
+          <script file="EmbeddedPy">
+            <text><![CDATA[from org.csstudio.display.builder.runtime.script import ScriptUtil
+
+# 'widget' is this button.
+# Fetch plot widget based on its name
+plot = widget.getDisplayModel().runtimeChildren().getChildByName("CavPhsPlot")
+
+# The widget's "autoscale" option is still 'true',
+# not updated from the plot as user zooms in.
+# Force update by changing falue to false, then true again.
+plot.setPropertyValue("y_axes[0].autoscale", False)
+plot.setPropertyValue("y_axes[0].autoscale", True)
+]]></text>
+          </script>
+          <description>Autoscale</description>
+        </action>
+      </actions>
+      <x>460</x>
+      <width>70</width>
+      <height>16</height>
+      <tooltip>$(actions)</tooltip>
+    </widget>
+  </widget>
+  <widget type="group" version="2.0.0">
+    <name>Group_CavAmp</name>
+    <x>590</x>
+    <y>510</y>
+    <width>540</width>
+    <height>240</height>
+    <style>3</style>
+    <transparent>true</transparent>
+    <widget type="xyplot" version="2.0.0">
+      <name>CavAmpPlot</name>
+      <width>540</width>
+      <height>240</height>
+      <title>CavCel (ADC5) Amp</title>
+      <show_legend>false</show_legend>
+      <x_axis>
+        <title>Time [µs]</title>
+        <autoscale>true</autoscale>
+        <log_scale>false</log_scale>
+        <minimum>0.0</minimum>
+        <maximum>100.0</maximum>
+        <show_grid>false</show_grid>
+        <title_font>
+          <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
+          </font>
+        </title_font>
+        <scale_font>
+          <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
+          </font>
+        </scale_font>
+        <visible>true</visible>
+      </x_axis>
+      <y_axes>
+        <y_axis>
+          <title></title>
+          <autoscale>false</autoscale>
+          <log_scale>false</log_scale>
+          <minimum>0.0</minimum>
+          <maximum>32767.0</maximum>
+          <show_grid>true</show_grid>
+          <title_font>
+            <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
+            </font>
+          </title_font>
+          <scale_font>
+            <font name="Default" family="Liberation Sans" style="REGULAR" size="14.0">
+            </font>
+          </scale_font>
+          <visible>true</visible>
+        </y_axis>
+      </y_axes>
+      <traces>
+        <trace>
+          <name>Amp [count]</name>
+          <x_pv>$(P)CavCel:TWF</x_pv>
+          <y_pv>$(P)CavCel:AWF</y_pv>
+          <err_pv></err_pv>
+          <axis>0</axis>
+          <trace_type>1</trace_type>
+          <color>
+            <color red="0" green="0" blue="255">
+            </color>
+          </color>
+          <line_width>1</line_width>
+          <line_style>0</line_style>
+          <point_type>0</point_type>
+          <point_size>10</point_size>
+          <visible>true</visible>
+        </trace>
+      </traces>
+    </widget>
+    <widget type="action_button" version="3.0.0">
+      <name>Action Button</name>
+      <actions>
+        <action type="execute">
+          <script file="EmbeddedPy">
+            <text><![CDATA[from org.csstudio.display.builder.runtime.script import ScriptUtil
+
+# 'widget' is this button.
+# Fetch plot widget based on its name
+plot = widget.getDisplayModel().runtimeChildren().getChildByName("CavAmpPlot")
+
+# The widget's "autoscale" option is still 'true',
+# not updated from the plot as user zooms in.
+# Force update by changing falue to false, then true again.
+plot.setPropertyValue("y_axes[0].autoscale", False)
+plot.setPropertyValue("y_axes[0].autoscale", True)
+]]></text>
+          </script>
+          <description>Autoscale</description>
+        </action>
+      </actions>
+      <x>460</x>
+      <width>70</width>
+      <height>16</height>
+      <tooltip>$(actions)</tooltip>
+    </widget>
+    <widget type="action_button" version="3.0.0">
+      <name>Action Button_5</name>
+      <actions>
+        <action type="execute">
+          <script file="EmbeddedPy">
+            <text><![CDATA[from org.csstudio.display.builder.runtime.script import ScriptUtil
+
+# 'widget' is this button.
+# Fetch plot widget based on its name
+plot = widget.getDisplayModel().runtimeChildren().getChildByName("CavAmpPlot")
+
+# The widget's "autoscale" option is still 'true',
+# not updated from the plot as user zooms in.
+# Force update by changing falue to false, then true again.
+plot.setPropertyValue("y_axes[0].autoscale", False)
+plot.setPropertyValue("y_axes[0].minimum", 0)
+plot.setPropertyValue("y_axes[0].maximum", 32767)
+]]></text>
+          </script>
+          <description>Fullscale</description>
+        </action>
+      </actions>
+      <x>390</x>
+      <width>70</width>
+      <height>16</height>
+      <tooltip>$(actions)</tooltip>
+    </widget>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Label_49</name>
+    <text>µs</text>
+    <x>1100</x>
+    <y>61</y>
+    <width>20</width>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Text Update_21</name>
+    <pv_name>$(P)ACQ_DECIM</pv_name>
     <x>790</x>
     <y>61</y>
-    <width>138</width>
-    <height>21</height>
+    <width>40</width>
+    <precision>0</precision>
+    <show_units>false</show_units>
+    <horizontal_alignment>1</horizontal_alignment>
+    <vertical_alignment>1</vertical_alignment>
   </widget>
 </display>
