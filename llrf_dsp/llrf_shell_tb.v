@@ -217,6 +217,7 @@ endtask
         .lb_wdata       (lb_wdata),
         .lb_rdata       (lb_rdata),
         .lb_read        (lb_read),
+        .lb_rvalid      (lb_rvalid),
 
         .dsp_clk        (dsp_clk),
         .adc_data_in    (adc_in_flat),

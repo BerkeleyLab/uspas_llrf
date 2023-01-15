@@ -29,6 +29,7 @@ module llrf_shell #(
     input [LB_ADW-1:0]   lb_addr,
     input                lb_write,
     input                lb_read,
+    input                lb_rvalid,
     input [31:0]         lb_wdata,
     output [31:0]        lb_rdata,
 
@@ -41,7 +42,7 @@ module llrf_shell #(
     output [DW-1:0]      dac_data_b_out,
 
     // ---------------------
-    // FO Interlock interface
+    // Interlock interface
     // ---------------------
     input                drive_permit_in,  // From RF Drive Control
     input                slow_permit_in,   // From Master Interlock PLC
@@ -53,7 +54,9 @@ module llrf_shell #(
     // ---------------------
     input [2:0]          arc_permit_in,
     output [2:0]         arc_test_out,
-    output               arc_reset_out
+    output               arc_reset_out,
+
+    output               trig_out
 );
 localparam LB_DW = 32;
 localparam LB_ADW = 18;
@@ -63,17 +66,39 @@ localparam DAVR = 3; // Guard bits to keep in output of mixer
 localparam N_DAC = 2;
 localparam N_CH = N_ADC + N_DAC;
 
-wire signed [15:0] mo_pref = adc_data_in[DW*0 +:DW];
-wire signed [15:0] cav_fwd = adc_data_in[DW*1 +:DW];
-wire signed [15:0] cav_rev = adc_data_in[DW*2 +:DW];
-wire signed [15:0] cav_cel = adc_data_in[DW*3 +:DW];
-wire signed [15:0] cir_fwd = adc_data_in[DW*4 +:DW];
-wire signed [15:0] cir_rev = adc_data_in[DW*5 +:DW];
-wire signed [15:0] tst_fwd = adc_data_in[DW*6 +:DW];
-wire signed [15:0] tst_rev = adc_data_in[DW*7 +:DW];
+wire [DW-1:0] adc_phy_dat [0:N_ADC-1];
+assign adc_phy_dat[0] = adc_data_in[DW*0 +:DW];
+assign adc_phy_dat[1] = adc_data_in[DW*1 +:DW];
+assign adc_phy_dat[2] = adc_data_in[DW*2 +:DW];
+assign adc_phy_dat[3] = adc_data_in[DW*3 +:DW];
+assign adc_phy_dat[4] = adc_data_in[DW*4 +:DW];
+assign adc_phy_dat[5] = adc_data_in[DW*5 +:DW];
+assign adc_phy_dat[6] = adc_data_in[DW*6 +:DW];
+assign adc_phy_dat[7] = adc_data_in[DW*7 +:DW];
+
+wire signed [15:0] cav_cel = adc_phy_dat[3];        // for feedback
+wire wave_trig;
+
+wire [15:0] adc_buf_out [0:N_ADC-1];
+genvar i;
+generate for (i=0; i<N_ADC; i=i+1)
+    begin: gen_buf_adc
+    adc_buf #(.AW(12), .DW(DW)) adc_buf_i (
+        .wfm_len        (12'd4095       ),
+        .adc_trigger    (wave_trig      ),
+        .adc_phy_clk    (dsp_clk        ),
+        .adc_phy_dat    (adc_phy_dat[i] ),
+        .adc_phy_val    (1'b1),
+        .lb_clk         (lb_clk         ),
+        .lb_read        (lb_read        ),
+        .lb_rvalid      (lb_rvalid      ),
+        .lb_addr        (lb_addr[11:0]  ),
+        .lb_rdata       (adc_buf_out[i] )
+    );
+    end
+endgenerate
 
 wire [DW*N_CH-1:0] dac_adc_flat = {dac_data_b_out, dac_data_a_out, adc_data_in};
-
 wire inlk_permit_in = drive_permit_in & slow_permit_in;
 
 wire [31:0] lb_data = lb_wdata; // for newad.py
@@ -99,7 +124,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [0:0] amp_loop_reset; top-level
 // reg [0:0] phs_loop_reset; top-level
 // reg [0:0] dsp_reset; top-level
-// reg [11:0] pulse_high_len; top-level
+// reg [31:0] pulse_high_len; top-level
 // reg [0:0] pulse_mode; top-level
 // reg [0:0] dac_permit; top-level
 // reg [0:0] ntw_amp_enable; top-level
@@ -191,10 +216,9 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [CBUF_AW-1:0] cbuf_stat2;
 
     // -- Waveform triggering logic
-    localparam WAVE_TRIG_ALWAYS = 0,
-               WAVE_TRIG_ORBIT  = 1;
-
-    wire wave_trig = cbuf_sync;
+    // internal trigger only, synchronized with waveform
+    assign wave_trig = cbuf_sync;
+    assign trig_out = wave_trig;
 
     reg cbuf_write=1;
     reg cbuf_start=0;
@@ -455,11 +479,11 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     );
 
     wire pulse_val;
-    pulse_gen pulse(
+    pulse_gen #(.AW(32)) pulse(
         .clk        (dsp_clk),
         .trigger    (cbuf_sync),        // syncn with waveform
-        .strobe     (cic_sample),       // 22 cycles per strobe
-        .high_len   (pulse_high_len),   // unit: 8.73ns * 22 = 0.192 us
+        .strobe     (cic_sample),       // CIC_BASE_PERIOD cycles per strobe
+        .high_len   (pulse_high_len),   // unit: For ALSU: 8.73ns * 22 = 0.192 us
         .pulse_out  (pulse_val)
     );
     wire drive_on2 = pulse_mode ? pulse_val : 1'b1;  // non-interruptable
@@ -520,6 +544,14 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             18'h13035: lb_rdata_r <= arc_permit_raw;    // dsp_clk domain
             18'h13036: lb_rdata_r <= arc_permit_latch;  // dsp_clk domain
             18'h13037: lb_rdata_r <= arc_permit_sum;    // dsp_clk domain
+            18'h14???: lb_rdata_r <= adc_buf_out[0];
+            18'h15???: lb_rdata_r <= adc_buf_out[1];
+            18'h16???: lb_rdata_r <= adc_buf_out[2];
+            18'h17???: lb_rdata_r <= adc_buf_out[3];
+            18'h18???: lb_rdata_r <= adc_buf_out[4];
+            18'h19???: lb_rdata_r <= adc_buf_out[5];
+            18'h1a???: lb_rdata_r <= adc_buf_out[6];
+            18'h1b???: lb_rdata_r <= adc_buf_out[7];
             18'h2????: lb_rdata_r <= cbuf_out;
             18'h???0?: lb_rdata_r <= reg_bank_0;
             default:   lb_rdata_r <= 32'hfaceface;

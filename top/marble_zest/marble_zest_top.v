@@ -225,6 +225,7 @@ llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) dsp (
     .lb_wdata       (lb_wdata),
     .lb_rdata       (lb_rdata),
     .lb_read        (lb_read),
+    .lb_rvalid      (lb_rvalid),
 
     .dsp_clk        (dsp_clk),
     .adc_data_in    (adc_out_data),
