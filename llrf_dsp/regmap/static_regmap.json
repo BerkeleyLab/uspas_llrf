@@ -69,6 +69,20 @@
         "data_width": 16,
         "sign": "signed"
     },
+    "dac0_buf": {
+        "base_addr": "0x1c000",
+        "addr_width": 12,
+        "access": "r",
+        "data_width": 16,
+        "sign": "signed"
+    },
+    "dac1_buf": {
+        "base_addr": "0x1d000",
+        "addr_width": 12,
+        "access": "r",
+        "data_width": 16,
+        "sign": "signed"
+    },
     "mon_amp": {
         "base_addr": "0x13000",
         "addr_width": 4,

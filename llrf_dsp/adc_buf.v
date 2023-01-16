@@ -19,7 +19,7 @@ module adc_buf #(
 
 reg counting=0;
 reg [AW-1:0] pc=0;
-wire wfm_last = (pc==wfm_len-1);
+wire wfm_last = (pc==wfm_len);
 
 // generate read pc from adc_clk domain
 always @(posedge adc_phy_clk) begin
@@ -45,7 +45,7 @@ always @(posedge adc_phy_clk) begin
 end
 
 // lb_clk domain, 1 cycle
-wire read_last = (lb_addr==wfm_len-1) & lb_read & lb_rvalid;
+wire read_last = (lb_addr==wfm_last) & lb_read & lb_rvalid;
 flag_xdomain flip_bank(
     .clk1           (lb_clk),
     .flagin_clk1    (read_last),

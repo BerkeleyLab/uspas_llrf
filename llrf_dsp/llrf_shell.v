@@ -98,6 +98,29 @@ generate for (i=0; i<N_ADC; i=i+1)
     end
 endgenerate
 
+wire [DW-1:0] dac_phy_dat [0:N_DAC-1];
+assign dac_phy_dat[0] = dac_data_a_out;
+assign dac_phy_dat[1] = dac_data_b_out;
+wire [15:0] dac_buf_out [0:N_DAC-1];
+
+genvar j;
+generate for (j=0; j<N_DAC; j=j+1)
+    begin: gen_buf_dac
+    adc_buf #(.AW(12), .DW(DW)) dac_buf_i (
+        .wfm_len        (12'd4095       ),
+        .adc_trigger    (wave_trig      ),
+        .adc_phy_clk    (dsp_clk        ),
+        .adc_phy_dat    (dac_phy_dat[j] ),
+        .adc_phy_val    (1'b1),
+        .lb_clk         (lb_clk         ),
+        .lb_read        (lb_read        ),
+        .lb_rvalid      (lb_rvalid      ),
+        .lb_addr        (lb_addr[11:0]  ),
+        .lb_rdata       (dac_buf_out[j] )
+    );
+    end
+endgenerate
+
 wire [DW*N_CH-1:0] dac_adc_flat = {dac_data_b_out, dac_data_a_out, adc_data_in};
 wire inlk_permit_in = drive_permit_in & slow_permit_in;
 
@@ -552,6 +575,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             18'h19???: lb_rdata_r <= adc_buf_out[5];
             18'h1a???: lb_rdata_r <= adc_buf_out[6];
             18'h1b???: lb_rdata_r <= adc_buf_out[7];
+            18'h1c???: lb_rdata_r <= dac_buf_out[0];
+            18'h1d???: lb_rdata_r <= dac_buf_out[1];
             18'h2????: lb_rdata_r <= cbuf_out;
             18'h???0?: lb_rdata_r <= reg_bank_0;
             default:   lb_rdata_r <= 32'hfaceface;
