@@ -27,19 +27,19 @@
     <vertical_alignment>1</vertical_alignment>
   </widget>
   <widget type="xyplot" version="2.0.0">
-    <name>CavIQPlot</name>
+    <name>IQ_Plot</name>
     <x>700</x>
     <y>110</y>
     <width>420</width>
     <height>420</height>
-    <title>CavCel I/Q</title>
+    <title>I/Q</title>
     <show_legend>false</show_legend>
     <x_axis>
       <title>I</title>
       <autoscale>false</autoscale>
       <log_scale>false</log_scale>
-      <minimum>-21000.0</minimum>
-      <maximum>21000.0</maximum>
+      <minimum>-6000.0</minimum>
+      <maximum>6000.0</maximum>
       <show_grid>true</show_grid>
       <title_font>
         <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
@@ -56,8 +56,8 @@
         <title>Q</title>
         <autoscale>false</autoscale>
         <log_scale>false</log_scale>
-        <minimum>-21000.0</minimum>
-        <maximum>21000.0</maximum>
+        <minimum>-6000.0</minimum>
+        <maximum>6000.0</maximum>
         <show_grid>true</show_grid>
         <title_font>
           <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
@@ -237,7 +237,7 @@
     </widget>
     <widget type="label" version="2.0.0">
       <name>Label_10</name>
-      <text>ADC0</text>
+      <text>ADC1</text>
       <y>240</y>
       <height>30</height>
       <horizontal_alignment>2</horizontal_alignment>
@@ -965,7 +965,7 @@
   <widget type="group" version="2.0.0">
     <name>Group_Dac1Amp</name>
     <x>30</x>
-    <y>530</y>
+    <y>540</y>
     <width>540</width>
     <height>240</height>
     <style>3</style>
@@ -1089,7 +1089,7 @@ plot.setPropertyValue("y_axes[0].maximum", 32767)
   <widget type="group" version="2.0.0">
     <name>Group_Dac1Phs</name>
     <x>30</x>
-    <y>770</y>
+    <y>780</y>
     <width>540</width>
     <height>240</height>
     <style>3</style>
@@ -1138,7 +1138,7 @@ plot.setPropertyValue("y_axes[0].maximum", 32767)
       </y_axes>
       <traces>
         <trace>
-          <name>Phase [deg]</name>
+          <name>Phase</name>
           <x_pv>$(P)Dac1Out:TWF</x_pv>
           <y_pv>$(P)Dac1Out:PWF</y_pv>
           <err_pv></err_pv>
@@ -1213,7 +1213,7 @@ plot.setPropertyValue("y_axes[0].autoscale", True)
   <widget type="group" version="2.0.0">
     <name>Group_CavPhs</name>
     <x>590</x>
-    <y>770</y>
+    <y>780</y>
     <width>538</width>
     <height>240</height>
     <style>3</style>
@@ -1222,7 +1222,7 @@ plot.setPropertyValue("y_axes[0].autoscale", True)
       <name>CavPhsPlot</name>
       <width>538</width>
       <height>240</height>
-      <title>Phase [deg]</title>
+      <title>Phase</title>
       <show_legend>false</show_legend>
       <x_axis>
         <title>Time [µs]</title>
@@ -1337,7 +1337,7 @@ plot.setPropertyValue("y_axes[0].autoscale", True)
   <widget type="group" version="2.0.0">
     <name>Group_CavAmp</name>
     <x>590</x>
-    <y>530</y>
+    <y>540</y>
     <width>540</width>
     <height>240</height>
     <style>3</style>
@@ -1371,7 +1371,7 @@ plot.setPropertyValue("y_axes[0].autoscale", True)
           <autoscale>false</autoscale>
           <log_scale>false</log_scale>
           <minimum>0.0</minimum>
-          <maximum>500.0</maximum>
+          <maximum>4000.0</maximum>
           <show_grid>true</show_grid>
           <title_font>
             <font name="Default Bold" family="Liberation Sans" style="BOLD" size="14.0">
@@ -1522,6 +1522,7 @@ pv_map = {
 
 plot1 = widget.getDisplayModel().runtimeChildren().getChildByName("CavAmpPlot")
 plot2 = widget.getDisplayModel().runtimeChildren().getChildByName("CavPhsPlot")
+plot3 = widget.getDisplayModel().runtimeChildren().getChildByName("IQ_Plot")
 
 key = PVUtil.getString(pvs[0])
 
@@ -1531,7 +1532,9 @@ if key in pv_map:
 	plot1.setPropertyValue("traces[0].name", key)
 	plot2.setPropertyValue("traces[0].y_pv", pv_map[key]  + ":PWF")
 	plot2.setPropertyValue("traces[0].name", key)
-
+	plot3.setPropertyValue("traces[0].x_pv", pv_map[key]  + ":IWF")
+	plot3.setPropertyValue("traces[0].y_pv", pv_map[key]  + ":QWF")
+	plot3.setPropertyValue("traces[0].name", key)
 	# plot1.setPropertyValue("traces[0].y_pv", PVUtil.getString(pvs[0]))]]></text>
         <pv_name>$(pv_name)</pv_name>
       </script>
@@ -1557,6 +1560,104 @@ if key in pv_map:
     <y>40</y>
     <width>120</width>
     <height>30</height>
+    <horizontal_alignment>1</horizontal_alignment>
+    <vertical_alignment>1</vertical_alignment>
+  </widget>
+  <widget type="textentry" version="3.0.0">
+    <name>Text Entry_15</name>
+    <pv_name>$(P)reg_dds_phase_step</pv_name>
+    <x>410</x>
+    <y>510</y>
+    <precision>0</precision>
+    <horizontal_alignment>1</horizontal_alignment>
+  </widget>
+  <widget type="scaledslider" version="2.0.0">
+    <name>Scaled Slider_4</name>
+    <pv_name>$(P)reg_dds_phase_step</pv_name>
+    <x>100</x>
+    <y>510</y>
+    <width>300</width>
+    <height>20</height>
+    <show_scale>false</show_scale>
+    <show_minor_ticks>false</show_minor_ticks>
+    <show_hihi>false</show_hihi>
+    <show_high>false</show_high>
+    <show_low>false</show_low>
+    <show_lolo>false</show_lolo>
+    <increment>1024.0</increment>
+    <minimum>7.4678E8</minimum>
+    <maximum>7.4698E8</maximum>
+    <limits_from_pv>false</limits_from_pv>
+  </widget>
+  <widget type="action_button" version="3.0.0">
+    <name>Action Button_8</name>
+    <actions>
+      <action type="execute">
+        <script file="EmbeddedPy">
+          <text><![CDATA[from org.csstudio.display.builder.runtime.script import ScriptUtil
+
+# 'widget' is this button.
+# Fetch plot widget based on its name
+plot = widget.getDisplayModel().runtimeChildren().getChildByName("IQ_Plot")
+
+# The widget's "autoscale" option is still 'true',
+# not updated from the plot as user zooms in.
+# Force update by changing falue to false, then true again.
+
+plot.setPropertyValue("x_axis.autoscale", False)
+plot.setPropertyValue("y_axes[0].autoscale", False)
+
+plot.setPropertyValue("x_axis.autoscale", True)
+plot.setPropertyValue("y_axes[0].autoscale", True)
+]]></text>
+        </script>
+        <description>Autoscale</description>
+      </action>
+    </actions>
+    <x>1040</x>
+    <y>110</y>
+    <width>70</width>
+    <height>16</height>
+    <tooltip>$(actions)</tooltip>
+  </widget>
+  <widget type="action_button" version="3.0.0">
+    <name>Action Button_9</name>
+    <actions>
+      <action type="execute">
+        <script file="EmbeddedPy">
+          <text><![CDATA[from org.csstudio.display.builder.runtime.script import ScriptUtil
+
+# 'widget' is this button.
+# Fetch plot widget based on its name
+plot = widget.getDisplayModel().runtimeChildren().getChildByName("IQ_Plot")
+
+# The widget's "autoscale" option is still 'true',
+# not updated from the plot as user zooms in.
+# Force update by changing falue to false, then true again.
+plot.setPropertyValue("x_axes.autoscale", False)
+plot.setPropertyValue("x_axes.minimum", -20000)
+plot.setPropertyValue("x_axes.maximum", 20000)
+
+plot.setPropertyValue("y_axes[0].autoscale", False)
+plot.setPropertyValue("y_axes[0].minimum", -20000)
+plot.setPropertyValue("y_axes[0].maximum", 20000)
+]]></text>
+        </script>
+        <description>Fullscale</description>
+      </action>
+    </actions>
+    <x>970</x>
+    <y>110</y>
+    <width>70</width>
+    <height>16</height>
+    <tooltip>$(actions)</tooltip>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Label_14</name>
+    <text>LO DDS</text>
+    <x>20</x>
+    <y>510</y>
+    <width>70</width>
     <horizontal_alignment>1</horizontal_alignment>
     <vertical_alignment>1</vertical_alignment>
   </widget>
