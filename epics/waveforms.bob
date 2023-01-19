@@ -1634,9 +1634,9 @@ plot = widget.getDisplayModel().runtimeChildren().getChildByName("IQ_Plot")
 # The widget's "autoscale" option is still 'true',
 # not updated from the plot as user zooms in.
 # Force update by changing falue to false, then true again.
-plot.setPropertyValue("x_axes.autoscale", False)
-plot.setPropertyValue("x_axes.minimum", -20000)
-plot.setPropertyValue("x_axes.maximum", 20000)
+plot.setPropertyValue("x_axis.autoscale", False)
+plot.setPropertyValue("x_axis.minimum", -20000)
+plot.setPropertyValue("x_axis.maximum", 20000)
 
 plot.setPropertyValue("y_axes[0].autoscale", False)
 plot.setPropertyValue("y_axes[0].minimum", -20000)
