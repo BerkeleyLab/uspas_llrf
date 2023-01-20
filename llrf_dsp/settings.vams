@@ -27,7 +27,6 @@
 `endif
 
 `define CORDIC_GAIN     1.64676
-`define EVR_CLK_CYCLE   `DSP_CLK_CYCLE*11/12    // XXX remove
 `define LO_AMP          74840    // must < (2^17 / `CORDIC_GAIN)
 `define SHIFT_BASE      7
 `define SHIFT_INLK      12
