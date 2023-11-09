@@ -1,6 +1,6 @@
-# LLRF Firmware for USPAS 2022
+# LLRF Firmware for USPAS 2023
 
-This repository holds the firmware for USPAS 2022 LLRF course, on the [Marble](https://github.com/BerkeleyLab/Marble) and [Zest](https://github.com/BerkeleyLab/Zest) platform.
+This repository holds the firmware for USPAS 2023 LLRF course, on the [Marble](https://github.com/BerkeleyLab/Marble) and [Zest](https://github.com/BerkeleyLab/Zest) platform.
 
 # Global DSP frequency settings
 
