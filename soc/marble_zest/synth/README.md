@@ -11,9 +11,9 @@
 # Reloading firmware
 Check Marble UART device, default is `/dev/ttyUSB3` in `Makefile`.
 After revising source code,
+
 ```bash
     make system_load
-```
 
 # Booting log examples
 ## Normal booting log (#define DEBUG_PRINT 0)
@@ -518,3 +518,5 @@ XADC    Temp   :  56.47 degC
 XADC    VCCINT :  1.00  V
 XADC    VCCAUX :  1.79  V
 XADC    VCCBRAM:  1.00  V
+```
+
