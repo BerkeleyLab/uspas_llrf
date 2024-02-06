@@ -1,0 +1,34 @@
+stages:
+  - test
+  - synthesis
+
+variables:
+  XILINX_VIVADO: /non-free/Xilinx/Vivado/2020.2
+  CI_REGISTRY: mohs.dhcp.lbl.gov
+  CONTAINER_IMAGE: $CI_REGISTRY/testing_base_bookworm
+  # CONTAINER_IM_IMAGE: $CI_REGISTRY/riscv_bloat
+  DOCKER_HOST: tcp://docker:2375/
+  DOCKER_DRIVER: overlay2
+  GIT_SUBMODULE_STRATEGY: normal
+
+image: $CONTAINER_IMAGE:master
+
+llrf_dsp_test:
+  before_script:
+    - cd llrf_dsp
+  stage: test
+  script:
+    - make clean && make
+
+marble_zest_synth:
+  before_script:
+    - cd top/marble_zest && ls /non-free
+  stage: synthesis
+  script:
+    - make clean && PATH=$XILINX_VIVADO/bin:$PATH make marble_zest_top.bit
+  artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+    expire_in: 2 days
+    paths:
+      - top/marble_zest/marble_zest_top.bit
+      - top/marble_zest/_xilinx/marble_zest_top/*.runs/impl_1/*.rpt
