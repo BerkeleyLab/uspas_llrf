@@ -2,26 +2,40 @@
 ```bash
     make
 ```
+Note that this Synthesizing uses `system_top.v` which is for testing the soft core, and does not contain LLRF DSP.
+The full LLRF Synthesizing should be done at `top/marble_zest` directory instead.
 
-# Programmping to hardware
+To build CPU program only, use:
+```bash
+    make system32.dat
+```
+
+# Programming to hardware
+
 ```bash
     make system_config
 ```
 
 # Reloading firmware
 Check Marble UART device, default is `/dev/ttyUSB3` in `Makefile`.
-After revising source code,
+This port is usually next to the last UART port of the Marble MMC.
+
+For boot loading the CPU program after revising the source code,
 
 ```bash
-    make system_load
+    make system_load BOOTLOADER_SERIAL=/dev/ttyUSB2
+```
 
 # Booting log examples
 ## Normal booting log (#define DEBUG_PRINT 0)
 
-   ___   __   ____    __  __  __   __   ___  ____
-  / _ | / /  / __/___/ / / / / /  / /  / _ \/ __/
- / __ |/ /___\ \/___/ /_/ / / /__/ /__/ , _/ _/
-/_/ |_/____/___/    \____/ /____/____/_/|_/_/
+```
+  _   _ ____  ____   _    ____    _     _     ____  _____ 
+ | | | / ___||  _ \ / \  / ___|  | |   | |   |  _ \|  ___|
+ | | | \___ \| |_) / _ \ \___ \  | |   | |   | |_) | |_   
+ | |_| |___) |  __/ ___ \ ___) | | |___| |___|  _ <|  _|  
+  \___/|____/|_| /_/   \_\____/  |_____|_____|_| \_\_|
+
 ==== Marble Init       ====  : PASS.
   Fclk  DSP_CLK:  114.583 MHz
 ==== ZEST DSP CLK Freq====  : PASS.
@@ -89,13 +103,16 @@ AD9781 Alignment:
  Found SMP value: 12.
 ==== ZEST DAC SMP Check====  : PASS.
 ==== ZEST Init         ====  : PASS.
+```
 
 ## Verbose booting log (#define DEBUG_PRINT 1)
 
-   ___   __   ____    __  __  __   __   ___  ____
-  / _ | / /  / __/___/ / / / / /  / /  / _ \/ __/
- / __ |/ /___\ \/___/ /_/ / / /__/ /__/ , _/ _/
-/_/ |_/____/___/    \____/ /____/____/_/|_/_/
+```
+  _   _ ____  ____   _    ____    _     _     ____  _____ 
+ | | | / ___||  _ \ / \  / ___|  | |   | |   |  _ \|  ___|
+ | | | \___ \| |_) / _ \ \___ \  | |   | |   | |_) | |_   
+ | |_| |___) |  __/ ___ \ ___) | | |___| |___|  _ <|  _|  
+  \___/|____/|_| /_/   \_\____/  |_____|_____|_| \_\_|
 ==== Marble Init       ====  : PASS.
   Fclk  DSP_CLK:  114.583 MHz
 ==== ZEST DSP CLK Freq====  : PASS.
