@@ -63,7 +63,10 @@ gmii_to_rgmii #( .in_phase_tx_clk(1)) gmii_to_rgmii_i (
 	.gmii_rxd       (gmii_rxd),
 	.gmii_rx_clk    (gmii_rx_clk),
 	.gmii_rx_dv     (gmii_rx_dv),
-	.gmii_rx_er     (gmii_rx_er)
+	.gmii_rx_er     (gmii_rx_er),
+    .clk_div        (1'b0),
+    .idelay_ce      (1'b0),
+    .idelay_value_in(5'b0)
 );
 
 // localbus master

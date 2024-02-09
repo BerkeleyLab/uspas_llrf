@@ -1,6 +1,6 @@
-APP_NAME	= llrf_shell
+APP_NAME    = llrf_shell
 JSON_DIR    = ./regmap
-NEWAD_ARGS += -m	# mirror
+NEWAD_ARGS += -m    # mirror
 NEWAD_ARGS_llrf_shell =-b196608
 
 TEST_BENCH_D= $(TEST_BENCH:%_tb=$(DEPDIR)/%_tb.d)
