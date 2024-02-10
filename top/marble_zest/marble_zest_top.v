@@ -72,7 +72,21 @@ module marble_zest_top #(
     input           ZEST_DAC_DCO_N,
 
     inout [7:0]     ZEST_PMOD1,
-    inout [7:0]     ZEST_PMOD2
+    inout [7:0]     ZEST_PMOD2,
+    inout           ZEST_HDMI_CK_P,
+    inout           ZEST_HDMI_CK_N,
+    inout           ZEST_HDMI_D0_P,
+    inout           ZEST_HDMI_D0_N,
+    inout           ZEST_HDMI_D1_P,
+    inout           ZEST_HDMI_D1_N,
+    inout           ZEST_HDMI_D2_P,
+    inout           ZEST_HDMI_D2_N,
+    inout           ZEST_HDMI_DET,
+    inout           ZEST_HDMI_SCL,
+    inout           ZEST_HDMI_SDA,
+    inout           ZEST_HDMI_CEC,
+    inout           ZEST_APP_I2C_SDA,
+    inout           ZEST_APP_I2C_SCL
 );
 
 // ----------------------------------

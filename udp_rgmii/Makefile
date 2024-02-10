@@ -22,8 +22,10 @@ $(DEPDIR)/$(IP_NAME).d: udp_rgmii.v $(VERILOG_AUTOGEN)
 
 -include $(DEPDIR)/$(IP_NAME).d
 
+EXCLUDE = $(wildcard $(FPGA_FAMILY_DIR)/xilinx/*.v)
+EXCLUDE += $(addprefix $(DSP_DIR)/, reg_delay.v)
 $(IP_NAME)_expand.v: udp_rgmii.v
-	$(VERILOG) $(VFLAGS_DEP) -E $(filter %.v, $^) -o $@
+	$(VERILOG) $(VFLAGS_DEP) -E $(filter-out $(EXCLUDE),$(filter %.v, $^)) -o $@
 
 CLEAN += $(RTEFI_CLEAN) $(TARGET)
 include $(BUILD_DIR)/bottom_rules.mk

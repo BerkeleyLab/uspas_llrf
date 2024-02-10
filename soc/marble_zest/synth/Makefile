@@ -31,8 +31,10 @@ system_top.xdc: top.xdc timing.xdc zest_fmc_dp.xdc
 system_config: $(TARGET)_top.bit
 	openocd -f $(BOARD_SUPPORT_DIR)/marblemini/marble.cfg -c "transport select jtag; init; xc7_program xc7.tap; pld load 0 $<; exit"
 
+# this is to avoid vivado critical warnings about duplicated / redefination of module since they are already in DSP
+EXCLUDE = $(addprefix $(DSP_DIR)/, dpram.v flag_xdomain.v data_xdomain.v reg_delay.v)
 system_expand.v: $(SRC_V)
-	$(VERILOG) $(SYNTH_OPT) -E $(filter %.v, $^) -o $@
+	$(VERILOG) $(SYNTH_OPT) -E $(filter-out $(EXCLUDE),$(filter %.v, $^)) -o $@
 
 CLEAN += $(TARGET)_top.bin $(TARGET)_top.bit $(TARGET)_top.xdc
 CLEAN += zest_pinmap.txt zest_fmc_dp.xdc
