@@ -24,7 +24,6 @@ $(APP_DSP_DIR)/llrf_shell_expand.v:
 GIT_32BIT_ID = $(shell git rev-parse --short=8 --verify HEAD)
 SYNTH_OPT += -DGIT_32BIT_ID=32'h$(GIT_32BIT_ID)
 
-
 $(APP_SOC_SYN_DIR)/system32.dat:
 	$(MAKE) -C $(APP_SOC_SYN_DIR) system32.dat
 
@@ -45,6 +44,7 @@ system_config:
 	openocd -f marble.cfg -c "transport select jtag; init; xc7_program xc7.tap; pld load 0  $(TARGET)_top.bit; exit"
 
 CLEAN += system_top.xdc $(TARGET)_top.bin $(TARGET)_top.bit $(IP_BIT_D)
+CLEAN += $(TARGET)_top.prm
 CLEAN_DIRS += .Xil _xilinx
 
 include $(BUILD_DIR)/bottom_rules.mk

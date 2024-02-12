@@ -1,7 +1,8 @@
-APP_NAME	= llrf_shell
+APP_NAME    = llrf_shell
 JSON_DIR    = ./regmap
-NEWAD_ARGS += -m	# mirror
-NEWAD_ARGS_llrf_shell =-b196608
+LB_AW       = 17    # should be LB_HI
+NEWAD_ARGS += -m    # mirror
+NEWAD_ARGS_llrf_shell = -b196608
 
 TEST_BENCH_D= $(TEST_BENCH:%_tb=$(DEPDIR)/%_tb.d)
 VERILOG_AUTOGEN += $(AUTOGEN_DIR)/config_romx.v
@@ -61,3 +62,4 @@ ifeq (,$(MAKECMDGOALS))
 endif
 CLEAN += $(APP_NAME).json $(APP_NAME)_init_regs.json
 CLEAN += $(APP_NAME)_expand.v
+CLEAN += cordicg_b22.v
