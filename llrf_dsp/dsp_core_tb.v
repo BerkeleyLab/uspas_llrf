@@ -25,7 +25,7 @@ parameter real OPEN_AMP_GAIN = 2**19 / (`CORDIC_GAIN * `LO_AMP * `CORDIC_GAIN);
 parameter real OPEN_PHS_GAIN = 0;       // Measured, deg
 
 parameter integer AMP_SETP = 10000;     // full scale: 2^17
-parameter integer PHS_SETP = -180;       // deg
+parameter integer PHS_SETP = 0;       // deg
 
 localparam real ampi = AMP_SETP;        // full scale: 2^15
 localparam real phsi = PHS_SETP;        // deg
