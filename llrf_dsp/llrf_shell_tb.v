@@ -459,7 +459,7 @@ endtask
         lb_write_task(AMP_SETPOINT, amp_setpoint_close);
         lb_write_task(PHS_SETPOINT, phs_setpoint_close);
         close_loops_task();
-        #20000;  //wait for loop actions
+        #25000;  //wait for loop actions
         read_inlk_task(1, wfm_amp, wfm_phs);
         amp_err = wfm_amp / inlk_gain - AMP_SETP_ADC;
         fail |= $abs(amp_err / amp_setpoint) > 0.001;
