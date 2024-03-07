@@ -1,21 +1,32 @@
-# Default use ALS-U frequency settings
-# set FREQ_SETTING_SIRIUS = 1 for SIRIUS settings
 # details see README.md
-FREQ_SETTING_SIRIUS = 1
+# choice from ALSU, SIRIUS, USPAS, LEMP
+FSET = LEMP
 
-ifneq ($(FREQ_SETTING_SIRIUS),1)
-# ALSU      ADV: 500 * 11 / 11 / 4 / 200 / 2 * (1<<14)    = 4693
-#           FCNT_EXP = 500 * 11 / 12 * (1<<16) / 4 / 125  = 60074
-    SYNTH_OPT += -DPH_DIFF_ADV=4693
-    CFLAGS += -DFCNT_EXP=60074
-else
-# SIRIUS    ADV: 500 * 23 / 24 / 4 / 200 / 2 * (1<<14)    = 4907
-# SIRIUS    FCNT_EXP = 500 * 23 / 24 * (1<<16) / 4 / 125  = 62805
+# ALSU
+# ADV:      114.58 / 200 / 2 * (1<<14)  = 4693
+# FCNT_EXP: 114.58 * (1<<16) / 125      = 60073
+CFG_ALSU_PH_DIFF_ADV    = 4693
+CFG_ALSU_DFCNT_EXP      = 60073
 
-# USPAS     ADV: 460 / 4 / 200 / 2 * (1<<14)              = 4710
-# USPAS     FCNT_EXP = 460 * (1<<16) / 4 / 125            = 60293
-    SYNTH_OPT += -DPH_DIFF_ADV=4710
-    CFLAGS += -DFCNT_EXP=60293
-    VFLAGS += -DFREQ_SETTING_SIRIUS
-	VFLAGS_DEP += -DFREQ_SETTING_SIRIUS
-endif
+# SIRIUS
+# ADV:      119.79 / 200 / 2 * (1<<14)  = 4907
+# FCNT_EXP: 119.79 * (1<<16) / 125      = 62805
+CFG_SIRIUS_PH_DIFF_ADV  = 4907
+CFG_SIRIUS_DFCNT_EXP    = 62805
+
+# USPAS
+# ADV:      115 / 200 / 2 * (1<<14)     = 4710
+# FCNT_EXP: 115 * (1<<16) / 125         = 60293
+CFG_USPAS_PH_DIFF_ADV  = 4710
+CFG_USPAS_DFCNT_EXP    = 60293
+
+# LEMP
+# ADV:      119 / 200 / 2 * (1<<14)     = 4874
+# FCNT_EXP: 119 / 125 * (1<<16)         = 62390
+CFG_LEMP_PH_DIFF_ADV  = 4874
+CFG_LEMP_DFCNT_EXP    = 62390
+
+SYNTH_OPT   += -DPH_DIFF_ADV=$(CFG_$(FSET)_PH_DIFF_ADV)
+CFLAGS      += -DFCNT_EXP=$(CFG_$(FSET)_DFCNT_EXP)
+VFLAGS      += -DFSETTING_$(FSET)
+VFLAGS_DEP  += -DFSETTING_$(FSET)

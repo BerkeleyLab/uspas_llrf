@@ -1,6 +1,4 @@
-//`define FREQ_SETTING_SIRIUS
-
-`ifndef FREQ_SETTING_SIRIUS
+`ifdef FSETTING_ALSU
     `define DSP_CLK_CYCLE       8.7206      // F_CLK = 500 * 11 / 12 / 4 = 114.58MHz
     `define NUM_DDS             4
     `define DEN_DDS             11
@@ -12,7 +10,9 @@
     `define RX_PHS_OFF          19'd1107    // 0.76 deg / 360 * (1<<19)
     `define DDC_AMP_GAIN        2.8424      // for monitor, measured  (see fdownconvert)
     `define DDC_PHS_GAIN        0           // radian
-`else
+    `define SHIFT_BASE          7
+    `define SHIFT_INLK          12
+`elsif FSETTING_SIRIUS
     `define DSP_CLK_CYCLE       8.3478      // F_CLK = 500 * 23/24/4 = 119.8 MHz
     `define NUM_DDS             4
     `define DEN_DDS             23
@@ -24,9 +24,37 @@
     `define RX_PHS_OFF          19'd437533  // -59.57 deg / 360 * (1<<19)
     `define DDC_AMP_GAIN        3.3396      // for monitor, measured
     `define DDC_PHS_GAIN        1.0927279   // `NUM_DDS/`DEN_DDS * 2*`M_PI radian, 1 cycle
+    `define SHIFT_BASE          7
+    `define SHIFT_INLK          12
+`elsif FSETTING_USPAS
+    `define DSP_CLK_CYCLE       8.69565     // F_CLK = 115 MHz
+    `define NUM_DDS             4
+    `define DEN_DDS             23
+    `define CIC_BASE_PERIOD     23          // multiple of 23, > 2*N_CH, >= cordic delay
+    `define P_PHASE_SHIFT       19'd0       // 4/23 * (1<<19)
+    `define N_PHASE_SHIFT       19'd433107  // (1 - 4/23) * (1<<19)
+    `define CIC_PHASE_COMP      19'd643957  // CIC phase offset: 82.17 deg
+    `define RX_AMP_GAIN         3.4426      // for feedabck, measured
+    `define RX_PHS_OFF          19'd437533  // -59.57 deg / 360 * (1<<19)
+    `define DDC_AMP_GAIN        3.3396      // for monitor, measured
+    `define DDC_PHS_GAIN        1.0927279   // `NUM_DDS/`DEN_DDS * 2*`M_PI radian, 1 cycle
+    `define SHIFT_BASE          7
+    `define SHIFT_INLK          12
+`elsif FSETTING_LEMP
+    `define DSP_CLK_CYCLE       8.40336     // F_CLK = 119.0 MHz
+    `define NUM_DDS             4
+    `define DEN_DDS             13
+    `define CIC_BASE_PERIOD     26          // multiple of 13, > 2*N_CH, >= cordic delay
+    `define P_PHASE_SHIFT       19'd40225   // measured
+    `define N_PHASE_SHIFT       19'd0
+    `define CIC_PHASE_COMP      -19'd50419  // CIC phase offset: -34.62 deg
+    `define RX_AMP_GAIN         3.62846     // for feedabck, measured
+    `define RX_PHS_OFF          19'd243736  // 167.36 deg / 360 * (1<<19) XXX
+    `define DDC_AMP_GAIN        3.51662     // for monitor, measured
+    `define DDC_PHS_GAIN        1.4499658   // 4 cycles: (4 * 4/13*360 % 360) / 180 * np.pi
+    `define SHIFT_BASE          7
+    `define SHIFT_INLK          13
 `endif
 
 `define CORDIC_GAIN     1.64676
 `define LO_AMP          74840    // must < (2^17 / `CORDIC_GAIN)
-`define SHIFT_BASE      7
-`define SHIFT_INLK      12

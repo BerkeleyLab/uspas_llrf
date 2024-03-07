@@ -29,6 +29,16 @@ Details see [SIRIUS digital LLRF](https://accelconf.web.cern.ch/ipac2019/papers/
 - dsp_clk               = LO / 4 = 115.0 MHz
 - IF / CLK              = 4 / 23
 
+## SLAC LEMP LLRF settings:
+- MO                    = 2856 MHz
+- IF = MO / 112         = 25.50 MHz
+- LO = MO / 112 * 111   = 2830.5 MHz
+- dsp_clk               = MO / 24 = 119.0 MHz
+- IF_adc / CLK_adc      = 3 / 14
+- dac_clk               = MO / 12 = 238.0 MHz
+- IF_dac                = MO / 336 * 11 = 93.5 MHz
+- IF_dac / CLK_dac      = 11 / 28
+
 # LLRF DSP
 
 see [llrf_dsp](llrf_dsp/) with numerical simulations of:

@@ -11,12 +11,8 @@ VFLAGS_DEP += -y$(DSP_DIR) -y$(CORDIC_DIR) -y.
 VFLAGS_DEP += -I$(AUTOGEN_DIR) -y$(AUTOGEN_DIR)
 VFLAGS += $(VFLAGS_DEP)
 
-ifeq ($(FREQ_SETTING_SIRIUS),1)
-VFLAGS += -DFREQ_SETTING_SIRIUS
-endif
-
 .PHONY: all clean
-all: $(TEST_BENCH) $(CHECKS) $(TOP)settings.mk
+all: $(TEST_BENCH) $(CHECKS)
 
 ##### others #####
 include build.mk

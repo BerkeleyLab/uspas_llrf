@@ -77,7 +77,7 @@ cordicg_b22 #(.nstg(20), .width(KW)) rx_cordic (
     .opin      (2'b01),
     .xin       (field_i),
     .yin       (field_q),
-    .phasein   (19'h0 + `RX_PHS_OFF),
+    .phasein   (`RX_PHS_OFF),
     .xout      (amp_measured_raw),
     .phaseout  (phs_measured_raw)
 );
