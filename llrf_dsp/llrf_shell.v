@@ -157,7 +157,16 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [11:0] ntw_phase_step_l; top-level
 // reg [11:0] ntw_modulo; top-level
 
+// Transfer local bus to dsp clk domain:
+ wire lb1_clk = dsp_clk;
+ wire [LB_DW-1:0] lb1_data;
+ wire [LB_ADW-1:0] lb1_addr;
+ wire lb1_write;
 `AUTOMATIC_decode
+ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_1x(
+     .clk_in(lb_clk), .gate_in(lb_write), .data_in({lb_addr,lb_data}),
+     .clk_out(lb1_clk), .gate_out(lb1_write), .data_out({lb1_addr,lb1_data})
+ );
 
     wire signed [DWLO-1:0] cosd, sind;
     wire [18:0] dds_phase_acc;
@@ -333,7 +342,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     ccfilt #(
        .dw         (MON_RW),
        .outw       (16),
-       .shift_base (SHIFT_INLK),     // 2*np.log2(22) + 3
+       .shift_base (SHIFT_INLK),     // 2*np.log2(CIC_BASE_PERIOD) + 3
        .dsr_len    (2*N_CH),
        .use_hb     (0)
     ) inlk_ccfilt (
@@ -360,7 +369,11 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [N_CH-1:0] inlk_lo;
     wire inlk_permit_out;
 
-    monitor_inlk #(.N_CH(N_CH)) inlk // auto
+    wire fault_valid_out;
+    wire [3:0] fault_addr_out;
+    wire [15:0] fault_amp_out;
+    wire [16:0] fault_phs_out;
+    monitor_inlk #(.N_CH(N_CH)) inlk // auto lb1
        (.clk            (dsp_clk),
        .mon_data        (inlk_data),
        .mon_valid       (inlk_dval),
@@ -369,6 +382,10 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
        .mon_phs_out     (mon_phs_out),
        .mon_valid_out   (mon_valid_out),
        .mon_addr_out    (mon_addr_out),
+       .fault_valid_out (fault_valid_out),
+       .fault_addr_out  (fault_addr_out),
+       .fault_amp_out   (fault_amp_out),
+       .fault_phs_out   (fault_phs_out),
        .cmp_status_hi   (inlk_hi),
        .cmp_status_lo   (inlk_lo),
        .inlk_status     (inlk_status),
