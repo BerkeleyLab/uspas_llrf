@@ -24,8 +24,9 @@ parameter real RX_PHS_GAIN   = 0;        // Measured, deg
 parameter real OPEN_AMP_GAIN = 2**19 / (`CORDIC_GAIN * `LO_AMP * `CORDIC_GAIN);
 parameter real OPEN_PHS_GAIN = `OPEN_PHS_GAIN;    // Measured, deg
 
+parameter integer ADC_DC_CNT = 500;     // DC part as a test of no-dc filter
 parameter integer AMP_SETP = 10000;     // full scale: 2^17
-parameter integer PHS_SETP = 20;       // deg
+parameter integer PHS_SETP = 20;        // deg
 
 localparam real ampi = AMP_SETP;        // full scale: 2^15
 localparam real phsi = PHS_SETP;        // deg
@@ -60,8 +61,6 @@ reg [11:0] modulo;
 initial begin
     init_dds_task(phase_step_h, phase_step_l, modulo);
 end
-
-integer ADC_DC_CNT = 500;// DC part as a test of no-dc filter
 
 real theta;
 reg signed [15:0] adc_data=16'hxxxx;
@@ -165,33 +164,43 @@ initial begin
 end
 
 real expect_i, expect_q;
-real amp_out, phs_out;
+real amp_meas, phs_meas;
+real amp_drive, phs_drive;
+reg pass_rx=1, pass_tx=1;
 
 always @(posedge clk) begin
     # 1;
     expect_i = ampi * $cos(phsi * `M_PI / 180);
     expect_q = ampi * $sin(phsi * `M_PI / 180);
-    amp_out = dut.amp_measured / RX_AMP_GAIN;
-    phs_out = dut.phs_measured * 360.0 / 2**18 - RX_PHS_GAIN; // deg
-    if (phs_out < -180) phs_out += 360;
-    else if (phs_out >= 180) phs_out -= 360;
+    amp_meas = dut.amp_measured / RX_AMP_GAIN;
+    phs_meas = dut.phs_measured * 360.0 / 2**18 - RX_PHS_GAIN; // deg
+    amp_drive = $hypot(dut.drive_i, dut.drive_q) / (2**19 / (`CORDIC_GAIN * `LO_AMP));
+    phs_drive = $atan2(dut.drive_q, dut.drive_i) * 180 / `M_PI;
+    if (phs_meas < -180) phs_meas += 360;
+    else if (phs_meas >= 180) phs_meas -= 360;
 
     if (check_valid) begin
-        pass &= $abs((amp_out - ampi) / ampi) < AMP_ACCURACY;
-        pass &= $abs((phs_out - phsi + 180) % 360 - 180 ) < PHS_ACCURACY;
+        pass_rx &= $abs((amp_meas - ampi) / ampi) < AMP_ACCURACY;
+        pass_rx &= $abs((phs_meas - phsi + 180) % 360 - 180 ) < PHS_ACCURACY;
+        pass_tx &= $abs((amp_drive - ampi) / ampi) < AMP_ACCURACY;
+        pass_tx &= $abs((phs_drive - phsi + 180) % 360 - 180 ) < PHS_ACCURACY;
+        pass &= pass_rx & pass_tx;
     end
     if (cc == (N_RX + SETTLE_TIME) ||
         cc == (N_LOOPBACK + SETTLE_TIME) ||
         cc == (N_CHECK) ||
         !pass) begin
         $display("cc = %4d:", cc);
-        $display("  Mathematical Expect: I: %8.1f, Q: %8.1f, Amp = %8.1f cnt, Phs = %8.2f deg",
+        $display("  TX Drive   : I: %8d, Q: %8d, Amp = %8.1f cnt, Phs = %6.2f deg, %s",
+            dut.drive_i, dut.drive_q,
+            amp_drive, phs_drive,
+            pass_tx ? "PASS" : "FAIL");
+        $display("  RX Expect  : I: %8.1f, Q: %8.1f, Amp = %8.1f cnt, Phs = %6.2f deg",
             expect_i, expect_q, ampi, phsi);
-        $display("  Measured     Result: A: %8d, P: %8d, Amp = %8.1f cnt, Phs = %8.2f deg",
-            dut.amp_measured, dut.phs_measured, amp_out, phs_out);
-        $display("  Drive:               I: %8.1f, Q: %8.1f, Amp = %8.1f cnt, Phs = %8.2f deg",
-            dut.drive_i, dut.drive_q, $hypot(dut.drive_i, dut.drive_q),
-            $atan2(dut.drive_q, dut.drive_i) * 180 / `M_PI);
+        $display("  RX Measured: A: %8d, P: %8d, Amp = %8.1f cnt, Phs = %6.2f deg, %s",
+            dut.amp_measured, dut.phs_measured,
+            amp_meas, phs_meas,
+            pass_rx ? "PASS" : "FAIL");
 
         if (!pass) $stop();
     end

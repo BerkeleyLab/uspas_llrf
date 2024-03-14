@@ -5,7 +5,7 @@
 module noniq_ddc_tb;
 parameter N = 100;                  // n-th sample from ADC
 parameter FDOWN_WAIT = 11;          // fdownconvert latency, in clock cycles
-parameter N1 = 113;                  // change input phase
+parameter N1 = 113;                 // time to change input phase
 
 parameter real AMP_ACCURACY = 0.001;// < 0.1% RMS
 parameter real PHS_ACCURACY = 0.1;  // < 0.1 deg RMS
@@ -42,13 +42,13 @@ initial begin
 end
 
 real ampi = 10000;         // full scale: 2^15
-real phsi = `M_PI / 6;     // radian
+real phsi = 30;            // deg
 real theta;
 reg signed [15:0] a_data=16'hxxxx;
 always @(posedge clk) begin
-    theta <= cc * `M_TWO_PI * `NUM_DDS / `DEN_DDS - phsi;
+    theta <= cc * `M_TWO_PI * `NUM_DDS / `DEN_DDS - phsi * `M_PI / 180;
     if (cc >= N ) a_data <= $floor(ampi * $cos(theta));
-    if (cc == N1) phsi= `M_PI / 4;
+    if (cc == N1) phsi = 45;    // deg
 end
 
 wire signed [17:0] cosd, sind;
@@ -127,23 +127,27 @@ always @(posedge clk) begin
 end
 
 real expect_i, expect_q;
-real amp_out, phs_out;
+real amp_meas, phs_meas;
 always @(posedge clk) begin
     # 1;
-    expect_i = ampi * $cos(phsi);
-    expect_q = ampi * $sin(phsi);
-    amp_out = $hypot(field_i, field_q) / `DDC_AMP_GAIN;
-    phs_out = $atan2(field_q, field_i) * 180 / `M_PI - `DDC_PHS_GAIN;
-    // phs_out = $atan2(field_q, field_i) - 10;
+    expect_i = ampi * $cos(phsi * `M_PI / 180);
+    expect_q = ampi * $sin(phsi * `M_PI / 180);
+    amp_meas = $hypot(field_i, field_q) / `DDC_AMP_GAIN;
+    phs_meas = $atan2(field_q, field_i) * 180 / `M_PI - `DDC_PHS_GAIN;
     if (cc == N + FDOWN_WAIT || cc == N1 + FDOWN_WAIT) begin
         $display("cc = %4d:", cc);
-        $display("  Mathematical Expect: I: %8.1f, Q: %8.1f, Amp = %8.1f, Phs = %8.1f deg",
-            expect_i, expect_q, ampi, phsi * 180 / `M_PI);
-        $display("  Numericcal   Expect: I: %8.1f, Q: %8.1f", expect_num_i, expect_num_q);
-        $display("  Measured     Result: I: %8d, Q: %8d, Amp = %8.1f, Phs = %8.1f deg",
-            field_i, field_q, amp_out, phs_out);
-        pass &= $abs((amp_out - ampi) / ampi) < AMP_ACCURACY;
-        pass &= $abs((phs_out - phsi * 180 / `M_PI)) < PHS_ACCURACY;
+        $display("  Mathematical Expect: I: %8.1f, Q: %8.1f, Amp = %8.1f, Phs = %6.1f deg",
+            expect_i, expect_q, ampi, phsi);
+        pass &= $abs((expect_num_i - expect_i) / expect_i) < AMP_ACCURACY;
+        pass &= $abs((expect_num_q - expect_q) / expect_q) < AMP_ACCURACY;
+        $display("  Numerical    Expect: I: %8.1f, Q: %8.1f, Amp = %8.1f, Phs = %6.1f deg, %s",
+            expect_num_i, expect_num_q,
+            $hypot(expect_num_i, expect_num_q),
+            $atan2(expect_num_q, expect_num_i) * 180 / `M_PI,  pass ? "PASS" : "FAIL");
+        pass &= $abs((amp_meas - ampi) / ampi) < AMP_ACCURACY;
+        pass &= $abs((phs_meas - phsi + 180) % 360 - 180) < PHS_ACCURACY;
+        $display("  Measured     Result: I: %8d, Q: %8d, Amp = %8.1f, Phs = %6.1f deg, %s",
+            field_i, field_q, amp_meas, phs_meas, pass ? "PASS" : "FAIL");
     end
 end
 
