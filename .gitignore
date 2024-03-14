@@ -1,6 +1,9 @@
 litex/build/
 *.pyc
 *.vcd
+*.fst
+*results.xml
+*sim_build/
 *csr.csv
 .vscode/
 litex/firmware/firmware.bin

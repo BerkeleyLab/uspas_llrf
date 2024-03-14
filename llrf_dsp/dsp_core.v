@@ -47,7 +47,7 @@ fwashout wash_filter (
 // Downconvert the IF field signal to get interleaved IQ signal
 wire i_sel;
 wire signed [KW-2:0] field_iq;
-noniq_ddc #(.ODW(KW-1)) dut(
+noniq_ddc #(.ODW(KW-1)) noniq_ddc (
     .clk    (clk),
     .cosd   (cosa),
     .sind   (sina),

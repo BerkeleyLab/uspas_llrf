@@ -133,7 +133,7 @@ always @(posedge clk) begin
     expect_i = ampi * $cos(phsi);
     expect_q = ampi * $sin(phsi);
     amp_out = $hypot(field_i, field_q) / `DDC_AMP_GAIN;
-    phs_out = $atan2(field_q, field_i) - `DDC_PHS_GAIN;
+    phs_out = $atan2(field_q, field_i) * 180 / `M_PI - `DDC_PHS_GAIN;
     // phs_out = $atan2(field_q, field_i) - 10;
     if (cc == N + FDOWN_WAIT || cc == N1 + FDOWN_WAIT) begin
         $display("cc = %4d:", cc);
@@ -141,9 +141,9 @@ always @(posedge clk) begin
             expect_i, expect_q, ampi, phsi * 180 / `M_PI);
         $display("  Numericcal   Expect: I: %8.1f, Q: %8.1f", expect_num_i, expect_num_q);
         $display("  Measured     Result: I: %8d, Q: %8d, Amp = %8.1f, Phs = %8.1f deg",
-            field_i, field_q, amp_out, phs_out * 180 / `M_PI);
+            field_i, field_q, amp_out, phs_out);
         pass &= $abs((amp_out - ampi) / ampi) < AMP_ACCURACY;
-        pass &= $abs((phs_out - phsi) * 180 / `M_PI) < PHS_ACCURACY;
+        pass &= $abs((phs_out - phsi * 180 / `M_PI)) < PHS_ACCURACY;
     end
 end
 

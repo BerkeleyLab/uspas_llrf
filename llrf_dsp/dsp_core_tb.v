@@ -17,15 +17,15 @@ localparam integer SETTLE_TIME = FDOWN_WAIT + NO_DC_WAIT + CORDIC_STAGES;
 parameter N_RX                = 100;      // RX test time
 localparam integer N_LOOPBACK = N_RX + SETTLE_TIME + 200;
 localparam integer N_FEEDBACK = N_LOOPBACK + SETTLE_TIME + 200;
-localparam integer N_CHECK = N_FEEDBACK + 3500;
+localparam integer N_CHECK    = N_FEEDBACK + 5000;
 
-parameter real RX_AMP_GAIN  = `RX_AMP_GAIN * `CORDIC_GAIN;    // Measured
-parameter real RX_PHS_GAIN  = 0;        // Measured, deg
+parameter real RX_AMP_GAIN   = `RX_AMP_GAIN * `CORDIC_GAIN;    // Measured
+parameter real RX_PHS_GAIN   = 0;        // Measured, deg
 parameter real OPEN_AMP_GAIN = 2**19 / (`CORDIC_GAIN * `LO_AMP * `CORDIC_GAIN);
-parameter real OPEN_PHS_GAIN = 0;       // Measured, deg
+parameter real OPEN_PHS_GAIN = `OPEN_PHS_GAIN;    // Measured, deg
 
 parameter integer AMP_SETP = 10000;     // full scale: 2^17
-parameter integer PHS_SETP = 0;       // deg
+parameter integer PHS_SETP = 20;       // deg
 
 localparam real ampi = AMP_SETP;        // full scale: 2^15
 localparam real phsi = PHS_SETP;        // deg
@@ -147,7 +147,7 @@ initial begin
     $display("cc = %4d, ###### OpenLoop testing... ######", cc);
     loop_back = 1;
     check_valid = 0;
-    @ (cc == N_LOOPBACK + SETTLE_TIME);
+    @ (cc == N_LOOPBACK);
     check_valid = 1;
     @ (cc == N_FEEDBACK);
     $display("cc = %4d, ###### CloseLoop testing...######", cc);
@@ -164,7 +164,6 @@ initial begin
     check_valid = 1;
 end
 
-
 real expect_i, expect_q;
 real amp_out, phs_out;
 
@@ -179,7 +178,6 @@ always @(posedge clk) begin
 
     if (check_valid) begin
         pass &= $abs((amp_out - ampi) / ampi) < AMP_ACCURACY;
-        // wrap phase error
         pass &= $abs((phs_out - phsi + 180) % 360 - 180 ) < PHS_ACCURACY;
     end
     if (cc == (N_RX + SETTLE_TIME) ||
@@ -191,9 +189,10 @@ always @(posedge clk) begin
             expect_i, expect_q, ampi, phsi);
         $display("  Measured     Result: A: %8d, P: %8d, Amp = %8.1f cnt, Phs = %8.2f deg",
             dut.amp_measured, dut.phs_measured, amp_out, phs_out);
-        // $display("  Drive: I: %8.1f, Q: %8.1f, Amp = %8.1f cnt, Phs = %8.2f deg",
-        //     dut.drive_i, dut.drive_q, $hypot(dut.drive_i, dut.drive_q),
-        //     $atan2(dut.drive_q, dut.drive_i) * 180 / `M_PI);
+        $display("  Drive:               I: %8.1f, Q: %8.1f, Amp = %8.1f cnt, Phs = %8.2f deg",
+            dut.drive_i, dut.drive_q, $hypot(dut.drive_i, dut.drive_q),
+            $atan2(dut.drive_q, dut.drive_i) * 180 / `M_PI);
+
         if (!pass) $stop();
     end
 end
