@@ -16,12 +16,12 @@ ifeq ($(SIM), verilator)
 	EXTRA_ARGS += --trace-fst --trace-structs
 endif
 
-TOPLEVEL			= dsp_core
-MODULE				= test_dsp_core
-TESTCASE			= test_noniq_ddc
+TOPLEVEL = dsp_core
+MODULE   = test_dsp_core
+TESTCASE = test_noniq_ddc
 
-VERILOG_SOURCES += 	$(APP_DSP_DIR)/settings.vams
-VERILOG_SOURCES += 	$(DSP_DIR)/dpram.v $(DSP_DIR)/fiq_interp.v \
+VERILOG_SOURCES += $(APP_DSP_DIR)/settings.vams
+VERILOG_SOURCES += $(DSP_DIR)/dpram.v $(DSP_DIR)/fiq_interp.v \
 					$(DSP_DIR)/flevel_set.v \
 					$(DSP_DIR)/fwashout.v \
 					$(DSP_DIR)/ph_acc.v \
