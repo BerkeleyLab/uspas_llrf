@@ -29,7 +29,8 @@ class LLRFModel:
     def freqz_fwashout(self, cut=4):
         """calculate frequency response of fwashout.v:
             let N = 2^cut
-            The filter has a z-plane zero at DC [1 + 0j] and 2 poles [0 + 0j], [(N-1)/N + 0j]
+            The filter has a z-plane zero at DC [1 + 0j]
+            and 2 poles [0 + 0j], [(N-1)/N + 0j]
             Evaluating gain at f_s*7/33 using python3:
             from numpy import exp, pi; cut=4; N=2**cut; p=(N-1)/N
             z=exp(2j*pi*7/33); gain=(z-1)/z/(z-p); print(abs(gain))
