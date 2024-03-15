@@ -55,7 +55,7 @@ task calc_loop_gain_task (
         open_phs_gain = 0; // deg
         amp_setpoint_open = amp_setpoint_adc * open_amp_gain;
         phs_setpoint_open = (phs_setpoint_deg + open_phs_gain) / 360 * 2**18;
-        amp_setpoint_close = amp_setpoint_adc * `RX_AMP_GAIN * `CORDIC_GAIN;
+        amp_setpoint_close = amp_setpoint_adc * `AMP_SETP_GAIN;
         phs_setpoint_close = (phs_setpoint_deg + open_phs_gain) / 360 * 2**18;
     end
 endtask

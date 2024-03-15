@@ -47,7 +47,7 @@ fwashout wash_filter (
 // Downconvert the IF field signal to get interleaved IQ signal
 wire i_sel;
 wire signed [KW-2:0] field_iq;
-noniq_ddc #(.ODW(KW-1)) dut(
+noniq_ddc #(.ODW(KW-1)) noniq_ddc (
     .clk    (clk),
     .cosd   (cosa),
     .sind   (sina),
@@ -77,16 +77,13 @@ cordicg_b22 #(.nstg(20), .width(KW)) rx_cordic (
     .opin      (2'b01),
     .xin       (field_i),
     .yin       (field_q),
-    .phasein   (`RX_PHS_OFF),
+    .phasein   (`RX_LO_PHS),
     .xout      (amp_measured_raw),
     .phaseout  (phs_measured_raw)
 );
 
 // Amp/Phs PI loop
 wire signed [KW-1:0] amp_measured = amp_measured_raw;
-// compensate measured Rx phase gain of 0.76 deg
-// wire signed [KW-1:0] phs_measured = phs_measured_raw[KW:1] + 18'd553;
-// wire signed [KW-1:0] phs_measured = phs_measured_raw[KW:1] + `RX_PHS_OFF;
 wire signed [KW-1:0] phs_measured = phs_measured_raw[KW:1];
 
 wire signed [KW-1:0] drive_amp;
@@ -119,13 +116,12 @@ wire signed [KW-1:0] drive_i;
 wire signed [KW-1:0] drive_q;
 
 // compensate measured lo shift
-wire signed [KW:0] phasein = {drive_phs, 1'b0} + `N_PHASE_SHIFT - `P_PHASE_SHIFT;
 cordicg_b22 #(.nstg(20), .width(KW)) tx_cordic (
     .clk        (clk),
     .opin       (2'b00),
     .xin        (drive_amp),
     .yin        (18'h0),
-    .phasein    (phasein),
+    .phasein    ({drive_phs, 1'b0} + `TX_LO_PHS),
     .xout       (drive_i),
     .yout       (drive_q)
 );
