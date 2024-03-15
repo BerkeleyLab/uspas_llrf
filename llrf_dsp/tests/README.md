@@ -1,7 +1,13 @@
-# COCOTB Tests	
+# RTL and Physics Co-Simulation for LLRF
 
-Placeholder for cocotb tests documentation
+## Getting started
 
-# Additional resources
-
- - [Cocotb](https://www.cocotb.org/)
+1. Install [`cocotb`](https://docs.cocotb.org/en/stable/install.html) (tested version: 1.8.1) and ['verilator`](https://verilator.org/guide/latest/install.html) (tested version: 5.018);
+2. Build and run simulation:
+   ```
+   make
+   ```
+3. Check waveform:
+   ```
+   gtkwave dump.fst dump.gtkw
+   ```

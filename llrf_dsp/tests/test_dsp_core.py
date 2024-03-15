@@ -26,5 +26,6 @@ async def test_noniq_ddc(dut):
         dut.sina.value = int(lo.imag)
         dut.cav_field.value = int(sig.real)
         sig_meas = int(dut.field_i) + 1j * int(dut.field_q)
-        dut._log.info("sig mag: %.1f cnt, phs: %.1f deg",
-                      np.abs(sig_meas), np.angle(sig_meas, deg=True))
+        dut._log.debug(
+            "sig mag: %.1f cnt, phs: %.1f deg",
+            np.abs(sig_meas), np.angle(sig_meas, deg=True))

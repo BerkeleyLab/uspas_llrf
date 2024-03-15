@@ -1,5 +1,6 @@
 include ../../dir_list.mk
 include $(TOP)settings.mk
+
 SIM ?= verilator
 
 COMPILE_ARGS += -DFSETTING_$(FSET) -I$(APP_DSP_DIR)
@@ -32,6 +33,9 @@ VERILOG_SOURCES += $(DSP_DIR)/dpram.v $(DSP_DIR)/fiq_interp.v \
 					$(APP_DSP_DIR)/pi_scalar.v
 
 include $(shell cocotb-config --makefiles)/Makefile.sim
+
+$(APP_DSP_DIR)/cordicg_b22.v: $(CORDIC_DIR)/cordicgx.py
+	python3 $< 22 $@
 
 clean::
 	rm -f results.xml
