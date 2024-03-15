@@ -20,7 +20,7 @@
     `define DDC_AMP_GAIN        3.3396      // for monitor, measured
     `define DDC_PHS_GAIN        62.60869    // `NUM_DDS/`DEN_DDS * 360, 1 cycle
     `define AMP_SETP_GAIN       5.66806     // for feedback, measured
-    `define RX_LO_PHS          -19'd177939   // -59.57 deg, frez_washout(), minus 62.6 deg (1 cycle)
+    `define RX_LO_PHS          -19'd177939   // -59.57 deg, freqz_washout(), minus 62.6 deg (1 cycle)
     `define TX_LO_PHS           19'd0
     `define SHIFT_BASE          7
     `define SHIFT_INLK          12
@@ -33,7 +33,7 @@
     `define DDC_AMP_GAIN        3.3396      // for monitor, measured
     `define DDC_PHS_GAIN        62.60869    // `NUM_DDS/`DEN_DDS * 360, 1 cycle
     `define AMP_SETP_GAIN       5.66806     // for feedback, measured
-    `define RX_LO_PHS          -19'd177939   // -59.57 deg, frez_washout(), minus 62.6 deg (1 cycle)
+    `define RX_LO_PHS          -19'd177939   // -59.57 deg, freqz_washout(), minus 62.6 deg (1 cycle)
     `define TX_LO_PHS           19'd0
     `define SHIFT_BASE          7
     `define SHIFT_INLK          12

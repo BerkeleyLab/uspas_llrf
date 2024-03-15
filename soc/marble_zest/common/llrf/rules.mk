@@ -10,7 +10,7 @@ system.o:           $(LLRF_AUTO)
 
 $(APP_DSP_DIR)/llrf_shell.json:
 	$(MAKE) -C $(dir $@) $(notdir $@)
-	
+
 $(APP_DSP_DIR)/llrf_shell_init_regs.json:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 

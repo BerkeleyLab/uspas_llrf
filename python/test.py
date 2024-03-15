@@ -1,5 +1,4 @@
 import argparse
-import numpy as np
 from matplotlib import pyplot as plt
 from llrf_app.app import LLRFApp
 from llrf_app.leep.cli import readwrite, listreg, dumpjson

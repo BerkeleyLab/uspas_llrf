@@ -1,6 +1,6 @@
 create_clock -period 8.0 -name rx_clk [get_ports RGMII_RX_CLK]
 create_clock -name sysclk -period 8.0 [get_ports GTPREFCLK_P]
-# Max sampling rate 125 MHz, 2-Lanes 16-bit serialzation t_ser = 1/(8*fs) = 1ns
+# Max sampling rate 125 MHz, 2-Lanes 16-bit serialization t_ser = 1/(8*fs) = 1ns
 create_clock -period 2.0 -name adc0_clk [get_ports ZEST_ADC_DCO_P[0]]
 create_clock -period 2.0 -name adc1_clk [get_ports ZEST_ADC_DCO_P[1]]
 

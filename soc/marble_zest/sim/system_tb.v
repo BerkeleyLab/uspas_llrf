@@ -105,7 +105,7 @@ module system_tb;
     );
 
     wire [32:0]       mem_packed_ret_0;
-    // Dummpy load. replace with zest.v
+    // Dummy load. replace with zest.v
     sfr_pack #(
         .BASE_ADDR      ( 8'h05 )
     ) fmc_i (
@@ -123,7 +123,7 @@ module system_tb;
     // ------------------------------------------------------------------------
     //  Instantiate the virtual UART which receives debug data from UART0
     // ------------------------------------------------------------------------
-    //  its purpose is to print debug characers to the console
+    //  its purpose is to print debug characters to the console
     wire [7:0] urx_tdata0;
     wire       urx_tvalid0;
     reg        urx_tready0;

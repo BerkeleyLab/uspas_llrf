@@ -13,6 +13,7 @@ header = """
 // Generated: {1}
 """
 
+
 def gen_addrmap(regmap):
     """
     Collect all addresses as keys to the addrmap dict. Values are the names.

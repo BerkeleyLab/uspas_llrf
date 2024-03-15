@@ -251,7 +251,7 @@ module timing_core #(
             .evgTxIsK  (evg_txk),
             .heartbeatInterval (evg_heartbeatInterval),
 
-            // Arbitrary event reguests
+            // Arbitrary event requests
             .distributedBus    (8'b0),
             .eventCode         (evg_evcode_x),
             .eventStrobe       (evg_evcode_stb_x),

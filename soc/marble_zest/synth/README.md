@@ -536,4 +536,3 @@ XADC    VCCINT :  1.00  V
 XADC    VCCAUX :  1.79  V
 XADC    VCCBRAM:  1.00  V
 ```
-
