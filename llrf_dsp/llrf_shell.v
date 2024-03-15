@@ -186,20 +186,20 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .opin           (2'b00),
         .xin            (18'd`LO_AMP),
         .yin            (18'd0),
-        .phasein        (dds_phase_acc  + dds_phase_shift + `N_PHASE_SHIFT),
+        .phasein        (dds_phase_acc + dds_phase_shift),
         .xout           (cosd),
         .yout           (sind)
     );
 
     // LO for waveform
     wire signed [DWLO-1:0] cosdd, sindd;
-    cordicg_b22 #(.nstg(20), .width(18)) dds_cordicg_cbuf(
+    wire [DWLO:0] dds_wf_phase = dds_phase_acc  + dds_phase_shift + `CIC_PHASE_COMP;
+    cordicg_b22 #(.nstg(20), .width(18)) dds_cordicg_wf(
         .clk            (dsp_clk),
         .opin           (2'b00),
         .xin            (18'd`LO_AMP),
         .yin            (18'd0),
-        // compensate for CIC
-        .phasein        (dds_phase_acc  + dds_phase_shift + `CIC_PHASE_COMP),
+        .phasein        (dds_wf_phase),
         .xout           (cosdd),
         .yout           (sindd)
     );

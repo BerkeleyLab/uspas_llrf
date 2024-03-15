@@ -2,12 +2,12 @@ import numpy as np
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge
-from llrf_model import MathModel
+from llrf_model import LLRFModel
 
 
 @cocotb.test()
 async def test_noniq_ddc(dut):
-    model = MathModel(conf='LEMP')
+    model = LLRFModel(conf='LEMP')
     clock = Clock(dut.clk, model.DSP_CLK_CYCLE, units="ns")
     cocotb.start_soon(clock.start())
 

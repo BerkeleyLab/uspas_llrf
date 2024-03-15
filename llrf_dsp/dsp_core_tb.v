@@ -4,29 +4,29 @@
 
 module dsp_core_tb;
 
-parameter real AMP_ACCURACY = 0.003;    // From spec, p2p, XXX should be 0.1%   RMS
-parameter real PHS_ACCURACY = 0.2;      // From spec, p2p, XXX should be 0.1deg RMS
+parameter real AMP_ACCURACY = 0.001;      // From spec, p2p %0.1
+parameter real PHS_ACCURACY = 0.1;        // From spec, p2p 0.1 deg
 
-parameter FDOWN_WAIT        = 11;       // fdownconvert latency, in clock cycles
-parameter NO_DC_WAIT        = 70;       // settling time of washout filter, in clock cycles
-parameter CORDIC_STAGES     = 20;       // cordic stages, in clock cycles
+parameter integer FDOWN_WAIT    = 11;     // fdownconvert latency, in clock cycles
+parameter integer NO_DC_WAIT    = 70;     // settling time of washout filter, in clock cycles
+parameter integer CORDIC_STAGES = 20;     // cordic stages, in clock cycles
 
-localparam integer SETTLE_TIME = FDOWN_WAIT + NO_DC_WAIT + CORDIC_STAGES;
+localparam integer SETTLE_TIME = 2*(FDOWN_WAIT + NO_DC_WAIT + CORDIC_STAGES);
 
-// three stages: RX, then open loop, then close loop
-parameter N_RX                = 100;      // RX test time
+// three stages of testing: RX; open loop; close loop
+parameter integer  N_RX       = 100;      // RX test time
 localparam integer N_LOOPBACK = N_RX + SETTLE_TIME + 200;
 localparam integer N_FEEDBACK = N_LOOPBACK + SETTLE_TIME + 200;
-localparam integer N_CHECK    = N_FEEDBACK + 5000;
+localparam integer N_CHECK    = N_FEEDBACK + 7000;
 
-parameter real RX_AMP_GAIN   = `RX_AMP_GAIN * `CORDIC_GAIN;    // Measured
-parameter real RX_PHS_GAIN   = 0;        // Measured, deg
-parameter real OPEN_AMP_GAIN = 2**19 / (`CORDIC_GAIN * `LO_AMP * `CORDIC_GAIN);
-parameter real OPEN_PHS_GAIN = `OPEN_PHS_GAIN;    // Measured, deg
+parameter real AMP_SETP_GAIN  = `AMP_SETP_GAIN;
+parameter real PHS_SETP_OFF   = 0;
+parameter real OPEN_AMP_GAIN  = 2**19 / (`CORDIC_GAIN * `LO_AMP * `CORDIC_GAIN);
+parameter real OPEN_PHS_GAIN  = 0;       // Measured, deg
 
-parameter integer ADC_DC_CNT = 500;     // DC part as a test of no-dc filter
-parameter integer AMP_SETP = 10000;     // full scale: 2^17
-parameter integer PHS_SETP = 20;        // deg
+parameter integer ADC_DC_CNT  = 500;     // DC part as a test of no-dc filter
+parameter integer AMP_SETP    = 10000;   // full scale: 2^17
+parameter integer PHS_SETP    = 20;      // deg
 
 localparam real ampi = AMP_SETP;        // full scale: 2^15
 localparam real phsi = PHS_SETP;        // deg
@@ -86,7 +86,7 @@ cordicg_b22 #(.nstg(20), .width(18)) dds_cordicg_i(
     .opin           (2'b00),
     .xin            (18'd`LO_AMP),
     .yin            (18'd0),
-    .phasein        (dds_phase_acc + `N_PHASE_SHIFT),
+    .phasein        (dds_phase_acc),
     .xout           (cosd),
     .yout           (sind)
 );
@@ -146,15 +146,15 @@ initial begin
     $display("cc = %4d, ###### OpenLoop testing... ######", cc);
     loop_back = 1;
     check_valid = 0;
-    @ (cc == N_LOOPBACK);
+    @ (cc == N_LOOPBACK + SETTLE_TIME);
     check_valid = 1;
     @ (cc == N_FEEDBACK);
     $display("cc = %4d, ###### CloseLoop testing...######", cc);
     check_valid = 0;
     @(posedge clk) amp_loop_reset = 1;
     @(posedge clk) phs_loop_reset = 1;
-    amp_setpoint = AMP_SETP * RX_AMP_GAIN;
-    phs_setpoint = (PHS_SETP + RX_PHS_GAIN) / 360 * 2**18;
+    amp_setpoint = AMP_SETP * AMP_SETP_GAIN;
+    phs_setpoint = (PHS_SETP + PHS_SETP_OFF) / 360 * 2**18;
     @(posedge clk) amp_loop_enable = 1;
     @(posedge clk) amp_loop_reset = 0;
     @(posedge clk) phs_loop_enable = 1;
@@ -167,15 +167,16 @@ real expect_i, expect_q;
 real amp_meas, phs_meas;
 real amp_drive, phs_drive;
 reg pass_rx=1, pass_tx=1;
+real tx_lo_phs = $signed(`TX_LO_PHS);
 
 always @(posedge clk) begin
     # 1;
     expect_i = ampi * $cos(phsi * `M_PI / 180);
     expect_q = ampi * $sin(phsi * `M_PI / 180);
-    amp_meas = dut.amp_measured / RX_AMP_GAIN;
-    phs_meas = dut.phs_measured * 360.0 / 2**18 - RX_PHS_GAIN; // deg
+    amp_meas = dut.amp_measured / AMP_SETP_GAIN;
+    phs_meas = dut.phs_measured * 360.0 / 2**18 - PHS_SETP_OFF; // deg
     amp_drive = $hypot(dut.drive_i, dut.drive_q) / (2**19 / (`CORDIC_GAIN * `LO_AMP));
-    phs_drive = $atan2(dut.drive_q, dut.drive_i) * 180 / `M_PI;
+    phs_drive = $atan2(dut.drive_q, dut.drive_i) * 180 / `M_PI - (tx_lo_phs / (1 << 19)) * 360;
     if (phs_meas < -180) phs_meas += 360;
     else if (phs_meas >= 180) phs_meas -= 360;
 
@@ -185,7 +186,9 @@ always @(posedge clk) begin
         pass_tx &= $abs((amp_drive - ampi) / ampi) < AMP_ACCURACY;
         pass_tx &= $abs((phs_drive - phsi + 180) % 360 - 180 ) < PHS_ACCURACY;
         pass &= pass_rx & pass_tx;
+        // if (!pass) $stop();
     end
+    // if (check_valid) begin
     if (cc == (N_RX + SETTLE_TIME) ||
         cc == (N_LOOPBACK + SETTLE_TIME) ||
         cc == (N_CHECK) ||

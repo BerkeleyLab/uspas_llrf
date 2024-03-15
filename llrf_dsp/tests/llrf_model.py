@@ -1,7 +1,8 @@
 import numpy as np
+from scipy import signal
 
 
-class MathModel:
+class LLRFModel:
     CORDIC_GAIN = 1.64676
     LO_AMP = 74840  # must < (2^17 / CORDIC_GAIN)
     n_samples = 256
@@ -23,7 +24,38 @@ class MathModel:
         """
         for k, v in self.configs[conf].items():
             setattr(self, k, v)
-        self.omega = np.pi * 2 * self.NUM_DDS / self.DEN_DDS  # non_iq angle
+        self.omega = 2 * np.pi * self.NUM_DDS / self.DEN_DDS  # non_iq angle
+
+    def freqz_fwashout(self, cut=4):
+        """calculate frequency response of fwashout.v:
+            let N = 2^cut
+            The filter has a z-plane zero at DC [1 + 0j] and 2 poles [0 + 0j], [(N-1)/N + 0j]
+            Evaluating gain at f_s*7/33 using python3:
+            from numpy import exp, pi; cut=4; N=2**cut; p=(N-1)/N
+            z=exp(2j*pi*7/33); gain=(z-1)/z/(z-p); print(abs(gain))
+            1.031390721958454
+        Args:
+            cut (int, optional): parameter of fwashout.v. Defaults to 4.
+
+        Returns:
+            frequency response at Fs=np.pi * 2 * self.NUM_DDS / self.DEN_DDS,
+            as a complex number
+        """
+        N = 2**cut
+        z = [1]
+        p = [0, (N - 1) / N]
+        k = 1
+        w, h = signal.freqz_zpk(z, p, k, worN=[self.omega])
+        return h[0]
+
+    def freqz_noniq_ddc(self):
+        """calculate non IQ down conversion (noniq_ddc.v) frequency response
+
+        Returns:
+            frequency response at Fs=np.pi * 2 * self.NUM_DDS / self.DEN_DDS,
+            as a complex number
+        """
+        return 1 / np.sin(self.omega)
 
     def gen_signal(self, amp=LO_AMP, ph_off=0):
         """Generator of a sinusoidal wave of given parameters
