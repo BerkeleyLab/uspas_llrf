@@ -1,6 +1,7 @@
 import json
 import sys
 
+
 def main(argv):
     manual = argv[1]
     auto = argv[2:]
@@ -12,6 +13,7 @@ def main(argv):
             auto_regmap = json.load(f, parse_int=int)
         regmap.update(auto_regmap)
     print(json.dumps(regmap, indent=4, sort_keys=True))
+
 
 if __name__ == "__main__":
     main(sys.argv)

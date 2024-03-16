@@ -523,7 +523,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .high_len   (pulse_high_len),   // unit: For ALSU: 8.73ns * 22 = 0.192 us
         .pulse_out  (pulse_val)
     );
-    wire drive_on2 = pulse_mode ? pulse_val : 1'b1;  // non-interruptable
+    wire drive_on2 = pulse_mode ? pulse_val : 1'b1;  // non-interruptible
     wire drive_on1 = dac_permit ? drive_on2 : 1'b0;  // TBD with interlock
     assign dac_data_a_out = drive_on1 ? dac_out : 16'h0;
     assign dac_data_b_out = drive_on2 ? dac_out : 16'h0;

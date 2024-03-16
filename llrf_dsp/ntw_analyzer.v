@@ -1,5 +1,5 @@
 // second attempt to write network analyzer code
-// It's a simple encaspualtion of
+// It's a simple encapsulation of
 `timescale 1ns / 1ps
 module ntw_analyzer #(
     parameter KW = 18  // signal width
@@ -7,7 +7,7 @@ module ntw_analyzer #(
     input clk,
     input ext_amp_enable,                     // Enable amplitude network analyzer
     input ext_phs_enable,                     // Enable phase network analyzer
-    input trig,                               // Wavefrom trigger, to synchonize
+    input trig,                               // Waveform trigger, to synchronize
 
     input signed [KW-1:0] amp_setpoint,       // Incoming amplitude setpoint
     input signed [KW-1:0] phs_setpoint,       // Incoming phase setpoint

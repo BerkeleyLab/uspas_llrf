@@ -12,7 +12,7 @@ module system_top_tb;
 
     // --------------------------------------------------------------
     // Simulate adc dco clock
-	// Max sampling rate 125MHz, 2-lanes 16-bit serialzation
+	// Max sampling rate 125MHz, 2-lanes 16-bit serialization
 	// t_ser = 1/(8*fs) = 1ns
 	// Operation fs = 114.574MHz
 	// t_ser = 1.091ns
@@ -143,7 +143,7 @@ module system_top_tb;
     // ------------------------------------------------------------------------
     //  Instantiate the virtual UART which receives debug data from UART0
     // ------------------------------------------------------------------------
-    //  its purpose is to print debug characers to the console
+    //  its purpose is to print debug characters to the console
     wire [7:0] urx_tdata0;
     wire       urx_tvalid0;
     reg        urx_tready0;
