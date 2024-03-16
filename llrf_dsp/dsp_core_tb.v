@@ -19,17 +19,15 @@ localparam integer N_LOOPBACK = N_RX + SETTLE_TIME + 200;
 localparam integer N_FEEDBACK = N_LOOPBACK + SETTLE_TIME + 200;
 localparam integer N_CHECK    = N_FEEDBACK + 7000;
 
-parameter real AMP_SETP_GAIN  = `AMP_SETP_GAIN;
-parameter real PHS_SETP_OFF   = 0;
-parameter real OPEN_AMP_GAIN  = 2**19 / (`CORDIC_GAIN * `LO_AMP * `CORDIC_GAIN);
-parameter real OPEN_PHS_GAIN  = 0;       // Measured, deg
-
 parameter integer ADC_DC_CNT  = 500;     // DC part as a test of no-dc filter
-parameter integer AMP_SETP    = 10000;   // full scale: 2^17
-parameter integer PHS_SETP    = 20;      // deg
+parameter integer AMP_SETP_ADC= 10000;   // full scale: 2^17
+parameter integer PHS_SETP_DEG= 20;      // deg
 
-localparam real ampi = AMP_SETP;        // full scale: 2^15
-localparam real phsi = PHS_SETP;        // deg
+parameter integer KW=18;
+parameter integer EW=15;
+
+real ampi = AMP_SETP_ADC;        // full scale: 2^15
+real phsi = PHS_SETP_DEG;
 
 reg clk=0, trace=0;
 integer cc=0;
@@ -58,8 +56,19 @@ reg [19:0] phase_step_h;
 reg [11:0] phase_step_l;
 reg [11:0] modulo;
 
+reg signed [17:0] amp_setpoint;
+reg signed [17:0] phs_setpoint;
+reg signed [17:0] amp_setpoint_close;
+reg signed [17:0] phs_setpoint_close;
+real open_amp_gain;
+real open_phs_gain;
 initial begin
     init_dds_task(phase_step_h, phase_step_l, modulo);
+    calc_loop_gain_task(
+        AMP_SETP_ADC, PHS_SETP_DEG,
+        open_amp_gain, open_phs_gain,
+        amp_setpoint, phs_setpoint,
+        amp_setpoint_close, phs_setpoint_close);
 end
 
 real theta;
@@ -91,10 +100,7 @@ cordicg_b22 #(.nstg(20), .width(18)) dds_cordicg_i(
     .yout           (sind)
 );
 
-parameter KW=18;
-parameter EW=15;
-reg signed [17:0] amp_setpoint = 0;
-reg signed [17:0] phs_setpoint = 0;
+
 reg signed [17:0] Kp_amp = 8000;
 reg signed [17:0] Kp_phs = 8000;
 reg signed [17:0] Ki_amp = 400;
@@ -133,8 +139,7 @@ dsp_core #(.KW(KW), .EW(EW)) dut(
 );
 
 initial begin
-    amp_setpoint = AMP_SETP * OPEN_AMP_GAIN;
-    phs_setpoint = (PHS_SETP + OPEN_PHS_GAIN) / 360 * 2**18;
+    #1;
     @ (cc == N_RX);
     $display("cc = %4d, ###### RX testing...       ######", cc);
     reset = 1;
@@ -153,8 +158,8 @@ initial begin
     check_valid = 0;
     @(posedge clk) amp_loop_reset = 1;
     @(posedge clk) phs_loop_reset = 1;
-    amp_setpoint = AMP_SETP * AMP_SETP_GAIN;
-    phs_setpoint = (PHS_SETP + PHS_SETP_OFF) / 360 * 2**18;
+    amp_setpoint = amp_setpoint_close;
+    phs_setpoint = phs_setpoint_close;
     @(posedge clk) amp_loop_enable = 1;
     @(posedge clk) amp_loop_reset = 0;
     @(posedge clk) phs_loop_enable = 1;
@@ -173,8 +178,8 @@ always @(posedge clk) begin
     # 1;
     expect_i = ampi * $cos(phsi * `M_PI / 180);
     expect_q = ampi * $sin(phsi * `M_PI / 180);
-    amp_meas = dut.amp_measured / AMP_SETP_GAIN;
-    phs_meas = dut.phs_measured * 360.0 / 2**18 - PHS_SETP_OFF; // deg
+    amp_meas = dut.amp_measured / `AMP_SETP_GAIN;
+    phs_meas = dut.phs_measured * 360.0 / 2**18; // deg
     amp_drive = $hypot(dut.drive_i, dut.drive_q) / (2**19 / (`CORDIC_GAIN * `LO_AMP));
     phs_drive = $atan2(dut.drive_q, dut.drive_i) * 180 / `M_PI - (tx_lo_phs / (1 << 19)) * 360;
     if (phs_meas < -180) phs_meas += 360;

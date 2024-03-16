@@ -20,6 +20,8 @@ include build.mk
 CLEAN += $(TEST_BENCH)
 CLEAN += xvlog.log xvlog.pb
 CLEAN_DIRS += xsim.dir
+CLEAN += tests/dump.fst tests/results.xml
+CLEAN_DIRS += tests/sim_build tests/__pycache__
 CLEAN += $(TEST_BENCH:%_tb=%.vcd)
 
 include $(BUILD_DIR)/bottom_rules.mk
