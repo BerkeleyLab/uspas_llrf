@@ -208,8 +208,7 @@ endtask
         .CIC_BASE_PERIOD(`CIC_BASE_PERIOD),
         .SHIFT_BASE     (`SHIFT_BASE),
         .CBUF_AW        (CBUF_AW),
-        .CBUF_DW        (CBUF_DW),
-        .N_ADC          (N_ADC)
+        .CBUF_DW        (CBUF_DW)
     ) dut(
         .lb_clk         (lb_clk),
         .lb_write       (lb_write),

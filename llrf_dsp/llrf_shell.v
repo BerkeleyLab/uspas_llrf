@@ -551,7 +551,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [N_CH-1:0] inlk_hi_lb;
     wire [N_CH-1:0] inlk_lo_lb;
     wire [0:0] inlk_permit_out_lb;
-    data_xdomain #(.size(4*N_CH)) inlk_stat_xdomain (
+    data_xdomain #(.size(4*N_CH+1)) inlk_stat_xdomain (
         .clk_in   (dsp_clk), .gate_in  (1'b1),
         .data_in  ({inlk_permit_out, inlk_latch, inlk_status, inlk_hi, inlk_lo}),
         .clk_out  (lb_clk), .gate_out (),
