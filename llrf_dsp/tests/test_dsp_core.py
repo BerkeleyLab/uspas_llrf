@@ -17,13 +17,13 @@ async def test_noniq_ddc(dut):
     dut.reset.value = 0
 
     amp_exp = 10000
-    phs_exp = np.pi / 6
-    for lo, sig in zip(
-            model.gen_signal(),
-            model.gen_signal(amp_exp, phs_exp)):
+    phs_exp = 30
+    for nco, sig in zip(
+            model.gen_sinusoidal(),
+            model.gen_sinusoidal(amp_exp, phs_exp)):
         await RisingEdge(dut.clk)
-        dut.cosa.value = int(lo.real)
-        dut.sina.value = int(lo.imag)
+        dut.cosa.value = int(nco.real)
+        dut.sina.value = int(nco.imag)
         dut.cav_field.value = int(sig.real)
         sig_meas = int(dut.field_i) + 1j * int(dut.field_q)
         dut._log.debug(
