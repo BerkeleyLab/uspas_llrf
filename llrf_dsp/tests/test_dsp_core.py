@@ -7,7 +7,7 @@ from llrf_model import LLRFModel
 
 @cocotb.test()
 async def test_noniq_ddc(dut):
-    model = LLRFModel(conf='LEMP')
+    model = LLRFModel(conf='LEMP', n_samples=200)
     clock = Clock(dut.clk, model.DSP_CLK_CYCLE, units="ns")
     cocotb.start_soon(clock.start())
 
@@ -17,15 +17,24 @@ async def test_noniq_ddc(dut):
     dut.reset.value = 0
 
     amp_exp = 10000
-    phs_exp = 30
-    for nco, sig in zip(
+    phs_exp = 20
+    for n, (nco, sig) in enumerate(zip(
             model.gen_sinusoidal(),
-            model.gen_sinusoidal(amp_exp, phs_exp)):
+            model.gen_sinusoidal(amp_exp, phs_exp))):
         await RisingEdge(dut.clk)
         dut.cosa.value = int(nco.real)
         dut.sina.value = int(nco.imag)
         dut.cav_field.value = int(sig.real)
-        sig_meas = int(dut.field_i) + 1j * int(dut.field_q)
-        dut._log.debug(
-            "sig mag: %.1f cnt, phs: %.1f deg",
-            np.abs(sig_meas), np.angle(sig_meas, deg=True))
+        amp_meas = dut.amp_measured.value.integer
+        amp_meas /= model.DDC_AMP_GAIN * np.abs(model.freqz_fwashout())
+        phs_meas = dut.phs_measured.value.integer / 2**18 * 360
+        phs_meas -= model.DDC_PHS_GAIN
+        sig_meas = amp_meas * np.exp(1j * np.deg2rad(phs_meas))
+        if n > 195:
+            dut._log.info(
+                "sig mag: %8.1f cnt, phs: %6.2f deg",
+                np.abs(sig_meas), np.angle(sig_meas, deg=True))
+            assert np.abs(amp_meas - amp_exp) / amp_exp < 0.01, \
+                "RX amplitude out-of-bound of 0.1%"
+            assert np.abs(phs_meas - phs_exp) < 0.1, \
+                "RX amplitude out-of-bound of 0.1 °"

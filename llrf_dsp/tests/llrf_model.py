@@ -5,7 +5,6 @@ from scipy import signal
 class LLRFModel:
     CORDIC_GAIN = 1.64676
     LO_AMP = 74840  # must < (2^17 / CORDIC_GAIN)
-    n_samples = 256
 
     configs = {
         'ALSU': {
@@ -13,6 +12,8 @@ class LLRFModel:
             'NUM_DDS':          4,
             'DEN_DDS':          11,
             'CIC_BASE_PERIOD':  22,
+            'DDC_AMP_GAIN':     2.8425,
+            'DDC_PHS_GAIN':     0,
             'AMP_SETP_GAIN':    4.8312645,
             'SHIFT_BASE':       7,
             'SHIFT_INLK':       12
@@ -22,6 +23,8 @@ class LLRFModel:
             'NUM_DDS':          4,
             'DEN_DDS':          23,
             'CIC_BASE_PERIOD':  23,
+            'DDC_AMP_GAIN':     3.3396,
+            'DDC_PHS_GAIN':     62.60869,  # 1 cycle
             'AMP_SETP_GAIN':    5.66806,
             'SHIFT_BASE':       7,
             'SHIFT_INLK':       12
@@ -31,21 +34,25 @@ class LLRFModel:
             'NUM_DDS':          3,
             'DEN_DDS':          14,
             'CIC_BASE_PERIOD':  28,
+            'DDC_AMP_GAIN':     3.66673,
+            'DDC_PHS_GAIN':     102.85714,  # 6 cycles
             'AMP_SETP_GAIN':    6.22830,
             'SHIFT_BASE':       7,
             'SHIFT_INLK':       13
         }
     }
 
-    def __init__(self, conf='LEMP') -> None:
+    def __init__(self, conf='LEMP', n_samples=256) -> None:
         """Math model that provides helper functions for simulation
 
         Args:
             conf (str): Application configuration name, in ['LEMP']
+            n_samples (int, optional): number of samples for generator func.
         """
         for k, v in self.configs[conf].items():
             setattr(self, k, v)
         self.omega = 2 * np.pi * self.NUM_DDS / self.DEN_DDS  # non_iq angle
+        self.n_samples = n_samples
 
     def freqz_fwashout(self, cut=4):
         """calculate frequency response of fwashout.v:

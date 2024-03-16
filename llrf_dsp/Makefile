@@ -10,6 +10,7 @@ vpath %.v $(DSP_DIR)
 VFLAGS_DEP += -y$(DSP_DIR) -y$(CORDIC_DIR) -y.
 VFLAGS_DEP += -I$(AUTOGEN_DIR) -y$(AUTOGEN_DIR)
 VFLAGS += $(VFLAGS_DEP)
+VFLAGS += -g2012
 
 .PHONY: all clean
 all: $(TEST_BENCH) $(CHECKS)
