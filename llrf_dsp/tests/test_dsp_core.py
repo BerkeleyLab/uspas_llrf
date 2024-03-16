@@ -37,4 +37,4 @@ async def test_noniq_ddc(dut):
             assert np.abs(amp_meas - amp_exp) / amp_exp < 0.01, \
                 "RX amplitude out-of-bound of 0.1%"
             assert np.abs(phs_meas - phs_exp) < 0.1, \
-                "RX amplitude out-of-bound of 0.1 °"
+                "RX amplitude out-of-bound of 0.1 deg"
