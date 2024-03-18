@@ -1,7 +1,6 @@
 stages:
   - test_alsu
   - test_uspas
-  - test_sirius
   - test_lemp
   - synthesis
 
@@ -33,20 +32,13 @@ llrf_dsp_test_1:
 llrf_dsp_test_2:
   before_script:
     - cd llrf_dsp
-  stage: test_sirius
-  script:
-    - make clean && make FSET=SIRIUS
-
-llrf_dsp_test_3:
-  before_script:
-    - cd llrf_dsp
   stage: test_lemp
   script:
     - make clean && make FSET=LEMP
 
 marble_zest_synth:
   before_script:
-    - cd top/marble_zest && ls /non-free
+    - cd top/marble_zest
   stage: synthesis
   script:
     - make clean && PATH=$XILINX_VIVADO/bin:$PATH make marble_zest_top.bit

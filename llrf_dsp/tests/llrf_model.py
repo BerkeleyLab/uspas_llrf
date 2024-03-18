@@ -53,6 +53,8 @@ class LLRFModel:
             setattr(self, k, v)
         self.omega = 2 * np.pi * self.NUM_DDS / self.DEN_DDS  # non_iq angle
         self.n_samples = n_samples
+        self.gain_fwashout = self.freqz_fwashout()
+        self.gain_noniq_ddc = self.freqz_noniq_ddc()
 
     def freqz_fwashout(self, cut=4):
         """calculate frequency response of fwashout.v:
@@ -111,10 +113,10 @@ class LLRFModel:
         lo_dds_gain = self.LO_AMP * self.CORDIC_GAIN / (1 << 17)
         total_bit_growth = np.log2(lo_dds_gain) + cic_bit_growth
         full_shift = np.floor(total_bit_growth - cic_snr_bit_growth)
-        self.wave_shift = max((full_shift - self.SHIFT_BASE), 0)
-        self.mon_gain = 2**(
+        wave_shift = max((full_shift - self.SHIFT_BASE), 0)
+        mon_gain = 2**(
             total_bit_growth - self.SHIFT_BASE + 2 - 2 * self.wave_shift)
-        return self.wave_shift, self.mon_gain
+        return wave_shift, mon_gain
 
     def calc_loop_gain(self, amp_setpoint_adc, phs_setpoint_deg):
         """calculate open / close loop setpoint register values
