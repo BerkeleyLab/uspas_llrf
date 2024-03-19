@@ -32,6 +32,7 @@ module dsp_core #(
 );
 
 // Washout filter,remove the DC component before down-conversion
+// gain: (z-1) / z(z-(N-1)/N), N=64
 wire signed [15:0] cav_field_filtered;
 fwashout wash_filter (
     .clk    (clk),
@@ -45,6 +46,7 @@ fwashout wash_filter (
 
 // Digital Downconverter
 // Downconvert the IF field signal to get interleaved IQ signal
+// gain: sin(2 * pi * theta) * 2
 wire i_sel;
 wire signed [KW-2:0] field_iq;
 noniq_ddc #(.ODW(KW-1)) noniq_ddc (
@@ -57,6 +59,7 @@ noniq_ddc #(.ODW(KW-1)) noniq_ddc (
 );
 
 // Interpolate downconverted field signals to get separate I&Q signals
+// gain: 2
 wire signed [KW-1:0] field_i, field_q;
 fiq_interp #(.a_dw(KW-1), .i_dw(KW), .q_dw(KW)) interp(
     .clk    (clk),
@@ -67,9 +70,7 @@ fiq_interp #(.a_dw(KW-1), .i_dw(KW), .q_dw(KW)) interp(
     .q_data (field_q)
 );
 
-// Up stream total:
-// Amp Gain = 2.9337  @ 4/11
-// Phs Gain = 130 deg @ 4/11
+// gain: 1.64676
 wire signed [KW-1:0] amp_measured_raw;
 wire signed [KW:0] phs_measured_raw;
 cordicg_b22 #(.nstg(20), .width(KW)) rx_cordic (

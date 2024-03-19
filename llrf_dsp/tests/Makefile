@@ -4,7 +4,7 @@ include $(TOP)settings.mk
 SIM ?= verilator
 
 COMPILE_ARGS += -DFSETTING_$(FSET) -I$(APP_DSP_DIR)
-PLUSARGS     += "+fconfig=$(FSET)"
+PLUSARGS     += "+f_config=$(FSET)"
 
 ifeq ($(SIM), icarus)
 	COMPILE_ARGS += -Wall -Wno-timescale

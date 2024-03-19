@@ -7,10 +7,10 @@ from llrf_model import LLRFModel
 
 @cocotb.test()
 async def test_noniq_ddc(dut):
-    fconfig = cocotb.plusargs.get('fconfig', 'LEMP')
-    n_samples = cocotb.plusargs.get('n_samples', 200)
-    dut._log.info("Simulating: %s", fconfig)
-    model = LLRFModel(conf=fconfig, n_samples=n_samples)
+    f_config = cocotb.plusargs.get('f_config', 'LEMP')
+    n_samples = 200
+    dut._log.info("Simulating: %s, n_samples: %d", f_config, n_samples)
+    model = LLRFModel(conf=f_config, n_samples=n_samples)
     clock = Clock(dut.clk, model.DSP_CLK_CYCLE, units="ns")
     cocotb.start_soon(clock.start())
 
@@ -29,7 +29,7 @@ async def test_noniq_ddc(dut):
         dut.sina.value = int(nco.imag)
         dut.cav_field.value = int(sig.real)
         amp_meas = dut.amp_measured.value.integer
-        amp_meas /= model.DDC_AMP_GAIN * np.abs(model.gain_fwashout)
+        amp_meas /= np.abs(model.gain_rx)
         phs_meas = dut.phs_measured.value.integer / 2**18 * 360
         phs_meas -= model.DDC_PHS_GAIN
         sig_meas = amp_meas * np.exp(1j * np.deg2rad(phs_meas))

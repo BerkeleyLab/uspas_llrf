@@ -12,9 +12,9 @@ class LLRFModel:
             'NUM_DDS':          4,
             'DEN_DDS':          11,
             'CIC_BASE_PERIOD':  22,
-            'DDC_AMP_GAIN':     2.8425,
+            # 'DDC_AMP_GAIN':     2.8425,
             'DDC_PHS_GAIN':     0,
-            'AMP_SETP_GAIN':    4.8312645,
+            # 'AMP_SETP_GAIN':    4.8312645,
             'SHIFT_BASE':       7,
             'SHIFT_INLK':       12
         },
@@ -23,9 +23,9 @@ class LLRFModel:
             'NUM_DDS':          4,
             'DEN_DDS':          23,
             'CIC_BASE_PERIOD':  23,
-            'DDC_AMP_GAIN':     3.3396,
+            # 'DDC_AMP_GAIN':     3.3396,
             'DDC_PHS_GAIN':     62.60869,  # 1 cycle
-            'AMP_SETP_GAIN':    5.66806,
+            # 'AMP_SETP_GAIN':    5.66806,
             'SHIFT_BASE':       7,
             'SHIFT_INLK':       12
         },
@@ -34,9 +34,9 @@ class LLRFModel:
             'NUM_DDS':          3,
             'DEN_DDS':          14,
             'CIC_BASE_PERIOD':  28,
-            'DDC_AMP_GAIN':     3.66673,
+            # 'DDC_AMP_GAIN':     3.66673,
             'DDC_PHS_GAIN':     102.85714,  # 6 cycles
-            'AMP_SETP_GAIN':    6.22830,
+            # 'AMP_SETP_GAIN':    6.22830,
             'SHIFT_BASE':       7,
             'SHIFT_INLK':       13
         }
@@ -53,8 +53,16 @@ class LLRFModel:
             setattr(self, k, v)
         self.omega = 2 * np.pi * self.NUM_DDS / self.DEN_DDS  # non_iq angle
         self.n_samples = n_samples
+
+        self.gain_dds = (self.LO_AMP * self.CORDIC_GAIN) / (1 << 18)
         self.gain_fwashout = self.freqz_fwashout()
         self.gain_noniq_ddc = self.freqz_noniq_ddc()
+        self.gain_rx = self.gain_dds * self.gain_fwashout * self.gain_noniq_ddc
+        self.gain_tx = self.gain_dds * self.CORDIC_GAIN
+        # gain to compensate open loop setpoint (after PID)
+        self.gain_open_loop = 2 / self.gain_tx
+        # signal gain for open loop setpoint (before PID)
+        self.gain_close_loop = self.gain_rx * self.CORDIC_GAIN
 
     def freqz_fwashout(self, cut=4):
         """calculate frequency response of fwashout.v:
@@ -74,13 +82,13 @@ class LLRFModel:
         return h[0]
 
     def freqz_noniq_ddc(self):
-        """calculate non IQ down conversion (noniq_ddc.v) frequency response
+        """calculate frequency response of non IQ down conversion
+         including noniq_ddc.v and fiq_interp.v
 
         Returns:
-            frequency response at Fs = np.pi * 2 * NUM_DDS / DEN_DDS,
-            as a complex number
+            frequency response as a complex number
         """
-        return 1 / np.sin(self.omega)
+        return np.sin(self.omega) * 8
 
     def calc_dds_config(self):
         """calculate DDS registers based on NUM_DDS / DEN_DDS.
@@ -125,10 +133,9 @@ class LLRFModel:
             amp_setpoint_adc (float): amplitude loop setpoint in ADC counts.
             phs_setpoint_deg (float): phase loop setpoint in degrees.
         """
-        open_loop_gain = (1 << 19) / (self.CORDIC_GAIN**2 * self.LO_AMP)
-        self.amp_setpoint_open = amp_setpoint_adc * open_loop_gain
+        self.amp_setpoint_open = amp_setpoint_adc * self.gain_open_loop
         self.phs_setpoint_open = phs_setpoint_deg / 360 * (1 << 18)
-        self.amp_setpoint_close = amp_setpoint_adc * self.AMP_SETP_GAIN
+        self.amp_setpoint_close = amp_setpoint_adc * self.gain_close_loop
         self.phs_setpoint_close = self.phs_setpoint_open
 
     def gen_sinusoidal(self, amp=LO_AMP, ph_off=0):
