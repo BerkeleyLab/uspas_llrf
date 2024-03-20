@@ -39,13 +39,13 @@ class DDS(LLRFModule):
 
         Args:
             amp (int): 18-bit integer of x_in port to CORDIC.
-                Defaults to 74840, which is 94% full range.
+                Defaults to 74840, which is 94% full range of 17-bit value.
             width (int): data width of CORDIC and the sinusoidal output ports.
             num (int): numerator of IF / Fs. Defaults to 4.
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        self.width = width
+        self.width = width - 1
         self.amp = amp
 
     @property
@@ -72,14 +72,41 @@ class DDS(LLRFModule):
 class DDC(LLRFModule):
     def __init__(self, num: int = 4,  den: int = 11) -> None:
         """Non-IQ Digital Down-Conversion.
-            Gateware: noniq_ddc.v and fiq_interp.v.
+            Gateware: noniq_ddc.v: gain=sin(2 * pi * theta) * 2,
+                and fiq_interp.v: gain=2.
 
         Args:
             num (int): numerator of IF / Fs. Defaults to 4.
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        self.gain = np.sin(self.omega) * 8
+        self.gain = np.sin(self.omega) * 4
+
+    def gen_ddc_exp(self, adc_data):
+        """Calculate expected I,Q values from 2 consecutive ADC samples using
+            non-IQ down conversion:
+        | I | = gain * | sin([n + 1] * omega) -sin(n * omega)| X |a_data[n]  |
+        | Q |          |-cos([n + 1] * omega)  cos(n * omega)|   |a_data[n+1]|
+        where gain is 1 / sin(omega).
+
+        Args:
+            adc_data (np.array): time series data samples for down conversion,
+                the first (n_samples+1) elements are used.
+
+        Returns:
+            generator: yields complex value after down conversion.
+        """
+        def calc_coefficient_mat(n=0, omega=self.omega):
+            return np.array([
+                [np.sin(omega * (n + 1)), -np.sin(omega * n)],
+                [-np.cos(omega * (n + 1)), np.cos(omega * n)]
+            ])
+        gain = 1 / np.sin(self.omega)
+        s_pre = adc_data[0]
+        for i, s in enumerate(adc_data[1:self.n_samples+1]):
+            i, q = gain * calc_coefficient_mat(i) @ np.array([s_pre, s])
+            s_pre = s
+            yield i + 1j * q
 
 
 class WashoutFilter(LLRFModule):
@@ -96,3 +123,53 @@ class WashoutFilter(LLRFModule):
         N = 2**cut
         z = np.exp(1j * self.omega)
         self.gain = (z - 1) / (z * (z - (N - 1)/N))
+
+
+class CICWaveRecorder(LLRFModule):
+    def __init__(self, num: int = 4, den: int = 11,
+                 lo_amp: int = 74840,
+                 cic_base_period: int = 22,
+                 shift_base: int = 7,
+                 wave_samp_per: int = 1) -> None:
+        """Waveform recorder with Cascaded Integrator–Comb Filter.
+            Decimation factor = cic_period * wave_samp_per.
+            Contains separate DDS LO for waveform down conversion.
+            Gateware: cic_wave_recorder.v, cic_timing.v, etc.
+
+        Args:
+            num (int): numerator of IF / Fs. Defaults to 4.
+            den (int): denominator of IF / Fs. Defaults to 11.
+            lo_amp (int): amp parameter of LO DDS.
+                Defaults to 74840, which is 94% full range.
+            cic_base_period (int): base period for cic_timing.
+              Must be multiple of den. Defaults to 22.
+            shift_base (int): scaling factor as cc_shift_base parameter.
+                number of bits to discard to avoid saturation.
+            wave_samp_per (int): wave sample period.
+        """
+        super().__init__(num, den)
+        self.shift_base = shift_base
+        self.wave_samp_per = wave_samp_per
+        self.cic_base_period = cic_base_period
+        assert self.cic_base_period % self.den == 0, \
+            "CIC base period must be multiple of DEN."
+        self.dds = DDS(amp=lo_amp, num=num, den=den)
+        self.gain = self.calc_cic_gain()
+
+    def calc_cic_gain(self):
+        """calculate CIC filter gain in waveforms
+            wave_shift register is calculated based on wave_sample_per.
+            It is the number of bits needs to be shifted to avoid saturation.
+
+        Returns:
+            mon_gain (float): total gain after CIC after shifting.
+        """
+        cic_R = self.wave_sample_per * self.cic_base_period
+        cic_bit_growth = 2 * np.log2(cic_R)
+        cic_snr_bit_growth = np.log2(cic_R) / 2
+        total_bit_growth = np.log2(self.dds.gain) + cic_bit_growth
+        full_shift = np.floor(total_bit_growth - cic_snr_bit_growth)
+        self.wave_shift = max((full_shift - self.shift_base), 0)
+        mon_gain = 2**(
+            total_bit_growth - self.shift_base + 2 - 2 * self.wave_shift)
+        return mon_gain
