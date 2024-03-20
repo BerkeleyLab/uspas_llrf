@@ -1,9 +1,10 @@
 import numpy as np
-from scipy import signal
+from llrf_dsp import LLRFModule, DDS, DDC, WashoutFilter
+
+CORDIC_GAIN = 1.646760258
 
 
-class LLRFModel:
-    CORDIC_GAIN = 1.64676
+class LLRFModel(LLRFModule):
     LO_AMP = 74840  # must < (2^17 / CORDIC_GAIN)
 
     configs = {
@@ -51,57 +52,14 @@ class LLRFModel:
         """
         for k, v in self.configs[conf].items():
             setattr(self, k, v)
-        self.omega = 2 * np.pi * self.NUM_DDS / self.DEN_DDS  # non_iq angle
+        super().__init__(self.NUM_DDS, self.DEN_DDS)
         self.n_samples = n_samples
 
-        self.gain_dds = (self.LO_AMP * self.CORDIC_GAIN) / (1 << 18)
-        self.gain_fwashout = self.freqz_fwashout()
-        self.gain_noniq_ddc = self.freqz_noniq_ddc()
-        self.gain_rx = self.gain_dds * self.gain_fwashout * self.gain_noniq_ddc
-        self.gain_tx = self.gain_dds * self.CORDIC_GAIN
-        # gain to compensate open loop setpoint (after PID)
-        self.gain_open_loop = 2 / self.gain_tx
-        # signal gain for open loop setpoint (before PID)
-        self.gain_close_loop = self.gain_rx * self.CORDIC_GAIN
-
-    def freqz_fwashout(self, cut=4):
-        """calculate frequency response of fwashout.v:
-            let N = 2^cut
-            The filter has a z-plane zero at DC [1 + 0j]
-            and 2 poles [0 + 0j], [(N-1)/N + 0j]
-        Args:
-            cut (int, optional): parameter of fwashout.v. Defaults to 4.
-
-        Returns:
-            frequency response at Fs = np.pi * 2 * NUM_DDS / DEN_DDS,
-            as a complex number
-        """
-        N = 2**cut
-        z, p, k = [1], [0, (N - 1) / N], 1
-        w, h = signal.freqz_zpk(z, p, k, worN=[self.omega])
-        return h[0]
-
-    def freqz_noniq_ddc(self):
-        """calculate frequency response of non IQ down conversion
-         including noniq_ddc.v and fiq_interp.v
-
-        Returns:
-            frequency response as a complex number
-        """
-        return np.sin(self.omega) * 8
-
-    def calc_dds_config(self):
-        """calculate DDS registers based on NUM_DDS / DEN_DDS.
-
-        Returns:
-            phase_step_h, phase_step_l, modulo registers.
-        """
-        m = 4096 / self.DEN_DDS
-        modulo = 4096 - m * self.DEN_DDS
-        r = (1 << 20) * self.NUM_DDS
-        phase_step_h = int(r / self.DEN_DDS)
-        phase_step_l = int(r / self.DEN_DDS)
-        return phase_step_h, phase_step_l, modulo
+        self.dds = DDS(amp=self.LO_AMP, num=self.NUM_DDS, den=self.DEN_DDS)
+        self.ddc = DDC(num=self.NUM_DDS, den=self.DEN_DDS)
+        self.fwashout = WashoutFilter(num=self.NUM_DDS, den=self.DEN_DDS)
+        self.gain_rx = self.dds.gain * self.fwashout.gain * self.ddc.gain
+        self.gain_tx = self.dds.gain * CORDIC_GAIN
 
     def calc_cic_gain(self, wave_sample_per=1):
         """calculate CIC filter gain in waveforms
@@ -118,7 +76,7 @@ class LLRFModel:
         cic_R = wave_sample_per * self.CIC_BASE_PERIOD
         cic_bit_growth = 2 * np.log2(cic_R)
         cic_snr_bit_growth = np.log2(cic_R) / 2
-        lo_dds_gain = self.LO_AMP * self.CORDIC_GAIN / (1 << 17)
+        lo_dds_gain = self.LO_AMP * CORDIC_GAIN / (1 << 17)
         total_bit_growth = np.log2(lo_dds_gain) + cic_bit_growth
         full_shift = np.floor(total_bit_growth - cic_snr_bit_growth)
         wave_shift = max((full_shift - self.SHIFT_BASE), 0)
@@ -126,17 +84,36 @@ class LLRFModel:
             total_bit_growth - self.SHIFT_BASE + 2 - 2 * self.wave_shift)
         return wave_shift, mon_gain
 
-    def calc_loop_gain(self, amp_setpoint_adc, phs_setpoint_deg):
-        """calculate open / close loop setpoint register values
+    def calc_open_loop_setpoint(self, amp_setpoint_adc, phs_setpoint_deg):
+        """calculate open loop setpoint register values
 
         Args:
             amp_setpoint_adc (float): amplitude loop setpoint in ADC counts.
             phs_setpoint_deg (float): phase loop setpoint in degrees.
+
+        Returns:
+            amplitude and phase loop setpoint values in ADC counts
         """
-        self.amp_setpoint_open = amp_setpoint_adc * self.gain_open_loop
-        self.phs_setpoint_open = phs_setpoint_deg / 360 * (1 << 18)
-        self.amp_setpoint_close = amp_setpoint_adc * self.gain_close_loop
-        self.phs_setpoint_close = self.phs_setpoint_open
+        # scaling to compensate open loop setpoint (after PID)
+        scale_open_loop_setp = 2 / self.gain_tx
+        amp_setpoint = amp_setpoint_adc * scale_open_loop_setp
+        phs_setpoint = phs_setpoint_deg / 360 * (1 << 18)
+        return amp_setpoint, phs_setpoint
+
+    def calc_close_loop_setpoint(self, amp_setpoint_adc, phs_setpoint_deg):
+        """calculate close loop setpoint register values
+
+        Args:
+            amp_setpoint_adc (float): amplitude loop setpoint in ADC counts.
+            phs_setpoint_deg (float): phase loop setpoint in degrees.
+        Returns:
+            amplitude and phase loop setpoint values in ADC counts
+        """
+        # signal gain for open loop setpoint (before PID)
+        gain_close_loop = self.gain_rx * CORDIC_GAIN
+        amp_setpoint = amp_setpoint_adc * gain_close_loop
+        phs_setpoint = phs_setpoint_deg / 360 * (1 << 18)
+        return amp_setpoint, phs_setpoint
 
     def gen_sinusoidal(self, amp=LO_AMP, ph_off=0):
         """Generator of a sinusoidal wave of given parameters
