@@ -2,6 +2,7 @@ stages:
   - test_alsu
   - test_uspas
   - test_lemp
+  - test_cocotb
   - synthesis
 
 variables:
@@ -15,26 +16,35 @@ variables:
 
 image: $CONTAINER_IMAGE:master
 
-llrf_dsp_test_0:
+.llrf_dsp_test_0:
   before_script:
     - cd llrf_dsp
   stage: test_alsu
   script:
     - make clean && make FSET=ALSU
 
-llrf_dsp_test_1:
+.llrf_dsp_test_1:
   before_script:
     - cd llrf_dsp
   stage: test_uspas
   script:
     - make clean && make FSET=USPAS
 
-llrf_dsp_test_2:
+.llrf_dsp_test_2:
   before_script:
     - cd llrf_dsp
   stage: test_lemp
   script:
     - make clean && make FSET=LEMP
+
+cocotb_dsp_test:
+  before_script:
+    - apt-get install verilator
+    - pip install numpy scipy cocotb pytest
+    - cd llrf_dsp/tests
+  stage: test_cocotb
+  script:
+    - make FSET=LEMP
 
 marble_zest_synth:
   before_script:

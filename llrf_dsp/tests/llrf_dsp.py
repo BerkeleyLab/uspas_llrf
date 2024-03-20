@@ -131,7 +131,7 @@ class CICWaveRecorder(LLRFModule):
                  cic_base_period: int = 22,
                  shift_base: int = 7,
                  wave_samp_per: int = 1) -> None:
-        """Waveform recorder with Cascaded Integrator–Comb Filter.
+        """Waveform recorder with Cascaded Integrator-Comb Filter.
             Decimation factor = cic_period * wave_samp_per.
             Contains separate DDS LO for waveform down conversion.
             Gateware: cic_wave_recorder.v, cic_timing.v, etc.
