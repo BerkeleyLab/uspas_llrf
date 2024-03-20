@@ -11,9 +11,9 @@ class LLRFModel(LLRFModule):
             'NUM_DDS':          4,
             'DEN_DDS':          11,
             'CIC_BASE_PERIOD':  22,
-            # 'DDC_AMP_GAIN':     2.8425,
             'DDC_PHS_GAIN':     0,
-            # 'AMP_SETP_GAIN':    4.8312645,
+            'RX_LO_PHS_DEG':    -130.065,
+            'TX_LO_PHS_DEG':    -130.909,
             'SHIFT_BASE':       7,
             'SHIFT_INLK':       12
         },
@@ -22,9 +22,9 @@ class LLRFModel(LLRFModule):
             'NUM_DDS':          4,
             'DEN_DDS':          23,
             'CIC_BASE_PERIOD':  23,
-            # 'DDC_AMP_GAIN':     3.3396,
             'DDC_PHS_GAIN':     62.60869,  # 1 cycle
-            # 'AMP_SETP_GAIN':    5.66806,
+            'RX_LO_PHS_DEG':    -59.57,
+            'TX_LO_PHS_DEG':    0,
             'SHIFT_BASE':       7,
             'SHIFT_INLK':       12
         },
@@ -33,9 +33,9 @@ class LLRFModel(LLRFModule):
             'NUM_DDS':          3,
             'DEN_DDS':          14,
             'CIC_BASE_PERIOD':  28,
-            # 'DDC_AMP_GAIN':     3.66673,
             'DDC_PHS_GAIN':     102.85714,  # 6 cycles
-            # 'AMP_SETP_GAIN':    6.22830,
+            'RX_LO_PHS_DEG':    182.32,
+            'TX_LO_PHS_DEG':    25.71,
             'SHIFT_BASE':       7,
             'SHIFT_INLK':       13
         }
@@ -53,8 +53,12 @@ class LLRFModel(LLRFModule):
         super().__init__(self.NUM_DDS, self.DEN_DDS)
         self.n_samples = n_samples
 
-        self.rx = DSPCoreRX(lo_amp=self.LO_AMP, num=self.num, den=self.den)
-        self.tx = DSPCoreTX(lo_amp=self.LO_AMP, num=self.num, den=self.den)
+        self.rx = DSPCoreRX(
+            lo_amp=self.LO_AMP, num=self.num, den=self.den,
+            phase_off_deg=self.RX_LO_PHS_DEG)
+        self.tx = DSPCoreTX(
+            lo_amp=self.LO_AMP, num=self.num, den=self.den,
+            phase_off_deg=self.TX_LO_PHS_DEG)
 
     def calc_open_loop_setpoint(self, amp_setpoint_adc, phs_setpoint_deg):
         """calculate open loop setpoint register values
