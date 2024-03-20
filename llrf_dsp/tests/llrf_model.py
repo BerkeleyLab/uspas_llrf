@@ -1,5 +1,5 @@
 import numpy as np
-from llrf_dsp import LLRFModule, DDS, DDC, WashoutFilter
+from llrf_dsp import LLRFModule, DSPCoreRX, DSPCoreTX
 
 CORDIC_GAIN = 1.646760258
 
@@ -55,12 +55,8 @@ class LLRFModel(LLRFModule):
         super().__init__(self.NUM_DDS, self.DEN_DDS)
         self.n_samples = n_samples
 
-        self.dds = DDS(amp=self.LO_AMP, num=self.num, den=self.den)
-        self.ddc = DDC(num=self.num, den=self.den)
-        self.fwashout = WashoutFilter(num=self.num, den=self.den)
-
-        self.gain_rx = self.dds.gain * self.fwashout.gain * self.ddc.gain
-        self.gain_tx = self.dds.gain * CORDIC_GAIN  # tx_cordic + flevel_set
+        self.rx = DSPCoreRX(lo_amp=self.LO_AMP, num=self.num, den=self.den)
+        self.tx = DSPCoreTX(lo_amp=self.LO_AMP, num=self.num, den=self.den)
 
     def calc_open_loop_setpoint(self, amp_setpoint_adc, phs_setpoint_deg):
         """calculate open loop setpoint register values
@@ -73,7 +69,7 @@ class LLRFModel(LLRFModule):
             amplitude and phase loop setpoint values in ADC counts
         """
         # scaling to compensate open loop setpoint (after PID)
-        scale_open_loop_setp = 2 / self.gain_tx
+        scale_open_loop_setp = 2 / self.tx.gain
         amp_setpoint = amp_setpoint_adc * scale_open_loop_setp
         phs_setpoint = phs_setpoint_deg / 360 * (1 << 18)
         return amp_setpoint, phs_setpoint
@@ -88,7 +84,7 @@ class LLRFModel(LLRFModule):
             amplitude and phase loop setpoint values in ADC counts
         """
         # signal gain for open loop setpoint (before PID)
-        gain_close_loop = self.gain_rx * CORDIC_GAIN
+        gain_close_loop = self.rx.gain * CORDIC_GAIN
         amp_setpoint = amp_setpoint_adc * gain_close_loop
         phs_setpoint = phs_setpoint_deg / 360 * (1 << 18)
         return amp_setpoint, phs_setpoint

@@ -173,3 +173,39 @@ class CICWaveRecorder(LLRFModule):
         mon_gain = 2**(
             total_bit_growth - self.shift_base + 2 - 2 * self.wave_shift)
         return mon_gain
+
+
+class DSPCoreRX(LLRFModule):
+    def __init__(self, num: int = 4, den: int = 11,
+                 lo_amp: int = 74840) -> None:
+        """Receiver DSP chain in dsp_core.v.
+            Gateware: fwashout.v, noniq_ddc.v, fiq_interp.v, rx_cordic
+
+        Args:
+            num (int): numerator of IF / Fs. Defaults to 4.
+            den (int): denominator of IF / Fs. Defaults to 11.
+            lo_amp (int): amp parameter of LO DDS.
+                Defaults to 74840, which is 94% full range.
+        """
+        super().__init__(num, den)
+        self.fwashout = WashoutFilter(num=num, den=den)
+        self.dds = DDS(amp=lo_amp, num=num, den=den)
+        self.ddc = DDC(num=num, den=den)
+        self.gain = self.dds.gain * self.fwashout.gain * self.ddc.gain
+
+
+class DSPCoreTX(LLRFModule):
+    def __init__(self, num: int = 4, den: int = 11,
+                 lo_amp: int = 74840) -> None:
+        """Transmitter DSP chain in dsp_core.v.
+            Gateware: tx_cordic, flevel_set.v
+
+        Args:
+            num (int): numerator of IF / Fs. Defaults to 4.
+            den (int): denominator of IF / Fs. Defaults to 11.
+            lo_amp (int): amp parameter of LO DDS.
+                Defaults to 74840, which is 94% full range.
+        """
+        super().__init__(num, den)
+        self.dds = DDS(amp=lo_amp, num=num, den=den)
+        self.gain = self.dds.gain * CORDIC_GAIN
