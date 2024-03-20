@@ -3,6 +3,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge
 from llrf_model import LLRFModel
+from llrf_dsp import CORDIC_GAIN
 
 
 @cocotb.test()
@@ -25,6 +26,7 @@ async def test_noniq_ddc(dut):
             model.gen_sinusoidal(),
             model.gen_sinusoidal(amp_exp, phs_exp))):
         await RisingEdge(dut.clk)
+        nco *= CORDIC_GAIN
         dut.cosa.value = int(nco.real)
         dut.sina.value = int(nco.imag)
         dut.cav_field.value = int(sig.real)

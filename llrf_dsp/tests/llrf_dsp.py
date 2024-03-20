@@ -14,6 +14,7 @@ class LLRFModule:
         self.num, self.den = num, den
         self.omega = 2 * np.pi * self.num / self.den  # non_iq angle
         self._gain = 1
+        self.submodules = []
 
     @property
     def gain(self) -> np.complex128:
@@ -125,6 +126,23 @@ class WashoutFilter(LLRFModule):
         self.gain = (z - 1) / (z * (z - (N - 1)/N))
 
 
+class Cordic(LLRFModule):
+    def __init__(self, num: int = 4, den: int = 11,
+                 phase_off_deg: float = 0) -> None:
+        """Receiver or Transceiver CORDIC.
+            Gateware: cordicg_b22.v (rx_cordic or tx_cordic).
+
+        Args:
+            num (int): numerator of IF / Fs. Defaults to 4.
+            den (int): denominator of IF / Fs. Defaults to 11.
+            phase_off_deg (float): Phase offset in degrees,
+              corresponds to RX_LO_PHS or TX_LO_PHS, 19-bit.
+        """
+        super().__init__(num, den)
+        self.gain = CORDIC_GAIN * np.exp(
+            2j * np.pi * np.deg2rad(phase_off_deg))
+
+
 class CICWaveRecorder(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
                  lo_amp: int = 74840,
@@ -177,7 +195,8 @@ class CICWaveRecorder(LLRFModule):
 
 class DSPCoreRX(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
-                 lo_amp: int = 74840) -> None:
+                 lo_amp: int = 74840,
+                 phase_off_deg: float = 0) -> None:
         """Receiver DSP chain in dsp_core.v.
             Gateware: fwashout.v, noniq_ddc.v, fiq_interp.v, rx_cordic
 
@@ -186,17 +205,23 @@ class DSPCoreRX(LLRFModule):
             den (int): denominator of IF / Fs. Defaults to 11.
             lo_amp (int): amp parameter of LO DDS.
                 Defaults to 74840, which is 94% full range.
+            phase_off_deg (float): Phase offset in degrees,
+              corresponds to RX_LO_PHS, 19-bit.
         """
         super().__init__(num, den)
-        self.fwashout = WashoutFilter(num=num, den=den)
-        self.dds = DDS(amp=lo_amp, num=num, den=den)
-        self.ddc = DDC(num=num, den=den)
-        self.gain = self.dds.gain * self.fwashout.gain * self.ddc.gain
+        self.submodules += [
+            WashoutFilter(num=num, den=den),
+            DDS(amp=lo_amp, num=num, den=den),
+            DDC(num=num, den=den),
+            Cordic(num=num, den=den, phase_off_deg=phase_off_deg)]
+        for m in self.submodules:
+            self.gain *= m.gain
 
 
 class DSPCoreTX(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
-                 lo_amp: int = 74840) -> None:
+                 lo_amp: int = 74840,
+                 phase_off_deg: float = 0) -> None:
         """Transmitter DSP chain in dsp_core.v.
             Gateware: tx_cordic, flevel_set.v
 
@@ -205,7 +230,12 @@ class DSPCoreTX(LLRFModule):
             den (int): denominator of IF / Fs. Defaults to 11.
             lo_amp (int): amp parameter of LO DDS.
                 Defaults to 74840, which is 94% full range.
+            phase_off_deg (float): Phase offset in degrees,
+              corresponds to TX_LO_PHS, 19-bit.
         """
         super().__init__(num, den)
-        self.dds = DDS(amp=lo_amp, num=num, den=den)
-        self.gain = self.dds.gain * CORDIC_GAIN
+        self.submodules += [
+            DDS(amp=lo_amp, num=num, den=den),
+            Cordic(num=num, den=den, phase_off_deg=phase_off_deg)]
+        for m in self.submodules:
+            self.gain *= m.gain

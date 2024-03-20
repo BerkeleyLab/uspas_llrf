@@ -1,8 +1,6 @@
 import numpy as np
 from llrf_dsp import LLRFModule, DSPCoreRX, DSPCoreTX
 
-CORDIC_GAIN = 1.646760258
-
 
 class LLRFModel(LLRFModule):
     LO_AMP = 74840  # must < (2^17 / CORDIC_GAIN)
@@ -84,7 +82,7 @@ class LLRFModel(LLRFModule):
             amplitude and phase loop setpoint values in ADC counts
         """
         # signal gain for open loop setpoint (before PID)
-        gain_close_loop = self.rx.gain * CORDIC_GAIN
+        gain_close_loop = self.rx.gain
         amp_setpoint = amp_setpoint_adc * gain_close_loop
         phs_setpoint = phs_setpoint_deg / 360 * (1 << 18)
         return amp_setpoint, phs_setpoint
