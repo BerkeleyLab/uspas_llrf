@@ -25,9 +25,14 @@ class LLRFModule:
         self._gain = val
 
     def __repr__(self):
-        return (f"{self.__class__.__name__}:   "
-                f"Amplitude gain={np.abs(self.gain):6.3f};   "
-                f"Phase gain={np.angle(self.gain, deg=True):6.3f} deg")
+        str = (f"< {self.__class__.__name__:12s}:   "
+               f"Amp gain={np.abs(self.gain):6.3f},   "
+               f"Phs gain={np.angle(self.gain, deg=True):8.2f} deg >\n")
+        for m in self.submodules:
+            str += (f"{m.__class__.__name__:14s}:   "
+                    f"Amp gain={np.abs(m.gain):6.3f},   "
+                    f"Phs gain={np.angle(m.gain, deg=True):8.2f} deg;\n")
+        return str
 
 
 class DDS(LLRFModule):
@@ -126,7 +131,7 @@ class WashoutFilter(LLRFModule):
         self.gain = (z - 1) / (z * (z - (N - 1)/N))
 
 
-class Cordic(LLRFModule):
+class CORDIC(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
                  phase_off_deg: float = 0) -> None:
         """Receiver or Transceiver CORDIC.
@@ -139,8 +144,7 @@ class Cordic(LLRFModule):
               corresponds to RX_LO_PHS or TX_LO_PHS, 19-bit.
         """
         super().__init__(num, den)
-        self.gain = CORDIC_GAIN * np.exp(
-            2j * np.pi * np.deg2rad(phase_off_deg))
+        self.gain = CORDIC_GAIN * np.exp(1j * np.deg2rad(phase_off_deg))
 
 
 class CICWaveRecorder(LLRFModule):
@@ -213,7 +217,7 @@ class DSPCoreRX(LLRFModule):
             WashoutFilter(num=num, den=den),
             DDS(amp=lo_amp, num=num, den=den),
             DDC(num=num, den=den),
-            Cordic(num=num, den=den, phase_off_deg=phase_off_deg)]
+            CORDIC(num=num, den=den, phase_off_deg=phase_off_deg)]
         for m in self.submodules:
             self.gain *= m.gain
 
@@ -236,6 +240,6 @@ class DSPCoreTX(LLRFModule):
         super().__init__(num, den)
         self.submodules += [
             DDS(amp=lo_amp, num=num, den=den),
-            Cordic(num=num, den=den, phase_off_deg=phase_off_deg)]
+            CORDIC(num=num, den=den, phase_off_deg=phase_off_deg)]
         for m in self.submodules:
             self.gain *= m.gain

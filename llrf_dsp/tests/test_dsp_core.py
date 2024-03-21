@@ -30,9 +30,10 @@ async def test_noniq_ddc(dut):
         dut.cosa.value = int(nco.real)
         dut.sina.value = int(nco.imag)
         dut.cav_field.value = int(sig.real)
-        amp_meas = dut.amp_measured.value.integer
+
+        amp_meas = dut.amp_measured.value.signed_integer
         amp_meas /= np.abs(model.rx.gain)
-        phs_meas = dut.phs_measured.value.integer / 2**18 * 360
+        phs_meas = dut.phs_measured.value.signed_integer / 2**18 * 360
         phs_meas -= model.DDC_PHS_GAIN  # XXX: should be np.angle(model.rx.gain, deg=True)
         sig_meas = amp_meas * np.exp(1j * np.deg2rad(phs_meas))
         if n > n_samples - 5:

@@ -59,6 +59,10 @@ class LLRFModel(LLRFModule):
         self.tx = DSPCoreTX(
             lo_amp=self.LO_AMP, num=self.num, den=self.den,
             phase_off_deg=self.TX_LO_PHS_DEG)
+        self.submodules += self.rx.submodules
+        self.submodules += self.tx.submodules
+        for m in self.submodules:
+            self.gain *= m.gain
 
     def calc_open_loop_setpoint(self, amp_setpoint_adc, phs_setpoint_deg):
         """calculate open loop setpoint register values
