@@ -11,8 +11,6 @@ class LLRFModel(LLRFModule):
             'NUM_DDS':          4,
             'DEN_DDS':          11,
             'CIC_BASE_PERIOD':  22,
-            'RX_LO_PHS_DEG':    131.753097,
-            'TX_LO_PHS_DEG':    -130.909,
             'SHIFT_BASE':       7,
             'SHIFT_INLK':       12
         },
@@ -21,8 +19,6 @@ class LLRFModel(LLRFModule):
             'NUM_DDS':          4,
             'DEN_DDS':          23,
             'CIC_BASE_PERIOD':  23,
-            'RX_LO_PHS_DEG':    65.645169,
-            'TX_LO_PHS_DEG':    0,
             'SHIFT_BASE':       7,
             'SHIFT_INLK':       12
         },
@@ -31,8 +27,6 @@ class LLRFModel(LLRFModule):
             'NUM_DDS':          3,
             'DEN_DDS':          14,
             'CIC_BASE_PERIOD':  28,
-            'RX_LO_PHS_DEG':    79.459227,
-            'TX_LO_PHS_DEG':    25.71,
             'SHIFT_BASE':       7,
             'SHIFT_INLK':       13
         }
@@ -51,11 +45,9 @@ class LLRFModel(LLRFModule):
         self.n_samples = n_samples
 
         self.rx = DSPCoreRX(
-            lo_amp=self.LO_AMP, num=self.num, den=self.den,
-            phase_off_deg=self.RX_LO_PHS_DEG)
+            lo_amp=self.LO_AMP, num=self.num, den=self.den)
         self.tx = DSPCoreTX(
-            lo_amp=self.LO_AMP, num=self.num, den=self.den,
-            phase_off_deg=self.TX_LO_PHS_DEG)
+            lo_amp=self.LO_AMP, num=self.num, den=self.den)
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
         for m in self.submodules:

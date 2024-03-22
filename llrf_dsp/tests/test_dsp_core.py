@@ -27,8 +27,8 @@ async def test_noniq_ddc(dut, f_config='USPAS'):
     await RisingEdge(dut.clk)
     dut.reset.value = 0
 
-    dut.rx_phase_offset.value = int(model.RX_LO_PHS_DEG / 360 * 2**19)
-    dut.tx_phase_offset.value = int(model.TX_LO_PHS_DEG / 360 * 2**19)
+    dut.rx_phase_offset.value = int(model.rx.phase_off_deg / 360 * 2**19)
+    dut.tx_phase_offset.value = 0  # TBD
 
     amp_exp = (1 << 15) / np.abs(model.rx.gain) * 3.9
     phs_exp = wrap_phase(np.random.random() * 360)
