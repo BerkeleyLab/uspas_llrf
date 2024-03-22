@@ -1,98 +1,99 @@
 import numpy as np
-from scipy import signal
+from llrf_dsp import LLRFModule, DSPCoreRX, DSPCoreTX
 
 
-class LLRFModel:
-    CORDIC_GAIN = 1.64676
+class LLRFModel(LLRFModule):
     LO_AMP = 74840  # must < (2^17 / CORDIC_GAIN)
-    n_samples = 256
 
     configs = {
+        'ALSU': {
+            'DSP_CLK_CYCLE':    8.7,  # ns
+            'NUM_DDS':          4,
+            'DEN_DDS':          11,
+            'CIC_BASE_PERIOD':  22,
+            'SHIFT_BASE':       7,
+            'SHIFT_INLK':       12
+        },
+        'USPAS': {
+            'DSP_CLK_CYCLE':    8.7,  # ns
+            'NUM_DDS':          4,
+            'DEN_DDS':          23,
+            'CIC_BASE_PERIOD':  23,
+            'SHIFT_BASE':       7,
+            'SHIFT_INLK':       12
+        },
         'LEMP': {
-            'DSP_CLK_CYCLE':    8.4,
+            'DSP_CLK_CYCLE':    8.4,  # ns
             'NUM_DDS':          3,
             'DEN_DDS':          14,
-            'CIC_BASE_PERIOD':  28
+            'CIC_BASE_PERIOD':  28,
+            'SHIFT_BASE':       7,
+            'SHIFT_INLK':       13
         }
     }
 
-    def __init__(self, conf='LEMP') -> None:
+    def __init__(self, conf='LEMP', n_samples=256) -> None:
         """Math model that provides helper functions for simulation
 
         Args:
-            conf (str): Applicaiton configration name, in ['LEMP']
+            conf (str): Application configuration name, in ['LEMP']
+            n_samples (int, optional): number of samples for generator func.
         """
         for k, v in self.configs[conf].items():
             setattr(self, k, v)
-        self.omega = 2 * np.pi * self.NUM_DDS / self.DEN_DDS  # non_iq angle
+        super().__init__(self.NUM_DDS, self.DEN_DDS)
+        self.n_samples = n_samples
 
-    def freqz_fwashout(self, cut=4):
-        """calculate frequency response of fwashout.v:
-            let N = 2^cut
-            The filter has a z-plane zero at DC [1 + 0j] and 2 poles [0 + 0j], [(N-1)/N + 0j]
-            Evaluating gain at f_s*7/33 using python3:
-            from numpy import exp, pi; cut=4; N=2**cut; p=(N-1)/N
-            z=exp(2j*pi*7/33); gain=(z-1)/z/(z-p); print(abs(gain))
-            1.031390721958454
+        self.rx = DSPCoreRX(
+            lo_amp=self.LO_AMP, num=self.num, den=self.den)
+        self.tx = DSPCoreTX(
+            lo_amp=self.LO_AMP, num=self.num, den=self.den)
+        self.submodules += self.rx.submodules
+        self.submodules += self.tx.submodules
+        for m in self.submodules:
+            self.gain *= m.gain
+
+    def calc_open_loop_setpoint(self, amp_setpoint_adc, phs_setpoint_deg):
+        """calculate open loop setpoint register values
+
         Args:
-            cut (int, optional): parameter of fwashout.v. Defaults to 4.
+            amp_setpoint_adc (float): amplitude loop setpoint in ADC counts.
+            phs_setpoint_deg (float): phase loop setpoint in degrees.
 
         Returns:
-            frequency response at Fs=np.pi * 2 * self.NUM_DDS / self.DEN_DDS,
-            as a complex number
+            amplitude and phase loop setpoint values in ADC counts
         """
-        N = 2**cut
-        z = [1]
-        p = [0, (N - 1) / N]
-        k = 1
-        w, h = signal.freqz_zpk(z, p, k, worN=[self.omega])
-        return h[0]
+        # scaling to compensate open loop setpoint (after PID)
+        scale_open_loop_setp = 2 / self.tx.gain
+        amp_setpoint = amp_setpoint_adc * scale_open_loop_setp
+        phs_setpoint = phs_setpoint_deg / 360 * (1 << 18)
+        return amp_setpoint, phs_setpoint
 
-    def freqz_noniq_ddc(self):
-        """calculate non IQ down conversion (noniq_ddc.v) frequency response
+    def calc_close_loop_setpoint(self, amp_setpoint_adc, phs_setpoint_deg):
+        """calculate close loop setpoint register values
 
+        Args:
+            amp_setpoint_adc (float): amplitude loop setpoint in ADC counts.
+            phs_setpoint_deg (float): phase loop setpoint in degrees.
         Returns:
-            frequency response at Fs=np.pi * 2 * self.NUM_DDS / self.DEN_DDS,
-            as a complex number
+            amplitude and phase loop setpoint values in ADC counts
         """
-        return 1 / np.sin(self.omega)
+        # signal gain for open loop setpoint (before PID)
+        gain_close_loop = self.rx.gain
+        amp_setpoint = amp_setpoint_adc * gain_close_loop
+        phs_setpoint = phs_setpoint_deg / 360 * (1 << 18)
+        return amp_setpoint, phs_setpoint
 
-    def gen_signal(self, amp=LO_AMP, ph_off=0):
+    def gen_sinusoidal(self, amp=LO_AMP, ph_off=0):
         """Generator of a sinusoidal wave of given parameters
 
         Args:
             amp (int, optional): amplitude. Defaults to LO_AMP (74840).
-            ph_off (int, optional): phase offset in Radian. Defaults to 0.
+            ph_off (int, optional): phase offset in deg. Defaults to 0.
 
         Returns:
             generator: yields from an array of complex values
         """
         t = np.arange(self.n_samples)
-        samples = amp * np.exp(1j * (self.omega * t - ph_off))
+        samples = amp * np.exp(1j * (self.omega * t - np.deg2rad(ph_off)))
         yield from samples
-
-    def gen_ddc_exp(self, adc_data):
-        """Calculate expected I,Q values from 2 consecutive ADC samples using
-            non-IQ down conversion:
-        | I | = gain * | sin([n + 1] * omega) -sin(n * omega)| X |a_data[n]  |
-        | Q |          |-cos([n + 1] * omega)  cos(n * omega)|   |a_data[n+1]|
-        where gain is 1 / sin(omega).
-
-        Args:
-            adc_data (np.array): time series data samples for down conversion,
-                the first (n_samples+1) elements are used.
-
-        Returns:
-            generator: yields complex value after down conversion.
-        """
-        def calc_coeff_mat(n=0, omega=self.omega):
-            return np.array([
-                [np.sin(omega * (n + 1)), -np.sin(omega * n)],
-                [-np.cos(omega * (n + 1)), np.cos(omega * n)]
-            ])
-        gain = 1 / np.sin(self.omega)
-        s_pre = adc_data[0]
-        for i, s in enumerate(adc_data[1:self.n_samples+1]):
-            i, q = gain * calc_coeff_mat(i) @ np.array([s_pre, s])
-            s_pre = s
-            yield i + 1j*q

@@ -10,6 +10,7 @@ vpath %.v $(DSP_DIR)
 VFLAGS_DEP += -y$(DSP_DIR) -y$(CORDIC_DIR) -y.
 VFLAGS_DEP += -I$(AUTOGEN_DIR) -y$(AUTOGEN_DIR)
 VFLAGS += $(VFLAGS_DEP)
+VFLAGS += -g2012
 
 .PHONY: all clean
 all: $(TEST_BENCH) $(CHECKS)
@@ -20,6 +21,8 @@ include build.mk
 CLEAN += $(TEST_BENCH)
 CLEAN += xvlog.log xvlog.pb
 CLEAN_DIRS += xsim.dir
+CLEAN += tests/dump.fst tests/results.xml
+CLEAN_DIRS += tests/sim_build tests/__pycache__
 CLEAN += $(TEST_BENCH:%_tb=%.vcd)
 
 include $(BUILD_DIR)/bottom_rules.mk

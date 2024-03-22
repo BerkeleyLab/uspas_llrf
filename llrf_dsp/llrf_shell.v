@@ -19,7 +19,6 @@ module llrf_shell #(
     parameter SHIFT_INLK = `SHIFT_INLK,
     parameter CBUF_DW = 24,
     parameter CBUF_AW = 16,
-    parameter N_ADC = 8,
     parameter GIT_REV_ID = 0
 ) (
     // ---------------------
@@ -63,8 +62,9 @@ localparam LB_ADW = 18;
 localparam DW = 16;
 localparam DWLO = 18;
 localparam DAVR = 3; // Guard bits to keep in output of mixer
+localparam N_ADC = 8;
 localparam N_DAC = 2;
-localparam N_CH = N_ADC + N_DAC;
+localparam N_CH = 10; // N_ADC + N_DAC
 
 wire [DW-1:0] adc_phy_dat [0:N_ADC-1];
 assign adc_phy_dat[0] = adc_data_in[DW*0 +:DW];
@@ -397,7 +397,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [2:0] arc_permit_raw;
     wire [2:0] arc_permit_latch;
     wire arc_permit_sum;
-    arc_inlk #(.N_CH(3)) arc // auto
+    arc_inlk #(.N_CH(3)) arc // auto lb1
         (.clk               (dsp_clk),
         .dev_permit_in      (arc_permit_in),
         .dev_test_out       (arc_test_out),
@@ -453,9 +453,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     reg [1:0] slow_cbuf_ready=0;
     always @(posedge lb_clk) slow_cbuf_ready <= {slow_ready, llrf_circle_ready};
 
-    // ---------------------
-    // Phase ramp set logic
-    // ---------------------
     wire signed [17:0] amp_setpoint_ntw;
     wire signed [17:0] phs_setpoint_ntw;
     wire signed [14:0] err_out_amp;
@@ -474,6 +471,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .cav_field        (cav_cel),
         .cosa             (cosd),
         .sina             (sind),
+        .rx_phase_offset  (`RX_LO_PHS),
+        .tx_phase_offset  (`TX_LO_PHS),
         .dac_out          (dac_out),
         .amp_setpoint     (amp_setpoint_i),
         .phs_setpoint     (phs_setpoint_i),
@@ -531,7 +530,15 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     assign dac_data_a_out = drive_on1 ? dac_out : 16'h0;
     assign dac_data_b_out = drive_on2 ? dac_out : 16'h0;
 
+    wire [15:0] config_rom_out;
+    config_romx config_romx(
+        .clk    (lb_clk),
+        .address(lb_addr[10:0]),
+        .data   (config_rom_out));
 
+    // ---------------------
+    // Scalar register readback
+    // ---------------------
     wire signed [14:0] err_out_amp_lb;
     wire signed [14:0] err_out_phs_lb;
     data_xdomain #(.size(30)) loop_err_xdomain (
@@ -541,11 +548,27 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .data_out ({err_out_amp_lb, err_out_phs_lb})
     );
 
-    wire [15:0] config_rom_out;
-    config_romx config_romx(
-        .clk    (lb_clk),
-        .address(lb_addr[10:0]),
-        .data   (config_rom_out));
+    wire [N_CH-1:0] inlk_status_lb;
+    wire [N_CH-1:0] inlk_latch_lb;
+    wire [N_CH-1:0] inlk_hi_lb;
+    wire [N_CH-1:0] inlk_lo_lb;
+    wire [0:0] inlk_permit_out_lb;
+    data_xdomain #(.size(4*N_CH+1)) inlk_stat_xdomain (
+        .clk_in   (dsp_clk), .gate_in  (1'b1),
+        .data_in  ({inlk_permit_out, inlk_latch, inlk_status, inlk_hi, inlk_lo}),
+        .clk_out  (lb_clk), .gate_out (),
+        .data_out ({inlk_permit_out_lb, inlk_latch_lb, inlk_status_lb, inlk_hi_lb, inlk_lo_lb})
+    );
+
+    wire [2:0] arc_permit_raw_lb;
+    wire [2:0] arc_permit_latch_lb;
+    wire [0:0] arc_permit_sum_lb;
+    data_xdomain #(.size(3+3+1)) arc_stat_xdomain (
+        .clk_in   (dsp_clk), .gate_in  (1'b1),
+        .data_in  ({arc_permit_sum, arc_permit_latch, arc_permit_raw}),
+        .clk_out  (lb_clk), .gate_out (),
+        .data_out ({arc_permit_sum_lb, arc_permit_latch_lb, arc_permit_raw_lb})
+    );
 
     // ---------------------
     // Read-only address space decoding
@@ -560,6 +583,16 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     always @(posedge lb_clk) begin
         case (lb_addr[3:0])
             4'h0: reg_bank_0 <= git_rev_id;
+            4'h1: reg_bank_0 <= inlk_hi_lb;
+            4'h2: reg_bank_0 <= inlk_lo_lb;
+            4'h3: reg_bank_0 <= inlk_status_lb;
+            4'h4: reg_bank_0 <= inlk_latch_lb;
+            4'h5: reg_bank_0 <= inlk_permit_out_lb;
+            4'h6: reg_bank_0 <= arc_permit_raw_lb;
+            4'h7: reg_bank_0 <= arc_permit_latch_lb;
+            4'h8: reg_bank_0 <= arc_permit_sum_lb;
+            4'h9: reg_bank_0 <= err_out_amp_lb;
+            4'ha: reg_bank_0 <= err_out_phs_lb;
             4'hc: reg_bank_0 <= amp_setpoint_ntw;
             4'hd: reg_bank_0 <= phs_setpoint_ntw;
             4'he: reg_bank_0 <= ntw_cos_debug;
@@ -574,16 +607,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             18'h120??: lb_rdata_r <= lb_slow_rdata;
             18'h1300?: lb_rdata_r <= mon_amp_lb;
             18'h1301?: lb_rdata_r <= mon_phs_lb;
-            18'h13020: lb_rdata_r <= err_out_amp_lb;
-            18'h13021: lb_rdata_r <= err_out_phs_lb;
-            18'h13030: lb_rdata_r <= inlk_hi;           // dsp_clk domain
-            18'h13031: lb_rdata_r <= inlk_lo;           // dsp_clk domain
-            18'h13032: lb_rdata_r <= inlk_status;       // dsp_clk domain
-            18'h13033: lb_rdata_r <= inlk_latch;        // dsp_clk domain
-            18'h13034: lb_rdata_r <= inlk_permit_out;   // dsp_clk domain
-            18'h13035: lb_rdata_r <= arc_permit_raw;    // dsp_clk domain
-            18'h13036: lb_rdata_r <= arc_permit_latch;  // dsp_clk domain
-            18'h13037: lb_rdata_r <= arc_permit_sum;    // dsp_clk domain
             18'h14???: lb_rdata_r <= adc_buf_out[0];
             18'h15???: lb_rdata_r <= adc_buf_out[1];
             18'h16???: lb_rdata_r <= adc_buf_out[2];

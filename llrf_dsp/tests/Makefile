@@ -1,8 +1,10 @@
 include ../../dir_list.mk
 include $(TOP)settings.mk
+
 SIM ?= verilator
 
 COMPILE_ARGS += -DFSETTING_$(FSET) -I$(APP_DSP_DIR)
+PLUSARGS     += "+f_config=$(FSET)"
 
 ifeq ($(SIM), icarus)
 	COMPILE_ARGS += -Wall -Wno-timescale
@@ -18,7 +20,7 @@ endif
 
 TOPLEVEL = dsp_core
 MODULE   = test_dsp_core
-TESTCASE = test_noniq_ddc
+TESTCASE = test_noniq_ddc_alsu,test_noniq_ddc_uspas,test_noniq_ddc_lemp
 
 VERILOG_SOURCES += $(APP_DSP_DIR)/settings.vams
 VERILOG_SOURCES += $(DSP_DIR)/dpram.v $(DSP_DIR)/fiq_interp.v \
@@ -32,6 +34,9 @@ VERILOG_SOURCES += $(DSP_DIR)/dpram.v $(DSP_DIR)/fiq_interp.v \
 					$(APP_DSP_DIR)/pi_scalar.v
 
 include $(shell cocotb-config --makefiles)/Makefile.sim
+
+$(APP_DSP_DIR)/cordicg_b22.v: $(CORDIC_DIR)/cordicgx.py
+	python3 $< 22 $@
 
 clean::
 	rm -f results.xml

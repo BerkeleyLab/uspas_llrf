@@ -1,0 +1,16 @@
+[timestart] 0
+[size] 1296 600
+[pos] 1013 324
+*-18.852766 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+[treeopen] .
+[sst_width] 253
+[signals_width] 152
+[sst_expanded] 1
+[sst_vpaned_height] 159
+@8022
+sina[17:0]
+cosa[17:0]
+@8420
+cav_field[15:0]
+[pattern_trace] 1
+[pattern_trace] 0
