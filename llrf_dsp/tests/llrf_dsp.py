@@ -56,11 +56,36 @@ class LLRFModule:
         Returns:
             wrapped_phase (float): wrapped phase
         """
-        if deg:
-            wrapped_phase = (phs + 180) % 360 - 180
-        else:
-            wrapped_phase = (phs + np.pi) % (2 * np.pi) - np.pi
-        return wrapped_phase
+        scale = 180 if deg else np.pi
+        return (phs + scale) % (2 * scale) - scale
+
+    def encode_phase(self, phs, deg=True, width=19):
+        """Convert phase value to register
+
+        Args:
+            phs (float): phase value in deg or radian units.
+            deg (bool, optional): unit is degree. Defaults to True.
+            width (int, optional): register data width. Defaults to 19.
+
+        Returns:
+            reg: encoded register value
+        """
+        scale = 360 if deg else (2 * np.pi)
+        return int(phs / scale * 2**width)
+
+    def decode_phase(self, reg, deg=True, width=19):
+        """Convert phase value from register
+
+        Args:
+            reg (int): phase value from register.
+            deg (bool, optional): unit is degree. Defaults to True.
+            width (int, optional): register data width. Defaults to 19.
+
+        Returns:
+            phs: phase value in deg or radian units.
+        """
+        scale = 360 if deg else (2 * np.pi)
+        return self.wrap_phase(reg / 2**width * scale)
 
 
 class DDS(LLRFModule):
