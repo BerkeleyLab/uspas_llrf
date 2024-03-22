@@ -1,5 +1,5 @@
 import numpy as np
-from llrf_dsp import LLRFModule, DSPCoreRX, DSPCoreTX
+from llrf_dsp import LLRFModule, DDS, DSPCoreRX, DSPCoreTX
 
 
 class LLRFModel(LLRFModule):
@@ -44,14 +44,11 @@ class LLRFModel(LLRFModule):
         super().__init__(self.NUM_DDS, self.DEN_DDS)
         self.n_samples = n_samples
 
-        self.rx = DSPCoreRX(
-            lo_amp=self.LO_AMP, num=self.num, den=self.den)
-        self.tx = DSPCoreTX(
-            lo_amp=self.LO_AMP, num=self.num, den=self.den)
+        dds = DDS(amp=self.LO_AMP, num=self.num, den=self.den)
+        self.rx = DSPCoreRX(num=self.num, den=self.den, dds=dds)
+        self.tx = DSPCoreTX(num=self.num, den=self.den, dds=dds)
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
-        for m in self.submodules:
-            self.gain *= m.gain
 
     def calc_open_loop_setpoint(self, amp_setpoint_adc, phs_setpoint_deg):
         """calculate open loop setpoint register values
