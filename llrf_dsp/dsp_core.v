@@ -12,6 +12,8 @@ module dsp_core #(
     //LO signals from DDS
     input signed [17:0] cosa,
     input signed [17:0] sina,
+    input [18:0] rx_phase_offset,
+    input [18:0] tx_phase_offset,
 
     //DAC upconverted signal
     output signed [15:0] dac_out,
@@ -31,8 +33,10 @@ module dsp_core #(
     output signed [EW-1:0] err_out_phs
 );
 
-// Washout filter,remove the DC component before down-conversion
-// gain: (z-1) / z(z-(N-1)/N), N=64
+// Washout filter, remove the DC component
+// gain: (z-1) / (z*(z-(N-1)/N)), N=64
+// delay: 2 cycles
+// settling: ~70 cycles
 wire signed [15:0] cav_field_filtered;
 fwashout wash_filter (
     .clk    (clk),
@@ -47,6 +51,7 @@ fwashout wash_filter (
 // Digital Downconverter
 // Downconvert the IF field signal to get interleaved IQ signal
 // gain: sin(2 * pi * theta) * 2
+// delay: 8 cycles
 wire i_sel;
 wire signed [KW-2:0] field_iq;
 noniq_ddc #(.ODW(KW-1)) noniq_ddc (
@@ -60,6 +65,7 @@ noniq_ddc #(.ODW(KW-1)) noniq_ddc (
 
 // Interpolate downconverted field signals to get separate I&Q signals
 // gain: 2
+// delay: 3 cycles
 wire signed [KW-1:0] field_i, field_q;
 fiq_interp #(.a_dw(KW-1), .i_dw(KW), .q_dw(KW)) interp(
     .clk    (clk),
@@ -71,6 +77,7 @@ fiq_interp #(.a_dw(KW-1), .i_dw(KW), .q_dw(KW)) interp(
 );
 
 // gain: 1.64676
+// delay: 20 cycles
 wire signed [KW-1:0] amp_measured_raw;
 wire signed [KW:0] phs_measured_raw;
 cordicg_b22 #(.nstg(20), .width(KW)) rx_cordic (
@@ -78,12 +85,13 @@ cordicg_b22 #(.nstg(20), .width(KW)) rx_cordic (
     .opin      (2'b01),
     .xin       (field_i),
     .yin       (field_q),
-    .phasein   (`RX_LO_PHS),
+    .phasein   (rx_phase_offset),
     .xout      (amp_measured_raw),
     .phaseout  (phs_measured_raw)
 );
 
 // Amp/Phs PI loop
+// delay: 4 cycles
 wire signed [KW-1:0] amp_measured = amp_measured_raw;
 wire signed [KW-1:0] phs_measured = phs_measured_raw[KW:1];
 
@@ -117,12 +125,13 @@ wire signed [KW-1:0] drive_i;
 wire signed [KW-1:0] drive_q;
 
 // compensate measured lo shift
+// delay: 20 cycles
 cordicg_b22 #(.nstg(20), .width(KW)) tx_cordic (
     .clk        (clk),
     .opin       (2'b00),
     .xin        (drive_amp),
     .yin        (18'h0),
-    .phasein    ({drive_phs, 1'b0} + `TX_LO_PHS),
+    .phasein    ({drive_phs, 1'b0} + tx_phase_offset),
     .xout       (drive_i),
     .yout       (drive_q)
 );
@@ -132,6 +141,7 @@ cordicg_b22 #(.nstg(20), .width(KW)) tx_cordic (
 // Digital quadrature modulation followed by analog up-conversion mixer
 // rf_out = I*cos(wt) + Q*sin(wt)
 // Gain = `LO_AMP * `CORDIC_GAIN / 2**18 / 2 = 0.235068
+// delay: 3 cycles
 flevel_set upconvert (
     .clk    (clk),
     .cosd   (cosa),

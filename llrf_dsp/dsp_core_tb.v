@@ -123,6 +123,8 @@ dsp_core #(.KW(KW), .EW(EW)) dut(
     .cav_field      (cav_field),
     .cosa           (cosd),
     .sina           (sind),
+    .rx_phase_offset(`RX_LO_PHS),
+    .tx_phase_offset(`TX_LO_PHS),
     .dac_out        (dac_out),
     .amp_setpoint   (amp_setpoint),
     .phs_setpoint   (phs_setpoint),

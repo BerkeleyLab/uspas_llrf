@@ -11,8 +11,7 @@ class LLRFModel(LLRFModule):
             'NUM_DDS':          4,
             'DEN_DDS':          11,
             'CIC_BASE_PERIOD':  22,
-            'DDC_PHS_GAIN':     0,
-            'RX_LO_PHS_DEG':    -130.065,
+            'RX_LO_PHS_DEG':    131.753097,
             'TX_LO_PHS_DEG':    -130.909,
             'SHIFT_BASE':       7,
             'SHIFT_INLK':       12
@@ -22,8 +21,7 @@ class LLRFModel(LLRFModule):
             'NUM_DDS':          4,
             'DEN_DDS':          23,
             'CIC_BASE_PERIOD':  23,
-            'DDC_PHS_GAIN':     62.60869,  # 1 cycle
-            'RX_LO_PHS_DEG':    -59.57,
+            'RX_LO_PHS_DEG':    65.645169,
             'TX_LO_PHS_DEG':    0,
             'SHIFT_BASE':       7,
             'SHIFT_INLK':       12
@@ -33,8 +31,7 @@ class LLRFModel(LLRFModule):
             'NUM_DDS':          3,
             'DEN_DDS':          14,
             'CIC_BASE_PERIOD':  28,
-            'DDC_PHS_GAIN':     102.85714,  # 6 cycles
-            'RX_LO_PHS_DEG':    182.32,
+            'RX_LO_PHS_DEG':    79.459227,
             'TX_LO_PHS_DEG':    25.71,
             'SHIFT_BASE':       7,
             'SHIFT_INLK':       13

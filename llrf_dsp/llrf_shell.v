@@ -471,6 +471,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .cav_field        (cav_cel),
         .cosa             (cosd),
         .sina             (sind),
+        .rx_phase_offset  (`RX_LO_PHS),
+        .tx_phase_offset  (`TX_LO_PHS),
         .dac_out          (dac_out),
         .amp_setpoint     (amp_setpoint_i),
         .phs_setpoint     (phs_setpoint_i),

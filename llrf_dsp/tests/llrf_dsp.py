@@ -13,6 +13,7 @@ class LLRFModule:
         """
         self.num, self.den = num, den
         self.omega = 2 * np.pi * self.num / self.den  # non_iq angle
+        self.z = np.exp(1j * self.omega)
         self._gain = 1
         self.submodules = []
 
@@ -86,7 +87,7 @@ class DDC(LLRFModule):
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        self.gain = np.sin(self.omega) * 4
+        self.gain = np.sin(self.omega) * 4 * self.z**(-self.den+2)
 
     def gen_ddc_exp(self, adc_data):
         """Calculate expected I,Q values from 2 consecutive ADC samples using
@@ -109,8 +110,8 @@ class DDC(LLRFModule):
             ])
         gain = 1 / np.sin(self.omega)
         s_pre = adc_data[0]
-        for i, s in enumerate(adc_data[1:self.n_samples+1]):
-            i, q = gain * calc_coefficient_mat(i) @ np.array([s_pre, s])
+        for n, s in enumerate(adc_data[1:self.n_samples+1]):
+            i, q = gain * calc_coefficient_mat(n) @ np.array([s_pre, s])
             s_pre = s
             yield i + 1j * q
 
@@ -127,8 +128,7 @@ class WashoutFilter(LLRFModule):
         super().__init__(num, den)
         cut = 4
         N = 2**cut
-        z = np.exp(1j * self.omega)
-        self.gain = (z - 1) / (z * (z - (N - 1)/N))
+        self.gain = (self.z - 1) / (self.z * (self.z - (N - 1)/N))
 
 
 class CORDIC(LLRFModule):
@@ -144,7 +144,7 @@ class CORDIC(LLRFModule):
               corresponds to RX_LO_PHS or TX_LO_PHS, 19-bit.
         """
         super().__init__(num, den)
-        self.gain = CORDIC_GAIN * np.exp(1j * np.deg2rad(phase_off_deg))
+        self.gain = CORDIC_GAIN * np.exp(1j * np.deg2rad(-phase_off_deg))
 
 
 class CICWaveRecorder(LLRFModule):
