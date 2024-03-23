@@ -48,7 +48,7 @@ class LLRFModel(LLRFModule):
         self.submodules += self.tx.submodules
         self.max_adc_amp = (1 << 15) / np.abs(self.rx.gain) * 3.9
 
-    def calc_open_loop_setpoint(self, amp_setpoint_adc, phs_setpoint_deg):
+    def calc_open_loop_setp(self, amp_setpoint_adc, phs_setpoint_deg):
         """calculate open loop setpoint register values
 
         Args:
@@ -59,12 +59,11 @@ class LLRFModel(LLRFModule):
             amplitude and phase loop setpoint values in ADC counts
         """
         # scaling to compensate open loop setpoint (after PID)
-        scale_open_loop_setp = 2 / self.tx.gain
-        amp_setpoint = amp_setpoint_adc * scale_open_loop_setp
+        amp_setpoint = amp_setpoint_adc / np.abs(self.tx.gain)
         phs_setpoint = phs_setpoint_deg / 360 * (1 << 18)
-        return amp_setpoint, phs_setpoint
+        return int(amp_setpoint), int(phs_setpoint)
 
-    def calc_close_loop_setpoint(self, amp_setpoint_adc, phs_setpoint_deg):
+    def calc_close_loop_setp(self, amp_setpoint_adc, phs_setpoint_deg):
         """calculate close loop setpoint register values
 
         Args:
@@ -74,10 +73,9 @@ class LLRFModel(LLRFModule):
             amplitude and phase loop setpoint values in ADC counts
         """
         # signal gain for open loop setpoint (before PID)
-        gain_close_loop = self.rx.gain
-        amp_setpoint = amp_setpoint_adc * gain_close_loop
+        amp_setpoint = amp_setpoint_adc * np.abs(self.rx.gain)
         phs_setpoint = phs_setpoint_deg / 360 * (1 << 18)
-        return amp_setpoint, phs_setpoint
+        return int(amp_setpoint), int(phs_setpoint)
 
     def gen_sinusoidal(self, amp=LO_AMP, ph_off=0, n_samples=256):
         """Generator of a sinusoidal wave of given parameters

@@ -232,6 +232,19 @@ class DSPCoreRX(LLRFModule):
         self.submodules += [self.rx_cordic]
 
 
+class DUC(LLRFModule):
+    def __init__(self, num: int = 4,  den: int = 11) -> None:
+        """Non-IQ Digital Up-Conversion.
+            Gateware: flevel_set.v.
+
+        Args:
+            num (int): numerator of IF / Fs. Defaults to 4.
+            den (int): denominator of IF / Fs. Defaults to 11.
+        """
+        super().__init__(num, den)
+        self.gain = 1/4 * self.z**(-4)
+
+
 class DSPCoreTX(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
                  dds: DDS = None) -> None:
@@ -249,4 +262,8 @@ class DSPCoreTX(LLRFModule):
 
         self.submodules += [
             dds,
-            CORDIC(num=num, den=den)]
+            DUC(num=num, den=den)]
+        self.phase_off_deg = np.angle(self.gain, deg=True)
+        self.tx_cordic = CORDIC(
+            num=num, den=den, phase_off_deg=-self.phase_off_deg)
+        self.submodules += [self.tx_cordic]
