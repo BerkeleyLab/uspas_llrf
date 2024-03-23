@@ -76,18 +76,3 @@ class LLRFModel(LLRFModule):
         amp_setpoint = amp_setpoint_adc * np.abs(self.rx.gain)
         phs_setpoint = phs_setpoint_deg / 360 * (1 << 18)
         return int(amp_setpoint), int(phs_setpoint)
-
-    def gen_sinusoidal(self, amp=LO_AMP, ph_off=0, n_samples=256):
-        """Generator of a sinusoidal wave of given parameters
-
-        Args:
-            amp (int, optional): amplitude. Defaults to LO_AMP (74840).
-            ph_off (int, optional): phase offset in deg. Defaults to 0.
-            n_samples (int, optional): number of samples for generator func.
-
-        Returns:
-            generator: yields from an array of complex values
-        """
-        t = np.arange(n_samples)
-        samples = amp * np.exp(1j * (self.omega * t - np.deg2rad(ph_off)))
-        yield from samples

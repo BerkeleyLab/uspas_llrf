@@ -4,6 +4,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, ClockCycles
 from cocotb.handle import SimHandleBase
 from llrf_model import LLRFModel
+import itertools
 import random
 import logging
 
@@ -64,7 +65,7 @@ class TestLLRF:
         width = len(signal)
         return self.wrap_phase(reg / 2**width * scale)
 
-    async def test_rx(self, n_steps=100) -> None:
+    async def test_rx(self, wait=100) -> None:
         self.dut._log.info('**********     RX testing     **********')
         self.dut._log.info(f'LLRFModel RX:\n{self.llrf.rx}')
         self.dut._log.info('*' * 40)
@@ -72,27 +73,27 @@ class TestLLRF:
         await self.reset_dut()
         amp_exp = self.llrf.max_adc_amp
         phs_exp = self.wrap_phase(random.random() * 360)
-        cocotb.start_soon(self.drive_dds(n_steps=n_steps))
-        cocotb.start_soon(self.drive_adc(amp_exp, phs_exp, n_steps=n_steps))
-        await ClockCycles(self.dut.clk, n_steps-5)  # settling time of filters
+        cocotb.start_soon(self.drive_dds())
+        cocotb.start_soon(self.drive_adc(amp_exp, phs_exp))
+        await ClockCycles(self.dut.clk, wait)  # settling time of filters
         await self.check_sig(amp_exp, phs_exp)
 
-    async def test_open_loop(self, n_steps=400) -> None:
+    async def test_open_loop(self, wait=200) -> None:
         self.dut._log.info('**********  OpenLoop testing  **********')
         self.dut._log.info(f'LLRFModel TX:\n{self.llrf.tx}')
         self.dut._log.info('*' * 40)
 
         await self.reset_dut()
-        amp_exp = 10000
+        amp_exp = self.llrf.max_adc_amp
         phs_exp = self.wrap_phase(random.random() * 360)
-        phs_exp = 0
+
         amp_setp, phs_setp = self.llrf.calc_open_loop_setp(amp_exp, phs_exp)
         self.dut.amp_setpoint.value = amp_setp
         self.dut.phs_setpoint.value = phs_setp
 
-        cocotb.start_soon(self.drive_dds(n_steps=n_steps))
-        cocotb.start_soon(self.loopback(n_steps=n_steps))
-        await ClockCycles(self.dut.clk, n_steps-5)  # settling time of filters
+        cocotb.start_soon(self.drive_dds())
+        cocotb.start_soon(self.loopback())
+        await ClockCycles(self.dut.clk, wait)  # settling time of filters
         await self.check_sig(amp_exp, phs_exp)
 
     async def reset_dut(self) -> None:
@@ -101,22 +102,22 @@ class TestLLRF:
         await RisingEdge(self.dut.clk)
         self.dut.reset.value = 0
 
-    async def drive_dds(self, n_steps=256) -> None:
-        for nco in self.llrf.gen_sinusoidal(
-                amp=self.llrf.LO_AMP, n_samples=n_steps):
-            await RisingEdge(self.dut.clk)
+    async def drive_dds(self) -> None:
+        for t in itertools.count():
+            nco = self.llrf.LO_AMP * np.exp(1j * (self.llrf.omega * t))
             nco *= self.llrf.CORDIC_GAIN
+            await RisingEdge(self.dut.clk)
             self.dut.cosa.value = int(nco.real)
             self.dut.sina.value = int(nco.imag)
 
-    async def drive_adc(self, amp, phs, n_steps=256) -> None:
-        for sig in self.llrf.gen_sinusoidal(
-                amp, phs, n_samples=n_steps):
+    async def drive_adc(self, amp, phs) -> None:
+        for t in itertools.count():
+            sig = amp * np.exp(1j * (self.llrf.omega * t - np.deg2rad(phs)))
             await RisingEdge(self.dut.clk)
             self.dut.cav_field.value = int(sig.real)
 
-    async def loopback(self, n_steps=256) -> None:
-        for _ in range(n_steps):
+    async def loopback(self) -> None:
+        while True:
             await RisingEdge(self.dut.clk)
             self.dut.cav_field.value = self.dut.dac_out.value.signed_integer
 
