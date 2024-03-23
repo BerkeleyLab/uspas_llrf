@@ -46,47 +46,6 @@ class LLRFModule:
                     f"Phs gain={np.angle(m.gain, deg=True):8.2f} deg;\n")
         return str
 
-    def wrap_phase(self, phs, deg=True):
-        """Wrap phase value to be within [-180, 180] or [-pi, pi].
-
-        Args:
-            phs (float): unwrapped phase value
-            deg (bool, optional): unit is degree. Defaults to True.
-
-        Returns:
-            wrapped_phase (float): wrapped phase
-        """
-        scale = 180 if deg else np.pi
-        return (phs + scale) % (2 * scale) - scale
-
-    def encode_phase(self, phs, deg=True, width=19):
-        """Convert phase value to register
-
-        Args:
-            phs (float): phase value in deg or radian units.
-            deg (bool, optional): unit is degree. Defaults to True.
-            width (int, optional): register data width. Defaults to 19.
-
-        Returns:
-            reg: encoded register value
-        """
-        scale = 360 if deg else (2 * np.pi)
-        return int(phs / scale * 2**width)
-
-    def decode_phase(self, reg, deg=True, width=19):
-        """Convert phase value from register
-
-        Args:
-            reg (int): phase value from register.
-            deg (bool, optional): unit is degree. Defaults to True.
-            width (int, optional): register data width. Defaults to 19.
-
-        Returns:
-            phs: phase value in deg or radian units.
-        """
-        scale = 360 if deg else (2 * np.pi)
-        return self.wrap_phase(reg / 2**width * scale)
-
 
 class DDS(LLRFModule):
     def __init__(
