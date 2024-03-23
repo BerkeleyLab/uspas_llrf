@@ -46,6 +46,7 @@ class LLRFModel(LLRFModule):
         self.tx = DSPCoreTX(num=self.num, den=self.den, dds=dds)
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
+        # absolute max signal level
         self.max_adc_amp = (1 << 15) / np.abs(self.rx.gain) * 3.9
 
     def calc_open_loop_setp(self, amp_setpoint_adc, phs_setpoint_deg):
