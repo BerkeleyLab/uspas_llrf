@@ -1,80 +1,175 @@
 import numpy as np
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import RisingEdge, ClockCycles
+from cocotb.handle import SimHandleBase
 from llrf_model import LLRFModel
-from llrf_dsp import CORDIC_GAIN
+import itertools
+import random
 import logging
 
 
-def wrap_phase(p):
-    return (p + 180) % 360 - 180
+class TestLLRF:
+    def __init__(self, dut: SimHandleBase, f_config='USPAS') -> None:
+        self.dut = dut
+        self.llrf = LLRFModel(conf=f_config)
+        dut._log.setLevel(logging.INFO)
+        self.log_banner(f'Simulating: {f_config}')
+        self.dut.rx_phase_offset.value = self.encode_phase(
+            self.llrf.rx.phase_off_deg)
+        self.dut.tx_phase_offset.value = self.encode_phase(
+            self.llrf.tx.phase_off_deg)
+        clock = Clock(self.dut.clk, self.llrf.DSP_CLK_CYCLE, units="ns")
+        cocotb.start_soon(clock.start())
 
+    def log_banner(self, str):
+        self.dut._log.info('*'*20 + f"{str:^20s}" + '*'*20)
 
-async def test_noniq_ddc(dut, f_config='USPAS'):
-    dut._log.setLevel(logging.INFO)
-    n_samples = 220
-    model = LLRFModel(conf=f_config, n_samples=n_samples)
-    dut._log.info("Simulating: %s, n_samples: %d", f_config, n_samples)
-    dut._log.info(f'LLRFModel RX: {model.rx}')
-    dut._log.info(f'LLRFModel TX: {model.tx}')
+    def wrap_phase(self, phs: float, deg=True):
+        """Wrap phase value to be within [-180, 180] or [-pi, pi].
+        """
+        scale = 180 if deg else np.pi
+        return (phs + scale) % (2 * scale) - scale
 
-    clock = Clock(dut.clk, model.DSP_CLK_CYCLE, units="ns")
-    cocotb.start_soon(clock.start())
+    def encode_phase(self, phs: float, deg=True, width=19):
+        """Convert phase value to register
+        """
+        scale = 360 if deg else (2 * np.pi)
+        return int(phs / scale * 2**width)
 
-    await RisingEdge(dut.clk)
-    dut.reset.value = 1
-    await RisingEdge(dut.clk)
-    dut.reset.value = 0
+    def decode_phase(self, signal: SimHandleBase, deg=True):
+        """Convert phase value from register
+        """
+        scale = 360 if deg else (2 * np.pi)
+        reg = signal.value.signed_integer
+        width = len(signal)
+        return self.wrap_phase(reg / 2**width * scale)
 
-    dut.rx_phase_offset.value = int(model.rx.phase_off_deg / 360 * 2**19)
-    dut.tx_phase_offset.value = 0  # TBD
+    async def init_test(self) -> None:
+        await self.reset_dut()
+        amp_exp = self.llrf.max_adc_amp
+        phs_exp = self.wrap_phase(random.random() * 360)
+        cocotb.start_soon(self.drive_dds())
+        return amp_exp, phs_exp
 
-    amp_exp = (1 << 15) / np.abs(model.rx.gain) * 3.9
-    phs_exp = wrap_phase(np.random.random() * 360)
-    dut._log.info(
-        f"expected mag: {amp_exp:8.1f} cnt, phs: {phs_exp:6.2f} deg")
+    async def test_rx(self, wait=100) -> None:
+        self.log_banner('RX Test')
+        self.dut._log.info(f'LLRFModel RX:\n{self.llrf.rx}')
 
-    for n, (nco, sig) in enumerate(zip(
-            model.gen_sinusoidal(),
-            model.gen_sinusoidal(amp_exp, phs_exp))):
-        await RisingEdge(dut.clk)
-        nco *= CORDIC_GAIN
-        dut.cosa.value = int(nco.real)
-        dut.sina.value = int(nco.imag)
-        dut.cav_field.value = int(sig.real)
+        amp_exp, phs_exp = await self.init_test()
+        cocotb.start_soon(self.drive_adc(amp_exp, phs_exp))
+        await ClockCycles(self.dut.clk, wait)  # settling time of filters
+        await self.check_sig(amp_exp, phs_exp)
 
-        i_meas = dut.field_i.value.signed_integer
-        q_meas = dut.field_q.value.signed_integer
-        iq_meas = i_meas + 1j * q_meas
-        amp_meas = dut.amp_measured.value.signed_integer
-        amp_meas /= np.abs(model.rx.gain)
-        phs_meas = dut.phs_measured.value.signed_integer / 2**18 * 360
-        if n > n_samples - 5:
-            dut._log.debug(
-                "raw IQ   mag: %8.1f cnt, phs: %6.2f deg",
-                np.abs(iq_meas), np.angle(iq_meas, deg=True))
-            dut._log.info(
-                "measured mag: %8.1f cnt, phs: %6.2f deg",
-                amp_meas, phs_meas)
+    async def test_open_loop(self, wait=300) -> None:
+        self.log_banner('Open Loop Test')
+        self.dut._log.info(f'LLRFModel TX:\n{self.llrf.tx}')
 
+        amp_exp, phs_exp = await self.init_test()
+        amp_setp, phs_setp = self.llrf.calc_open_loop_setp(amp_exp, phs_exp)
+        self.dut.amp_setpoint.value = amp_setp
+        self.dut.phs_setpoint.value = phs_setp
+        cocotb.start_soon(self.loopback())
+        await ClockCycles(self.dut.clk, wait)  # settling time
+        await self.check_sig(amp_exp, phs_exp)
+
+    async def test_close_loop(self, wait=2000) -> None:
+        self.log_banner('Close Loop Test')
+
+        amp_exp, phs_exp = await self.init_test()
+        amp_exp *= 0.95  # to allow loop headroom
+        amp_setp, phs_setp = self.llrf.calc_close_loop_setp(amp_exp, phs_exp)
+        self.dut.amp_setpoint.value = amp_setp
+        self.dut.phs_setpoint.value = phs_setp
+        await self.init_loops(amp_setp, phs_setp)
+        cocotb.start_soon(self.loopback())
+        await ClockCycles(self.dut.clk, wait)  # settling time of loops
+        await self.check_sig(amp_exp, phs_exp)
+
+    async def reset_dut(self) -> None:
+        await RisingEdge(self.dut.clk)
+        self.dut.amp_loop_enable.value = 0
+        self.dut.phs_loop_enable.value = 0
+        self.dut.reset.value = 1
+        await RisingEdge(self.dut.clk)
+        self.dut.reset.value = 0
+
+    async def init_loops(self, amp_setp, phs_setp) -> None:
+        await RisingEdge(self.dut.clk)
+        self.dut.amp_loop_reset.value = 1
+        self.dut.phs_loop_reset.value = 1
+        self.dut.Kp_amp.value = 8000
+        self.dut.Kp_phs.value = 20000
+        self.dut.Ki_amp.value = 300
+        self.dut.Ki_phs.value = 400
+        await RisingEdge(self.dut.clk)
+        self.dut.amp_loop_enable.value = 1
+        self.dut.phs_loop_enable.value = 1
+        await RisingEdge(self.dut.clk)
+        self.dut.amp_loop_reset.value = 0
+        self.dut.phs_loop_reset.value = 0
+
+    async def drive_dds(self) -> None:
+        for t in itertools.count():
+            nco = self.llrf.LO_AMP * np.exp(1j * (self.llrf.omega * t))
+            nco *= self.llrf.CORDIC_GAIN
+            await RisingEdge(self.dut.clk)
+            self.dut.cosa.value = int(nco.real)
+            self.dut.sina.value = int(nco.imag)
+
+    async def drive_adc(self, amp, phs) -> None:
+        for t in itertools.count():
+            sig = amp * np.exp(1j * (self.llrf.omega * t - np.deg2rad(phs)))
+            await RisingEdge(self.dut.clk)
+            self.dut.cav_field.value = int(sig.real)
+
+    async def loopback(self) -> None:
+        while True:
+            await RisingEdge(self.dut.clk)
+            self.dut.cav_field.value = self.dut.dac_out.value.signed_integer
+
+    async def check_sig(self, amp_exp, phs_exp) -> None:
+        self.dut._log.info(
+            f"expected mag: {amp_exp:8.2f} cnt,  phs: {phs_exp:6.3f} deg")
+        for _ in range(5):
+            await RisingEdge(self.dut.clk)
+            i_meas = self.dut.field_i.value.signed_integer
+            q_meas = self.dut.field_q.value.signed_integer
+            iq_meas = i_meas + 1j * q_meas
+            amp_meas = self.dut.amp_measured.value.signed_integer
+            amp_meas /= np.abs(self.llrf.rx.gain)
+            phs_meas = self.decode_phase(self.dut.phs_measured)
+            self.dut._log.debug(
+                f"raw IQ   mag: {np.abs(iq_meas):8.2f} cnt,  "
+                f"phs: {np.angle(iq_meas, deg=True):6.3f} deg")
+            self.dut._log.info(
+                f"measured mag: {amp_meas:8.2f} cnt,  "
+                f"phs: {phs_meas:6.3f} deg")
             assert -0.1 < (amp_meas - amp_exp) / amp_exp < 0.01, \
                 "RX amplitude out-of-bound of 0.1%"
-            assert -0.1 < wrap_phase(phs_meas - phs_exp) < 0.1, \
+            assert -0.1 < self.wrap_phase(phs_meas - phs_exp) < 0.1, \
                 "RX phase out-of-bound of 0.1 deg"
 
 
 @cocotb.test()
-async def test_noniq_ddc_alsu(dut):
-    await test_noniq_ddc(dut, f_config='ALSU')
+async def test_alsu(dut):
+    tester = TestLLRF(dut, f_config='ALSU')
+    await tester.test_rx()
+    await tester.test_open_loop()
+    await tester.test_close_loop()
 
 
 @cocotb.test()
-async def test_noniq_ddc_uspas(dut):
-    await test_noniq_ddc(dut, f_config='USPAS')
+async def test_uspas(dut):
+    tester = TestLLRF(dut, f_config='USPAS')
+    await tester.test_rx()
+    await tester.test_open_loop()
+    await tester.test_close_loop()
 
 
 @cocotb.test()
-async def test_noniq_ddc_lemp(dut):
-    await test_noniq_ddc(dut, f_config='LEMP')
-
+async def test_lemp(dut):
+    tester = TestLLRF(dut, f_config='LEMP')
+    await tester.test_rx()
+    await tester.test_open_loop()
+    await tester.test_close_loop()

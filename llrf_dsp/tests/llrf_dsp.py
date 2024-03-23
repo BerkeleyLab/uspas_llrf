@@ -1,9 +1,9 @@
 import numpy as np
 
-CORDIC_GAIN = 1.646760258
-
 
 class LLRFModule:
+    CORDIC_GAIN = 1.646760258
+
     def __init__(self, num: int = 4,  den: int = 11) -> None:
         """Base class for LLRF DSP module
 
@@ -73,7 +73,7 @@ class DDS(LLRFModule):
     @amp.setter
     def amp(self, val: int) -> None:
         self._amp = val
-        self.gain = CORDIC_GAIN * self._amp / (1 << self.width)
+        self.gain = self.CORDIC_GAIN * self._amp / (1 << self.width)
         assert self.gain < 1.0, f"NCO saturates: gain={self.gain}."
 
     def calc_dds_config(self):
@@ -137,9 +137,7 @@ class WashoutFilter(LLRFModule):
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        cut = 4
-        N = 2**cut
-        self.gain = (self.z - 1) / (self.z * (self.z - (N - 1)/N))
+        self.gain = (self.z - 1) / (self.z * (self.z - 15/16))
 
 
 class CORDIC(LLRFModule):
@@ -155,7 +153,7 @@ class CORDIC(LLRFModule):
               corresponds to RX_LO_PHS or TX_LO_PHS, 19-bit.
         """
         super().__init__(num, den)
-        self.gain = CORDIC_GAIN * np.exp(1j * np.deg2rad(phase_off_deg))
+        self.gain = self.CORDIC_GAIN * np.exp(1j * np.deg2rad(phase_off_deg))
 
 
 class CICWaveRecorder(LLRFModule):
@@ -210,22 +208,22 @@ class CICWaveRecorder(LLRFModule):
 
 class DSPCoreRX(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
-                 lo_amp: int = 74840) -> None:
+                 dds: DDS = None) -> None:
         """Receiver DSP chain in dsp_core.v.
             Gateware: fwashout.v, noniq_ddc.v, fiq_interp.v, rx_cordic
 
         Args:
             num (int): numerator of IF / Fs. Defaults to 4.
             den (int): denominator of IF / Fs. Defaults to 11.
-            lo_amp (int): amp parameter of LO DDS.
-                Defaults to 74840, which is 94% full range.
-            phase_off_deg (float): Phase offset in degrees,
-              corresponds to RX_LO_PHS, 19-bit.
+            dds (DDS): external dds shared with tx.
         """
         super().__init__(num, den)
+        if dds is None:
+            dds = DDS(amp=74840, num=num, den=den)
+
         self.submodules += [
             WashoutFilter(num=num, den=den),
-            DDS(amp=lo_amp, num=num, den=den),
+            dds,
             DDC(num=num, den=den)]
         self.phase_off_deg = np.angle(self.gain, deg=True)
         # compensate phase gain of upstream modules
@@ -234,21 +232,38 @@ class DSPCoreRX(LLRFModule):
         self.submodules += [self.rx_cordic]
 
 
+class DUC(LLRFModule):
+    def __init__(self, num: int = 4,  den: int = 11) -> None:
+        """Non-IQ Digital Up-Conversion.
+            Gateware: flevel_set.v.
+
+        Args:
+            num (int): numerator of IF / Fs. Defaults to 4.
+            den (int): denominator of IF / Fs. Defaults to 11.
+        """
+        super().__init__(num, den)
+        self.gain = 1/4 * self.z**(-4)
+
+
 class DSPCoreTX(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
-                 lo_amp: int = 74840) -> None:
+                 dds: DDS = None) -> None:
         """Transmitter DSP chain in dsp_core.v.
             Gateware: tx_cordic, flevel_set.v
 
         Args:
             num (int): numerator of IF / Fs. Defaults to 4.
             den (int): denominator of IF / Fs. Defaults to 11.
-            lo_amp (int): amp parameter of LO DDS.
-                Defaults to 74840, which is 94% full range.
-            phase_off_deg (float): Phase offset in degrees,
-              corresponds to TX_LO_PHS, 19-bit.
+            dds (DDS): external dds shared with rx.
         """
         super().__init__(num, den)
+        if dds is None:
+            dds = DDS(amp=74840, num=num, den=den)
+
         self.submodules += [
-            DDS(amp=lo_amp, num=num, den=den),
-            CORDIC(num=num, den=den)]
+            dds,
+            DUC(num=num, den=den)]
+        self.phase_off_deg = np.angle(self.gain, deg=True)
+        self.tx_cordic = CORDIC(
+            num=num, den=den, phase_off_deg=-self.phase_off_deg)
+        self.submodules += [self.tx_cordic]

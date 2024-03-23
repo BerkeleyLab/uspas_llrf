@@ -1,16 +1,49 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Sat Mar 23 18:41:38 2024
+[*]
+[dumpfile] "dump.fst"
+[dumpfile_mtime] "Sat Mar 23 18:39:38 2024"
+[dumpfile_size] 6576648
+[savefile] "dump.gtkw"
 [timestart] 0
-[size] 1296 600
-[pos] 1013 324
-*-18.852766 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+[size] 1288 520
+[pos] -1 -1
+*-24.031155 5650000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 [treeopen] .
 [sst_width] 253
-[signals_width] 152
+[signals_width] 270
 [sst_expanded] 1
-[sst_vpaned_height] 159
+[sst_vpaned_height] 127
 @8022
 sina[17:0]
 cosa[17:0]
 @8420
 cav_field[15:0]
+@420
+dsp_core.amp_measured[17:0]
+@22
+dsp_core.cav_field_filtered[15:0]
+@8420
+dsp_core.amp_measured[17:0]
+@20000
+-
+@8420
+dsp_core.phs_measured[17:0]
+@20000
+-
+@22
+dsp_core.field_iq[16:0]
+@8420
+dsp_core.field_i[17:0]
+@20000
+-
+@8420
+dsp_core.field_q[17:0]
+@20000
+-
+@28
+amp_loop_enable
+amp_loop_reset
 [pattern_trace] 1
 [pattern_trace] 0
