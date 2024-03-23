@@ -10,10 +10,10 @@ t_reg32 regmap_lmk01801[] = {
     // CLKin1_MUX       ="01",
     // CLKin1_DIV       ="000",
     // CLKin0_MUX       ="01"
-    // CLKin0_DIV       ="100",   # LO / 4 @ 114.6MHz or 115MHz
+    // CLKin0_DIV       ="110",   # 2856 / 6 = 476 MHz
     // RESET            ="0",
-    // hex(0b01001000_01_000_01_100_11_00000000)
-    { 0x0, 0x4843300UL },
+    // hex(0b01001000_01_000_01_110_11_00000000)
+    { 0x0, 0x4843b00UL },
     // CLKout7_TYPE     ="0000",  # Powerdown
     // CLKout6_TYPE     ="0001",  # LVDS J12 U.FL
     // CLKout4_TYPE     ="0001",  # LVDS TO_FPGA
@@ -44,11 +44,11 @@ t_reg32 regmap_lmk01801[] = {
     // CLKout12_13_DDLY ="0000000000"
     { 0x4, 0x0UL },
     // CLKout12_13_DIV  ="00000000001",
-    // CLKout8_11_DIV   ="001",  # J20, J24         @ 114.6MHz
-    // CLKout4_7_DIV    ="001",  # FPGA, DAC, J12,  @ 114.6MHz
-    // CLKout0_3_DIV    ="001"   # ADC1/2, J13      @ 114.6MHz
-    // hex(0b0000_00000000001_00_0_0_001_001_001)
-    { 0x5, 0x2049UL },
+    // CLKout8_11_DIV   ="011",  # J20, J24         @ 1/3, 158.67 MHz
+    // CLKout4_7_DIV    ="010",  # FPGA, DAC, J12,  @ 1/2, 238 MHz XXX needs DSP support
+    // CLKout0_3_DIV    ="100"   # ADC1/2, J13      @ 1/4, 119 MHz
+    // hex(0b0000_00000000001_00_0_0_011_010_100)
+    { 0x5, 0x20d4UL },
     // uWireLock =      ="1"
     // hex(0b101111_1)
     { 0xf, 0x5fUL }  // Lock

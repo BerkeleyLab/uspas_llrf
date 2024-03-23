@@ -27,7 +27,7 @@ SRCS  +=  printf.c iserdes.c
 SRCS  +=  settings.h
 SRCS  +=  $(MARBLE_DIR)/firmware/marble.c $(MARBLE_DIR)/firmware/marble.h
 SRCS  +=  $(ZEST_DIR)/firmware/zest.c $(ZEST_DIR)/firmware/zest.h
-SRCS  +=  init_zest.c
+SRCS  +=  init_zest_$(FSET).c
 OBJS  =  $(subst .c,.o,$(filter %.c, $(SRCS))) startup.o
 
 #size of the blockRam [bytes]

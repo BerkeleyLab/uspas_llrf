@@ -1,5 +1,5 @@
 # details see README.md
-# choice from ALSU, SIRIUS, USPAS, LEMP
+# choice from ALSU, USPAS, LEMP
 FSET = LEMP
 
 # ALSU
@@ -7,12 +7,6 @@ FSET = LEMP
 # FCNT_EXP: 114.58 * (1<<16) / 125      = 60073
 CFG_ALSU_PH_DIFF_ADV    = 4693
 CFG_ALSU_DFCNT_EXP      = 60073
-
-# SIRIUS
-# ADV:      119.79 / 200 / 2 * (1<<14)  = 4907
-# FCNT_EXP: 119.79 * (1<<16) / 125      = 62805
-CFG_SIRIUS_PH_DIFF_ADV  = 4907
-CFG_SIRIUS_DFCNT_EXP    = 62805
 
 # USPAS
 # ADV:      115 / 200 / 2 * (1<<14)     = 4710
