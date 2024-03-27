@@ -47,12 +47,14 @@ class TestLLRF:
 
     async def init_test(self) -> None:
         await self.reset_dut()
+        # scramble internal init states of dut:
+        await ClockCycles(self.dut.clk, random.randint(0, 20))
         amp_exp = self.llrf.max_adc_amp
         phs_exp = self.wrap_phase(random.random() * 360)
         cocotb.start_soon(self.drive_dds())
         return amp_exp, phs_exp
 
-    async def test_rx(self, wait=100) -> None:
+    async def test_rx(self, wait=130) -> None:
         self.log_banner('RX Test')
         self.dut._log.info(f'LLRFModel RX:\n{self.llrf.rx}')
 
@@ -61,7 +63,7 @@ class TestLLRF:
         await ClockCycles(self.dut.clk, wait)  # settling time of filters
         await self.check_sig(amp_exp, phs_exp)
 
-    async def test_open_loop(self, wait=300) -> None:
+    async def test_open_loop(self, wait=320) -> None:
         self.log_banner('Open Loop Test')
         self.dut._log.info(f'LLRFModel TX:\n{self.llrf.tx}')
 
@@ -73,7 +75,7 @@ class TestLLRF:
         await ClockCycles(self.dut.clk, wait)  # settling time
         await self.check_sig(amp_exp, phs_exp)
 
-    async def test_close_loop(self, wait=2000) -> None:
+    async def test_close_loop(self, wait=2020) -> None:
         self.log_banner('Close Loop Test')
 
         amp_exp, phs_exp = await self.init_test()
