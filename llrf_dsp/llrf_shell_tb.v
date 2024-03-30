@@ -15,7 +15,6 @@ parameter CBUF_AW           = 8;
 parameter CBUF_DW           = 24;
 parameter [17:0] DSP_CBUF_ADDR = 18'h20000;
 parameter [17:0] DSP_SLOW_ADDR = 18'h12011;
-localparam P_T                 = 2/8.7206e-9;
 `define NULL 0
 
 integer cc=0;
@@ -185,15 +184,16 @@ endtask
     // Generate stimulus
     // ---------------------
     parameter real AMPI = 32767;     // full scale: 2^15
-    parameter real PHSI = 50;        // deg
+    parameter real PHSI = 0;        // deg
     parameter AMP_SETP_ADC = 10000;  // full scale: 2^15
     parameter PHS_SETP_DEG = PHSI;   // deg
 
     real theta;
     integer adc_cc=0;
     reg signed [15:0] adc=16'hxxxx;
+    integer adc_cc_start = `CIC_BASE_PERIOD % 20;    // truly important but empirical
     always @(posedge dsp_clk) begin
-        adc_cc <= dut.dds_reset ? 0 : adc_cc + 1'b1; // synchronize with dds LO phase
+        adc_cc <= dut.dds_reset ? adc_cc_start : adc_cc + 1'b1; // synchronize with dds LO phase
         theta <= adc_cc * `M_TWO_PI * `NUM_DDS / `DEN_DDS - PHSI * `M_PI / 180;
         adc <= $floor(AMPI * $cos(theta));
     end
@@ -261,8 +261,8 @@ endtask
     reg dsp_reset = 0;
 
     reg signed [17:0] Kp_amp = 8000;
-    reg signed [17:0] Kp_phs = 8000;
-    reg signed [17:0] Ki_amp = 400;
+    reg signed [17:0] Kp_phs = 20000;
+    reg signed [17:0] Ki_amp = 300;
     reg signed [17:0] Ki_phs = 400;
 
     real mon_gain;
@@ -388,7 +388,6 @@ endtask
 
         lb_write_task(DSP_RESET, 1);
         lb_write_task(DSP_RESET, 0);
-
         lb_write_task(CIRCLE_BUF_FLIP, 1); // discard 1st waveform
         // wait for cbuf_ready
         while (!rdata[0]) lb_read_task(LLRF_CIRCLE_READY, rdata);

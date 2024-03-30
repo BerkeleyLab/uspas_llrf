@@ -3,25 +3,9 @@
     `define NUM_DDS             4
     `define DEN_DDS             11
     `define CIC_BASE_PERIOD     22          // multiple of 11, > 2*N_CH, >= cordic delay
-    `define CIC_PHASE_COMP      19'd11913   // CIC phase offset: 8.18 deg
-    `define DDC_AMP_GAIN        2.8425      // for monitor, measured
-    `define DDC_PHS_GAIN        0           // deg
-    `define AMP_SETP_GAIN       4.8312645   // for feedback, measured
-    `define RX_LO_PHS          -19'd189421  // -130.065 deg, freqz_washout()
-    `define TX_LO_PHS          -19'd190650  // -130.909 deg, 1 cycle
-    `define SHIFT_BASE          7
-    `define SHIFT_INLK          12
-`elsif FSETTING_SIRIUS
-    `define DSP_CLK_CYCLE       8.3478      // F_CLK = 500 * 23/24/4 = 119.8 MHz
-    `define NUM_DDS             4
-    `define DEN_DDS             23
-    `define CIC_BASE_PERIOD     23          // multiple of 23, > 2*N_CH, >= cordic delay
-    `define CIC_PHASE_COMP      19'd119668  // CIC phase offset: 82.17 deg
-    `define DDC_AMP_GAIN        3.3396      // for monitor, measured
-    `define DDC_PHS_GAIN        62.60869    // `NUM_DDS/`DEN_DDS * 360, 1 cycle
-    `define AMP_SETP_GAIN       5.66806     // for feedback, measured
-    `define RX_LO_PHS          -19'd177939   // -59.57 deg, freqz_washout(), minus 62.6 deg (1 cycle)
-    `define TX_LO_PHS           19'd0
+    `define AMP_SETP_GAIN       4.8312645   // calculated RX gain
+    `define RX_LO_PHS           19'd191879  // 131.753 deg
+    `define TX_LO_PHS           -19'd47662  // -32.727 deg
     `define SHIFT_BASE          7
     `define SHIFT_INLK          12
 `elsif FSETTING_USPAS
@@ -29,12 +13,9 @@
     `define NUM_DDS             4
     `define DEN_DDS             23
     `define CIC_BASE_PERIOD     23          // multiple of 23, > 2*N_CH, >= cordic delay
-    `define CIC_PHASE_COMP      19'd119668  // CIC phase offset: 82.17 deg
-    `define DDC_AMP_GAIN        3.3396      // for monitor, measured
-    `define DDC_PHS_GAIN        62.60869    // `NUM_DDS/`DEN_DDS * 360, 1 cycle
-    `define AMP_SETP_GAIN       5.66806     // for feedback, measured
-    `define RX_LO_PHS          -19'd177939   // -59.57 deg, freqz_washout(), minus 62.6 deg (1 cycle)
-    `define TX_LO_PHS           19'd0
+    `define AMP_SETP_GAIN       5.66806     // calculated RX gain
+    `define RX_LO_PHS           19'd95602   // 65.645
+    `define TX_LO_PHS           19'd250746  // 172.174 deg
     `define SHIFT_BASE          7
     `define SHIFT_INLK          12
 `elsif FSETTING_LEMP
@@ -42,12 +23,9 @@
     `define NUM_DDS             3
     `define DEN_DDS             14
     `define CIC_BASE_PERIOD     28          // multiple of 14, > 2*N_CH, >= cordic delay
-    `define CIC_PHASE_COMP      19'd18710   // CIC phase offset, 12.84 deg
-    `define DDC_AMP_GAIN        3.66673     // for monitor, measured
-    `define DDC_PHS_GAIN        102.85714   // 6 cycles: (6 * 3/14 * 360 % 360), deg
-    `define AMP_SETP_GAIN       6.22830     // for feedback, measured
-    `define RX_LO_PHS           19'd265522  // 182.32 deg / 360 * (1<<19), measured
-    `define TX_LO_PHS           19'd37443   // 25.71 deg, measured
+    `define AMP_SETP_GAIN       6.22830     // calculated RX gain
+    `define RX_LO_PHS           19'd115720  // 79.459 deg
+    `define TX_LO_PHS           19'd187245  // 128.571 deg
     `define SHIFT_BASE          7
     `define SHIFT_INLK          13
 `endif

@@ -193,7 +193,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 
     // LO for waveform
     wire signed [DWLO-1:0] cosdd, sindd;
-    wire [DWLO:0] dds_wf_phase = dds_phase_acc  + dds_phase_shift + `CIC_PHASE_COMP;
+    // rotate -90 deg to compensate CIC phase gain
+    wire [DWLO:0] dds_wf_phase = dds_phase_acc  + dds_phase_shift - 19'd131072;
     cordicg_b22 #(.nstg(20), .width(18)) dds_cordicg_wf(
         .clk            (dsp_clk),
         .opin           (2'b00),

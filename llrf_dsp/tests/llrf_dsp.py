@@ -242,7 +242,7 @@ class DUC(LLRFModule):
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        self.gain = 1/4 * self.z**(-4)
+        self.gain = 1/4 * self.z**(-3)
 
 
 class DSPCoreTX(LLRFModule):
