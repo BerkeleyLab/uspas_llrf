@@ -147,4 +147,4 @@
    gtkwave dump.fst dump.gtkw
    ```
    Typical result:
-   ![waveform](doc/waveform_example.png)
+   ![waveform](../../doc/fig/waveform_example.png)
