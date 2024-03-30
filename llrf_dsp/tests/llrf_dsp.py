@@ -185,7 +185,7 @@ class CICWaveRecorder(LLRFModule):
         assert self.cic_base_period % self.den == 0, \
             "CIC base period must be multiple of DEN."
         self.dds = DDS(amp=lo_amp, num=num, den=den)
-        self.gain = self.calc_cic_gain()
+        self.gain = self.calc_cic_gain() * np.exp(1j)
 
     def calc_cic_gain(self):
         """calculate CIC filter gain in waveforms

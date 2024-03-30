@@ -460,7 +460,7 @@ endtask
         lb_write_task(AMP_SETPOINT, amp_setpoint_close);
         lb_write_task(PHS_SETPOINT, phs_setpoint_close);
         close_loops_task();
-        #(7000 * `DSP_CLK_CYCLE);  //wait for loop actions
+        #(3000 * `DSP_CLK_CYCLE);  //wait for loop actions
         read_inlk_task(1, wfm_amp, wfm_phs);
         amp_err = wfm_amp / inlk_gain - AMP_SETP_ADC;
         fail |= $abs(amp_err / amp_setpoint) > 0.001;
@@ -477,7 +477,7 @@ endtask
         lb_write_task(INLK_AMP_HI_0, 1.01 * amp_expect * inlk_gain);
         lb_write_task(INLK_AMP_LO_3, 0.99 * AMP_SETP_ADC * inlk_gain);
         lb_write_task(INLK_AMP_HI_3, 1.01 * AMP_SETP_ADC * inlk_gain);
-        # (`DSP_CLK_CYCLE * 20); // wait for settings pass clock domains using cycling wave_cnt
+        #(`DSP_CLK_CYCLE * 20); // wait for settings pass clock domains using cycling wave_cnt
         lb_write_task(INLK_PERMIT_MASK, 10'b00_0000_1001); // look at stimulus and loopback channels
         lb_write_task(INLK_RESET_INLK, 1'b1);
         $display("Inlk: %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s",
