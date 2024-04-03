@@ -14,7 +14,8 @@ Change [settings.mk](settings.mk) for the option of:
 |        LO        | MO / 12 * 11 | 458.33    | MHz |
 |      dsp_clk     |    LO / 4    | 114.58    | MHz |
 | IF_adc / dsp_clk |    4 / 11    |           |     |
-Details see [Digital LLRF for ALS-U](https://arxiv.org/abs/2210.05095)
+
+Details see [Digital LLRF for ALS-U](https://arxiv.org/abs/2210.05095).
 
 ## USPAS LLRF settings:
 |    **Signal**    |   **Ratio**  | **Value** |     |
