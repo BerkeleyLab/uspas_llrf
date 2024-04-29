@@ -74,7 +74,7 @@ class DAC(Element):
 
     def step(self, in_val):
         assert self.min_val <= in_val <= self.max_val, \
-            f"ADC saturation: in_val={in_val}"
+            f"DAC saturation: in_val={in_val}"
         out = in_val / 2**self.n_bits * self.ref_val_V
         return out
 
@@ -134,7 +134,7 @@ class Plant:
         self.dac = DAC(i_queue=self.i_queue, o_queue=self.q[0])
         self.hpa = HPA(i_queue=self.q[0], o_queue=self.q[1])
         self.cav = CAV(i_queue=self.q[1], o_queue=self.q[2])
-        self.dac = DAC(i_queue=self.q[2], o_queue=self.o_queue)
+        self.adc = ADC(i_queue=self.q[2], o_queue=self.o_queue)
 
 
 class PlantSimple:
