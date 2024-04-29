@@ -4,7 +4,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, ClockCycles, Timer
 from cocotb.handle import SimHandleBase
 from llrf_model import LLRFModel
-from plant import Plant
+from plant import PlantSimple
 import itertools
 import random
 import logging
@@ -14,7 +14,7 @@ class TestLLRF:
     def __init__(self, dut: SimHandleBase, f_config='USPAS') -> None:
         self.dut = dut
         self.llrf = LLRFModel(conf=f_config)
-        self.plant = Plant()
+        self.plant = PlantSimple()
         dut._log.setLevel(logging.INFO)
         self.log_banner(f'Simulating: {f_config}')
         rx_phase_off_reg = self.encode_phase(self.llrf.rx.phase_off_deg)
