@@ -4,6 +4,7 @@ stages:
   - test_lemp
   - test_cocotb
   - synthesis
+  - run
 
 variables:
   XILINX_VIVADO: /non-free/Xilinx/Vivado/2020.2
@@ -58,3 +59,12 @@ marble_zest_synth:
     paths:
       - top/marble_zest/marble_zest_top.bit
       - top/marble_zest/_xilinx/marble_zest_top/*.runs/impl_1/*.rpt
+
+marble_run:
+  stage: run
+  tags:
+    - deploy
+  dependencies:
+    - marble_zest_synth
+  script:
+    - make system_config SERIAL=42

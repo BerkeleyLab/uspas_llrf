@@ -39,9 +39,12 @@ system_top.xdc: timing.xdc $(APP_SOC_SYN_DIR)/zest_fmc_dp.xdc top.xdc
 #: Build bitstream
 $(TARGET)_top.bit: system_top.xdc $(TARGET)_top.v $(IP_EXPAND) $(APP_SOC_SYN_DIR)/system32.dat $(GTP_DEPS)
 
-#: Program bitstream
+#: Program bitstream and ping with the default firmware IP address
+SERIAL = ""
 system_config:
-	openocd -f marble.cfg -c "transport select jtag; init; xc7_program xc7.tap; pld load 0  $(TARGET)_top.bit; exit"
+	@echo "Using Marble with serial number ${SERIAL}"
+	openocd -c "adapter driver ftdi; ftdi_serial 0000${SERIAL};" -f marble.cfg -c "transport select jtag; init; xc7_program xc7.tap; pld load 0  $(TARGET)_top.bit; exit"
+	sleep 5 && ping -v -c 4 -w 20 192.168.19.122
 
 CLEAN += system_top.xdc $(TARGET)_top.bin $(TARGET)_top.bit $(IP_BIT_D)
 CLEAN += $(TARGET)_top.prm
