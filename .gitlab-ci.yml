@@ -14,21 +14,21 @@ variables:
 
 image: $CONTAINER_IMAGE:master
 
-llrf_dsp_test_0:
+llrf_dsp_test_alsu:
   before_script:
     - cd llrf_dsp
   stage: test
   script:
     - make clean && make FSET=ALSU
 
-llrf_dsp_test_1:
+llrf_dsp_test_uspas:
   before_script:
     - cd llrf_dsp
   stage: test
   script:
     - make clean && make FSET=USPAS
 
-llrf_dsp_test_2:
+llrf_dsp_test_lemp:
   before_script:
     - cd llrf_dsp
   stage: test
