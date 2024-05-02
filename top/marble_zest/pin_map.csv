@@ -50,6 +50,12 @@ Pmod2_5    {PMOD2[5]}
 Pmod2_6    {PMOD2[6]}
 Pmod2_7    {PMOD2[7]}
 
+# MMC SPI
+FPGA_SCK   FPGA_SCK
+FPGA_SSEL  FPGA_CSB
+FPGA_MOSI  FPGA_PICO
+FPGA_MISO  FPGA_POCI
+
 # Literal output follows
 
 # Truly special:
