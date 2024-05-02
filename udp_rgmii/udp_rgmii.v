@@ -25,6 +25,13 @@ module udp_rgmii #(
     input  [31:0]   lb_rdata,
     output          lb_rvalid,
 
+    // rtefi_blob interface for IP/MAC configuration
+    input enable_rx,
+    input config_s,
+    input config_p,
+    input [3:0] config_a,
+    input [7:0] config_d,
+
     // Mac control
     input           host_clk,
     input [10:0]    host_waddr,
@@ -86,12 +93,12 @@ rtefi_blob #(
     .tx_en          (gmii_tx_en),
     .tx_er          (gmii_tx_er),
 
-    .enable_rx      (1'b1),
+    .enable_rx      (enable_rx),
     .config_clk     (gmii_tx_clk),
-    .config_a       (4'h0),
-    .config_d       (8'h0),
-    .config_s       (1'h0),  // MAC/IP address write
-    .config_p       (1'h0),  // UDP port number write
+    .config_a       (config_a),  // input [3:0]
+    .config_d       (config_d),  // input [7:0]
+    .config_s       (config_s),  // MAC/IP address write
+    .config_p       (config_p),  // UDP port number write
     .p2_nomangle    (1'h0),
 
     .host_raddr     (),
