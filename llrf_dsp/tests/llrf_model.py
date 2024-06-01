@@ -1,46 +1,23 @@
 import numpy as np
 from llrf_dsp import LLRFModule, DDS, DSPCoreRX, DSPCoreTX
+import json
 
 
 class LLRFModel(LLRFModule):
-    LO_AMP = 74840  # must < (2^17 / CORDIC_GAIN)
-
-    configs = {
-        'ALSU': {
-            'DSP_CLK_CYCLE':    8.7,  # ns
-            'NUM_DDS':          4,
-            'DEN_DDS':          11,
-            'CIC_BASE_PERIOD':  22,
-            'SHIFT_BASE':       7,
-            'SHIFT_INLK':       12
-        },
-        'USPAS': {
-            'DSP_CLK_CYCLE':    8.7,  # ns
-            'NUM_DDS':          4,
-            'DEN_DDS':          23,
-            'CIC_BASE_PERIOD':  23,
-            'SHIFT_BASE':       7,
-            'SHIFT_INLK':       12
-        },
-        'LEMP': {
-            'DSP_CLK_CYCLE':    8.4,  # ns
-            'NUM_DDS':          3,
-            'DEN_DDS':          14,
-            'CIC_BASE_PERIOD':  28,
-            'SHIFT_BASE':       7,
-            'SHIFT_INLK':       13
-        }
-    }
-
-    def __init__(self, conf='LEMP') -> None:
+    def __init__(self, conf='LEMP', settings_fname='../settings.json') -> None:
         """Math model that provides helper functions for simulation
 
         Args:
-            conf (str): Application configuration name, in ['LEMP']
+            conf (str): Application configuration key (aka FSET),
+              in ['LEMP', 'ALSU', 'USPAS']
+            settings_fname (str): configuration json file path
         """
-        for k, v in self.configs[conf].items():
+        with open(settings_fname) as f:
+            configs = json.load(f)
+        for k, v in configs[conf].items():
             setattr(self, k, v)
         super().__init__(self.NUM_DDS, self.DEN_DDS)
+        assert self.LO_AMP < (2 ** 17 / self.CORDIC_GAIN), "LO_AMP saturate!"
         dds = DDS(amp=self.LO_AMP, num=self.num, den=self.den)
         self.rx = DSPCoreRX(num=self.num, den=self.den, dds=dds)
         self.tx = DSPCoreTX(num=self.num, den=self.den, dds=dds)

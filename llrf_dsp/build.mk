@@ -5,12 +5,16 @@ NEWAD_ARGS += -m    # mirror
 NEWAD_ARGS_llrf_shell = -b196608
 
 TEST_BENCH_D= $(TEST_BENCH:%_tb=$(DEPDIR)/%_tb.d)
+VERILOG_AUTOGEN += settings.vams
 VERILOG_AUTOGEN += $(AUTOGEN_DIR)/config_romx.v
 VERILOG_AUTOGEN += $(AUTOGEN_DIR)/llrf_shell_auto.vh $(AUTOGEN_DIR)/addr_map_llrf_shell.vh
 VERILOG_AUTOGEN += $(AUTOGEN_DIR)/regmap_llrf_shell.vh
 
 $(TEST_BENCH_D):             cordicg_b22.v
 $(DEPDIR)/$(APP_NAME)_tb.d:  $(VERILOG_AUTOGEN)
+
+settings.vams: settings.json
+	python3 scripts/gen_settings.py -f $< -c $(FSET) -o $@
 
 $(DEPDIR)/$(APP_NAME).d: $(APP_NAME).v $(VERILOG_AUTOGEN)
 	@set -e; mkdir -p $(DEPDIR); \
@@ -60,6 +64,7 @@ ifeq (,$(MAKECMDGOALS))
     -include $(DEPDIR)/$(APP_NAME).d
     -include $(TEST_BENCH_D)
 endif
+CLEAN += settings.vams
 CLEAN += $(APP_NAME).json $(APP_NAME)_init_regs.json
 CLEAN += $(APP_NAME)_expand.v
 CLEAN += cordicg_b22.v

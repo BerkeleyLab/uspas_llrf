@@ -1,0 +1,38 @@
+{
+    "ALSU": {
+        "DSP_CLK_CYCLE":    8.7,
+        "LO_AMP":           74840,
+        "NUM_DDS":          4,
+        "DEN_DDS":          11,
+        "CIC_BASE_PERIOD":  22,
+        "SHIFT_BASE":       7,
+        "SHIFT_INLK":       12,
+        "AMP_RX_GAIN":      4.8312645,
+        "RX_LO_PHS":        191879,
+        "TX_LO_PHS":        -47662
+    },
+    "USPAS": {
+        "DSP_CLK_CYCLE":    8.7,
+        "LO_AMP":           74840,
+        "NUM_DDS":          4,
+        "DEN_DDS":          23,
+        "CIC_BASE_PERIOD":  23,
+        "SHIFT_BASE":       7,
+        "SHIFT_INLK":       12,
+        "AMP_RX_GAIN":      5.6686486,
+        "RX_LO_PHS":        95602,
+        "TX_LO_PHS":        250746
+    },
+    "LEMP": {
+        "DSP_CLK_CYCLE":    8.4,
+        "LO_AMP":           74840,
+        "NUM_DDS":          3,
+        "DEN_DDS":          14,
+        "CIC_BASE_PERIOD":  28,
+        "SHIFT_BASE":       7,
+        "SHIFT_INLK":       13,
+        "AMP_RX_GAIN":      6.2280254,
+        "RX_LO_PHS":        115720,
+        "TX_LO_PHS":        187245
+    }
+}

@@ -11,9 +11,10 @@ import logging
 
 
 class TestLLRF:
-    def __init__(self, dut: SimHandleBase, f_config='USPAS') -> None:
+    def __init__(self, dut: SimHandleBase,
+                 f_config='USPAS', settings_fname='../settings.json'):
         self.dut = dut
-        self.llrf = LLRFModel(conf=f_config)
+        self.llrf = LLRFModel(conf=f_config, settings_fname=settings_fname)
         self.plant = PlantSimple()
         dut._log.setLevel(logging.INFO)
         self.log_banner(f'Simulating: {f_config}')
@@ -22,11 +23,14 @@ class TestLLRF:
         self.dut.rx_phase_offset.value = rx_phase_off_reg
         self.dut.tx_phase_offset.value = tx_phase_off_reg
         self.dut._log.info(
-            f'RX phase off: {self.llrf.rx.phase_off_deg:6.3f} deg; '
-            f'TX phase off: {self.llrf.tx.phase_off_deg:6.3f} deg')
+            f'RX phase off: {self.llrf.rx.phase_off_deg:8.2f} deg; '
+            f'TX phase off: {self.llrf.tx.phase_off_deg:8.2f} deg')
         self.dut._log.info(
-            f'RX phase off: {rx_phase_off_reg:10d}; '
-            f'TX phase off: {tx_phase_off_reg:10d}')
+            f'RX phase off: {rx_phase_off_reg:8d} cnt; '
+            f'TX phase off: {tx_phase_off_reg:8d} cnt')
+        # validate settings.json against calculcated values
+        assert rx_phase_off_reg == self.llrf.RX_LO_PHS, "Unexpected RX_LO_PHS."
+        assert tx_phase_off_reg == self.llrf.TX_LO_PHS, "Unexpected TX_LO_PHS."
         clock = Clock(self.dut.clk, self.llrf.DSP_CLK_CYCLE, units="ns")
         cocotb.start_soon(clock.start())
 
@@ -65,6 +69,9 @@ class TestLLRF:
     async def test_rx(self, wait=130) -> None:
         self.log_banner('RX Test')
         self.dut._log.info(f'LLRFModel RX:\n{self.llrf.rx}')
+        # validate settings.json against calculcated values
+        assert -0.0001 < self.llrf.AMP_RX_GAIN - np.abs(self.llrf.rx.gain) \
+            < 0.0001, "Unexpected AMP_RX_GAIN."
 
         amp_exp, phs_exp = await self.init_test()
         cocotb.start_soon(self.drive_adc(amp_exp, phs_exp))

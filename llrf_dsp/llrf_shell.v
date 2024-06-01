@@ -465,15 +465,16 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // Instantiate dsp_core
     // ---------------------
     wire signed [15:0] dac_out;
-
+    wire [18:0] rx_phase_offset = `RX_LO_PHS;
+    wire [18:0] tx_phase_offset = `TX_LO_PHS;
     dsp_core #(.KW(18), .EW(15)) dsp (
         .clk              (dsp_clk),
         .reset            (dsp_reset),
         .cav_field        (cav_cel),
         .cosa             (cosd),
         .sina             (sind),
-        .rx_phase_offset  (`RX_LO_PHS),
-        .tx_phase_offset  (`TX_LO_PHS),
+        .rx_phase_offset  (rx_phase_offset),
+        .tx_phase_offset  (tx_phase_offset),
         .dac_out          (dac_out),
         .amp_setpoint     (amp_setpoint_i),
         .phs_setpoint     (phs_setpoint_i),
