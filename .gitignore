@@ -6,15 +6,6 @@ litex/build/
 *sim_build/
 *csr.csv
 .vscode/
-litex/firmware/firmware.bin
-litex/firmware/firmware.elf
-litex/firmware/*.map
-litex/firmware/*.d
-litex/firmware/*.o
-litex/prog/bscan_spi*.bit
-litex/prog/openocd_xc7*.cfg
-litex/prog/openocd_marblemini.cfg
-litex/update.sh
 *_tb
 *__pycache__
 *_dep/

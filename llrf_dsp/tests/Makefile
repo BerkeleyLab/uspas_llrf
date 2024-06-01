@@ -3,14 +3,12 @@ include $(TOP)settings.mk
 
 SIM ?= verilator
 
-COMPILE_ARGS += -DFSETTING_$(FSET) -I$(APP_DSP_DIR)
-PLUSARGS     += "+f_config=$(FSET)"
-
 ifeq ($(SIM), icarus)
 	COMPILE_ARGS += -Wall -Wno-timescale
 	WAVES = 1
 endif
 ifeq ($(SIM), verilator)
+	COMPILE_ARGS += --timing
 # to avoid warning on 1-bit signal in counter
 	EXTRA_ARGS += -Wno-width
 # to avoid warning on unconnected output pins
@@ -32,6 +30,14 @@ VERILOG_SOURCES += $(DSP_DIR)/dpram.v $(DSP_DIR)/fiq_interp.v \
 					$(APP_DSP_DIR)/dsp_core.v \
 					$(APP_DSP_DIR)/noniq_ddc.v \
 					$(APP_DSP_DIR)/pi_scalar.v
+
+# https://github.com/cocotb/cocotb/issues/2279
+# Check if testing failed message exists in results.xml.
+.PHONY: check_results
+check_results:
+	-$(MAKE) all
+	$(call check_for_results_file)
+	python3 check_results.py
 
 include $(shell cocotb-config --makefiles)/Makefile.sim
 
