@@ -483,6 +483,7 @@ endtask
         $display("Inlk: %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s",
             "chan", "mon_amp", "amp_lo", "amp_hi", ">=lo", ">=hi", "mode", "OK", "Permit", "amp", "phs");
         while (dut.inlk.wave_cnt != 0) @ (posedge dsp_clk);
+        #(4 * `DSP_CLK_CYCLE);
         inlk_check = 1'b1;
         #200;
         inlk_check = 1'b0;
