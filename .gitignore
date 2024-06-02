@@ -1,4 +1,3 @@
-litex/build/
 *.pyc
 *.vcd
 *.fst
@@ -18,6 +17,13 @@ soc/marble_zest/*/*.o
 *.bit
 *.prm
 *_xilinx/
+*webtalk*.jou
+*webtalk*.log
+*xsim.dir/
+*xsim.jou
+*xelab.pb
+*xvlog.pb
+*pico.trace
 llrf_dsp/cordicg_b22.v
 llrf_dsp/llrf_shell_expand.v
 llrf_dsp/llrf_shell_init_regs.json
@@ -25,8 +31,8 @@ llrf_dsp/llrf_shell_tb
 llrf_dsp/llrf_shell.json
 llrf_dsp/settings.vams
 llrf_dsp/_autogen/addr_map_llrf_shell.vh
-soc/marble_zest/synth/init_llrf.c
-soc/marble_zest/synth/llrf_regs_addr.h
+soc/marble_zest/*/init_llrf.c
+soc/marble_zest/*/llrf_regs_addr.h
 soc/marble_zest/common/llrf/llrf.o
 udp_rgmii/construct_tx_table.v
 udp_rgmii/rtefi_blob.v
@@ -35,6 +41,6 @@ udp_rgmii/udp_rgmii_expand.v
 top/marble_zest/top.xdc
 top/marble_zest/system_top.xdc
 soc/marble_zest/synth/system_expand.v
-soc/marble_zest/synth/system32.dat
+soc/marble_zest/*/system32.dat
 soc/marble_zest/synth/zest_fmc_dp.xdc
 soc/marble_zest/synth/zest_pinmap.txt
