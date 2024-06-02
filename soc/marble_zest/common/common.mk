@@ -26,7 +26,8 @@ SRCS   =  system.c print.c i2c_soft.c timer.c ui.c
 SRCS  +=  printf.c iserdes.c
 SRCS  +=  settings.h
 SRCS  +=  $(MARBLE_DIR)/firmware/marble.c $(MARBLE_DIR)/firmware/marble.h
-SRCS  +=  $(ZEST_DIR)/firmware/zest.c $(ZEST_DIR)/firmware/zest.h
+# SRCS  +=  $(ZEST_DIR)/firmware/zest.c $(ZEST_DIR)/firmware/zest.h
+SRCS  +=  $(APP_COMMON_DIR)/zest.c $(APP_COMMON_DIR)/zest.h
 SRCS  +=  init_zest_$(FSET).c
 OBJS  =  $(subst .c,.o,$(filter %.c, $(SRCS))) startup.o
 

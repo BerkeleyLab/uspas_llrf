@@ -2,7 +2,7 @@ module zest #(
     parameter PH_DIFF_ADV = 4693,  // ADV: 500*11/48 / 200/2*(1<<14) = 4693
     parameter N_ADC = 2,
     parameter N_CH = N_ADC*4,
-    parameter FCNT_WIDTH = 15,
+    parameter FCNT_WIDTH = 16,  // 125M / 2**16 = 1.9kHz update rate. see freq_gcount.v
     parameter [7:0] BASE_ADDR = 8'h05
 ) (
     // Hardware pins
@@ -218,8 +218,8 @@ assign PWR_EN       = ~pwr_en_b;
 
 wire [12:0] phdiff [3:0];
 wire [15:0] f_clks [3:0];
-assign sfRegsInp[    0+:16] = phdiff[phs_sel];        // SFR_IN_BYTE_PCNT
-assign sfRegsInp[(2*8)+:16] = f_clks[fclk_sel];       // SFR_IN_BYTE_FCNT
+assign sfRegsInp[ 0+:16] = phdiff[phs_sel];        // SFR_IN_BYTE_PCNT
+assign sfRegsInp[16+:16] = f_clks[fclk_sel];       // SFR_IN_BYTE_FCNT
 
 //--------------------------------------------------------------
 // CLK
