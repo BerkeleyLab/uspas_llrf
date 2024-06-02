@@ -6,7 +6,7 @@ TARGET = system
 BOOTLOADER_BAUDRATE = 10416666
 
 SRC_V  += $(APP_SOC_DIR)/synth/system_top.v xilinx7_clocks.v
-SRC_V  += $(ZEST_DIR)/zest_spi_dio_pack.v $(ZEST_DIR)/zest.v $(ZEST_DIR)/zest_clk_map.v
+SRC_V  += $(ZEST_DIR)/zest_spi_dio_pack.v $(APP_COMMON_DIR)/zest.v $(ZEST_DIR)/zest_clk_map.v
 SRC_V  += $(BOARD_SUPPORT_DIR)/fmc11x/dco_buf.v \
 		  $(BOARD_SUPPORT_DIR)/fmc11x/iserdes_pack.v \
 		  $(BOARD_SUPPORT_DIR)/fmc11x/idelay_wrap.v
