@@ -1,8 +1,9 @@
 module zest #(
     parameter PH_DIFF_ADV = 4693,  // ADV: 500*11/48 / 200/2*(1<<14) = 4693
+    parameter CLKIN_PERIOD = 4.0, // ns period of CLK_TO_FPGA_P
     parameter N_ADC = 2,
     parameter N_CH = N_ADC*4,
-    parameter FCNT_WIDTH = 16,  // 125M / 2**16 = 1.9kHz update rate. see freq_gcount.v
+    parameter FCNT_WIDTH = 16,  // to speed up simulaiton. 125M / 2**16 = 1.9kHz update rate. see freq_gcount.v
     parameter [7:0] BASE_ADDR = 8'h05
 ) (
     // Hardware pins
@@ -64,6 +65,7 @@ module zest #(
     output [N_ADC-1:0]   clk_div_out,
     output [N_CH-1:0]    adc_out_clk,
     output [16*N_CH-1:0] adc_out_data,
+    output               dac_clk_out,
     input  [13:0]        dac_in_data_i,
     input  [13:0]        dac_in_data_q,
 
@@ -140,12 +142,12 @@ zest_spi_dio_pack #(
 );
 
 //--------------------------------------------------------------
-// PicoRV SFR (GPIO output pins)
+// PicoRV SFR (GPIO pins)
 //--------------------------------------------------------------
-wire [31:0] sfRegsWrStr, sfRegsOut, sfRegsInp;
+wire [2*32-1:0] sfRegsWrStr, sfRegsOut, sfRegsInp;
 
 sfr_pack #(
-    .N_REGS         ( 1 ),
+    .N_REGS         ( 2 ),
     .BASE_ADDR      ( BASE_ADDR ),
     .BASE2_ADDR     ( BASE_SFR)
 ) sfr_reset (
@@ -168,8 +170,8 @@ sfr_pack #(
 /// #define SFR_OUT_BIT_PWR_ENB     28
 /// #define SFR_WST_BIT_BUFR_A_RST  29
 /// #define SFR_WST_BIT_BUFR_B_RST  30
-/// #define SFR_IN_BYTE_PCNT        0
-/// #define SFR_IN_BYTE_FCNT        2
+/// #define SFR_IN_REG_PCNT         0
+/// #define SFR_IN_REG_FCNT         1
 wire [7:0] phs_sel  = sfRegsOut[7:0];
 wire [7:0] fclk_sel = sfRegsOut[15:8];
 wire [7:0] csb_sel  = sfRegsOut[(2*8)+:8];
@@ -217,25 +219,28 @@ assign PWR_SYNC     = pwr_sync;
 assign PWR_EN       = ~pwr_en_b;
 
 wire [12:0] phdiff [3:0];
-wire [15:0] f_clks [3:0];
-assign sfRegsInp[ 0+:16] = phdiff[phs_sel];        // SFR_IN_BYTE_PCNT
-assign sfRegsInp[16+:16] = f_clks[fclk_sel];       // SFR_IN_BYTE_FCNT
+wire [27:0] f_clks [3:0];
+assign sfRegsInp[ 0+:32] = phdiff[phs_sel];        // SFR_IN_REG_PCNT
+assign sfRegsInp[32+:32] = f_clks[fclk_sel];       // SFR_IN_REG_FCNT
 
 //--------------------------------------------------------------
 // CLK
 //--------------------------------------------------------------
-wire clk_to_fpga;
-IBUFDS #(
-    .DIFF_TERM("TRUE")
-) ibuf_clk(
-    .I      (CLK_TO_FPGA_P),
-    .IB     (CLK_TO_FPGA_N),
-    .O      (clk_to_fpga)
-);
 
-BUFG bufg_i (
-    .I      (clk_to_fpga),
-    .O      (dsp_clk_out)
+wire pll_locked;
+xilinx7_clocks #(
+    .DIFF_CLKIN("TRUE"),
+    .CLKIN_PERIOD(CLKIN_PERIOD),  // REFCLK: about 240 MHz
+    .MULT     (5),      // 240 X 5   = 1200 MHz
+    .DIV0     (10),     // 1200 / 10 =  120 MHz
+    .DIV1     (5)       // 1200 / 5  =  240 MHz
+) clocks_i(
+    .sysclk_p (CLK_TO_FPGA_P),
+    .sysclk_n (CLK_TO_FPGA_N),
+    .reset    (1'b0),
+    .clk_out0 (dsp_clk_out),
+    .clk_out1 (),
+    .locked   (pll_locked)
 );
 
 //--------------------------------------------------------------
@@ -264,8 +269,7 @@ zest_clk_map #(
 );
 
 freq_count #(
-    .refcnt_width   (FCNT_WIDTH),
-    .freq_width     (16)
+    .refcnt_width   (FCNT_WIDTH)
 ) fcnt_dsp (
     .sysclk     (clk),
     .f_in       (dsp_clk_out),
@@ -294,8 +298,7 @@ generate for (ix=0; ix<N_ADC; ix=ix+1) begin: ic_map
     );
 
     freq_count #(
-        .refcnt_width   (FCNT_WIDTH),
-        .freq_width     (16)
+        .refcnt_width   (FCNT_WIDTH)
     ) fcnt_dco_i (
         .sysclk     (clk),
         .f_in       (clk_div[ix]),
@@ -377,10 +380,18 @@ BUFG dco_bufg (
     .O      (dac_dco_clk)
 );
 
-phase_diff #(.adv(PH_DIFF_ADV)) phase_diff_dac (
-    .uclk1      (dsp_clk_out),
-    .ext_div1   (1'b0),
-    .uclk2      (dac_dco_clk),
+reg [1:0] qphase=0;
+always @(posedge dac_dco_clk) qphase <= qphase + 1'b1;
+
+// ADV = FREQ1/REF_FREQ/2*(1<<DW) / F_RATIO;
+phase_diff #(
+    .ext_div1_en(1),    // F_RATIO - 1
+    .ext_div2_en(0),
+    .adv(PH_DIFF_ADV/2), .order1(2), .order2(1)
+) phase_diff_dac (
+    .uclk1      (dac_dco_clk),
+    .ext_div1   (qphase[1]),
+    .uclk2      (dsp_dco_clk),  // uclk1 / F_RATIO
     .ext_div2   (1'b0),
     .sclk       (clk_200),
     .rclk       (clk),
@@ -388,13 +399,14 @@ phase_diff #(.adv(PH_DIFF_ADV)) phase_diff_dac (
 );
 
 freq_count #(
-    .refcnt_width   (FCNT_WIDTH),
-    .freq_width     (16)
+    .refcnt_width   (FCNT_WIDTH)
 ) fcnt_dac_i (
     .sysclk     (clk),
     .f_in       (dac_dco_clk),
     .frequency  (f_clks[3])
 );
+
+assign dac_clk_out = dac_dco_clk;
 
 wire [14:0] dac_oddr_buf;
 wire [14:0] dac_oddr_d1 = {1'b0, dac_in_data_i};
@@ -409,7 +421,7 @@ assign DAC_D_N   = dac_oddr_out_n[13:0];
 genvar iy;
 generate for (iy=0; iy < 15; iy=iy+1) begin: in_cell
 	ODDR oddr(
-        .C  (dsp_clk_out),
+        .C  (dac_clk_out),
         .CE (1'b1),
         .D1 (dac_oddr_d1[iy]),
         .D2 (dac_oddr_d2[iy]),

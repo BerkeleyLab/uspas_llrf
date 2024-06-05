@@ -23,11 +23,11 @@
 #define SFR_OUT_BIT_PWR_ENB     28
 #define SFR_WST_BIT_BUFR_A_RST  29
 #define SFR_WST_BIT_BUFR_B_RST  30
-#define SFR_IN_BYTE_PCNT        0
-#define SFR_IN_BYTE_FCNT        2
+#define SFR_IN_REG_PCNT         0
+#define SFR_IN_REG_FCNT         1
 
 #ifndef FCNT_WIDTH
-    #define FCNT_WIDTH              15
+    #define FCNT_WIDTH              16
 #endif
 
 enum ZEST_DEV {
@@ -85,9 +85,16 @@ bool check_zest_freq(uint8_t ch, uint16_t fcnt_exp);
 /***************************************************************************//**
  * @brief Read clk_to_fpga clk frequency
  * @param ch - 0,1,2,3 for dsp_clk, clk_div0, clk_div1
- * @return raw freq_count result (16bits)
+ * @return raw freq_count result (28bits)
 *******************************************************************************/
-uint16_t read_zest_fcnt(uint8_t ch);
+uint32_t read_zest_fcnt(uint8_t ch);
+
+/***************************************************************************//**
+ * @brief Read clk_to_fpga clk phase with respect to dsp_clk
+ * @param ch - 0,1,2,3 for dsp_clk, clk_div0, clk_div1
+ * @return raw freq_count result (13bits)
+*******************************************************************************/
+uint32_t read_clk_div_ph(uint8_t ch);
 
 /***************************************************************************//**
  * @brief Read raw ADC count for selected channel

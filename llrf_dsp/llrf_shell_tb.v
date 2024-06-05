@@ -5,7 +5,7 @@ module llrf_shell_tb;
 
 parameter  LB_VERBOSE       = 0;        // show LB transactions
 parameter  N_ADC            = 8;
-localparam MAX_SIM          = 8000000;    // ns
+localparam MAX_SIM          = 8000000;  // ns
 localparam DW               = 16;
 localparam BUF_DWI          = 16;
 localparam LB_ADW           = 18;
@@ -18,6 +18,7 @@ parameter [17:0] DSP_SLOW_ADDR = 18'h12011;
 `define NULL 0
 
 integer cc=0;
+reg lb_clk=0, dsp_clk=0;
 initial begin
     $display("##################################################");
     $display("    ---- Checking llrf_shell.v ----");
@@ -40,7 +41,6 @@ end
     // --------------------------------------------------------------
     //  Generate Clocks
     // --------------------------------------------------------------
-    reg lb_clk=0, dsp_clk=0;
     always #(CLK_CYCLE/2) lb_clk = ~lb_clk;
     // --------------------------------------------------------------
     //  LocalBus functions
@@ -139,36 +139,6 @@ end
     endtask
 
     reg pass =1;
-    reg signed [17:0] setpoint_done = 0;
-
-    // no actual check here
-    task generate_ntw(
-        input real freq
-    );
-    begin
-        // excite with 100 MHz input
-        @(posedge lb_clk);
-        lb_write_task(NTW_PHASE_STEP_H, 29260777);
-        lb_write_task(NTW_PHASE_STEP_L, 1);
-        lb_write_task(NTW_MODULO, 4095);
-        @(posedge lb_clk);
-        lb_write_task(AMP_SETPOINT, 10000);
-        lb_write_task(PHS_SETPOINT, 100);
-        lb_write_task(NTW_LO_AMP, 20000);
-        lb_write_task(KP_AMP, 1000);
-        lb_write_task(KP_PHS, 1000);
-        lb_write_task(KI_AMP, 100);
-        lb_write_task(KI_PHS, 100);
-        lb_write_task(AMP_LOOP_ENABLE, 1);
-        lb_write_task(PHS_LOOP_ENABLE, 1);
-        lb_write_task(NTW_AMP_ENABLE, 1);
-        lb_write_task(NTW_PHS_ENABLE, 0);
-        lb_write_task(AMP_LOOP_RESET, 0);
-        lb_write_task(PHS_LOOP_RESET, 0);
-        @(posedge lb_clk);
-    end
-endtask
-
     integer time0=0;
     always @(negedge lb_clk) begin
         time0 = $time-(CLK_CYCLE)/2;
@@ -237,9 +207,7 @@ endtask
     // ---------------------
     // Main sequence
     // ---------------------
-    reg [19:0] phase_step_h;
-    reg [11:0] phase_step_l;
-    wire [31:0] phase_step = {phase_step_h, phase_step_l};
+    reg [31:0] phase_step;
     reg [11:0] modulo;
     reg [18:0] phase_shift=0;
     reg pulse_mode=1'b0;
@@ -274,11 +242,12 @@ endtask
     real phs_expect;
     reg init_done=0;
 
-    initial begin
+    task init_task;
+        begin
         $display("---- Init settings ----");
         wave_samp_per = 1;
 
-        init_dds_task(phase_step_h, phase_step_l, modulo);
+        init_dds_task(phase_step, modulo);
         calc_cic_gain_task(wave_samp_per, `SHIFT_BASE, shift, mon_gain);
         calc_cic_gain_task(1, `SHIFT_INLK, inlk_shift, inlk_gain);
         calc_loop_gain_task(
@@ -300,7 +269,8 @@ endtask
         $display("%20s = %12.1f", "amp_expect", amp_expect);
         $display("%20s = %12.1f", "phs_expect", phs_expect);
         init_done = 1'b1;
-    end
+        end
+    endtask
 
     integer fd;
     reg [255:0] fname;
@@ -310,6 +280,7 @@ endtask
     integer jx;
     reg inlk_check=0;
     initial begin
+        init_task();
         while (!init_done);
         $display("---- Frequency settings ----");
         $display("%20s = %12d", "NUM_DDS", `NUM_DDS);

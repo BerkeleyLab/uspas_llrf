@@ -65,7 +65,6 @@ module system_top (
     inout [7:0]     ZEST_PMOD2
 );
 
-parameter FCNT_WIDTH = 16;
 parameter LB_READ_DELAY=3;
 parameter LB_ADW = 20;
 // Combine the 2 reset sources (USB, button)

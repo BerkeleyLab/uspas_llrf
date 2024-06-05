@@ -79,7 +79,6 @@ gmii_to_rgmii #( .in_phase_tx_clk(1)) gmii_to_rgmii_i (
 // localbus master
 wire rx_mon;
 wire tx_mon;
-wire tx_mac_done;
 
 rtefi_blob #(
     .ip(IP), .mac(MAC), .p3_read_pipe_len(LB_READ_DELAY)

@@ -92,9 +92,9 @@ t_reg32 regmap_amc7823[] = {
     { (1<<6) | 0xd, 0x8010}, // # PWR Down: only enable ADC and PREFB
 };
 
-// #define FCNT_EXP FREQ_LO_MHZ * (1<<FCNT_WIDTH) / 4 / 125
+// #define FCNT_EXP FREQ_DSP_MHZ * (1<<16) / 125
 #ifndef FCNT_EXP
-#define FCNT_EXP 60074
+#define FCNT_EXP 62390
 #endif
 // DSP_CLK, ADC0_DIV, ADC1_DIV, DAC_DCO
 uint16_t fcnt_exp[4] = {

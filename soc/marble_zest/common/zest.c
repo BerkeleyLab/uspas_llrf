@@ -51,14 +51,14 @@ uint32_t wait_ad7794_spi_ready(void) {
     return count;
 }
 
-uint16_t read_zest_fcnt(uint8_t ch) {
+uint32_t read_zest_fcnt(uint8_t ch) {
     SET_REG8(g_base_sfr + SFR_OUT_BYTE_FCLK_SEL, (ch & 0x3));
-    return GET_REG16(g_base_sfr + SFR_IN_BYTE_FCNT);
+    return GET_REG(g_base_sfr + (SFR_IN_REG_FCNT<<2));
 }
 
-uint16_t read_clk_div_ph(uint8_t ch) {
+uint32_t read_clk_div_ph(uint8_t ch) {
     SET_REG8(g_base_sfr + SFR_OUT_BYTE_PH_SEL, (ch & 0x3));
-    return GET_REG16(g_base_sfr + SFR_IN_BYTE_PCNT);
+    return GET_REG(g_base_sfr + (SFR_IN_REG_PCNT<<2));
 }
 
 uint16_t read_adc_waveform_sample(uint8_t ch) {

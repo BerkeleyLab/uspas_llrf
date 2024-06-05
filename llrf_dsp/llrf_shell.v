@@ -14,12 +14,21 @@
 // 20000 to 2ffff   Circular buffer
 
 module llrf_shell #(
-    parameter CIC_BASE_PERIOD = `CIC_BASE_PERIOD,
-    parameter SHIFT_BASE = `SHIFT_BASE,
-    parameter SHIFT_INLK = `SHIFT_INLK,
-    parameter CBUF_DW = 24,
-    parameter CBUF_AW = 16,
-    parameter GIT_REV_ID = 0
+    parameter integer CIC_BASE_PERIOD = `CIC_BASE_PERIOD,
+    parameter integer SHIFT_BASE = `SHIFT_BASE,
+    parameter integer SHIFT_INLK = `SHIFT_INLK,
+    parameter integer CBUF_DW = 24,
+    parameter integer CBUF_AW = 16,
+    parameter integer GIT_REV_ID = 0,
+    localparam integer MON_RW = 44, // must <= 44, see ccfilt.v:51
+    localparam integer LB_DW = 32,
+    localparam integer LB_ADW = 18,
+    localparam integer DW = 16,
+    localparam integer DWLO = 18,
+    localparam integer DAVR = 3, // Guard bits to keep in output of mixer
+    localparam integer N_ADC = 8,
+    localparam integer N_DAC = 2,
+    localparam integer N_CH = 10 // N_ADC + N_DAC
 ) (
     // ---------------------
     // Localbus interface
@@ -57,14 +66,7 @@ module llrf_shell #(
 
     output               trig_out
 );
-localparam LB_DW = 32;
-localparam LB_ADW = 18;
-localparam DW = 16;
-localparam DWLO = 18;
-localparam DAVR = 3; // Guard bits to keep in output of mixer
-localparam N_ADC = 8;
-localparam N_DAC = 2;
-localparam N_CH = 10; // N_ADC + N_DAC
+
 
 wire [DW-1:0] adc_phy_dat [0:N_ADC-1];
 assign adc_phy_dat[0] = adc_data_in[DW*0 +:DW];
@@ -275,7 +277,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         cbuf_delay_stop ? delay_cnt : delay_cnt + cbuf_sync;
     end
 
-    localparam MON_RW = 44; // must <= 44, see ccfilt.v:51
     wire        di_stb_out;
     wire [MON_RW-1:0] di_sr_out;
     wire [2*N_CH-1:0] chan_keep_iq;

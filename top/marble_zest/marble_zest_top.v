@@ -278,7 +278,7 @@ wire [15:0] dac_b_out;
 `define GIT_32BIT_ID 32'hdeadf00d
 `endif
 
-llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) dsp (
+llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) llrf_inst (
     .lb_clk         (clk),
     .lb_write       (lb_write),
     .lb_addr        (lb_addr),
@@ -302,6 +302,7 @@ llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) dsp (
 
 zest #(
     .PH_DIFF_ADV (`PH_DIFF_ADV),
+    .CLKIN_PERIOD(`CLKIN_PERIOD),
     .BASE_ADDR  (8'h05),
     .FCNT_WIDTH (16)
 ) zest_inst (
