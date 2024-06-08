@@ -57,7 +57,7 @@ typedef struct {
     t_init_data ad9781_data;
     t_init_data ad7794_data;
     t_init_data amc7823_data;
-    uint16_t *fcnt_exp;       // expected DSP_CLK, ADC0_DIV, ADC1_DIV, DAC_DCO
+    uint32_t *fcnt_exp;       // expected DSP_CLK, ADC0_DIV, ADC1_DIV, DAC_DCO
     uint8_t *phs_center;      // expected ADC0_DIV, ADC1_DIV, DAC_DCO, AD9781_SMP
 } t_zest_init;
 
@@ -80,7 +80,7 @@ void sync_zest_clocks(void);
  * @param fcnt_exp - expected fcnt
  * @return pass             - true if all validation passes
 *******************************************************************************/
-bool check_zest_freq(uint8_t ch, uint16_t fcnt_exp);
+bool check_zest_freq(uint8_t ch, uint32_t fcnt_exp);
 
 /***************************************************************************//**
  * @brief Read clk_to_fpga clk frequency

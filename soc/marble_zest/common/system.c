@@ -64,11 +64,11 @@ int main(void) {
 
     debug_printf("=== VERBOSE MODE ===\n");
     pass &= init_marble();
-    printf("==== Marble Init       ====  : %s.\n", pass?"PASS":"FAIL");
+    printf("==== Marble Init      ====  : %s.\n", pass?"PASS":"FAIL");
     pass &= init_zest(BASE_ZEST, &zest_init_data);
-    printf("==== ZEST Init         ====  : %s.\n", pass?"PASS":"FAIL");
+    printf("==== ZEST Init        ====  : %s.\n", pass?"PASS":"FAIL");
     pass &= init_llrf(&llrf_init_data);
-    printf("==== LLRF Init         ====  : %s.\n", pass?"PASS":"FAIL");
+    printf("==== LLRF Init        ====  : %s.\n", pass?"PASS":"FAIL");
     while(1) {
         handle_ui();
     }

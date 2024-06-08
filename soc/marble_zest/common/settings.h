@@ -14,13 +14,13 @@
 
 #define F_CLK                  125000000     // [Hz]
 
-#define BOOTLOADER_DELAY    (F_CLK/1000)  // How long to wait in the bootloader
+#define BOOTLOADER_DELAY    (F_CLK/1000)     // How long to wait in the bootloader
 
 // GPIO PIN assignments (must match top.v)
 #define PIN_I2C_SDA             0
 #define PIN_I2C_SCL             1
 #define PIN_PCA9548_RST         2
-#define I2C_DELAY_US            3           //~half a clock period [us]
+#define I2C_DELAY_US            3            //~half a clock period [us]
 
 #define DEBUG_PRINT 0
 #define debug_printf(...) \

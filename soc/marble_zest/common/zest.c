@@ -318,7 +318,7 @@ bool check_zest_regs(uint8_t dev, const t_init_data *p_data) {
     return pass;
 }
 
-bool check_zest_freq(uint8_t ch, uint16_t fcnt_exp) {
+bool check_zest_freq(uint8_t ch, uint32_t fcnt_exp) {
     uint32_t fcnt;
     DELAY_MS(2);
 
@@ -501,7 +501,7 @@ bool init_zest(uint32_t base, t_zest_init *init_data) {
     t_init_data *p_ad9781_data = &(init_data->ad9781_data);
     t_init_data *p_ad7794_data = &(init_data->ad7794_data);
     t_init_data *p_amc7823_data = &(init_data->amc7823_data);
-    uint16_t *fcnt_exp = init_data->fcnt_exp;
+    uint32_t *fcnt_exp = init_data->fcnt_exp;
     uint8_t *phs_center = init_data->phs_center;
 
     // enable PWR_EN
@@ -672,7 +672,7 @@ bool init_zest_dbg(uint32_t base, t_zest_init *init_data) {
     // test_adc_pn9(8);
     // check_adc_prbs9();
     // align_ad9781(12);
-    uint16_t *fcnt_exp = init_data->fcnt_exp;
+    uint32_t *fcnt_exp = init_data->fcnt_exp;
     check_zest_freq(0, fcnt_exp[0]);
     // fcnt = read_zest_fcnt(0);
     // print_udec_fix(fcnt*125, FCNT_WIDTH, 3);
