@@ -56,9 +56,9 @@ uint32_t read_zest_fcnt(uint8_t ch) {
     return GET_REG(g_base_sfr + (SFR_IN_REG_FCNT<<2));
 }
 
-uint32_t read_clk_div_ph(uint8_t ch) {
+uint16_t read_clk_div_ph(uint8_t ch) {
     SET_REG8(g_base_sfr + SFR_OUT_BYTE_PH_SEL, (ch & 0x3));
-    return GET_REG(g_base_sfr + (SFR_IN_REG_PCNT<<2));
+    return GET_REG16(g_base_sfr + (SFR_IN_REG_PCNT<<2));
 }
 
 uint16_t read_adc_waveform_sample(uint8_t ch) {
@@ -330,7 +330,6 @@ bool check_zest_freq(uint8_t ch, uint32_t fcnt_exp) {
 }
 
 void sync_zest_clocks(void) {
-    // XXX needs test
     write_zest_reg(ZEST_DEV_LMK01801,  5, 0x2049UL);
     DELAY_MS(5);
 }
@@ -338,12 +337,24 @@ void sync_zest_clocks(void) {
 void init_zest_clocks(t_init_data *p_data) {
     write_zest_regs(ZEST_DEV_LMK01801, p_data->regmap, p_data->len);
     sync_zest_clocks();
+    reset_zest_pll();
 }
 
 void reset_zest_bufr(uint8_t ch) {
     const uint8_t addr[] = {SFR_WST_BIT_BUFR_A_RST, SFR_WST_BIT_BUFR_B_RST};
     SET_SFR1(g_base_sfr, 0, addr[ch], 1);
     SET_SFR1(g_base_sfr, 0, addr[ch], 0);
+}
+
+void reset_zest_pll(void) {
+    SET_SFR1(g_base_sfr, 0, SFR_WST_BIT_DSPCLK_RST, 1);
+    DELAY_MS(5);
+    SET_SFR1(g_base_sfr, 0, SFR_WST_BIT_DSPCLK_RST, 0);
+    DELAY_MS(5);
+}
+
+bool check_zest_pll(void) {
+    return GET_SFR1(g_base_sfr, 0, SFR_IN_BIT_DSPCLK_LOCKED);
 }
 
 bool check_div_clk_phase(uint8_t ch, uint8_t center) {
@@ -355,8 +366,7 @@ bool check_div_clk_phase(uint8_t ch, uint8_t center) {
     ph_cnt = read_clk_div_ph(ch) >> 5;  // 13bit to 8bit
     printf("    Phase %8s clk: %#4x", zest_phdiff_names[ch], ph_cnt);
     print_dec_fix(ph_cnt, 7, 3);
-    print_str(" UI\n");
-    // return (ph_cnt > 128*0.3 && ph_cnt < 128*0.7);
+    printf(" UI.\n");
     return (ph_cnt > center*0.6 && ph_cnt < center*1.4);
 }
 
@@ -511,6 +521,7 @@ bool init_zest(uint32_t base, t_zest_init *init_data) {
     // LMK01801 init (CLK)
     //------------------------------
     init_zest_clocks(p_lmk01801_data);
+    p &= check_zest_pll(); pass &= p;
     p &= check_zest_freq(0, fcnt_exp[0]); pass &= p;
     printf("==== ZEST DSP CLK Freq====  : %s.\n", p?"PASS":"FAIL");
 

@@ -23,8 +23,10 @@
 #define SFR_OUT_BIT_PWR_ENB     28
 #define SFR_WST_BIT_BUFR_A_RST  29
 #define SFR_WST_BIT_BUFR_B_RST  30
+#define SFR_WST_BIT_DSPCLK_RST  31
 #define SFR_IN_REG_PCNT         0
 #define SFR_IN_REG_FCNT         1
+#define SFR_IN_BIT_DSPCLK_LOCKED 16
 
 #ifndef FCNT_WIDTH
     #define FCNT_WIDTH              16
@@ -94,7 +96,7 @@ uint32_t read_zest_fcnt(uint8_t ch);
  * @param ch - 0,1,2,3 for dsp_clk, clk_div0, clk_div1
  * @return raw freq_count result (13bits)
 *******************************************************************************/
-uint32_t read_clk_div_ph(uint8_t ch);
+uint16_t read_clk_div_ph(uint8_t ch);
 
 /***************************************************************************//**
  * @brief Read raw ADC count for selected channel
@@ -127,6 +129,16 @@ bool init_zest_adcs(uint32_t base, int8_t bitslip_want);
  * @param ch      -  0,1,2[,3]
 *******************************************************************************/
 void reset_zest_bufr(uint8_t ch);
+
+/***************************************************************************//**
+ * @brief Reset MMCM from fpga_clk to dsp_clk
+*******************************************************************************/
+void reset_zest_pll(void);
+
+/***************************************************************************//**
+ * @brief Check MMCM PLL locked status
+*******************************************************************************/
+bool check_zest_pll(void);
 
 /***************************************************************************//**
  * @brief Configure SPI settings and remember current device.

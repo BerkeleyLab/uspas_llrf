@@ -170,8 +170,10 @@ sfr_pack #(
 /// #define SFR_OUT_BIT_PWR_ENB     28
 /// #define SFR_WST_BIT_BUFR_A_RST  29
 /// #define SFR_WST_BIT_BUFR_B_RST  30
+/// #define SFR_WST_BIT_DSPCLK_RST  31
 /// #define SFR_IN_REG_PCNT         0
 /// #define SFR_IN_REG_FCNT         1
+/// #define SFR_IN_BIT_DSPCLK_LOCKED 16
 wire [7:0] phs_sel  = sfRegsOut[7:0];
 wire [7:0] fclk_sel = sfRegsOut[15:8];
 wire [7:0] csb_sel  = sfRegsOut[(2*8)+:8];
@@ -181,6 +183,7 @@ wire adc_sync       = sfRegsOut[26];
 wire pwr_sync       = sfRegsOut[27];
 wire pwr_en_b       = sfRegsOut[28];
 wire [1:0] bufr_reset= sfRegsOut[30:29];
+wire dspclk_reset   = sfRegsOut[31];
 
 // Chip Select Bar for SPI
 wire [6:0] ic_csb = ~(1 << csb_sel);
@@ -220,14 +223,16 @@ assign PWR_EN       = ~pwr_en_b;
 
 wire [12:0] phdiff [3:0];
 wire [27:0] f_clks [3:0];
-assign sfRegsInp[ 0+:32] = phdiff[phs_sel];        // SFR_IN_REG_PCNT
+wire pll_locked;
+
+assign sfRegsInp[ 0+:16] = phdiff[phs_sel];        // SFR_IN_REG_PCNT
 assign sfRegsInp[32+:32] = f_clks[fclk_sel];       // SFR_IN_REG_FCNT
+assign sfRegsInp[16] = pll_locked;          // SFR_IN_BIT_DSPCLK_LOCKED
 
 //--------------------------------------------------------------
 // CLK
 //--------------------------------------------------------------
 
-wire pll_locked;
 xilinx7_clocks #(
     .DIFF_CLKIN("TRUE"),
     .CLKIN_PERIOD(CLKIN_PERIOD),  // REFCLK: about 240 MHz
@@ -237,7 +242,7 @@ xilinx7_clocks #(
 ) clocks_i(
     .sysclk_p (CLK_TO_FPGA_P),
     .sysclk_n (CLK_TO_FPGA_N),
-    .reset    (1'b0),
+    .reset    (dspclk_reset),
     .clk_out0 (dsp_clk_out),
     .clk_out1 (),
     .locked   (pll_locked)
