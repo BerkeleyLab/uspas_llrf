@@ -240,7 +240,13 @@ void test_adc_pn9(uint8_t len);
 *******************************************************************************/
 bool align_adc_clk_phase(uint8_t ch, uint8_t center);
 
-bool init_zest_dbg(uint32_t base);
+/***************************************************************************//**
+ * @brief Test function.
+ * @param base              - base address
+ * @param zest_init_data    - pointer to init register data.
+ * @return pass             - true if all validation passes
+*******************************************************************************/
+bool init_zest_dbg(uint32_t base, t_zest_init *init_data);
 
 /* #define debug_printf(...) \ */
 /*    do { if (DEBUG_PRINT) printf(__VA_ARGS__); } while (0) */

@@ -84,7 +84,7 @@ void handle_ui( void ) {
             break;
 
         case 'd':
-            init_zest_dbg(BASE_ZEST);
+            init_zest_dbg(BASE_ZEST, &zest_init_data);
             break;
 
         case 'l':

@@ -296,15 +296,14 @@ llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) llrf_inst (
     .slow_permit_in (1'b1)
 );
 
-// ----------------------------------
+// ---------------------------------
 // Zest Digitizer Board
 // ---------------------------------
 
 zest #(
     .PH_DIFF_ADV (`PH_DIFF_ADV),
     .CLKIN_PERIOD(`CLKIN_PERIOD),
-    .BASE_ADDR  (8'h05),
-    .FCNT_WIDTH (16)
+    .BASE_ADDR  (8'h05)
 ) zest_inst (
     .ADC_PDWN       (ZEST_ADC_PDWN      ),
     .ADC_CSB_0      (ZEST_ADC_CSB_0     ),

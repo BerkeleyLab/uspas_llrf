@@ -67,6 +67,7 @@ module system_top (
 
 parameter LB_READ_DELAY=3;
 parameter LB_ADW = 20;
+parameter FCNT_WIDTH = 16;
 // Combine the 2 reset sources (USB, button)
 wire clk;
 wire clk_200;

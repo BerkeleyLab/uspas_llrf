@@ -14,7 +14,7 @@ SRC_V  += $(BOARD_SUPPORT_DIR)/fmc11x/dco_buf.v \
 
 SRC_V  += $(VIVADO_BASE)/data/verilog/src/glbl.v
 OBJS   += 0x000.lds
-CFLAGS += -DSIMULATION -DXSIM_DBG
+CFLAGS += -DSIMULATION -DXSIM_DBG -DFCNT_WIDTH=10
 
 all: $(TARGET)_top.vcd
 $(TARGET).elf: $(OBJS)

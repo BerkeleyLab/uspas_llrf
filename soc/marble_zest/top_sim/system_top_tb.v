@@ -2,11 +2,17 @@
 
 module system_top_tb;
     localparam F_CLK = 125000000;                      // Simulated clock rate in [Hz]
-    localparam CLK_PERIOD_NS = 1000000000/F_CLK/2;     // Simulated clock period in [ns]
+    localparam PD_CLK = 1000000000/F_CLK;              // Simulated clock period in [ns]
     localparam BAUD_RATE = 9216000;                    // debug text baudrate
+
+    localparam FS_DAC_CLK = 238000000.0;               // Simulated DAC Sampling clock in [Hz]
+    localparam FS_ADC_CLK = FS_DAC_CLK/2;              // Simulated ADC Sampling clock in [Hz]
+    localparam PD_DAC_CLK = 1000000000/FS_DAC_CLK;     // DAC Sampling clock period in [ns]
+    localparam PD_ADC_CLK = 1000000000/FS_ADC_CLK;     // ADC Sampling clock period in [ns]
+
     reg clk=1;
     integer pass=0;
-    always #CLK_PERIOD_NS begin
+    always #(PD_CLK/2) begin
         clk = ~clk;
     end
 
@@ -19,11 +25,15 @@ module system_top_tb;
     // --------------------------------------------------------------
     reg adc_clk_dco = 1;
     reg adc_clk     = 1;
-    always #(4.3636/4) begin
+    reg fpga_clk     = 1;
+    always #(PD_ADC_CLK/8) begin
         adc_clk_dco = ~adc_clk_dco;
     end
-    always #4.3636 begin
+    always #(PD_ADC_CLK/2) begin
         adc_clk = ~adc_clk;
+    end
+    always #(PD_DAC_CLK/2) begin
+        fpga_clk = ~fpga_clk;
     end
 
     // --------------------------------------------------------------
@@ -44,7 +54,6 @@ module system_top_tb;
             in_p[j] <= shifter[ix];
         shifter <= {shifter[30:0],shifter[31]};
     end
-
 
     // ------------------------------------------------------------------------
     //  Handle the power on Reset
@@ -87,7 +96,7 @@ module system_top_tb;
     wire [1:0] adc_dco_n = {1'b0, {~adc_clk_dco}};
 
     system_top #(
-        .FCNT_WIDTH             (8)         // speed up
+        .FCNT_WIDTH             (10)         // speed up, match FCNT_WIDTH in Makefile
     ) dut(
         .GTPREFCLK_P            (clk),                  // input
         .GTPREFCLK_N            (~clk),                 // input
@@ -120,8 +129,8 @@ module system_top_tb;
         .ZEST_LMK_DATAUWIRE     (1'b0),                 // input
         .ZEST_AD7794_DOUT       (1'b0),                 // input
         .ZEST_DAC_SDO           (zest_dac_sdo),         // input
-        .ZEST_CLK_TO_FPGA_P     ({adc_clk, 1'b0}),      // input
-        .ZEST_CLK_TO_FPGA_N     ({~adc_clk,1'b0}),      // input
+        .ZEST_CLK_TO_FPGA_P     ({fpga_clk, 1'b0}),     // input
+        .ZEST_CLK_TO_FPGA_N     ({~fpga_clk,1'b0}),     // input
         .ZEST_ADC_D0_P          (adc_d0_p),             // input [7:0]
         .ZEST_ADC_D0_N          (adc_d0_n),             // input [7:0]
         .ZEST_ADC_D1_P          (adc_d1_p),             // input [7:0]

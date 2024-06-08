@@ -319,7 +319,7 @@ bool check_zest_regs(uint8_t dev, const t_init_data *p_data) {
 }
 
 bool check_zest_freq(uint8_t ch, uint16_t fcnt_exp) {
-    uint16_t fcnt;
+    uint32_t fcnt;
     DELAY_MS(2);
 
     fcnt = read_zest_fcnt(ch);
@@ -656,8 +656,9 @@ void test_adc_pn9(uint8_t len) {
     write_zest_reg(ZEST_DEV_AD9653_BOTH, 0x14, 0x07); // two's comp
 }
 
-bool init_zest_dbg(uint32_t base) {
+bool init_zest_dbg(uint32_t base, t_zest_init *init_data) {
     bool pass=true;
+    // uint32_t fcnt;
     select_zest_addr(base);
 
     // t_init_data *p_ad9653_data = &(init_data->ad9653_data);
@@ -670,6 +671,10 @@ bool init_zest_dbg(uint32_t base) {
 
     // test_adc_pn9(8);
     // check_adc_prbs9();
-    align_ad9781(12);
+    // align_ad9781(12);
+    uint16_t *fcnt_exp = init_data->fcnt_exp;
+    check_zest_freq(0, fcnt_exp[0]);
+    // fcnt = read_zest_fcnt(0);
+    // print_udec_fix(fcnt*125, FCNT_WIDTH, 3);
     return pass;
 }
