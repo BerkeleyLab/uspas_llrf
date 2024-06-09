@@ -221,8 +221,11 @@ assign ADC_SYNC     = adc_sync;
 assign PWR_SYNC     = pwr_sync;
 assign PWR_EN       = ~pwr_en_b;
 
-wire [12:0] phdiff [3:0];
-wire [27:0] f_clks [3:0];
+// ADC0_DIV, ADC1_DIV, DAC_DCO
+wire [12:0] phdiff [N_ADC:0];
+wire [N_ADC:0] phdiff_val;
+// DSP_CLK, ADC0_DIV, ADC1_DIV, DAC_DCO
+wire [27:0] f_clks [N_ADC+1:0];
 wire pll_locked;
 
 assign sfRegsInp[ 0+:16] = phdiff[phs_sel];        // SFR_IN_REG_PCNT
@@ -299,6 +302,7 @@ generate for (ix=0; ix<N_ADC; ix=ix+1) begin: ic_map
         .ext_div2   (1'b0),
         .sclk       (clk_200),
         .rclk       (clk),
+        .dval       (phdiff_val[ix]),
         .phdiff_out (phdiff[ix])
     );
 
@@ -388,18 +392,21 @@ BUFG dco_bufg (
 reg [1:0] qphase=0;
 always @(posedge dac_dco_clk) qphase <= qphase + 1'b1;
 
-// ADV = FREQ1/REF_FREQ/2*(1<<DW) / F_RATIO;
+// F_RATIO = 2. See phasex_tb.v
 phase_diff #(
-    .ext_div1_en(1),    // F_RATIO - 1
-    .ext_div2_en(0),
-    .adv(PH_DIFF_ADV/2), .order1(2), .order2(1)
+    .ext_div1_en    (1),
+    .ext_div2_en    (0),
+    .adv            (PH_DIFF_ADV),
+    .order1         (2),
+    .order2         (1)
 ) phase_diff_dac (
     .uclk1      (dac_dco_clk),
     .ext_div1   (qphase[1]),
-    .uclk2      (dsp_dco_clk),  // uclk1 / F_RATIO
+    .uclk2      (dsp_clk_out),
     .ext_div2   (1'b0),
     .sclk       (clk_200),
     .rclk       (clk),
+    .dval       (phdiff_val[2]),
     .phdiff_out (phdiff[2])
 );
 

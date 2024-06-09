@@ -164,6 +164,8 @@ wire [13:0] dac_in_data_q;
 
 zest #(
     .BASE_ADDR  (8'h05),
+    .PH_DIFF_ADV (`PH_DIFF_ADV),
+    .CLKIN_PERIOD(`CLKIN_PERIOD),
     .FCNT_WIDTH (FCNT_WIDTH)
 ) zest_inst (
     .ADC_PDWN       (ZEST_ADC_PDWN      ),

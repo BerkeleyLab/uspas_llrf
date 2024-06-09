@@ -5,13 +5,13 @@ module system_top_tb;
     localparam PD_CLK = 1000000000/F_CLK;              // Simulated clock period in [ns]
     localparam BAUD_RATE = 9216000;                    // debug text baudrate
 
-    localparam FS_DAC_CLK = 238000000.0;               // Simulated DAC Sampling clock in [Hz]
-    localparam FS_ADC_CLK = FS_DAC_CLK/2;              // Simulated ADC Sampling clock in [Hz]
-    localparam PD_DAC_CLK = 1000000000/FS_DAC_CLK;     // DAC Sampling clock period in [ns]
-    localparam PD_ADC_CLK = 1000000000/FS_ADC_CLK;     // ADC Sampling clock period in [ns]
+    localparam PD_DAC_CLK = `CLKIN_PERIOD;     // DAC Sampling clock period in [ns]
+    localparam PD_ADC_CLK = PD_DAC_CLK * 2;     // ADC Sampling clock period in [ns]
+    localparam DAC_DCO_DELAY_UI = 0.1;
+
+    localparam MAX_SIM_TIME = 20000;    // ns
 
     reg clk=1;
-    integer pass=0;
     always #(PD_CLK/2) begin
         clk = ~clk;
     end
@@ -25,7 +25,8 @@ module system_top_tb;
     // --------------------------------------------------------------
     reg adc_clk_dco = 1;
     reg adc_clk     = 1;
-    reg fpga_clk     = 1;
+    reg dac_clk_dco = 1;
+    reg fpga_clk    = 1;
     always #(PD_ADC_CLK/8) begin
         adc_clk_dco = ~adc_clk_dco;
     end
@@ -36,6 +37,23 @@ module system_top_tb;
         fpga_clk = ~fpga_clk;
     end
 
+    // simulate dac_clk_dco delay
+    real dac_clk_delay;
+    reg [12:0] dac_clk_ph_exp;
+    initial begin
+        dac_clk_delay = DAC_DCO_DELAY_UI;
+        dac_clk_ph_exp = dac_clk_delay * 4096 + 4096 * 1.5;
+        $display("dac_clk_delay: %.4f UI, %d", dac_clk_delay, dac_clk_ph_exp);
+        #(PD_DAC_CLK * dac_clk_delay);
+        forever #(PD_DAC_CLK/2)  dac_clk_dco = ~dac_clk_dco;
+    end
+
+    always @(posedge clk) begin
+        if (dut.zest_inst.phase_diff_dac.dval) begin
+            $display("time: %8g ns, phase_diff_dac: exp=%8d, measured=%8d",
+                $time, dac_clk_ph_exp, dut.zest_inst.phase_diff_dac.phdiff_out);
+        end
+    end
     // --------------------------------------------------------------
     // Simulate adc output
     // --------------------------------------------------------------
@@ -72,8 +90,7 @@ module system_top_tb;
         reset <= 0;
         $write("UART baud_rate: %d\n", BAUD_RATE);
         $fflush();
-        #200000 $display("\nSimulation finish. Not a validation test.");
-        //$display("\n%8s", pass ? "PASS" : "FAIL" );
+        #MAX_SIM_TIME $display("\nSimulation finish. Not a validation test.");
         $finish;
     end
 
@@ -143,8 +160,8 @@ module system_top_tb;
         .ZEST_DAC_D_N           (),                     // output [13:0]
         .ZEST_DAC_DCI_P         (),                     // output
         .ZEST_DAC_DCI_N         (),                     // output
-        .ZEST_DAC_DCO_P         (1'b0),                 // input
-        .ZEST_DAC_DCO_N         (1'b0),                 // input
+        .ZEST_DAC_DCO_P         (dac_clk_dco),          // input
+        .ZEST_DAC_DCO_N         (~dac_clk_dco),         // input
         .ZEST_PMOD1             (),                     // inout [7:0]
         .ZEST_PMOD2             ()                      // inout [7:0]
     );

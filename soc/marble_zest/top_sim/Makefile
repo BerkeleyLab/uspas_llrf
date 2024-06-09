@@ -19,9 +19,13 @@ CFLAGS += -DSIMULATION -DXSIM_DBG -DFCNT_WIDTH=10
 all: $(TARGET)_top.vcd
 $(TARGET).elf: $(OBJS)
 
+XVLOG_ARGS = -d SIMULATE -d BLOCK_RAM_SIZE=$(BLOCK_RAM_SIZE)
+XVLOG_ARGS += -d PH_DIFF_ADV=$(CFG_$(FSET)_PH_DIFF_ADV)
+XVLOG_ARGS += -d CLKIN_PERIOD=$(CFG_$(FSET)_CLKIN_PERIOD)
+
 # simulation
 system_top_tb: system_top_tb.v $(SRC_V) $(TARGET)32.dat
-	xvlog -nolog -d SIMULATE -d BLOCK_RAM_SIZE=$(BLOCK_RAM_SIZE) $(filter %.v,$^)
+	xvlog -nolog $(XVLOG_ARGS) $(filter %.v,$^)
 	xelab -nolog -L unisims_ver -L secureip $@ glbl -s $@ -timescale 1ns/1ps
 
 system_top.vcd: system_top_tb system32.dat
