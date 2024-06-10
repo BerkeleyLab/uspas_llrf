@@ -105,8 +105,8 @@ uint32_t fcnt_exp[4] = {
 };
 
 // ADC0_DIV, ADC1_DIV, DAC_DCO, AD9781_SMP
-uint8_t phs_center[4] = {
-    70, 64, 32, 17
+int8_t phs_center[4] = {
+    55, 48, 32, 17
 };
 
 const t_zest_init zest_init_data = {

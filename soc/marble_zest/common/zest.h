@@ -32,6 +32,10 @@
     #define FCNT_WIDTH              16
 #endif
 
+#ifndef PH_DIFF_DW
+    #define PH_DIFF_DW              13
+#endif
+
 enum ZEST_DEV {
     ZEST_DEV_ILLEGAL   =  0xFF,
     ZEST_DEV_AD9653A   =  0x00,     // U2 ADC
@@ -60,7 +64,7 @@ typedef struct {
     t_init_data ad7794_data;
     t_init_data amc7823_data;
     uint32_t *fcnt_exp;       // expected DSP_CLK, ADC0_DIV, ADC1_DIV, DAC_DCO
-    uint8_t *phs_center;      // expected ADC0_DIV, ADC1_DIV, DAC_DCO, AD9781_SMP
+    int8_t *phs_center;      // expected ADC0_DIV, ADC1_DIV, DAC_DCO, AD9781_SMP
 } t_zest_init;
 
 typedef struct {
@@ -96,7 +100,7 @@ uint32_t read_zest_fcnt(uint8_t ch);
  * @param ch - 0,1,2,3 for dsp_clk, clk_div0, clk_div1
  * @return raw freq_count result (13bits)
 *******************************************************************************/
-uint16_t read_clk_div_ph(uint8_t ch);
+int16_t read_clk_div_ph(uint8_t ch);
 
 /***************************************************************************//**
  * @brief Read raw ADC count for selected channel
@@ -223,7 +227,7 @@ void read_ad7794_adcs(void);
  * @param center - expected phase center
  * @return       - true if valid phase found
 *******************************************************************************/
-bool check_div_clk_phase(uint8_t ch, uint8_t center);
+bool check_div_clk_phase(uint8_t ch, int8_t center);
 
 /***************************************************************************//**
  * @brief Generate pseudorandom binary sequence 9 (PRBS9)
@@ -250,7 +254,7 @@ void test_adc_pn9(uint8_t len);
  * @param center - expected phase center
  * @return       - true if valid phase found
 *******************************************************************************/
-bool align_adc_clk_phase(uint8_t ch, uint8_t center);
+bool align_adc_clk_phase(uint8_t ch, int8_t center);
 
 /***************************************************************************//**
  * @brief Test function.

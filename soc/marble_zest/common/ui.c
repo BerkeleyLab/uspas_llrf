@@ -16,7 +16,7 @@ extern t_zest_init zest_init_data;
 
 void handle_ui( void ) {
     uint32_t *fcnt_exp = zest_init_data.fcnt_exp;
-    uint8_t *phs_center = zest_init_data.phs_center;
+    int8_t *phs_center = zest_init_data.phs_center;
     uint16_t tempC = UART_GETC( BASE_UART0 );
     int16_t dval;
     int32_t dval32;

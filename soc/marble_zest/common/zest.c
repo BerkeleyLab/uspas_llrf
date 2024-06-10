@@ -56,9 +56,11 @@ uint32_t read_zest_fcnt(uint8_t ch) {
     return GET_REG(g_base_sfr + (SFR_IN_REG_FCNT<<2));
 }
 
-uint16_t read_clk_div_ph(uint8_t ch) {
+int16_t read_clk_div_ph(uint8_t ch) {
+    uint16_t reg_val;
     SET_REG8(g_base_sfr + SFR_OUT_BYTE_PH_SEL, (ch & 0x3));
-    return GET_REG16(g_base_sfr + (SFR_IN_REG_PCNT<<2));
+    reg_val = GET_REG16(g_base_sfr + (SFR_IN_REG_PCNT<<2));
+    return (int16_t)(reg_val << (16 - PH_DIFF_DW));
 }
 
 uint16_t read_adc_waveform_sample(uint8_t ch) {
@@ -357,20 +359,21 @@ bool check_zest_pll(void) {
     return GET_SFR1(g_base_sfr, 0, SFR_IN_BIT_DSPCLK_LOCKED);
 }
 
-bool check_div_clk_phase(uint8_t ch, uint8_t center) {
+bool check_div_clk_phase(uint8_t ch, int8_t center) {
     // dsp_clk and one of div_clk phase diff should be within small margin of
-    // four edges   :  0.0,   0.5,  1.0,  1.5,  2.0  UI (div_clk cycle, wrap)
-    // cnt is 8 bit :    0,    64,  128,  192,  255 cnt
-    // 0.5 edge is aligned, with 0.4 margin for div_clk
-    uint16_t ph_cnt;
-    ph_cnt = read_clk_div_ph(ch) >> 5;  // 13bit to 8bit
-    printf("    Phase %8s clk: %#4x", zest_phdiff_names[ch], ph_cnt);
-    print_dec_fix(ph_cnt, 7, 3);
+    // four edges   :  0.0,  0.25,  0.5, -0.25  UI (div_clk cycle, wrap)
+    // cnt is 8 bit :    0,    64,  128,  -64 cnt
+    // 0.25 edge is aligned, with +-0.125 margin
+    int16_t ph_cnt;
+    ph_cnt = read_clk_div_ph(ch) >> 8;
+    printf("    Phase %8s clk: %6d  ", zest_phdiff_names[ch], ph_cnt);
+    print_dec_fix(ph_cnt, 8, 3);
     printf(" UI.\n");
-    return (ph_cnt > center*0.6 && ph_cnt < center*1.4);
+    ph_cnt -= center;
+    return (ph_cnt > -32 && ph_cnt < 32);
 }
 
-bool align_adc_clk_phase(uint8_t ch, uint8_t center) {
+bool align_adc_clk_phase(uint8_t ch, int8_t center) {
     for (uint8_t ix=0; ix<128; ix++) {
         if (check_div_clk_phase(ch, center)) {
             printf("  Phase %8s clk aligned. retry = %d.\n", zest_phdiff_names[ch], ix);
@@ -512,7 +515,7 @@ bool init_zest(uint32_t base, t_zest_init *init_data) {
     t_init_data *p_ad7794_data = &(init_data->ad7794_data);
     t_init_data *p_amc7823_data = &(init_data->amc7823_data);
     uint32_t *fcnt_exp = init_data->fcnt_exp;
-    uint8_t *phs_center = init_data->phs_center;
+    int8_t *phs_center = init_data->phs_center;
 
     // enable PWR_EN
     SET_SFR1(g_base_sfr, 0, SFR_OUT_BIT_PWR_ENB, 0);
@@ -577,14 +580,18 @@ bool init_zest(uint32_t base, t_zest_init *init_data) {
     p = true;
     for (ix=0; ix<3; ix++) {
         p = check_zest_freq(ix+1, fcnt_exp[ix+1]); pass &= p;
-        printf("  Clk DIV freq  %d Check: %s.\n", ix, p?"PASS":"FAIL");
+        printf("  Clock %s Freq Check: %s.\n",
+            zest_fcnt_names[ix+1], p?"PASS":"FAIL");
         p = align_adc_clk_phase(ix, phs_center[ix]); pass &= p;
-        printf("  Clk DIV phase %d Check: %s.\n", ix, p?"PASS":"FAIL");
+        printf("  Clock %s Phase Check: %s.\n",
+            zest_phdiff_names[ix], p?"PASS":"FAIL");
     }
     p = check_zest_freq(3, fcnt_exp[3]); pass &= p;
-    printf("  DAC DCO freq  %d Check: %s.\n", ix, p?"PASS":"FAIL");
+    printf("  Clock %s Freq Check: %s.\n",
+        zest_fcnt_names[3], p?"PASS":"FAIL");
     p = check_div_clk_phase(2, phs_center[2]); pass &= p;
-    printf("  DAC DCO phase %d Check: %s.\n", ix, p?"PASS":"FAIL");
+    printf("  Clock %s Phase Check: %s.\n",
+        zest_phdiff_names[2], p?"PASS":"FAIL");
 
     //------------------------------
     // ADC LVDS init
