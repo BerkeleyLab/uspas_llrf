@@ -68,6 +68,7 @@ module system_top (
 parameter LB_READ_DELAY=3;
 parameter LB_ADW = 20;
 parameter FCNT_WIDTH = 16;
+parameter PH_DIFF_DW = 13;
 // Combine the 2 reset sources (USB, button)
 wire clk;
 wire clk_200;
@@ -163,10 +164,11 @@ wire [13:0] dac_in_data_i;
 wire [13:0] dac_in_data_q;
 
 zest #(
-    .BASE_ADDR  (8'h05),
-    .PH_DIFF_ADV (`PH_DIFF_ADV),
-    .CLKIN_PERIOD(`CLKIN_PERIOD),
-    .FCNT_WIDTH (FCNT_WIDTH)
+    .BASE_ADDR      (8'h05),
+    .PH_DIFF_ADV    (`PH_DIFF_ADV),
+    .CLKIN_PERIOD   (`CLKIN_PERIOD),
+    .FCNT_WIDTH     (FCNT_WIDTH),
+    .PH_DIFF_DW     (PH_DIFF_DW)
 ) zest_inst (
     .ADC_PDWN       (ZEST_ADC_PDWN      ),
     .ADC_CSB_0      (ZEST_ADC_CSB_0     ),

@@ -7,10 +7,12 @@ module system_top_tb;
 
     localparam PD_DAC_CLK = `CLKIN_PERIOD;     // DAC Sampling clock period in [ns]
     localparam PD_ADC_CLK = PD_DAC_CLK * 2;     // ADC Sampling clock period in [ns]
-    localparam DAC_DCO_DELAY_UI = 0.1;
+    localparam DAC_DCO_DELAY_UI = 0.2;
 
-    localparam MAX_SIM_TIME = 20000;    // ns
+    localparam MAX_SIM_TIME = 15000;    // ns
+    localparam PH_DIFF_DW = 13;
 
+    reg pass=1;
     reg clk=1;
     always #(PD_CLK/2) begin
         clk = ~clk;
@@ -37,21 +39,30 @@ module system_top_tb;
         fpga_clk = ~fpga_clk;
     end
 
-    // simulate dac_clk_dco delay
+    // matches phasex_tb.v
     real dac_clk_delay;
-    reg [12:0] dac_clk_ph_exp;
+    reg signed [PH_DIFF_DW-1:0] dac_clk_ph_exp;
+    wire signed [PH_DIFF_DW-1:0] dac_clk_ph_meas;
     initial begin
         dac_clk_delay = DAC_DCO_DELAY_UI;
-        dac_clk_ph_exp = dac_clk_delay * 4096 + 4096 * 1.5;
+        dac_clk_ph_exp = -dac_clk_delay * (1<<PH_DIFF_DW) / 2;
         $display("dac_clk_delay: %.4f UI, %d", dac_clk_delay, dac_clk_ph_exp);
+        @(posedge dut.locked);  // wait for MMCM
+        @(posedge dut.dsp_clk_out);
         #(PD_DAC_CLK * dac_clk_delay);
         forever #(PD_DAC_CLK/2)  dac_clk_dco = ~dac_clk_dco;
     end
 
+    assign dac_clk_ph_meas = dut.zest_inst.phase_diff_dac.phdiff_out;
+    real dac_dco_ph_err=0;
+    reg dac_phase_pass = 0;
     always @(posedge clk) begin
         if (dut.zest_inst.phase_diff_dac.dval) begin
-            $display("time: %8g ns, phase_diff_dac: exp=%8d, measured=%8d",
-                $time, dac_clk_ph_exp, dut.zest_inst.phase_diff_dac.phdiff_out);
+            dac_dco_ph_err = (dac_clk_ph_meas - dac_clk_ph_exp) / (1<<PH_DIFF_DW);
+            dac_phase_pass = dac_dco_ph_err > -0.02 && dac_dco_ph_err < 0.02;
+            pass = pass & dac_phase_pass;
+            $display("time: %8g ns, phase_diff_dac: exp =%5d, measured =%5d, pass=%s",
+                $time, dac_clk_ph_exp, dac_clk_ph_meas, dac_phase_pass ? "PASS" : "FAIL");
         end
     end
     // --------------------------------------------------------------
@@ -90,8 +101,14 @@ module system_top_tb;
         reset <= 0;
         $write("UART baud_rate: %d\n", BAUD_RATE);
         $fflush();
-        #MAX_SIM_TIME $display("\nSimulation finish. Not a validation test.");
-        $finish;
+        #MAX_SIM_TIME;
+        if (pass) begin
+            $display("PASS");
+            $finish();
+        end else begin
+            $display("FAIL");
+            $stop();
+        end
     end
 
     // ------------------------------------------------------------------------

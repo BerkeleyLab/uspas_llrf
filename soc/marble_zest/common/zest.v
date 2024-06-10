@@ -1,10 +1,11 @@
 module zest #(
-    parameter PH_DIFF_ADV = 4693,  // ADV: 500*11/48 / 200/2*(1<<14) = 4693
+    parameter PH_DIFF_ADV = 4693,  // ADV: F_CLK1 / 200 * (1<<PH_DIFF_DW)
     parameter CLKIN_PERIOD = 4.0, // ns period of CLK_TO_FPGA_P
     parameter N_ADC = 2,
     parameter N_CH = N_ADC*4,
     parameter FCNT_WIDTH = 16,  // to speed up simulaiton. 125M / 2**16 = 1.9kHz update rate. see freq_gcount.v
-    parameter [7:0] BASE_ADDR = 8'h05
+    parameter [7:0] BASE_ADDR = 8'h05,
+    parameter PH_DIFF_DW = 13
 ) (
     // Hardware pins
     // U24 74LVC8T245
@@ -222,13 +223,13 @@ assign PWR_SYNC     = pwr_sync;
 assign PWR_EN       = ~pwr_en_b;
 
 // ADC0_DIV, ADC1_DIV, DAC_DCO
-wire [12:0] phdiff [N_ADC:0];
+wire signed [PH_DIFF_DW-1:0] phdiff [N_ADC:0];
 wire [N_ADC:0] phdiff_val;
 // DSP_CLK, ADC0_DIV, ADC1_DIV, DAC_DCO
 wire [27:0] f_clks [N_ADC+1:0];
 wire pll_locked;
 
-assign sfRegsInp[ 0+:16] = phdiff[phs_sel];        // SFR_IN_REG_PCNT
+assign sfRegsInp[ 0+:PH_DIFF_DW] = phdiff[phs_sel];        // SFR_IN_REG_PCNT
 assign sfRegsInp[32+:32] = f_clks[fclk_sel];       // SFR_IN_REG_FCNT
 assign sfRegsInp[16] = pll_locked;          // SFR_IN_BIT_DSPCLK_LOCKED
 
@@ -295,7 +296,7 @@ generate for (ix=0; ix<N_ADC; ix=ix+1) begin: ic_map
         .clk_div_buf  (clk_div_buf[ix])
     );
 
-    phase_diff #(.adv(PH_DIFF_ADV)) phase_diff_i (
+    phase_diff #(.adv(PH_DIFF_ADV), .dw(PH_DIFF_DW+1)) phase_diff_i (
         .uclk1      (dsp_clk_out),
         .ext_div1   (1'b0),
         .uclk2      (clk_div[ix]),
@@ -389,19 +390,15 @@ BUFG dco_bufg (
     .O      (dac_dco_clk)
 );
 
-reg [1:0] qphase=0;
-always @(posedge dac_dco_clk) qphase <= qphase + 1'b1;
-
 // F_RATIO = 2. See phasex_tb.v
 phase_diff #(
-    .ext_div1_en    (1),
-    .ext_div2_en    (0),
     .adv            (PH_DIFF_ADV),
+    .dw             (PH_DIFF_DW+1),
     .order1         (2),
     .order2         (1)
 ) phase_diff_dac (
     .uclk1      (dac_dco_clk),
-    .ext_div1   (qphase[1]),
+    .ext_div1   (1'b0),
     .uclk2      (dsp_clk_out),
     .ext_div2   (1'b0),
     .sclk       (clk_200),

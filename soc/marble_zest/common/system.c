@@ -37,7 +37,7 @@ int main(void) {
     init();
 #ifdef SIMULATION
 #ifdef XSIM_DBG  // top level
-    printf("# TOP SIM #\n");
+    // printf("# TOP SIM #\n");
     pass = init_zest_dbg(BASE_ZEST, &zest_init_data);
 #else        // system_tb.v, faster
     printf("Simulating read XADC...:\n");
