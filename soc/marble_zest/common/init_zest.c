@@ -96,12 +96,12 @@ t_reg32 regmap_amc7823[] = {
 #ifndef FCNT_EXP
 #define FCNT_EXP 60074
 #endif
-// DSP_CLK, ADC0_DIV, ADC1_DIV, DAC_DCO
+// ADC0_DIV, ADC1_DIV, DAC_DCO, DSP_CLK
 uint32_t fcnt_exp[4] = {
     FCNT_EXP,
     FCNT_EXP,
-    FCNT_EXP,
-    FCNT_EXP * 2
+    FCNT_EXP * 2,
+    FCNT_EXP
 };
 
 // ADC0_DIV, ADC1_DIV, DAC_DCO, AD9781_SMP

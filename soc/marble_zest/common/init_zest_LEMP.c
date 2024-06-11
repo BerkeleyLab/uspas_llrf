@@ -96,17 +96,18 @@ t_reg32 regmap_amc7823[] = {
 #ifndef FCNT_EXP
 #define FCNT_EXP 62390
 #endif
-// DSP_CLK, ADC0_DIV, ADC1_DIV, DAC_DCO
+
+// ADC0_DIV, ADC1_DIV, DAC_DCO, DSP_CLK
 uint32_t fcnt_exp[4] = {
     FCNT_EXP,
     FCNT_EXP,
-    FCNT_EXP,
-    FCNT_EXP * 2
+    FCNT_EXP * 2,
+    FCNT_EXP
 };
 
 // ADC0_DIV, ADC1_DIV, DAC_DCO, AD9781_SMP
 int8_t phs_center[4] = {
-    55, 48, 32, 17
+    64, 48, -17, 9
 };
 
 const t_zest_init zest_init_data = {

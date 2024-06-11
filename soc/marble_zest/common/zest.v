@@ -282,7 +282,7 @@ freq_count #(
 ) fcnt_dsp (
     .sysclk     (clk),
     .f_in       (dsp_clk_out),
-	.frequency  (f_clks[0])
+	.frequency  (f_clks[3])
 );
 
 genvar ix;
@@ -312,7 +312,7 @@ generate for (ix=0; ix<N_ADC; ix=ix+1) begin: ic_map
     ) fcnt_dco_i (
         .sysclk     (clk),
         .f_in       (clk_div[ix]),
-        .frequency  (f_clks[ix+1])
+        .frequency  (f_clks[ix])
     );
 end endgenerate
 
@@ -412,7 +412,7 @@ freq_count #(
 ) fcnt_dac_i (
     .sysclk     (clk),
     .f_in       (dac_dco_clk),
-    .frequency  (f_clks[3])
+    .frequency  (f_clks[2])
 );
 
 assign dac_clk_out = dac_dco_clk;

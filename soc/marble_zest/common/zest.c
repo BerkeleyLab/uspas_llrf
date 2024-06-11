@@ -24,7 +24,7 @@ uint32_t g_base_wfm; //  = BASE_ZEST + ZEST_BASE2_WFM;
 static t_devinfo g_devinfo = {ZEST_DEV_ILLEGAL, 0, 0, 0, 0};
 
 const char *zest_fcnt_names[] = {
-    "DSP_CLK", "ADC0_DIV", "ADC1_DIV", "DAC_DCO"
+    "ADC0_DIV", "ADC1_DIV", "DAC_DCO", "DSP_CLK"
 };
 const char *zest_phdiff_names[] = {
     "ADC0_DIV", "ADC1_DIV", "DAC_DCO"
@@ -373,6 +373,20 @@ bool check_div_clk_phase(uint8_t ch, int8_t center) {
     return (ph_cnt > -32 && ph_cnt < 32);
 }
 
+bool align_dsp_clk_phase(int8_t center) {
+    for (uint8_t ix=0; ix<16; ix++) {
+        if (check_div_clk_phase(2, center)) {
+            printf("  Phase DSP clk aligned. retry = %d.\n", ix);
+            return true;
+        } else{
+            reset_zest_pll();
+            DELAY_MS(3);
+        }
+    }
+    printf(" dsp clk align failed.\n");
+    return false;
+}
+
 bool align_adc_clk_phase(uint8_t ch, int8_t center) {
     for (uint8_t ix=0; ix<128; ix++) {
         if (check_div_clk_phase(ch, center)) {
@@ -525,7 +539,7 @@ bool init_zest(uint32_t base, t_zest_init *init_data) {
     //------------------------------
     init_zest_clocks(p_lmk01801_data);
     p &= check_zest_pll(); pass &= p;
-    p &= check_zest_freq(0, fcnt_exp[0]); pass &= p;
+    p &= check_zest_freq(3, fcnt_exp[0]); pass &= p;
     printf("==== ZEST DSP CLK Freq====  : %s.\n", p?"PASS":"FAIL");
 
     //------------------------------
@@ -575,23 +589,28 @@ bool init_zest(uint32_t base, t_zest_init *init_data) {
     printf("==== ZEST AMC7823     ====  : %s.\n", p?"PASS":"FAIL");
 
     //------------------------------
+    // Align DAC_DCO_CLK and dsp_clk
+    //------------------------------
+    p = check_zest_freq(2, fcnt_exp[2]); pass &= p;
+    printf("  Clock %s Freq Check: %s.\n",
+        zest_fcnt_names[2], p?"PASS":"FAIL");
+    // p = check_div_clk_phase(2, phs_center[2]); pass &= p;
+    p = align_dsp_clk_phase(phs_center[2]); pass &= p;
+    printf("  Clock %s Phase Check: %s.\n",
+        zest_phdiff_names[2], p?"PASS":"FAIL");
+
+    //------------------------------
     // Align clk_div
     //------------------------------
     p = true;
-    for (ix=0; ix<3; ix++) {
-        p = check_zest_freq(ix+1, fcnt_exp[ix+1]); pass &= p;
+    for (ix=0; ix<2; ix++) {
+        p = check_zest_freq(ix, fcnt_exp[ix]); pass &= p;
         printf("  Clock %s Freq Check: %s.\n",
-            zest_fcnt_names[ix+1], p?"PASS":"FAIL");
+            zest_fcnt_names[ix], p?"PASS":"FAIL");
         p = align_adc_clk_phase(ix, phs_center[ix]); pass &= p;
         printf("  Clock %s Phase Check: %s.\n",
             zest_phdiff_names[ix], p?"PASS":"FAIL");
     }
-    p = check_zest_freq(3, fcnt_exp[3]); pass &= p;
-    printf("  Clock %s Freq Check: %s.\n",
-        zest_fcnt_names[3], p?"PASS":"FAIL");
-    p = check_div_clk_phase(2, phs_center[2]); pass &= p;
-    printf("  Clock %s Phase Check: %s.\n",
-        zest_phdiff_names[2], p?"PASS":"FAIL");
 
     //------------------------------
     // ADC LVDS init
