@@ -5,7 +5,7 @@ module system_top_tb;
     localparam PD_CLK = 1000000000/F_CLK;              // Simulated clock period in [ns]
     localparam BAUD_RATE = 9216000;                    // debug text baudrate
 
-    localparam PD_DAC_CLK = `CLKIN_PERIOD;     // DAC Sampling clock period in [ns]
+    localparam PD_DAC_CLK = 1000.0 / `DSP_FREQ_MHZ;    // DAC Sampling clock period in [ns]
     localparam PD_ADC_CLK = PD_DAC_CLK * 2;     // ADC Sampling clock period in [ns]
     localparam DAC_DCO_DELAY_UI = 0.2;
 

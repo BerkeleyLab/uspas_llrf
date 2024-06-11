@@ -13,6 +13,7 @@ Change [settings.mk](settings.mk) for the option of:
 |        IF        |    MO / 12   | 41.67     | MHz |
 |        LO        | MO / 12 * 11 | 458.33    | MHz |
 |      dsp_clk     |    LO / 4    | 114.58    | MHz |
+|      dac_clk     |    LO / 2    | 229.06    | MHz |
 | IF_adc / dsp_clk |    4 / 11    |           |     |
 
 Details see [Digital LLRF for ALS-U](https://arxiv.org/abs/2210.05095).
@@ -24,6 +25,7 @@ Details see [Digital LLRF for ALS-U](https://arxiv.org/abs/2210.05095).
 |        IF        |    MO / 24   | 20        | MHz |
 |        LO        | MO / 24 * 23 | 460       | MHz |
 |      dsp_clk     |    LO / 4    | 115       | MHz |
+|      dac_clk     |    LO / 2    | 230       | MHz |
 | IF_adc / dsp_clk |    4 / 23    |           |     |
 
 

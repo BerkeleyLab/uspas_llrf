@@ -1,11 +1,12 @@
 module zest #(
-    parameter PH_DIFF_ADV = 4693,  // ADV: F_CLK1 / 200 * (1<<PH_DIFF_DW)
-    parameter CLKIN_PERIOD = 4.0, // ns period of CLK_TO_FPGA_P
-    parameter N_ADC = 2,
-    parameter N_CH = N_ADC*4,
-    parameter FCNT_WIDTH = 16,  // to speed up simulaiton. 125M / 2**16 = 1.9kHz update rate. see freq_gcount.v
     parameter [7:0] BASE_ADDR = 8'h05,
-    parameter PH_DIFF_DW = 13
+    parameter DSP_FREQ_MHZ = 119.0,
+    parameter FCNT_WIDTH = 16,  // to speed up simulaiton. 125M / 2**16 = 1.9kHz update rate.
+    parameter PH_DIFF_DW = 13,
+    localparam integer N_ADC = 2,
+    localparam integer N_CH = N_ADC*4,
+    localparam real CLKIN_PERIOD = 1000.0 / DSP_FREQ_MHZ / 2,    // ns
+    localparam integer PH_DIFF_ADV = DSP_FREQ_MHZ / 200.0 * (2**PH_DIFF_DW)
 ) (
     // Hardware pins
     // U24 74LVC8T245
@@ -85,6 +86,9 @@ module zest #(
 //   .REFCLK       ( clk_200      ),
 //   .RDY          (              )
 // );
+initial begin
+    $display("CLKIN_PERIOD: %f ns, PH_DIFF_ADV: %d", CLKIN_PERIOD, PH_DIFF_ADV);
+end
 
 wire [32:0] mem_packed_rets [N_CH-1:0];
 wire [32:0] mem_packed_ret_spi;

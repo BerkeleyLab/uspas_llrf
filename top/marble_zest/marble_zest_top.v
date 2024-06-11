@@ -301,8 +301,7 @@ llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) llrf_inst (
 // ---------------------------------
 
 zest #(
-    .PH_DIFF_ADV (`PH_DIFF_ADV),
-    .CLKIN_PERIOD(`CLKIN_PERIOD),
+    .DSP_FREQ_MHZ   (`DSP_FREQ_MHZ),
     .BASE_ADDR  (8'h05)
 ) zest_inst (
     .ADC_PDWN       (ZEST_ADC_PDWN      ),
