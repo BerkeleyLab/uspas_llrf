@@ -36,7 +36,7 @@
     #define PH_DIFF_DW              13
 #endif
 
-enum ZEST_DEV {
+typedef enum ZEST_DEV {
     ZEST_DEV_ILLEGAL   =  0xFF,
     ZEST_DEV_AD9653A   =  0x00,     // U2 ADC
     ZEST_DEV_AD9653B   =  0x01,     // U3 ADC
@@ -45,7 +45,15 @@ enum ZEST_DEV {
     ZEST_DEV_AD7794    =  0x04,     // U18 SPI ADC (Thermistors)
     ZEST_DEV_AMC7823   =  0x05,     // U15 housekeeping
     ZEST_DEV_AD9653_BOTH =  0x06    // U2+U3 ADC, write only
-};
+} zest_dev_t;
+
+typedef enum ZEST_FREQ_PHS_NAMES {
+    ZEST_FREQ_ADC0_DIV = 0,
+    ZEST_FREQ_ADC1_DIV = 1,
+    ZEST_FREQ_DAC_DCO = 2,
+    ZEST_FREQ_DSP_CLK = 3,
+    ZEST_PHS_AD9781_SMP = 3
+} zest_freq_t;
 
 typedef struct {
     uint32_t addr;
@@ -55,17 +63,17 @@ typedef struct {
 typedef struct {
     size_t len;
     t_reg32 *regmap;
-} t_init_data;
+} zest_init_data_t;
 
 typedef struct {
-    t_init_data lmk01801_data;
-    t_init_data ad9653_data;
-    t_init_data ad9781_data;
-    t_init_data ad7794_data;
-    t_init_data amc7823_data;
-    uint32_t *fcnt_exp;       // expected DSP_CLK, ADC0_DIV, ADC1_DIV, DAC_DCO
+    zest_init_data_t lmk01801_data;
+    zest_init_data_t ad9653_data;
+    zest_init_data_t ad9781_data;
+    zest_init_data_t ad7794_data;
+    zest_init_data_t amc7823_data;
+    uint32_t *fcnt_exp;       // expected ADC0_DIV, ADC1_DIV, DAC_DCO, DSP_CLK
     int8_t *phs_center;      // expected ADC0_DIV, ADC1_DIV, DAC_DCO, AD9781_SMP
-} t_zest_init;
+} zest_init_t;
 
 typedef struct {
     uint8_t dev;
@@ -73,7 +81,7 @@ typedef struct {
     uint8_t data_len;
     uint16_t addr_mask;
     uint32_t data_mask;
-} t_devinfo;
+} zest_devinfo_t;
 
 /***************************************************************************//**
  * @brief SYNC both A&B banks by writing R5 when SYNC0_AUTO high
@@ -82,25 +90,25 @@ void sync_zest_clocks(void);
 
 /***************************************************************************//**
  * @brief Check freq in valid range
- * @param ch - 0,1,2,3 for dsp_clk, clk_div0, clk_div1
+ * @param ch - ZEST_FREQ_PHS_NAMES
  * @param fcnt_exp - expected fcnt
  * @return pass             - true if all validation passes
 *******************************************************************************/
-bool check_zest_freq(uint8_t ch, uint32_t fcnt_exp);
+bool check_zest_freq(zest_freq_t ch, uint32_t fcnt_exp);
 
 /***************************************************************************//**
  * @brief Read clk_to_fpga clk frequency
- * @param ch - 0,1,2,3 for dsp_clk, clk_div0, clk_div1
+ * @param ch - ZEST_FREQ_PHS_NAMES
  * @return raw freq_count result (28bits)
 *******************************************************************************/
-uint32_t read_zest_fcnt(uint8_t ch);
+uint32_t read_zest_fcnt(zest_freq_t ch);
 
 /***************************************************************************//**
  * @brief Read clk_to_fpga clk phase with respect to dsp_clk
- * @param ch - 0,1,2,3 for dsp_clk, clk_div0, clk_div1
+ * @param ch - ZEST_FREQ_PHS_NAMES
  * @return raw freq_count result (13bits)
 *******************************************************************************/
-int16_t read_clk_div_ph(uint8_t ch);
+int16_t read_clk_div_ph(zest_freq_t ch);
 
 /***************************************************************************//**
  * @brief Read raw ADC count for selected channel
@@ -119,7 +127,7 @@ uint16_t read_zest_adc(uint8_t ch);
  * @brief Soft-reset, Program LMK registers, and soft sync.
  * @param init_data     - init register data.
 *******************************************************************************/
-void init_zest_clocks(t_init_data *p_data);
+void init_zest_clocks(zest_init_data_t *p_data);
 
 /***************************************************************************//**
  * @brief Program all ADC registers, align IDELAY and ISERDES.
@@ -149,7 +157,7 @@ bool check_zest_pll(void);
  *
  * @param dev     - device ID, eg. ZEST_DEV_AD9653A
 *******************************************************************************/
-void init_zest_spi(uint8_t dev);
+void init_zest_spi(zest_dev_t dev);
 
 /***************************************************************************//**
  * @brief Write one register to specified device
@@ -158,7 +166,7 @@ void init_zest_spi(uint8_t dev);
  * @param addr    - spi register address
  * @param val     - spi register value
 *******************************************************************************/
-void write_zest_reg(uint8_t dev, uint32_t addr, uint32_t val);
+void write_zest_reg(zest_dev_t dev, uint32_t addr, uint32_t val);
 
 /***************************************************************************//**
  * @brief Read one register from specified device
@@ -166,7 +174,7 @@ void write_zest_reg(uint8_t dev, uint32_t addr, uint32_t val);
  * @param dev     - device ID, eg. ZEST_DEV_AD9653A
  * @param addr    - spi register address
 *******************************************************************************/
-uint32_t read_zest_reg(uint8_t dev, uint32_t addr);
+uint32_t read_zest_reg(zest_dev_t dev, uint32_t addr);
 
 /***************************************************************************//**
  * @brief Write list of t_reg32 to specified device
@@ -175,7 +183,7 @@ uint32_t read_zest_reg(uint8_t dev, uint32_t addr);
  * @param regmap  - pointer to t_reg32 list
  * @param len     - length of array
 *******************************************************************************/
-void write_zest_regs(uint8_t dev, const t_reg32 *regmap, size_t len);
+void write_zest_regs(zest_dev_t dev, const t_reg32 *regmap, size_t len);
 
 /***************************************************************************//**
  * @brief Validate reg values from readback of specified device
@@ -184,7 +192,7 @@ void write_zest_regs(uint8_t dev, const t_reg32 *regmap, size_t len);
  * @param p_data  - pointer to init data structure to be compared
  * @return valid  - true if identical
 *******************************************************************************/
-bool check_zest_regs(uint8_t dev, const t_init_data *p_data);
+bool check_zest_regs(zest_dev_t dev, const zest_init_data_t *p_data);
 
 /***************************************************************************//**
  * @brief Update all AD9517 registers (0x232=0b1)
@@ -197,7 +205,7 @@ void update_zest_ad9517(void);
  * @param zest_init_data    - pointer to init register data.
  * @return pass             - true if all validation passes
 *******************************************************************************/
-bool init_zest(uint32_t base, t_zest_init *init_data);
+bool init_zest(uint32_t base, zest_init_t *init_data);
 
 /***************************************************************************//**
  * @brief set global addresses
@@ -262,7 +270,7 @@ bool align_adc_clk_phase(uint8_t ch, int8_t center);
  * @param zest_init_data    - pointer to init register data.
  * @return pass             - true if all validation passes
 *******************************************************************************/
-bool init_zest_dbg(uint32_t base, t_zest_init *init_data);
+bool init_zest_dbg(uint32_t base, zest_init_t *init_data);
 
 /* #define debug_printf(...) \ */
 /*    do { if (DEBUG_PRINT) printf(__VA_ARGS__); } while (0) */

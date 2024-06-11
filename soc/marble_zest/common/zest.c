@@ -21,7 +21,7 @@ uint32_t g_base_sfr; //  = BASE_ZEST + ZEST_BASE2_SFR;
 uint32_t g_base_spi; //  = BASE_ZEST + ZEST_BASE2_SPI;
 uint32_t g_base_wfm; //  = BASE_ZEST + ZEST_BASE2_WFM;
 
-static t_devinfo g_devinfo = {ZEST_DEV_ILLEGAL, 0, 0, 0, 0};
+static zest_devinfo_t g_devinfo = {ZEST_DEV_ILLEGAL, 0, 0, 0, 0};
 
 const char *zest_fcnt_names[] = {
     "ADC0_DIV", "ADC1_DIV", "DAC_DCO", "DSP_CLK"
@@ -51,12 +51,12 @@ uint32_t wait_ad7794_spi_ready(void) {
     return count;
 }
 
-uint32_t read_zest_fcnt(uint8_t ch) {
+uint32_t read_zest_fcnt(zest_freq_t ch) {
     SET_REG8(g_base_sfr + SFR_OUT_BYTE_FCLK_SEL, (ch & 0x3));
     return GET_REG(g_base_sfr + (SFR_IN_REG_FCNT<<2));
 }
 
-int16_t read_clk_div_ph(uint8_t ch) {
+int16_t read_clk_div_ph(zest_freq_t ch) {
     uint16_t reg_val;
     SET_REG8(g_base_sfr + SFR_OUT_BYTE_PH_SEL, (ch & 0x3));
     reg_val = GET_REG16(g_base_sfr + (SFR_IN_REG_PCNT<<2));
@@ -175,7 +175,7 @@ uint32_t read_ad7794_channel(uint8_t ch) {
     return SPI_GET_DAT(g_base_spi) & 0xffffff;
 }
 
-void init_zest_spi(uint8_t dev) {
+void init_zest_spi(zest_dev_t dev) {
     uint8_t addr_len = 0;
     uint8_t data_len = 0;
 
@@ -227,7 +227,7 @@ void init_zest_spi(uint8_t dev) {
     g_devinfo.data_mask = (1 << data_len) - 1;
 }
 
-void write_zest_reg(uint8_t dev, uint32_t addr, uint32_t val) {
+void write_zest_reg(zest_dev_t dev, uint32_t addr, uint32_t val) {
     uint32_t inst=0;
     if (dev != g_devinfo.dev) {
         init_zest_spi(dev);
@@ -262,7 +262,7 @@ void write_zest_reg(uint8_t dev, uint32_t addr, uint32_t val) {
 	SPI_SET_DAT_BLOCK( g_base_spi, inst );
 }
 
-uint32_t read_zest_reg(uint8_t dev, uint32_t addr) {
+uint32_t read_zest_reg(zest_dev_t dev, uint32_t addr) {
     uint32_t inst;
 
     if (dev != g_devinfo.dev) {
@@ -297,14 +297,14 @@ uint32_t read_zest_reg(uint8_t dev, uint32_t addr) {
 	return SPI_GET_DAT( g_base_spi ) & g_devinfo.data_mask;
 }
 
-void write_zest_regs(uint8_t dev, const t_reg32 *regmap, size_t len) {
+void write_zest_regs(zest_dev_t dev, const t_reg32 *regmap, size_t len) {
     while ( len-- > 0 ){
         write_zest_reg(dev, regmap->addr, regmap->data);
         regmap++;
     }
 }
 
-bool check_zest_regs(uint8_t dev, const t_init_data *p_data) {
+bool check_zest_regs(zest_dev_t dev, const zest_init_data_t *p_data) {
     bool pass = true;
     uint32_t temp;
     size_t len = p_data->len;
@@ -320,7 +320,7 @@ bool check_zest_regs(uint8_t dev, const t_init_data *p_data) {
     return pass;
 }
 
-bool check_zest_freq(uint8_t ch, uint32_t fcnt_exp) {
+bool check_zest_freq(zest_freq_t ch, uint32_t fcnt_exp) {
     uint32_t fcnt;
     DELAY_MS(2);
 
@@ -336,7 +336,7 @@ void sync_zest_clocks(void) {
     DELAY_MS(5);
 }
 
-void init_zest_clocks(t_init_data *p_data) {
+void init_zest_clocks(zest_init_data_t *p_data) {
     write_zest_regs(ZEST_DEV_LMK01801, p_data->regmap, p_data->len);
     sync_zest_clocks();
     reset_zest_pll();
@@ -517,17 +517,17 @@ void dump_zest_dac_regs(void) {
     }
 }
 
-bool init_zest(uint32_t base, t_zest_init *init_data) {
+bool init_zest(uint32_t base, zest_init_t *init_data) {
     bool pass=true;
     bool p = true;
     size_t ix;
     select_zest_addr(base);
 
-    t_init_data *p_lmk01801_data = &(init_data->lmk01801_data);
-    t_init_data *p_ad9653_data = &(init_data->ad9653_data);
-    t_init_data *p_ad9781_data = &(init_data->ad9781_data);
-    t_init_data *p_ad7794_data = &(init_data->ad7794_data);
-    t_init_data *p_amc7823_data = &(init_data->amc7823_data);
+    zest_init_data_t *p_lmk01801_data = &(init_data->lmk01801_data);
+    zest_init_data_t *p_ad9653_data = &(init_data->ad9653_data);
+    zest_init_data_t *p_ad9781_data = &(init_data->ad9781_data);
+    zest_init_data_t *p_ad7794_data = &(init_data->ad7794_data);
+    zest_init_data_t *p_amc7823_data = &(init_data->amc7823_data);
     uint32_t *fcnt_exp = init_data->fcnt_exp;
     int8_t *phs_center = init_data->phs_center;
 
@@ -539,7 +539,7 @@ bool init_zest(uint32_t base, t_zest_init *init_data) {
     //------------------------------
     init_zest_clocks(p_lmk01801_data);
     p &= check_zest_pll(); pass &= p;
-    p &= check_zest_freq(3, fcnt_exp[0]); pass &= p;
+    p &= check_zest_freq(ZEST_FREQ_DSP_CLK, fcnt_exp[ZEST_FREQ_DSP_CLK]); pass &= p;
     printf("==== ZEST DSP CLK Freq====  : %s.\n", p?"PASS":"FAIL");
 
     //------------------------------
@@ -591,13 +591,13 @@ bool init_zest(uint32_t base, t_zest_init *init_data) {
     //------------------------------
     // Align DAC_DCO_CLK and dsp_clk
     //------------------------------
-    p = check_zest_freq(2, fcnt_exp[2]); pass &= p;
+    p = check_zest_freq(ZEST_FREQ_DAC_DCO, fcnt_exp[ZEST_FREQ_DAC_DCO]); pass &= p;
     printf("  Clock %s Freq Check: %s.\n",
-        zest_fcnt_names[2], p?"PASS":"FAIL");
+        zest_fcnt_names[ZEST_FREQ_DAC_DCO], p?"PASS":"FAIL");
     // p = check_div_clk_phase(2, phs_center[2]); pass &= p;
-    p = align_dsp_clk_phase(phs_center[2]); pass &= p;
+    p = align_dsp_clk_phase(phs_center[ZEST_FREQ_DAC_DCO]); pass &= p;
     printf("  Clock %s Phase Check: %s.\n",
-        zest_phdiff_names[2], p?"PASS":"FAIL");
+        zest_phdiff_names[ZEST_FREQ_DAC_DCO], p?"PASS":"FAIL");
 
     //------------------------------
     // Align clk_div
@@ -628,7 +628,7 @@ bool init_zest(uint32_t base, t_zest_init *init_data) {
     //------------------------------
     // DAC SMP alignment
     //------------------------------
-    p = align_ad9781(phs_center[3]); pass &= p;
+    p = align_ad9781(phs_center[ZEST_PHS_AD9781_SMP]); pass &= p;
     printf("==== ZEST DAC SMP Check====  : %s.\n", p?"PASS":"FAIL");
     printf("==== Overall Zest INIT ====  : %s.\n", pass?"PASS":"FAIL");
     return pass;
@@ -693,12 +693,12 @@ void test_adc_pn9(uint8_t len) {
     write_zest_reg(ZEST_DEV_AD9653_BOTH, 0x14, 0x07); // two's comp
 }
 
-bool init_zest_dbg(uint32_t base, t_zest_init *init_data) {
+bool init_zest_dbg(uint32_t base, zest_init_t *init_data) {
     bool pass=true;
     // uint32_t fcnt;
     select_zest_addr(base);
 
-    // t_init_data *p_ad9653_data = &(init_data->ad9653_data);
+    // zest_init_data_t *p_ad9653_data = &(init_data->ad9653_data);
     // printf("Reset BUFR 0: ");
     // reset_zest_bufr(0);
     // printf("Reset BUFR 1: ");

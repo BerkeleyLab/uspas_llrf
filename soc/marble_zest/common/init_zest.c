@@ -109,7 +109,7 @@ int8_t phs_center[4] = {
     70, 64, 32, 17
 };
 
-const t_zest_init zest_init_data = {
+const zest_init_t zest_init_data = {
     {
         sizeof(regmap_lmk01801) / sizeof(regmap_lmk01801[0]),
         regmap_lmk01801

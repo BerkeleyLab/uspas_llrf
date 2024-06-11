@@ -12,7 +12,7 @@
 #include "llrf.h"
 #include "llrf_regs_addr.h"
 
-extern t_zest_init zest_init_data;
+extern zest_init_t zest_init_data;
 
 void handle_ui( void ) {
     uint32_t *fcnt_exp = zest_init_data.fcnt_exp;

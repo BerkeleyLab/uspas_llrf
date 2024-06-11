@@ -14,7 +14,7 @@
 #include "llrf_regs_addr.h"
 #endif
 
-extern t_zest_init zest_init_data;
+extern zest_init_t zest_init_data;
 extern t_init_llrf_data llrf_init_data;
 
 void _putchar( char c ){
