@@ -542,12 +542,18 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // ---------------------
     // Scalar register readback
     // ---------------------
+    // Periodically pass the result to lb_clk domain
+    reg [2:0] xcnt=0;
+    wire dsp_tick = &xcnt;
+    always @(posedge dsp_clk) xcnt <= xcnt + 1'b1;
+
     wire signed [14:0] err_out_amp_lb;
     wire signed [14:0] err_out_phs_lb;
     data_xdomain #(.size(30)) loop_err_xdomain (
-        .clk_in   (dsp_clk), .gate_in  (1'b1),
+        .clk_in   (dsp_clk),
+        .gate_in  (dsp_tick),
         .data_in  ({err_out_amp, err_out_phs}),
-        .clk_out  (lb_clk), .gate_out (),
+        .clk_out  (lb_clk),
         .data_out ({err_out_amp_lb, err_out_phs_lb})
     );
 
@@ -557,9 +563,10 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [N_CH-1:0] inlk_lo_lb;
     wire [0:0] inlk_permit_out_lb;
     data_xdomain #(.size(4*N_CH+1)) inlk_stat_xdomain (
-        .clk_in   (dsp_clk), .gate_in  (1'b1),
+        .clk_in   (dsp_clk),
+        .gate_in  (dsp_tick),
         .data_in  ({inlk_permit_out, inlk_latch, inlk_status, inlk_hi, inlk_lo}),
-        .clk_out  (lb_clk), .gate_out (),
+        .clk_out  (lb_clk),
         .data_out ({inlk_permit_out_lb, inlk_latch_lb, inlk_status_lb, inlk_hi_lb, inlk_lo_lb})
     );
 
@@ -567,9 +574,10 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [2:0] arc_permit_latch_lb;
     wire [0:0] arc_permit_sum_lb;
     data_xdomain #(.size(3+3+1)) arc_stat_xdomain (
-        .clk_in   (dsp_clk), .gate_in  (1'b1),
+        .clk_in   (dsp_clk),
+        .gate_in  (dsp_tick),
         .data_in  ({arc_permit_sum, arc_permit_latch, arc_permit_raw}),
-        .clk_out  (lb_clk), .gate_out (),
+        .clk_out  (lb_clk),
         .data_out ({arc_permit_sum_lb, arc_permit_latch_lb, arc_permit_raw_lb})
     );
 
