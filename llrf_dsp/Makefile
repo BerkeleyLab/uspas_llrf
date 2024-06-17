@@ -3,8 +3,8 @@ include $(TOP)settings.mk
 include $(BUILD_DIR)/top_rules.mk
 include $(BUILD_DIR)/newad_top_rules.mk
 include $(CORDIC_DIR)/rules.mk
-TEST_BENCH  = llrf_shell_tb
-CHECKS      = llrf_shell_check
+TEST_BENCH  = llrf_shell_tb zest_dac_interp_tb
+CHECKS      = llrf_shell_check zest_dac_interp_check
 
 vpath %.v $(DSP_DIR)
 VFLAGS_DEP += -y$(DSP_DIR) -y$(CORDIC_DIR) -y.
