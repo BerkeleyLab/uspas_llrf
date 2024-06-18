@@ -623,14 +623,14 @@ bool init_zest(uint32_t base, zest_init_t *init_data) {
     // ADC PN9 validation
     //------------------------------
     p = check_adc_prbs9(); pass &= p;
-    printf("==== ZEST ADC PN9 Check====  : %s.\n", p?"PASS":"FAIL");
+    printf("==== ZEST ADC PN9 Check==== : %s.\n", p?"PASS":"FAIL");
 
     //------------------------------
     // DAC SMP alignment
     //------------------------------
     p = align_ad9781(phs_center[ZEST_PHS_AD9781_SMP]); pass &= p;
-    printf("==== ZEST DAC SMP Check====  : %s.\n", p?"PASS":"FAIL");
-    printf("==== Overall Zest INIT ====  : %s.\n", pass?"PASS":"FAIL");
+    printf("==== ZEST DAC SMP Check==== : %s.\n", p?"PASS":"FAIL");
+    printf("==== Overall Zest INIT ==== : %s.\n", pass?"PASS":"FAIL");
     return pass;
 }
 
@@ -658,9 +658,8 @@ bool check_adc_prbs9(void) {
         for (ix=0; ix<64-8; ix++) {
             if (pn_buf[ix] == wfm_buf[0]) {
                 // See gen_prbs9() for starting point of 1504
-                // 1e3/(500 * 11 / 48) / 8 = 1.096 ns per bit
+                // 1e3 / DSP_FREQ_MHZ / 8 is about 1.1 ns per bit
                 printf("  ADC %d: Found PN9 offset=%d\n", ch, ix+1504);
-                        // (int)(1.1*(ix + 1504)));
                 for (size_t iy=1; iy<8; iy++) {
                     pass &= pn_buf[ix+iy] == wfm_buf[iy];
                 }

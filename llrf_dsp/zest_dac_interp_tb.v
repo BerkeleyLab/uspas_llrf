@@ -2,9 +2,10 @@
 `include "settings.vams"
 
 module zest_dac_interp_tb;
-parameter integer DW=14;
-parameter real coeff_r=0.3;     // adjust me. 0.5 for normal interp.
-parameter integer LATENCY=8;
+parameter integer DW = 14;
+parameter real coeff_r = -1.279;     // adjust me. 1 for normal interp : y1=(y0+y2)/2.
+localparam integer LATENCY = 8;
+localparam integer DAC_INTERP_COEFF = coeff_r / 2 * (2**DW);
 
 integer cc=0;
 reg dac_clk=1, dsp_clk=1;
@@ -26,14 +27,14 @@ initial begin
 end
 always #(`DSP_CLK_CYCLE/2) dsp_clk = ~dsp_clk;
 
-reg signed [DW-1:0] coeff = coeff_r * 2**DW;
+// reg signed [DW-1:0] coeff = coeff_r * 2**DW;
 reg signed [DW-1:0] data_dsp={DW{1'bx}};
 wire signed [DW-1:0] data_dac;
 
 zest_dac_interp #(.DW(DW)) dut(
     .dsp_clk        (dsp_clk),
     .din            (data_dsp),
-    .coeff          (coeff),
+    .coeff          (DAC_INTERP_COEFF),
     .dac_clk        (dac_clk),
     .dout           (data_dac)
 );
@@ -51,7 +52,7 @@ reg_delay #(.dw(DW), .len(LATENCY)) delay1 (
 
 reg signed [DW-1:0] d1=0;
 always @(posedge dsp_clk) d1 <= data_dsp;
-wire signed [DW-1:0] data_interp = (d1 + data_dsp) * coeff_r;
+wire signed [DW-1:0] data_interp = (d1 + data_dsp) / 2 * coeff_r;
 wire signed [DW-1:0] data_interp_delay;
 
 reg_delay #(.dw(DW), .len(LATENCY-1)) delay2 (

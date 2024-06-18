@@ -21,7 +21,7 @@ $(TARGET).elf: $(OBJS)
 
 XVLOG_ARGS = -d SIMULATE -d BLOCK_RAM_SIZE=$(BLOCK_RAM_SIZE)
 XVLOG_ARGS += -d DSP_FREQ_MHZ=$(CFG_$(FSET)_DSP_FREQ_MHZ)
-
+XVLOG_ARGS += -d DAC_INTERP_COEFF_R=$(CFG_$(FSET)_DAC_INTERP_COEFF_R)
 # simulation
 system_top_tb: system_top_tb.v $(SRC_V) $(TARGET)32.dat
 	xvlog -nolog $(XVLOG_ARGS) $(filter %.v,$^)

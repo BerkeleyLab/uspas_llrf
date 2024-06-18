@@ -17,10 +17,11 @@ SRC_V  = picorv32.v system.v uart_rx.v uart_tx.v mpack.v munpack.v pico_pack.v
 SRC_V += memory_pack.v # memory2_pack.v
 SRC_V += stream_fifo.v shortfifo.v fifo.v uart_fifo_pack.v uart_stream.v
 SRC_V += sfr_pack.v gpio_pack.v gpioz_pack.v spi_engine.v \
-		 uart_pack.v wfm_pack.v xilinx7/xadc_pack.v
+		 uart_pack.v wfm_pack.v awg_pack.v xilinx7/xadc_pack.v
 SRC_V += lb_bridge.v lb_merge.v lb_reading.v
 SRC_V += $(DSP_DIR)/flag_xdomain.v $(DSP_DIR)/freq_gcount.v $(DSP_DIR)/freq_count.v $(DSP_DIR)/dpram.v $(DSP_DIR)/data_xdomain.v $(DSP_DIR)/reg_tech_cdc.v
 SRC_V += $(DSP_DIR)/phaset.v $(DSP_DIR)/phase_diff.v
+SRC_V += $(APP_DSP_DIR)/zest_dac_interp.v
 
 SRCS   =  system.c print.c i2c_soft.c timer.c ui.c
 SRCS  +=  printf.c iserdes.c

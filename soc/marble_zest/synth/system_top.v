@@ -166,6 +166,7 @@ wire [13:0] dac_in_data_q;
 zest #(
     .BASE_ADDR      (8'h05),
     .DSP_FREQ_MHZ   (`DSP_FREQ_MHZ),
+    .DAC_INTERP_COEFF_R (`DAC_INTERP_COEFF_R),
     .FCNT_WIDTH     (FCNT_WIDTH),
     .PH_DIFF_DW     (PH_DIFF_DW)
 ) zest_inst (

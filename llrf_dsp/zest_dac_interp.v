@@ -3,7 +3,7 @@ module zest_dac_interp #(
 ) (
     input dsp_clk,
     input signed [DW-1:0] din,
-    input signed [DW-1:0] coeff,
+    input signed [DW:0] coeff,
     input dac_clk,
     output signed [DW-1:0] dout
 );
@@ -29,7 +29,7 @@ module zest_dac_interp #(
     end
 
     wire signed [DW:0] sum = d2 + d1;
-    reg signed [2*DW:0] r=0, r1=0;
+    reg signed [2*DW+1:0] r=0, r1=0;
     always @(posedge dac_clk) begin
         r <= sum * coeff;
         r1 <= r >>> DW;

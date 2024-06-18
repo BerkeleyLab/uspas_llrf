@@ -9,7 +9,7 @@ module system_top_tb;
     localparam PD_ADC_CLK = PD_DAC_CLK * 2;     // ADC Sampling clock period in [ns]
     localparam DAC_DCO_DELAY_UI = 0.2;
 
-    localparam MAX_SIM_TIME = 15000;    // ns
+    localparam MAX_SIM_TIME = 35000;    // ns
     localparam PH_DIFF_DW = 13;
 
     reg pass=1;

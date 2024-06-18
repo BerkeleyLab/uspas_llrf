@@ -3,10 +3,12 @@ module zest #(
     parameter DSP_FREQ_MHZ = 119.0,
     parameter FCNT_WIDTH = 16,  // to speed up simulaiton. 125M / 2**16 = 1.9kHz update rate.
     parameter PH_DIFF_DW = 13,
-    localparam integer N_ADC = 2,
-    localparam integer N_CH = N_ADC*4,
-    localparam real CLKIN_PERIOD = 1000.0 / DSP_FREQ_MHZ / 2,    // ns
-    localparam integer PH_DIFF_ADV = DSP_FREQ_MHZ / 200.0 * (2**PH_DIFF_DW)
+    parameter real DAC_INTERP_COEFF_R = 1.0,
+    localparam integer  N_ADC = 2,
+    localparam integer  N_CH = N_ADC*4,
+    localparam real     CLKIN_PERIOD = 1000.0 / DSP_FREQ_MHZ / 2,    // ns
+    localparam integer  PH_DIFF_ADV = DSP_FREQ_MHZ / 200.0 * (2**PH_DIFF_DW),
+    localparam integer  DAC_INTERP_COEFF = DAC_INTERP_COEFF_R / 2 * (2**14)
 ) (
     // Hardware pins
     // U24 74LVC8T245
@@ -94,6 +96,7 @@ wire [32:0] mem_packed_rets [N_CH-1:0];
 wire [32:0] mem_packed_ret_spi;
 wire [32:0] mem_packed_ret_sfr;
 wire [32:0] mem_packed_ret_wfm;
+wire [32:0] mem_packed_ret_awg;
 reg  [32:0] mem_packed_ret_r=0;
 integer jx;
 always @(*) begin
@@ -104,7 +107,8 @@ end
 assign mem_packed_ret = mem_packed_ret_r |
     mem_packed_ret_sfr |
     mem_packed_ret_spi |
-    mem_packed_ret_wfm;
+    mem_packed_ret_wfm |
+    mem_packed_ret_awg;
 
 //--------------------------------------------------------------
 // BASE2 Address offsets
@@ -113,10 +117,12 @@ assign mem_packed_ret = mem_packed_ret_r |
 /// #define ZEST_BASE2_SFR   0x200000
 /// #define ZEST_BASE2_SPI   0x210000
 /// #define ZEST_BASE2_WFM   0x220000
+/// #define ZEST_BASE2_AWG   0x230000
 localparam [7:0] BASE_ADC = 8'h00;
 localparam [7:0] BASE_SFR = 8'h20;
 localparam [7:0] BASE_SPI = 8'h21;
 localparam [7:0] BASE_WFM = 8'h22;
+localparam [7:0] BASE_AWG = 8'h23;
 
 //--------------------------------------------------------------
 // PicoRV SPI master
@@ -176,6 +182,8 @@ sfr_pack #(
 /// #define SFR_WST_BIT_BUFR_A_RST  29
 /// #define SFR_WST_BIT_BUFR_B_RST  30
 /// #define SFR_WST_BIT_DSPCLK_RST  31
+/// #define SFR_OUT_BIT_DAC0_SRCSEL 32
+/// #define SFR_OUT_BIT_DAC1_SRCSEL 33
 /// #define SFR_IN_REG_PCNT         0
 /// #define SFR_IN_REG_FCNT         1
 /// #define SFR_IN_BIT_DSPCLK_LOCKED 16
@@ -189,6 +197,8 @@ wire pwr_sync       = sfRegsOut[27];
 wire pwr_en_b       = sfRegsOut[28];
 wire [1:0] bufr_reset= sfRegsOut[30:29];
 wire dspclk_reset   = sfRegsOut[31];
+wire dac0_src_sel   = sfRegsOut[32];
+wire dac1_src_sel   = sfRegsOut[33];
 
 // Chip Select Bar for SPI
 wire [6:0] ic_csb = ~(1 << csb_sel);
@@ -421,9 +431,56 @@ freq_count #(
 
 assign dac_clk_out = dac_dco_clk;
 
+// interpolator, crossing from dsp_clk to dac_clk domain
+wire signed [13:0] dac0_in_data;
+zest_dac_interp #(.DW(14)) dac_interp_a (
+    .dsp_clk        (dsp_clk_out),
+    .din            (dac_in_data_i),
+    .coeff          (DAC_INTERP_COEFF),
+    .dac_clk        (dac_clk_out),
+    .dout           (dac0_in_data)
+);
+
+wire signed [13:0] dac1_in_data;
+zest_dac_interp #(.DW(14)) dac_interp_b (
+    .dsp_clk        (dsp_clk_out),
+    .din            (dac_in_data_q),
+    .coeff          (DAC_INTERP_COEFF),
+    .dac_clk        (dac_clk_out),
+    .dout           (dac1_in_data)
+);
+
+// DMA to generate arbitary waveform for DAC BIST
+wire [13:0] awg_out_data;
+wire awg_out_valid; // not used
+
+awg_pack #(
+    .BASE_ADDR     (BASE_ADDR),
+    .BASE2_ADDR    (BASE_AWG)
+) awg_i (
+    // Data interface
+    .dsp_clk        (dac_clk_out),
+    .d_out_data     (awg_out_data),
+    .d_out_valid    (awg_out_valid),
+    // PicoRV32 packed MEM Bus interface
+    .clk           (clk),
+    .rst           (rst),
+    .mem_packed_fwd( mem_packed_fwd ),
+    .mem_packed_ret( mem_packed_ret_awg )
+);
+
+reg [13:0] awg_out_data1=0;
+always @(posedge dac_clk_out) begin
+    awg_out_data1 <= awg_out_data;
+end
+
+// Mux DAC data source
+wire [13:0] dac0_in_data_mux = dac0_src_sel ? awg_out_data1 : dac0_in_data;
+wire [13:0] dac1_in_data_mux = dac1_src_sel ? awg_out_data1 : dac1_in_data;
+
 wire [14:0] dac_oddr_buf;
-wire [14:0] dac_oddr_d1 = {1'b0, dac_in_data_i};
-wire [14:0] dac_oddr_d2 = {1'b1, dac_in_data_q};
+wire [14:0] dac_oddr_d1 = {1'b0, dac0_in_data_mux};
+wire [14:0] dac_oddr_d2 = {1'b1, dac1_in_data_mux};
 wire [14:0] dac_oddr_out_p;
 wire [14:0] dac_oddr_out_n;
 assign DAC_DCI_P = dac_oddr_out_p[14];
