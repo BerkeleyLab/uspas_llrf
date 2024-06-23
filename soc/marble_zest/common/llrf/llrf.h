@@ -76,7 +76,12 @@ void reset_rf_permit(void);
 /***************************************************************************//**
  * @brief print global llrf status booleans
 *******************************************************************************/
-void print_llrf_status(void);
+// void print_llrf_status(void);
+
+/***************************************************************************//**
+ * @brief print git rev id
+*******************************************************************************/
+void print_git_rev_id(void);
 
 void dbg_read_slowbuf(void);
 #endif

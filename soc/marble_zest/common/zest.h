@@ -14,6 +14,7 @@
 #define ZEST_BASE2_AWG   0x230000
 
 // SFR REG
+#define SFR_OUT_REG0            0
 #define SFR_OUT_BYTE_PH_SEL     0
 #define SFR_OUT_BYTE_FCLK_SEL   1
 #define SFR_OUT_BYTE_CSB_SEL    2
@@ -22,11 +23,13 @@
 #define SFR_OUT_BIT_ADC_SYNC    26
 #define SFR_OUT_BIT_PWR_SYNC    27
 #define SFR_OUT_BIT_PWR_ENB     28
-#define SFR_WST_BIT_BUFR_A_RST  29
-#define SFR_WST_BIT_BUFR_B_RST  30
-#define SFR_WST_BIT_DSPCLK_RST  31
-#define SFR_OUT_BIT_DAC0_SRCSEL 32
-#define SFR_OUT_BIT_DAC1_SRCSEL 33
+#define SFR_OUT_BIT_BUFR_A_RST  29
+#define SFR_OUT_BIT_BUFR_B_RST  30
+#define SFR_OUT_BIT_DSPCLK_RST  31
+
+#define SFR_OUT_REG1            1
+#define SFR_OUT_BIT_DAC0_SRCSEL 0
+#define SFR_OUT_BIT_DAC1_SRCSEL 1
 
 #define SFR_IN_REG_PCNT         0
 #define SFR_IN_REG_FCNT         1
@@ -269,6 +272,12 @@ void test_adc_pn9(uint8_t len);
 bool align_adc_clk_phase(uint8_t ch, int8_t center);
 
 /***************************************************************************//**
+ * @brief Execute ad9781 BIST test.
+ * @return pass             - true if all validation passes
+*******************************************************************************/
+bool test_ad9781_bist(void);
+
+/***************************************************************************//**
  * @brief Test function.
  * @param base              - base address
  * @param zest_init_data    - pointer to init register data.
@@ -276,6 +285,4 @@ bool align_adc_clk_phase(uint8_t ch, int8_t center);
 *******************************************************************************/
 bool init_zest_dbg(uint32_t base, zest_init_t *init_data);
 
-/* #define debug_printf(...) \ */
-/*    do { if (DEBUG_PRINT) printf(__VA_ARGS__); } while (0) */
 #endif

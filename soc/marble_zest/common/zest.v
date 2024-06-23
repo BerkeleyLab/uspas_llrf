@@ -171,6 +171,7 @@ sfr_pack #(
     .sfRegsWrStr    ( sfRegsWrStr )
 );
 
+// SFR_OUT_REG0
 /// #define SFR_OUT_BYTE_PH_SEL     0
 /// #define SFR_OUT_BYTE_FCLK_SEL   1
 /// #define SFR_OUT_BYTE_CSB_SEL    2
@@ -179,11 +180,9 @@ sfr_pack #(
 /// #define SFR_OUT_BIT_ADC_SYNC    26
 /// #define SFR_OUT_BIT_PWR_SYNC    27
 /// #define SFR_OUT_BIT_PWR_ENB     28
-/// #define SFR_WST_BIT_BUFR_A_RST  29
-/// #define SFR_WST_BIT_BUFR_B_RST  30
-/// #define SFR_WST_BIT_DSPCLK_RST  31
-/// #define SFR_OUT_BIT_DAC0_SRCSEL 32
-/// #define SFR_OUT_BIT_DAC1_SRCSEL 33
+/// #define SFR_OUT_BIT_BUFR_A_RST  29
+/// #define SFR_OUT_BIT_BUFR_B_RST  30
+/// #define SFR_OUT_BIT_DSPCLK_RST  31
 /// #define SFR_IN_REG_PCNT         0
 /// #define SFR_IN_REG_FCNT         1
 /// #define SFR_IN_BIT_DSPCLK_LOCKED 16
@@ -197,8 +196,12 @@ wire pwr_sync       = sfRegsOut[27];
 wire pwr_en_b       = sfRegsOut[28];
 wire [1:0] bufr_reset= sfRegsOut[30:29];
 wire dspclk_reset   = sfRegsOut[31];
-wire dac0_src_sel   = sfRegsOut[32];
-wire dac1_src_sel   = sfRegsOut[33];
+// SFR_OUT_REG1
+/// #define SFR_OUT_REG1            1
+/// #define SFR_OUT_BIT_DAC0_SRCSEL 0
+/// #define SFR_OUT_BIT_DAC1_SRCSEL 1
+wire dac0_src_sel   = sfRegsOut[32*1+0];    // SFR_OUT_REG1, bit 0
+wire dac1_src_sel   = sfRegsOut[32*1+1];    // SFR_OUT_REG1, bit 1
 
 // Chip Select Bar for SPI
 wire [6:0] ic_csb = ~(1 << csb_sel);
@@ -469,6 +472,7 @@ awg_pack #(
     .mem_packed_ret( mem_packed_ret_awg )
 );
 
+// pipeline awg_out_data for better timing
 reg [13:0] awg_out_data1=0;
 always @(posedge dac_clk_out) begin
     awg_out_data1 <= awg_out_data;

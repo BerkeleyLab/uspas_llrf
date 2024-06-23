@@ -63,6 +63,8 @@ int main(void) {
     printf(" \\___/|____/|_| /_/   \\_\\____/  |_____|_____|_| \\_\\_|    \n");
 
     debug_printf("=== VERBOSE MODE ===\n");
+    print_git_rev_id();
+
     pass &= init_marble();
     printf("==== Marble Init      ====  : %s.\n", pass?"PASS":"FAIL");
     pass &= init_zest(BASE_ZEST, &zest_init_data);

@@ -5,21 +5,23 @@
 #include "gpio.h"
 #include "timer.h"
 #include "spi.h"
-#include "print.h"
-#ifdef NONSTD_PRINTF
-#include "printf.h"
-#else
-#include <stdio.h>
-#endif
 #include "common.h"
 #include "iserdes.h"
 #include "sfr.h"
 #include "wfm.h"
+#include "awg.h"
+#include "print.h"
+#ifdef NONSTD_PRINTF
+    #include "printf.h"
+#else
+    #include <stdio.h>
+#endif
 
 uint32_t g_base_adc; //  = BASE_ZEST + ZEST_BASE2_ADC;
 uint32_t g_base_sfr; //  = BASE_ZEST + ZEST_BASE2_SFR;
 uint32_t g_base_spi; //  = BASE_ZEST + ZEST_BASE2_SPI;
 uint32_t g_base_wfm; //  = BASE_ZEST + ZEST_BASE2_WFM;
+uint32_t g_base_awg; //  = BASE_ZEST + ZEST_BASE2_AWG;
 
 static zest_devinfo_t g_devinfo = {ZEST_DEV_ILLEGAL, 0, 0, 0, 0};
 
@@ -96,8 +98,8 @@ void gen_prbs9(uint16_t *buf, size_t len) {
 }
 
 void reset_ad9781(void) {
-    SET_SFR1(g_base_sfr, 0, SFR_OUT_BIT_DAC_RESET, 1);
-    SET_SFR1(g_base_sfr, 0, SFR_OUT_BIT_DAC_RESET, 0);
+    SET_SFR1(g_base_sfr, SFR_OUT_REG0, SFR_OUT_BIT_DAC_RESET, 1);
+    SET_SFR1(g_base_sfr, SFR_OUT_REG0, SFR_OUT_BIT_DAC_RESET, 0);
 }
 
 void set_ad9781_smp(uint8_t dly) {
@@ -152,6 +154,50 @@ bool align_ad9781(uint8_t exp_smp) {
     // validate against expected value, allow +-160ps error bar
     diff = smp_min - exp_smp;
     return (diff <= 1 && diff >= -1);
+}
+
+void setup_awg(void) {
+    uint16_t buf[] = {1,2,3,4,5,0};   // TBD: replace by PRBS9
+    size_t len = sizeof(buf) / sizeof(uint16_t);
+    SET_REG16(g_base_awg + AWG_CFG_ADDR + AWG_CFG_BYTE_AWG_LEN, len);
+    awg_write_dma(g_base_awg, buf, len);
+    for (uint8_t addr=0; addr<len; addr++) {
+        printf("awg buf readback: %x\n", GET_REG(g_base_awg + (addr<<2)));
+    }
+}
+
+bool test_ad9781_bist(void) {
+    bool pass=true;
+    uint8_t bytes[2];
+    uint16_t bitres1, bitres2;
+
+    setup_awg();
+    // select awg data source to dac0
+    SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC0_SRCSEL, 1);
+
+    // clear BIST register
+    write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0x20);
+    write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0x00);
+    // enable BIST
+    write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0x80);
+    // send known data series
+    awg_trigger(g_base_awg);
+    // perform BIST read
+    write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0xc0);
+    // read rising edge sum
+    bytes[0] = read_zest_reg(ZEST_DEV_AD9781, 0x1b);
+    bytes[1] = read_zest_reg(ZEST_DEV_AD9781, 0x1c);
+    bitres1 = bytes[1] << 8 | bytes[0];
+    // read falling edge sum
+    bytes[0] = read_zest_reg(ZEST_DEV_AD9781, 0x1b);
+    bytes[1] = read_zest_reg(ZEST_DEV_AD9781, 0x1c);
+    bitres2 = bytes[1] << 8 | bytes[0];
+    printf("ad9781_bist: bitres1=%x, bitres2=%x\n", bitres1, bitres2);
+
+    // select dsp data source to dac0
+    SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC0_SRCSEL, 0);
+
+    return pass;
 }
 
 void reset_ad7794(void) {
@@ -343,15 +389,15 @@ void init_zest_clocks(zest_init_data_t *p_data) {
 }
 
 void reset_zest_bufr(uint8_t ch) {
-    const uint8_t addr[] = {SFR_WST_BIT_BUFR_A_RST, SFR_WST_BIT_BUFR_B_RST};
-    SET_SFR1(g_base_sfr, 0, addr[ch], 1);
-    SET_SFR1(g_base_sfr, 0, addr[ch], 0);
+    const uint8_t addr[] = {SFR_OUT_BIT_BUFR_A_RST, SFR_OUT_BIT_BUFR_B_RST};
+    SET_SFR1(g_base_sfr, SFR_OUT_REG0, addr[ch], 1);
+    SET_SFR1(g_base_sfr, SFR_OUT_REG0, addr[ch], 0);
 }
 
 void reset_zest_pll(void) {
-    SET_SFR1(g_base_sfr, 0, SFR_WST_BIT_DSPCLK_RST, 1);
+    SET_SFR1(g_base_sfr, SFR_OUT_REG0, SFR_OUT_BIT_DSPCLK_RST, 1);
     DELAY_MS(5);
-    SET_SFR1(g_base_sfr, 0, SFR_WST_BIT_DSPCLK_RST, 0);
+    SET_SFR1(g_base_sfr, SFR_OUT_REG0, SFR_OUT_BIT_DSPCLK_RST, 0);
     DELAY_MS(5);
 }
 
@@ -444,6 +490,7 @@ void select_zest_addr(uint32_t base) {
     g_base_sfr = base + ZEST_BASE2_SFR;
     g_base_spi = base + ZEST_BASE2_SPI;
     g_base_wfm = base + ZEST_BASE2_WFM;
+    g_base_awg = base + ZEST_BASE2_AWG;
 }
 
 void read_amc7823_adcs(void) {
@@ -532,7 +579,7 @@ bool init_zest(uint32_t base, zest_init_t *init_data) {
     int8_t *phs_center = init_data->phs_center;
 
     // enable PWR_EN
-    SET_SFR1(g_base_sfr, 0, SFR_OUT_BIT_PWR_ENB, 0);
+    SET_SFR1(g_base_sfr, SFR_OUT_REG0, SFR_OUT_BIT_PWR_ENB, 0);
 
     //------------------------------
     // LMK01801 init (CLK)
@@ -708,9 +755,10 @@ bool init_zest_dbg(uint32_t base, zest_init_t *init_data) {
     // test_adc_pn9(8);
     // check_adc_prbs9();
     // align_ad9781(12);
-    uint32_t *fcnt_exp = init_data->fcnt_exp;
-    check_zest_freq(0, fcnt_exp[0]);
+    // uint32_t *fcnt_exp = init_data->fcnt_exp;
+    // check_zest_freq(0, fcnt_exp[0]);
     // fcnt = read_zest_fcnt(0);
     // print_udec_fix(fcnt*125, FCNT_WIDTH, 3);
+    test_ad9781_bist();
     return pass;
 }
