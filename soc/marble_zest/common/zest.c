@@ -120,7 +120,7 @@ bool align_ad9781(uint8_t exp_smp) {
     uint8_t smp=0, set=0, hld=0, smp_min=0;
     uint8_t v_set, v_hld;
     int diff, diff_min=32;
-    printf("AD9781 Alignment:\n");
+    printf("  AD9781 Alignment:\n");
     for (smp=0; smp<32; smp++) {
         v_set = 15;
         v_hld = 15;
@@ -157,21 +157,37 @@ bool align_ad9781(uint8_t exp_smp) {
 }
 
 void setup_awg(void) {
-    uint16_t buf[] = {0,1,0,0,0};   // TBD: replace by PRBS9
+    // uint16_t buf[] = {0,0,1,0,0};  // get 0xfffb
+    // uint16_t buf[] = {0,0,1,1,0};  // get 0x080c
+    uint16_t buf[16];
     size_t len = sizeof(buf) / sizeof(uint16_t);
+    gen_prbs9(buf, len);
+    // datasheet requires sending zeros after samples.
+    // leading zero is also needed.
+    buf[0] = 0;
+    buf[len-1] = 0;
+
     SET_REG16(g_base_awg + AWG_CFG_ADDR + AWG_CFG_BYTE_AWG_LEN, len);
     awg_write_dma(g_base_awg, buf, len);
+    debug_printf("  DAC awg samples (hex):\n");
     for (uint8_t addr=0; addr<len; addr++) {
-        printf("awg buf readback: %x\n", GET_REG(g_base_awg + (addr<<2)));
+        debug_printf(" %x", GET_REG(g_base_awg + (addr<<2)));
     }
+    debug_printf("\n");
 }
 
-bool test_ad9781_bist(void) {
+bool check_ad9781_bist(void) {
     bool pass=true;
     uint8_t bytes[2];
     uint16_t bitres1, bitres2;
 
+    printf("  AD9781 BIST check:\n");
     setup_awg();
+    // BIST only works in unsigned binary mode:
+    // https://ez.analog.com/data_converters/high-speed_dacs/f/q-a/23105/ad9781-bist
+    // unsigned binary mode
+    write_zest_reg(ZEST_DEV_AD9781, 0x2, 0x80);
+
     // select awg data source
     SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC0_SRCSEL, 1);
     SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC1_SRCSEL, 1);
@@ -183,7 +199,7 @@ bool test_ad9781_bist(void) {
     write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0x80);
     // send known data series
     awg_trigger(g_base_awg);
-    DELAY_US(200);
+    DELAY_US(100);
     // perform BIST read
     write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0xc0);
     // read rising edge sum
@@ -194,12 +210,19 @@ bool test_ad9781_bist(void) {
     bytes[0] = read_zest_reg(ZEST_DEV_AD9781, 0x1d);
     bytes[1] = read_zest_reg(ZEST_DEV_AD9781, 0x1e);
     bitres2 = bytes[1] << 8 | bytes[0];
-    printf("ad9781_bist: bitres1=%x, bitres2=%x\n", bitres1, bitres2);
+    printf(" bitres1=0x%x, bitres2=0x%x\n", bitres1, bitres2);
+
+    // expect 0xb416, given data samples:
+    // 0 7787 fc1e f8b9 904a 768f 3e6c 548e 36ae 2622 108 c272 ac37 a6e4 50ad 0
+    pass &= bitres1 == 0xb416;
+    pass &= bitres2 == 0xb416;
 
     // select dsp data source
     SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC0_SRCSEL, 0);
     SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC1_SRCSEL, 0);
 
+    // two's complement binary mode
+    write_zest_reg(ZEST_DEV_AD9781, 0x2, 0x0);
     return pass;
 }
 
@@ -676,10 +699,12 @@ bool init_zest(uint32_t base, zest_init_t *init_data) {
     printf("==== ZEST ADC PN9 Check==== : %s.\n", p?"PASS":"FAIL");
 
     //------------------------------
-    // DAC SMP alignment
+    // DAC SMP alignment and BIST
     //------------------------------
     p = align_ad9781(phs_center[ZEST_PHS_AD9781_SMP]); pass &= p;
     printf("==== ZEST DAC SMP Check==== : %s.\n", p?"PASS":"FAIL");
+    p = check_ad9781_bist(); pass &= p;
+    printf("==== ZEST DAC BIST Check=== : %s.\n", p?"PASS":"FAIL");
     printf("==== Overall Zest INIT ==== : %s.\n", pass?"PASS":"FAIL");
     return pass;
 }
@@ -762,6 +787,6 @@ bool init_zest_dbg(uint32_t base, zest_init_t *init_data) {
     // check_zest_freq(0, fcnt_exp[0]);
     // fcnt = read_zest_fcnt(0);
     // print_udec_fix(fcnt*125, FCNT_WIDTH, 3);
-    test_ad9781_bist();
+    check_ad9781_bist();
     return pass;
 }

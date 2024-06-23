@@ -275,7 +275,7 @@ bool align_adc_clk_phase(uint8_t ch, int8_t center);
  * @brief Execute ad9781 BIST test.
  * @return pass             - true if all validation passes
 *******************************************************************************/
-bool test_ad9781_bist(void);
+bool check_ad9781_bist(void);
 
 /***************************************************************************//**
  * @brief Test function.
