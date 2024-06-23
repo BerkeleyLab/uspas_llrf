@@ -79,7 +79,7 @@ typedef struct {
     zest_init_data_t amc7823_data;
     uint32_t *fcnt_exp;      // expected ADC0_DIV, ADC1_DIV, DAC_DCO, DSP_CLK
     int8_t *phs_center;      // expected ADC0_DIV, ADC1_DIV, DAC_DCO
-    int8_t *ad9781_smp;      // expected AD9781_SMP values (up to 2)
+    uint8_t *ad9781_smp;     // expected AD9781_SMP values
 } zest_init_t;
 
 typedef struct {

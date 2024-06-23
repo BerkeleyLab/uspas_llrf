@@ -114,7 +114,7 @@ bool get_ad9781_seek(void) {
     return read_zest_reg(ZEST_DEV_AD9781, 0x06) & 1;
 }
 
-bool align_ad9781(int8_t* exp_smp) {
+bool align_ad9781(uint8_t* exp_smp) {
     // datasheet page 26, allows multiple expected smp values
     bool seek, seek_pre;
     uint8_t smp=0, set=0, hld=0, smp_min=0;
@@ -163,20 +163,24 @@ bool align_ad9781(int8_t* exp_smp) {
 }
 
 void setup_awg(void) {
-    // uint16_t buf[] = {0,0,1,0,0};  // get 0xfffb
-    // uint16_t buf[] = {0,0,1,1,0};  // get 0x080c
-    uint16_t buf[16];
+    // uint16_t buf[] = {0,0,1,0};  // get 0xfffb
+    // uint16_t buf[] = {0,1,1,0};  // get 0x080c
+    // uint16_t buf[] = {0,1,0,0,0,0,0};  // get 0xfffb
+    size_t addr=0;
+    uint16_t buf[24];
     size_t len = sizeof(buf) / sizeof(uint16_t);
     gen_prbs9(buf, len);
     // datasheet requires sending zeros after samples.
     // leading zero is also needed.
     buf[0] = 0;
-    buf[len-1] = 0;
+    for (addr=0; addr<4; addr++) {
+        buf[len-addr-1] = 0;
+    }
 
     SET_REG16(g_base_awg + AWG_CFG_ADDR + AWG_CFG_BYTE_AWG_LEN, len);
     awg_write_dma(g_base_awg, buf, len);
     debug_printf("  DAC awg samples (hex):\n");
-    for (uint8_t addr=0; addr<len; addr++) {
+    for (addr=0; addr<len; addr++) {
         debug_printf(" %x", GET_REG(g_base_awg + (addr<<2)));
     }
     debug_printf("\n");
@@ -218,10 +222,10 @@ bool check_ad9781_bist(void) {
     bitres2 = bytes[1] << 8 | bytes[0];
     printf(" bitres1=0x%x, bitres2=0x%x\n", bitres1, bitres2);
 
-    // expect 0xb416, given data samples:
-    // 0 7787 fc1e f8b9 904a 768f 3e6c 548e 36ae 2622 108 c272 ac37 a6e4 50ad 0
-    pass &= bitres1 == 0xb416;
-    pass &= bitres2 == 0xb416;
+    // given data samples:
+    // 0 7787 fc1e f8b9 904a 768f 3e6c 548e 36ae 2622 108 c272 ac37 a6e4 50ad 3f64 96fc 9a99 80c6 51a5 0 0 0 0
+    pass &= bitres1 == 0x7dca;
+    pass &= bitres2 == 0x7dca;
 
     // select dsp data source
     SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC0_SRCSEL, 0);
@@ -609,7 +613,7 @@ bool init_zest(uint32_t base, zest_init_t *init_data) {
     zest_init_data_t *p_amc7823_data = &(init_data->amc7823_data);
     uint32_t *fcnt_exp = init_data->fcnt_exp;
     int8_t *phs_center = init_data->phs_center;
-    int8_t *ad9781_smp = init_data->ad9781_smp;
+    uint8_t *ad9781_smp = init_data->ad9781_smp;
 
     // enable PWR_EN
     SET_SFR1(g_base_sfr, SFR_OUT_REG0, SFR_OUT_BIT_PWR_ENB, 0);

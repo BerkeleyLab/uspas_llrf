@@ -107,11 +107,11 @@ uint32_t fcnt_exp[4] = {
 };
 
 // ADC0_DIV, ADC1_DIV, DAC_DCO
-int8_t phs_center[4] = {
+int8_t phs_center[3] = {
     70, 64, 32
 };
 
-int8_t ad9781_smp[2] = {
+uint8_t ad9781_smp[2] = {
     17, 17
 };
 
