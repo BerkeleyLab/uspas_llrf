@@ -455,7 +455,7 @@ zest_dac_interp #(.DW(14)) dac_interp_b (
 
 // DMA to generate arbitary waveform for DAC BIST
 wire [13:0] awg_out_data;
-wire awg_out_valid; // not used
+wire awg_out_valid;
 
 awg_pack #(
     .BASE_ADDR     (BASE_ADDR),
@@ -475,7 +475,7 @@ awg_pack #(
 // pipeline awg_out_data for better timing
 reg [13:0] awg_out_data1=0;
 always @(posedge dac_clk_out) begin
-    awg_out_data1 <= awg_out_data;
+    awg_out_data1 <= awg_out_valid ? awg_out_data : 14'h0;
 end
 
 // Mux DAC data source

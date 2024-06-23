@@ -120,7 +120,7 @@ bool align_ad9781(uint8_t* exp_smp) {
     uint8_t smp=0, set=0, hld=0, smp_min=0;
     uint8_t v_set, v_hld;
     int diff, diff_min=32;
-    printf("  AD9781 Alignment:\n");
+    printf("  %s: AD9781 Alignment:\n", __func__);
     for (smp=0; smp<32; smp++) {
         v_set = 15;
         v_hld = 15;
@@ -149,41 +149,17 @@ bool align_ad9781(uint8_t* exp_smp) {
             smp_min = smp;
         }
     }
-    printf(" Found SMP value: %d.\n", smp_min);
+    printf("  %s: Found SMP value: %d.\n", __func__, smp_min);
     set_ad9781_smp(smp_min);
     // validate against expected values, allow +-160ps error bar
     for (uint8_t ix=0; ix<2; ix++) {
         diff = smp_min - exp_smp[ix];
         if (diff <= 1 && diff >= -1) {
-            printf(" SMP matches expected: %d.\n", exp_smp[ix]);
+            printf("  %s: SMP matches expected: %d.\n", __func__, exp_smp[ix]);
             return true;
         }
     }
     return false;
-}
-
-void setup_awg(void) {
-    // uint16_t buf[] = {0,0,1,0};  // get 0xfffb
-    // uint16_t buf[] = {0,1,1,0};  // get 0x080c
-    // uint16_t buf[] = {0,1,0,0,0,0,0};  // get 0xfffb
-    size_t addr=0;
-    uint16_t buf[24];
-    size_t len = sizeof(buf) / sizeof(uint16_t);
-    gen_prbs9(buf, len);
-    // datasheet requires sending zeros after samples.
-    // leading zero is also needed.
-    buf[0] = 0;
-    for (addr=0; addr<4; addr++) {
-        buf[len-addr-1] = 0;
-    }
-
-    SET_REG16(g_base_awg + AWG_CFG_ADDR + AWG_CFG_BYTE_AWG_LEN, len);
-    awg_write_dma(g_base_awg, buf, len);
-    debug_printf("  DAC awg samples (hex):\n");
-    for (addr=0; addr<len; addr++) {
-        debug_printf(" %x", GET_REG(g_base_awg + (addr<<2)));
-    }
-    debug_printf("\n");
 }
 
 bool check_ad9781_bist(void) {
@@ -191,10 +167,35 @@ bool check_ad9781_bist(void) {
     uint8_t bytes[2];
     uint16_t bitres1, bitres2;
 
-    printf("  AD9781 BIST check:\n");
-    setup_awg();
-    // BIST only works in unsigned binary mode:
+    // the "simple sum"
+    // mentioned in the AD9781 data sheet is a misprint; actually some
+    // undocumented but deterministic function, possibly LFSR-like.
+    // References:
     // https://ez.analog.com/data_converters/high-speed_dacs/f/q-a/23105/ad9781-bist
+    // https://github.com/analogdevicesinc/linux/blob/main/drivers/iio/frequency/ad9783.c#L371
+
+    // uint16_t buf[] = {1,0};      // get 0xfffb
+    // uint16_t buf[] = {2,0};      // get 0xfff7
+    // uint16_t buf[] = {1,1};      // get 0x080c
+    // uint16_t buf[] = {2,1};      // get 0x0814
+    // uint16_t buf[] = {2,2};      // get 0x0818
+    // uint16_t buf[] = {0x1000,0}; // get 0xbfff
+
+    // Generate PRBS9 series
+    uint16_t buf[24];
+    uint8_t len = sizeof(buf) / sizeof(uint16_t);
+    gen_prbs9(buf, len);
+
+    SET_REG16(g_base_awg + AWG_CFG_ADDR + AWG_CFG_BYTE_AWG_LEN, len);
+    awg_write_dma(g_base_awg, buf, len);
+    // optionally readback and check
+    debug_printf("  %s: DAC awg samples (hex):\n", __func__);
+    for (size_t addr=0; addr<len; addr++) {
+        debug_printf(" %x", GET_REG(g_base_awg + (addr<<2)));
+    }
+    debug_printf("\n");
+
+    // BIST only works in unsigned binary mode:
     // unsigned binary mode
     write_zest_reg(ZEST_DEV_AD9781, 0x2, 0x80);
 
@@ -209,7 +210,6 @@ bool check_ad9781_bist(void) {
     write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0x80);
     // send known data series
     awg_trigger(g_base_awg);
-    DELAY_US(100);
     // perform BIST read
     write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0xc0);
     // read rising edge sum
@@ -220,12 +220,12 @@ bool check_ad9781_bist(void) {
     bytes[0] = read_zest_reg(ZEST_DEV_AD9781, 0x1d);
     bytes[1] = read_zest_reg(ZEST_DEV_AD9781, 0x1e);
     bitres2 = bytes[1] << 8 | bytes[0];
-    printf(" bitres1=0x%x, bitres2=0x%x\n", bitres1, bitres2);
+    printf("  %s: bitres: 0x%x, 0x%x\n", __func__, bitres1, bitres2);
 
     // given data samples:
-    // 0 7787 fc1e f8b9 904a 768f 3e6c 548e 36ae 2622 108 c272 ac37 a6e4 50ad 3f64 96fc 9a99 80c6 51a5 0 0 0 0
-    pass &= bitres1 == 0x7dca;
-    pass &= bitres2 == 0x7dca;
+    // b668 7787 fc1e f8b9 904a 768f 3e6c 548e 36ae 2622 108 c272 ac37 a6e4 50ad 3f64 96fc 9a99 80c6 51a5 fd16 3acb 3c7d d06b
+    pass &= bitres1 == 0xc7bb;
+    pass &= bitres2 == 0xc7bb;
 
     // select dsp data source
     SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC0_SRCSEL, 0);
