@@ -58,8 +58,7 @@ typedef enum ZEST_FREQ_PHS_NAMES {
     ZEST_FREQ_ADC0_DIV = 0,
     ZEST_FREQ_ADC1_DIV = 1,
     ZEST_FREQ_DAC_DCO = 2,
-    ZEST_FREQ_DSP_CLK = 3,
-    ZEST_PHS_AD9781_SMP = 3
+    ZEST_FREQ_DSP_CLK = 3
 } zest_freq_t;
 
 typedef struct {
@@ -78,8 +77,9 @@ typedef struct {
     zest_init_data_t ad9781_data;
     zest_init_data_t ad7794_data;
     zest_init_data_t amc7823_data;
-    uint32_t *fcnt_exp;       // expected ADC0_DIV, ADC1_DIV, DAC_DCO, DSP_CLK
-    int8_t *phs_center;      // expected ADC0_DIV, ADC1_DIV, DAC_DCO, AD9781_SMP
+    uint32_t *fcnt_exp;      // expected ADC0_DIV, ADC1_DIV, DAC_DCO, DSP_CLK
+    int8_t *phs_center;      // expected ADC0_DIV, ADC1_DIV, DAC_DCO
+    int8_t *ad9781_smp;      // expected AD9781_SMP values (up to 2)
 } zest_init_t;
 
 typedef struct {

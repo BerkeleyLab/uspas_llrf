@@ -114,8 +114,8 @@ bool get_ad9781_seek(void) {
     return read_zest_reg(ZEST_DEV_AD9781, 0x06) & 1;
 }
 
-bool align_ad9781(uint8_t exp_smp) {
-    // datasheet page 26
+bool align_ad9781(int8_t* exp_smp) {
+    // datasheet page 26, allows multiple expected smp values
     bool seek, seek_pre;
     uint8_t smp=0, set=0, hld=0, smp_min=0;
     uint8_t v_set, v_hld;
@@ -151,9 +151,15 @@ bool align_ad9781(uint8_t exp_smp) {
     }
     printf(" Found SMP value: %d.\n", smp_min);
     set_ad9781_smp(smp_min);
-    // validate against expected value, allow +-160ps error bar
-    diff = smp_min - exp_smp;
-    return (diff <= 1 && diff >= -1);
+    // validate against expected values, allow +-160ps error bar
+    for (uint8_t ix=0; ix<2; ix++) {
+        diff = smp_min - exp_smp[ix];
+        if (diff <= 1 && diff >= -1) {
+            printf(" SMP matches expected: %d.\n", exp_smp[ix]);
+            return true;
+        }
+    }
+    return false;
 }
 
 void setup_awg(void) {
@@ -603,6 +609,7 @@ bool init_zest(uint32_t base, zest_init_t *init_data) {
     zest_init_data_t *p_amc7823_data = &(init_data->amc7823_data);
     uint32_t *fcnt_exp = init_data->fcnt_exp;
     int8_t *phs_center = init_data->phs_center;
+    int8_t *ad9781_smp = init_data->ad9781_smp;
 
     // enable PWR_EN
     SET_SFR1(g_base_sfr, SFR_OUT_REG0, SFR_OUT_BIT_PWR_ENB, 0);
@@ -701,7 +708,7 @@ bool init_zest(uint32_t base, zest_init_t *init_data) {
     //------------------------------
     // DAC SMP alignment and BIST
     //------------------------------
-    p = align_ad9781(phs_center[ZEST_PHS_AD9781_SMP]); pass &= p;
+    p = align_ad9781(ad9781_smp); pass &= p;
     printf("==== ZEST DAC SMP Check==== : %s.\n", p?"PASS":"FAIL");
     p = check_ad9781_bist(); pass &= p;
     printf("==== ZEST DAC BIST Check=== : %s.\n", p?"PASS":"FAIL");

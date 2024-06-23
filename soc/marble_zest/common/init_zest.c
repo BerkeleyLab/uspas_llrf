@@ -106,9 +106,13 @@ uint32_t fcnt_exp[4] = {
     FCNT_EXP
 };
 
-// ADC0_DIV, ADC1_DIV, DAC_DCO, AD9781_SMP
+// ADC0_DIV, ADC1_DIV, DAC_DCO
 int8_t phs_center[4] = {
-    70, 64, 32, 17
+    70, 64, 32
+};
+
+int8_t ad9781_smp[2] = {
+    17, 17
 };
 
 const zest_init_t zest_init_data = {
@@ -133,5 +137,6 @@ const zest_init_t zest_init_data = {
         regmap_amc7823
     },
     fcnt_exp,
-    phs_center
+    phs_center,
+    ad9781_smp
 };
