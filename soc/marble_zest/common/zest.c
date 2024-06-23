@@ -157,7 +157,7 @@ bool align_ad9781(uint8_t exp_smp) {
 }
 
 void setup_awg(void) {
-    uint16_t buf[] = {1,2,3,4,5,0};   // TBD: replace by PRBS9
+    uint16_t buf[] = {0,1,0,0,0};   // TBD: replace by PRBS9
     size_t len = sizeof(buf) / sizeof(uint16_t);
     SET_REG16(g_base_awg + AWG_CFG_ADDR + AWG_CFG_BYTE_AWG_LEN, len);
     awg_write_dma(g_base_awg, buf, len);
@@ -172,8 +172,9 @@ bool test_ad9781_bist(void) {
     uint16_t bitres1, bitres2;
 
     setup_awg();
-    // select awg data source to dac0
+    // select awg data source
     SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC0_SRCSEL, 1);
+    SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC1_SRCSEL, 1);
 
     // clear BIST register
     write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0x20);
@@ -182,6 +183,7 @@ bool test_ad9781_bist(void) {
     write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0x80);
     // send known data series
     awg_trigger(g_base_awg);
+    DELAY_US(200);
     // perform BIST read
     write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0xc0);
     // read rising edge sum
@@ -189,13 +191,14 @@ bool test_ad9781_bist(void) {
     bytes[1] = read_zest_reg(ZEST_DEV_AD9781, 0x1c);
     bitres1 = bytes[1] << 8 | bytes[0];
     // read falling edge sum
-    bytes[0] = read_zest_reg(ZEST_DEV_AD9781, 0x1b);
-    bytes[1] = read_zest_reg(ZEST_DEV_AD9781, 0x1c);
+    bytes[0] = read_zest_reg(ZEST_DEV_AD9781, 0x1d);
+    bytes[1] = read_zest_reg(ZEST_DEV_AD9781, 0x1e);
     bitres2 = bytes[1] << 8 | bytes[0];
     printf("ad9781_bist: bitres1=%x, bitres2=%x\n", bitres1, bitres2);
 
-    // select dsp data source to dac0
+    // select dsp data source
     SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC0_SRCSEL, 0);
+    SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC1_SRCSEL, 0);
 
     return pass;
 }
@@ -421,7 +424,7 @@ bool check_div_clk_phase(uint8_t ch, int8_t center) {
 
 bool align_dsp_clk_phase(int8_t center) {
     for (uint8_t ix=0; ix<16; ix++) {
-        if (check_div_clk_phase(2, center)) {
+        if (check_div_clk_phase(ZEST_FREQ_DAC_DCO, center)) {
             printf("  Phase DSP clk aligned. retry = %d.\n", ix);
             return true;
         } else{

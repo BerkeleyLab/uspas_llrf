@@ -99,5 +99,6 @@ bool init_llrf(t_init_llrf_data *init_data) {
     // discard first waveform
     write_lb_reg(CIRCLE_BUF_FLIP, 1);
     wait_cbuf_ready();
+    // write_lb_reg(DAC_PERMIT, 0);
     return pass;
 }
