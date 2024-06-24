@@ -112,7 +112,7 @@ int8_t phs_center[3] = {
 };
 
 uint8_t ad9781_smp[2] = {
-    0, 0
+    0, 12
 };
 
 const zest_init_t zest_init_data = {

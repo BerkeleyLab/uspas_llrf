@@ -27,10 +27,10 @@ class LLRFApp(LEEPDevice):
             ('wave_samp_per', 1),
             ('chan_keep', self.chan_keep)
         ])
-        print(f'chan_keep: {self.chan_keep:#018b}')
+        # print(f'chan_keep: {self.chan_keep:#018b}')
         self.chans = np.where(
             np.array([int(x) for x in f'{self.chan_keep:b}'[::-1]]) == 1)[0]
-        print(f'chans selected: {self.chans}')
+        # print(f'chans selected: {self.chans}')
 
     def read_reg(self, name):
         ''' read single register by given name '''

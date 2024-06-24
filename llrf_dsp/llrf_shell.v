@@ -158,6 +158,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [31:0] ntw_phase_step_h; top-level
 // reg [11:0] ntw_phase_step_l; top-level
 // reg [11:0] ntw_modulo; top-level
+// reg [0:0] system_bist_pass; top-level
 
 // Transfer local bus to dsp clk domain:
  wire lb1_clk = dsp_clk;
@@ -525,7 +526,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .clk        (dsp_clk),
         .trigger    (cbuf_sync),        // syncn with waveform
         .strobe     (cic_sample),       // CIC_BASE_PERIOD cycles per strobe
-        .high_len   (pulse_high_len),   // unit: For ALSU: 8.73ns * 22 = 0.192 us
+        .high_len   (pulse_high_len),   // unit: DSP_CLK_CYCLE * CIC_BASE_PERIOD
         .pulse_out  (pulse_val)
     );
     wire drive_on2 = pulse_mode ? pulse_val : 1'b1;  // non-interruptible
@@ -635,7 +636,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     end
 
     assign lb_rdata = lb_rdata_r;
-    assign hpa_permit_out = 1'b1;
-    assign fast_permit_out = 1'b0; // inlk_permit_out
+    assign fast_permit_out = inlk_permit_out & arc_permit_sum;
+    assign hpa_permit_out = fast_permit_out;
 
 endmodule

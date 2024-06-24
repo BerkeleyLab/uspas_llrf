@@ -8,7 +8,7 @@ module zest #(
     localparam integer  N_CH = N_ADC*4,
     localparam real     CLKIN_PERIOD = 1000.0 / DSP_FREQ_MHZ / 2,    // ns
     localparam integer  PH_DIFF_ADV = DSP_FREQ_MHZ / 200.0 * (2**PH_DIFF_DW),
-    localparam integer  DAC_INTERP_COEFF = DAC_INTERP_COEFF_R / 2 * (2**14)
+    localparam [14:0]  DAC_INTERP_COEFF = DAC_INTERP_COEFF_R / 2 * (2**14)
 ) (
     // Hardware pins
     // U24 74LVC8T245

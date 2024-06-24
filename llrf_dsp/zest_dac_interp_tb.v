@@ -5,7 +5,7 @@ module zest_dac_interp_tb;
 parameter integer DW = 14;
 parameter real coeff_r = -1.279;     // adjust me. 1 for normal interp : y1=(y0+y2)/2.
 localparam integer LATENCY = 8;
-localparam integer DAC_INTERP_COEFF = coeff_r / 2 * (2**DW);
+localparam [DW:0] DAC_INTERP_COEFF = coeff_r / 2 * (2**DW);
 
 integer cc=0;
 reg dac_clk=1, dsp_clk=1;

@@ -71,7 +71,13 @@ void reset_interlock_permit(void);
  * @brief  Set DAC permit
  * @param   permit -  1 to enable, 0 to disable
 *******************************************************************************/
-void set_dac_permit(bool permit);
+void set_llrf_dac_permit(bool permit);
+
+/***************************************************************************//**
+ * @brief  For CPU to set built-in self test result after boot
+ * @param   pass -  1 is ok, 0 is fail
+*******************************************************************************/
+void set_llrf_bist_pass(bool pass);
 
 /***************************************************************************//**
  * @brief print git rev id

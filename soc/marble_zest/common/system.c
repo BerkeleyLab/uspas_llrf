@@ -66,11 +66,14 @@ int main(void) {
     print_git_rev_id();
 
     pass &= init_marble();
-    printf("==== Marble Init      ====  : %s.\n", pass?"PASS":"FAIL");
+    printf("==== Marble Init       ==== : %s.\n", pass?"PASS":"FAIL");
     pass &= init_zest(BASE_ZEST, &zest_init_data);
-    printf("==== ZEST Init        ====  : %s.\n", pass?"PASS":"FAIL");
+    printf("==== ZEST Init         ==== : %s.\n", pass?"PASS":"FAIL");
     pass &= init_llrf(&llrf_init_data);
-    printf("==== LLRF Init        ====  : %s.\n", pass?"PASS":"FAIL");
+    printf("==== LLRF Init         ==== : %s.\n", pass?"PASS":"FAIL");
+    set_llrf_dac_permit(pass);
+    set_llrf_bist_pass(pass);
+
     while(1) {
         handle_ui();
     }

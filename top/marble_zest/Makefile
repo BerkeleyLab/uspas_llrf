@@ -61,6 +61,7 @@ system_config:
 	@echo "Using Marble with serial number ${SERIAL}"
 	openocd -c "adapter driver ftdi; ftdi_serial 0000${SERIAL};" -f marble.cfg -c "transport select jtag; init; xc7_program xc7.tap; pld load 0  $(TARGET)_top.bit; exit"
 	sleep 5 && ping -v -c 4 -w 20 $(IP_ADDRESS)
+	cd ../../python && python3 test.py leep://$(IP_ADDRESS):803 reg system_bist_pass
 
 CLEAN += system_top.xdc $(TARGET)_top.bin $(TARGET)_top.bit $(IP_BIT_D)
 CLEAN += $(TARGET)_top.prm

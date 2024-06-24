@@ -690,7 +690,6 @@ bool init_zest(uint32_t base, zest_init_t *init_data) {
     p = check_zest_freq(ZEST_FREQ_DAC_DCO, fcnt_exp[ZEST_FREQ_DAC_DCO]); pass &= p;
     printf("  Clock %s Freq Check: %s.\n",
         zest_fcnt_names[ZEST_FREQ_DAC_DCO], p?"PASS":"FAIL");
-    // p = check_div_clk_phase(2, phs_center[2]); pass &= p;
     p = align_dsp_clk_phase(phs_center[ZEST_FREQ_DAC_DCO]); pass &= p;
     printf("  Clock %s Phase Check: %s.\n",
         zest_phdiff_names[ZEST_FREQ_DAC_DCO], p?"PASS":"FAIL");
