@@ -257,6 +257,7 @@ assign sfRegsInp[16] = pll_locked;          // SFR_IN_BIT_DSPCLK_LOCKED
 //--------------------------------------------------------------
 // CLK
 //--------------------------------------------------------------
+wire dac_dco_clk;
 
 xilinx7_clocks #(
     .DIFF_CLKIN("TRUE"),
@@ -264,12 +265,12 @@ xilinx7_clocks #(
     .MULT     (5),      // 240 X 5   = 1200 MHz
     .DIV0     (10),     // 1200 / 10 =  120 MHz
     .DIV1     (5)       // 1200 / 5  =  240 MHz
-) clocks_i(
-    .sysclk_p (CLK_TO_FPGA_P),
-    .sysclk_n (CLK_TO_FPGA_N),
+) clocks_i (
+    .sysclk_p (DAC_DCO_P),
+    .sysclk_n (DAC_DCO_N),
     .reset    (dspclk_reset),
-    .clk_out0 (dsp_clk_out),
-    .clk_out1 (),
+    .clk_out1 (dac_dco_clk),
+    .clk_out2 (dsp_clk_out),    // 90 deg
     .locked   (pll_locked)
 );
 
@@ -396,20 +397,6 @@ wfm_pack #(
 //--------------------------------------------------------------
 // DAC
 //--------------------------------------------------------------
-wire dac_dco_clk;
-wire dac_dco_buf;
-IBUFDS #(
-    .DIFF_TERM("TRUE")
-) ibuf_dco(
-    .I      (DAC_DCO_P),
-    .IB     (DAC_DCO_N),
-    .O      (dac_dco_buf)
-);
-
-BUFG dco_bufg (
-    .I      (dac_dco_buf),
-    .O      (dac_dco_clk)
-);
 
 // F_RATIO = 2. See phasex_tb.v
 phase_diff #(
