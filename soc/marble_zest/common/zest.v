@@ -199,9 +199,13 @@ wire dspclk_reset   = sfRegsOut[31];
 // SFR_OUT_REG1
 /// #define SFR_OUT_REG1            1
 /// #define SFR_OUT_BIT_DAC0_SRCSEL 0
-/// #define SFR_OUT_BIT_DAC1_SRCSEL 1
-wire dac0_src_sel   = sfRegsOut[32*1+0];    // SFR_OUT_REG1, bit 0
-wire dac1_src_sel   = sfRegsOut[32*1+1];    // SFR_OUT_REG1, bit 1
+/// #define SFR_OUT_BIT_DAC0_ENABLE 1
+/// #define SFR_OUT_BIT_DAC1_SRCSEL 2
+/// #define SFR_OUT_BIT_DAC1_ENABLE 3
+wire dac0_src_sel   = sfRegsOut[32*1+0];
+wire dac0_enable    = sfRegsOut[32*1+1];
+wire dac1_src_sel   = sfRegsOut[32*1+2];
+wire dac1_enable    = sfRegsOut[32*1+3];
 
 // Chip Select Bar for SPI
 wire [6:0] ic_csb = ~(1 << csb_sel);
@@ -479,12 +483,13 @@ always @(posedge dac_clk_out) begin
 end
 
 // Mux DAC data source
-wire [13:0] dac0_in_data_mux = dac0_src_sel ? awg_out_data1 : dac0_in_data;
-wire [13:0] dac1_in_data_mux = dac1_src_sel ? awg_out_data1 : dac1_in_data;
+wire [13:0] dac0_in_data_mux = dac0_enable ? (dac0_src_sel ? awg_out_data1 : dac0_in_data) : 14'h0;
+wire [13:0] dac1_in_data_mux = dac1_enable ? (dac1_src_sel ? awg_out_data1 : dac1_in_data) : 14'h0;
 
+// UG471 Fig 2-19, D2 @ rising edge == dac0, match AD9781 datasheet Fig 57.
 wire [14:0] dac_oddr_buf;
-wire [14:0] dac_oddr_d1 = {1'b0, dac0_in_data_mux};
-wire [14:0] dac_oddr_d2 = {1'b1, dac1_in_data_mux};
+wire [14:0] dac_oddr_d1 = {1'b0, dac1_in_data_mux};     // Q DAC
+wire [14:0] dac_oddr_d2 = {1'b1, dac0_in_data_mux};     // I DAC
 wire [14:0] dac_oddr_out_p;
 wire [14:0] dac_oddr_out_n;
 assign DAC_DCI_P = dac_oddr_out_p[14];
@@ -494,7 +499,7 @@ assign DAC_D_N   = dac_oddr_out_n[13:0];
 
 genvar iy;
 generate for (iy=0; iy < 15; iy=iy+1) begin: in_cell
-	ODDR oddr(
+	ODDR #(.DDR_CLK_EDGE("SAME_EDGE")) oddr(
         .C  (dac_clk_out),
         .CE (1'b1),
         .D1 (dac_oddr_d1[iy]),

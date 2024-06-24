@@ -68,12 +68,11 @@ bool align_mo_phase(void) {
     return pass;
 }
 
-bool reset_phase_loop(void) {
-    bool pass = true;
-    return pass;
+void set_dac_permit(bool permit) {
+    write_lb_reg(DAC_PERMIT, permit);
 }
 
-void reset_rf_permit(void) {
+void reset_interlock_permit(void) {
     write_lb_reg(INLK_RESET_INLK, 1);
     write_lb_reg(INLK_RESET_INLK, 0);
 }
@@ -99,6 +98,6 @@ bool init_llrf(t_init_llrf_data *init_data) {
     // discard first waveform
     write_lb_reg(CIRCLE_BUF_FLIP, 1);
     wait_cbuf_ready();
-    // write_lb_reg(DAC_PERMIT, 0);
+    // set_dac_permit(false);
     return pass;
 }

@@ -29,7 +29,9 @@
 
 #define SFR_OUT_REG1            1
 #define SFR_OUT_BIT_DAC0_SRCSEL 0
-#define SFR_OUT_BIT_DAC1_SRCSEL 1
+#define SFR_OUT_BIT_DAC0_ENABLE 1
+#define SFR_OUT_BIT_DAC1_SRCSEL 2
+#define SFR_OUT_BIT_DAC1_ENABLE 3
 
 #define SFR_IN_REG_PCNT         0
 #define SFR_IN_REG_FCNT         1

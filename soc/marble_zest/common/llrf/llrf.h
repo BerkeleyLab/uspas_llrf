@@ -63,20 +63,15 @@ uint32_t read_avg_reg(uint32_t addr);
 bool align_mo_phase(void);
 
 /***************************************************************************//**
- * @brief Reset PI loop phase when Q output clipped to 0 to determin start phase
- * @return valid if loop phase matches setpoint by 1 deg.
+ * @brief  Reset interlock permit
 *******************************************************************************/
-bool reset_phase_loop(void);
+void reset_interlock_permit(void);
 
 /***************************************************************************//**
- * @brief  Reset RF permit and aurora link status
+ * @brief  Set DAC permit
+ * @param   permit -  1 to enable, 0 to disable
 *******************************************************************************/
-void reset_rf_permit(void);
-
-/***************************************************************************//**
- * @brief print global llrf status booleans
-*******************************************************************************/
-// void print_llrf_status(void);
+void set_dac_permit(bool permit);
 
 /***************************************************************************//**
  * @brief print git rev id

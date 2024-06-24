@@ -162,11 +162,32 @@ bool align_ad9781(uint8_t* exp_smp) {
     return false;
 }
 
-bool check_ad9781_bist(void) {
-    bool pass=true;
+bool run_ad9781_bist(uint16_t bitres1_exp, uint16_t bitres2_exp) {
     uint8_t bytes[2];
     uint16_t bitres1, bitres2;
+     // clear BIST register
+    write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0x20);
+    write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0x00);
+    // enable BIST
+    write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0x80);
+    // send known data series
+    awg_trigger(g_base_awg);
+    // perform BIST read
+    write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0xc0);
+    // read rising edge sum
+    bytes[0] = read_zest_reg(ZEST_DEV_AD9781, 0x1b);
+    bytes[1] = read_zest_reg(ZEST_DEV_AD9781, 0x1c);
+    bitres1 = bytes[1] << 8 | bytes[0];
+    // read falling edge sum
+    bytes[0] = read_zest_reg(ZEST_DEV_AD9781, 0x1d);
+    bytes[1] = read_zest_reg(ZEST_DEV_AD9781, 0x1e);
+    bitres2 = bytes[1] << 8 | bytes[0];
+    printf("  %s: bitres: 0x%x, 0x%x\n", __func__, bitres1, bitres2);
+    return (bitres1 == bitres1_exp) && (bitres2 == bitres2_exp);
+}
 
+bool check_ad9781_bist(void) {
+    bool pass = true;
     // the "simple sum"
     // mentioned in the AD9781 data sheet is a misprint; actually some
     // undocumented but deterministic function, possibly LFSR-like.
@@ -182,6 +203,11 @@ bool check_ad9781_bist(void) {
     // uint16_t buf[] = {0x1000,0}; // get 0xbfff
 
     // Generate PRBS9 series
+    // expect 0c7bb, given data samples:
+    // b668 7787 fc1e f8b9 904a 768f 3e6c 548e
+    // 36ae 2622 108 c272 ac37 a6e4 50ad 3f64
+    // 96fc 9a99 80c6 51a5 fd16 3acb 3c7d d06b
+    uint16_t bitres_exp = 0xc7bb;
     uint16_t buf[24];
     uint8_t len = sizeof(buf) / sizeof(uint16_t);
     gen_prbs9(buf, len);
@@ -203,29 +229,15 @@ bool check_ad9781_bist(void) {
     SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC0_SRCSEL, 1);
     SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC1_SRCSEL, 1);
 
-    // clear BIST register
-    write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0x20);
-    write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0x00);
-    // enable BIST
-    write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0x80);
-    // send known data series
-    awg_trigger(g_base_awg);
-    // perform BIST read
-    write_zest_reg(ZEST_DEV_AD9781, 0x1a, 0xc0);
-    // read rising edge sum
-    bytes[0] = read_zest_reg(ZEST_DEV_AD9781, 0x1b);
-    bytes[1] = read_zest_reg(ZEST_DEV_AD9781, 0x1c);
-    bitres1 = bytes[1] << 8 | bytes[0];
-    // read falling edge sum
-    bytes[0] = read_zest_reg(ZEST_DEV_AD9781, 0x1d);
-    bytes[1] = read_zest_reg(ZEST_DEV_AD9781, 0x1e);
-    bitres2 = bytes[1] << 8 | bytes[0];
-    printf("  %s: bitres: 0x%x, 0x%x\n", __func__, bitres1, bitres2);
+    // test case 1: PRBS on dac0, zero on dac1
+    SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC0_ENABLE, 1);
+    SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC1_ENABLE, 0);
+    pass &= run_ad9781_bist(bitres_exp, 0);
 
-    // given data samples:
-    // b668 7787 fc1e f8b9 904a 768f 3e6c 548e 36ae 2622 108 c272 ac37 a6e4 50ad 3f64 96fc 9a99 80c6 51a5 fd16 3acb 3c7d d06b
-    pass &= bitres1 == 0xc7bb;
-    pass &= bitres2 == 0xc7bb;
+    // test case 2: PRBS on dac0, zero on dac1
+    SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC0_ENABLE, 0);
+    SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC1_ENABLE, 1);
+    pass &= run_ad9781_bist(0, bitres_exp);
 
     // select dsp data source
     SET_SFR1(g_base_sfr, SFR_OUT_REG1, SFR_OUT_BIT_DAC0_SRCSEL, 0);
