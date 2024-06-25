@@ -58,7 +58,8 @@ system_config:
 # check Ethernet and system selftest status
 system_test:
 	ping -v -c 4 -w 20 $(IP_ADDRESS)
-	cd $(TOP)python && $(PYTHON) test.py leep://$(IP_ADDRESS):803 reg system_bist_pass
+	cd $(TOP)python && \
+	$(PYTHON) test.py leep://$(IP_ADDRESS):803 reg system_bist_pass | awk ' $$2!=00000001 { exit 1 }'
 
 CLEAN += system_top.xdc $(TARGET)_top.bin $(TARGET)_top.bit $(IP_BIT_D)
 CLEAN += $(TARGET)_top.prm
