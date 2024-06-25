@@ -1,6 +1,7 @@
 from leep.raw import LEEPDevice
 import numpy as np
 from matplotlib import pyplot as plt
+import json
 import time
 import matplotlib.animation as animation
 import logging
@@ -9,22 +10,34 @@ logger = logging.getLogger(__name__)
 
 
 class LLRFApp(LEEPDevice):
-    def __init__(self, addr, timeout=0.1, **kwargs):
+    def __init__(self, addr='192.168.19.42:803', conf='LEMP',
+                 settings_fname='../llrf_dsp/settings.json',
+                 timeout=0.1, **kwargs):
         self.init_rom_addr = 0x08000
         super(LLRFApp, self).__init__(addr, timeout, **kwargs)
+
+        with open(settings_fname) as f:
+            configs = json.load(f)
+        for k, v in configs[conf].items():
+            setattr(self, k.lower(), v)
+        self.cordic_gain = 1.646760258
+        self.wave_samp_per = 1
+        self.ts = self.dsp_clk_cycle * self.cic_base_period
+        self.ts *= self.wave_samp_per
         self.chan_keep = 0x03ff  # 2 dacs, 8 adcs
         self.adc_len = 4096
         self.n_chan = bin(self.chan_keep).count('1')
         self.wfm_len = 4096
-        self.chan_names = [f'ADC {i}' for i in range(8)]
-        self.chan_names += ['DAC 0', 'DAC 1']
+        self.adc_names = [f'ADC {i}' for i in range(8)]
+        self.dac_names = ['DAC 0', 'DAC 1']
+        self.chan_names = self.adc_names + self.dac_names
         self.init_demo()
 
     def init_demo(self):
         self.reg_write([
             ('amp_setpoint', 30000),
             ('dac_permit', 1),
-            ('wave_samp_per', 1),
+            ('wave_samp_per', self.wave_samp_per),
             ('chan_keep', self.chan_keep)
         ])
         # print(f'chan_keep: {self.chan_keep:#018b}')
@@ -44,8 +57,15 @@ class LLRFApp(LEEPDevice):
         mask = 2**(bits - 1)
         return -np.bitwise_and(darray, mask) + np.bitwise_and(darray, ~mask)
 
-    def get_adc_wfm(self):
-        yield self.read_adc_bufs()[:, :self.adc_len]
+    def read_adc_bufs(self):
+        return np.array(self.reg_read([
+            'adc' + str(chan) + '_buf' for chan in range(8)
+            ]), dtype=np.int16)
+
+    def read_dac_bufs(self):
+        return np.array(self.reg_read([
+            'dac' + str(chan) + '_buf' for chan in range(2)
+            ]), dtype=np.int16)
 
     def update_plot(self, darray):
         for line, ydata in zip(self.lines, darray):
