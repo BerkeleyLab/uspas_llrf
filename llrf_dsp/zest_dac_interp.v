@@ -34,7 +34,7 @@ module zest_dac_interp #(
         r <= sum * coeff;
         r1 <= r >>> DW;
     end
-    // output is: s0, (s0+s1)*coeff, s1, (s1+s2)*coeff, s2, ...
+    // output is: s0, (s0+s1)/2*coeff, s1, (s1+s2)/2*coeff, s2, ...
     assign dout = tick ? r1[DW-1:0] : d4;
 
 endmodule
