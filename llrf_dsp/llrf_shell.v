@@ -19,6 +19,7 @@ module llrf_shell #(
     parameter integer SHIFT_INLK = `SHIFT_INLK,
     parameter integer CBUF_DW = 24,
     parameter integer CBUF_AW = 16,
+    parameter integer ADC_BUF_AW = 12,
     parameter integer GIT_REV_ID = 0,
     localparam integer MON_RW = 44, // must <= 44, see ccfilt.v:51
     localparam integer LB_DW = 32,
@@ -40,6 +41,7 @@ module llrf_shell #(
     input                lb_rvalid,
     input [31:0]         lb_wdata,
     output [31:0]        lb_rdata,
+    input                lb_prefill,
 
     // ---------------------
     // Digitizer interface
@@ -81,20 +83,32 @@ assign adc_phy_dat[7] = adc_data_in[DW*7 +:DW];
 wire signed [15:0] cav_cel = adc_phy_dat[3];        // for feedback
 wire wave_trig;
 
+wire [N_ADC-1:0] lb_read_adc;
+wire [N_ADC-1:0] lb_read_dac;
 wire [15:0] adc_buf_out [0:N_ADC-1];
+assign lb_read_adc[0] = lb_read & (lb_addr[12+:6] == 6'h14);
+assign lb_read_adc[1] = lb_read & (lb_addr[12+:6] == 6'h15);
+assign lb_read_adc[2] = lb_read & (lb_addr[12+:6] == 6'h16);
+assign lb_read_adc[3] = lb_read & (lb_addr[12+:6] == 6'h17);
+assign lb_read_adc[4] = lb_read & (lb_addr[12+:6] == 6'h18);
+assign lb_read_adc[5] = lb_read & (lb_addr[12+:6] == 6'h19);
+assign lb_read_adc[6] = lb_read & (lb_addr[12+:6] == 6'h1a);
+assign lb_read_adc[7] = lb_read & (lb_addr[12+:6] == 6'h1b);
+assign lb_read_dac[0] = lb_read & (lb_addr[12+:6] == 6'h1c);
+assign lb_read_dac[1] = lb_read & (lb_addr[12+:6] == 6'h1d);
+
 genvar i;
 generate for (i=0; i<N_ADC; i=i+1)
     begin: gen_buf_adc
-    adc_buf #(.AW(12), .DW(DW)) adc_buf_i (
-        .wfm_len        (12'd4095       ),
+    adc_buf #(.AW(ADC_BUF_AW), .DW(DW)) adc_buf_i (
         .adc_trigger    (wave_trig      ),
         .adc_phy_clk    (dsp_clk        ),
         .adc_phy_dat    (adc_phy_dat[i] ),
         .adc_phy_val    (1'b1),
         .lb_clk         (lb_clk         ),
-        .lb_read        (lb_read        ),
+        .lb_read        (lb_read_adc[i] ),
         .lb_rvalid      (lb_rvalid      ),
-        .lb_addr        (lb_addr[11:0]  ),
+        .lb_addr        (lb_addr[ADC_BUF_AW-1:0]),
         .lb_rdata       (adc_buf_out[i] )
     );
     end
@@ -108,16 +122,15 @@ wire [15:0] dac_buf_out [0:N_DAC-1];
 genvar j;
 generate for (j=0; j<N_DAC; j=j+1)
     begin: gen_buf_dac
-    adc_buf #(.AW(12), .DW(DW)) dac_buf_i (
-        .wfm_len        (12'd4095       ),
+    adc_buf #(.AW(ADC_BUF_AW), .DW(DW)) dac_buf_i (
         .adc_trigger    (wave_trig      ),
         .adc_phy_clk    (dsp_clk        ),
         .adc_phy_dat    (dac_phy_dat[j] ),
         .adc_phy_val    (1'b1),
         .lb_clk         (lb_clk         ),
-        .lb_read        (lb_read        ),
+        .lb_read        (lb_read_dac[j] ),
         .lb_rvalid      (lb_rvalid      ),
-        .lb_addr        (lb_addr[11:0]  ),
+        .lb_addr        (lb_addr[ADC_BUF_AW-1:0]),
         .lb_rdata       (dac_buf_out[j] )
     );
     end
@@ -128,12 +141,13 @@ wire inlk_permit_in = drive_permit_in & slow_permit_in;
 
 wire [31:0] lb_data = lb_wdata; // for newad.py
 
+// reg [0:0] circle_buf_flip; top-level single-cycle
+// newad-force lb1 domain
 // reg [7:0] dsp_tag; top-level
 // reg [15:0] cbuf_post_delay; top-level
 // reg [6:0] wave_samp_per; top-level
 // reg [9:0] chan_keep; top-level
 // reg [2:0] wave_shift; top-level
-// reg [0:0] circle_buf_flip; top-level single-cycle
 // reg [0:0] dds_reset; top-level single-cycle
 // reg [31:0] dds_phase_step; top-level
 // reg [18:0] dds_phase_shift; top-level
@@ -154,11 +168,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [0:0] dac_permit; top-level
 // reg [0:0] ntw_amp_enable; top-level
 // reg [0:0] ntw_phs_enable; top-level
-// reg [17:0] ntw_lo_amp; top-level
-// reg [31:0] ntw_phase_step_h; top-level
-// reg [11:0] ntw_phase_step_l; top-level
-// reg [11:0] ntw_modulo; top-level
 // reg [0:0] system_bist_pass; top-level
+// newad-force lb domain
 
 // Transfer local bus to dsp clk domain:
  wire lb1_clk = dsp_clk;
@@ -499,26 +510,19 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 
     wire signed [17:0] ntw_cos_debug;
     wire signed [18:0] ntw_phase_debug;
-    ntw_analyzer #(.KW(18))
-    ntw_analyzer (
+    ntw_analyzer #(.KW(18)) ntw // auto lb1
+    (
         .clk              (dsp_clk),
         .trig             (ntw_trig_i),
-
         .ext_amp_enable   (ntw_amp_enable),
         .ext_phs_enable   (ntw_phs_enable),
         .amp_setpoint     (amp_setpoint),
         .phs_setpoint     (phs_setpoint),
-
-        .lo_amp           (ntw_lo_amp),
-        .modulo           (ntw_modulo),
-        .phase_step_l     (ntw_phase_step_l),
-        .phase_step_h     (ntw_phase_step_h),
-
         .ntw_phase_debug  (ntw_phase_debug),
         .ntw_cos_debug    (ntw_cos_debug),
-
         .amp_stp_ntw      (amp_setpoint_ntw), // final amplitude setpoint after excitation
-        .phs_stp_ntw      (phs_setpoint_ntw)
+        .phs_stp_ntw      (phs_setpoint_ntw),
+        `AUTOMATIC_ntw
     );
 
     wire pulse_val;
@@ -589,7 +593,19 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 
     reg [LB_DW-1:0] lb_rdata_r=0;
     reg [LB_ADW-1:0] lb_addr_d1=0;
-    reg [31:0] reg_bank_0=0;
+    reg [31:0] reg_bank_0=0, reg_bank_1=0;
+    // jit_rad == Just In Time Readout Across Domains
+    wire lb_error;
+    wire xfer_clk, xfer_strobe, xfer_snap;
+    wire [3:0] xfer_addr;
+    wire [31:0] lb_reg_bank_1;
+    jit_rad_gateway #(.passthrough(0)) xfer_bank_6(
+        .lb_clk(lb_clk), .lb_addr(lb_addr[3:0]),
+        .lb_strobe(lb_read), .lb_odata(lb_reg_bank_1),
+        .lb_prefill(lb_prefill), .lb_error(lb_error),
+        .app_clk(dsp_clk), .xfer_clk(xfer_clk), .xfer_strobe(xfer_strobe),
+        .xfer_addr(xfer_addr), .xfer_odata(reg_bank_1), .xfer_snap(xfer_snap)
+    );
 
     // LB read mux: Match READ_DELAY=3 in system.v
     always @(posedge lb_clk) begin
@@ -605,12 +621,21 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             4'h8: reg_bank_0 <= arc_permit_sum_lb;
             4'h9: reg_bank_0 <= err_out_amp_lb;
             4'ha: reg_bank_0 <= err_out_phs_lb;
-            4'hc: reg_bank_0 <= amp_setpoint_ntw;
-            4'hd: reg_bank_0 <= phs_setpoint_ntw;
-            4'he: reg_bank_0 <= ntw_cos_debug;
-            4'hf: reg_bank_0 <= ntw_phase_debug;
             default: reg_bank_0 <= 32'hfaceface;
         endcase
+    end
+    always @(posedge xfer_clk) begin
+        case (xfer_addr[3:0])
+            // All these signals are in dsp_clk domain
+            // (and handled with jit_rad)
+            4'h0: reg_bank_1 <= amp_setpoint_ntw;
+            4'h1: reg_bank_1 <= phs_setpoint_ntw;
+            4'h2: reg_bank_1 <= ntw_cos_debug;
+            4'h3: reg_bank_1 <= ntw_phase_debug;
+            default: reg_bank_1 <= 32'hfaceface;
+        endcase
+    end
+    always @(posedge lb_clk) begin
         lb_addr_d1 <= lb_addr;
         casez (lb_addr_d1)
             18'h3????: lb_rdata_r <= mirror_out_0;
@@ -631,6 +656,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             18'h1d???: lb_rdata_r <= dac_buf_out[1];
             18'h2????: lb_rdata_r <= cbuf_out;
             18'h???0?: lb_rdata_r <= reg_bank_0;
+            18'h???1?: lb_rdata_r <= lb_reg_bank_1;
             default:   lb_rdata_r <= 32'hfaceface;
         endcase
     end

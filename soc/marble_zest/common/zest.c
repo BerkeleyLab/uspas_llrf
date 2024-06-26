@@ -152,7 +152,7 @@ bool align_ad9781(uint8_t* exp_smp) {
     printf("  %s: Found SMP value: %d.\n", __func__, smp_min);
     set_ad9781_smp(smp_min);
     // validate against expected values, allow +-160ps error bar
-    for (uint8_t ix=0; ix<2; ix++) {
+    for (uint8_t ix=0; ix<3; ix++) {
         diff = smp_min - exp_smp[ix];
         if (diff <= 1 && diff >= -1) {
             printf("  %s: SMP matches expected: %d.\n", __func__, exp_smp[ix]);

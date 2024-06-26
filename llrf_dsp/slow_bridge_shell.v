@@ -118,6 +118,9 @@ module slow_bridge_shell #(
     end
     assign slow_dsp_data = slow_sr2[SR_LEN2-DW +:DW];
     assign slow_data_in  = slow_sr1[SR_LEN1-DW +:DW];
-    // XXX mixes domains, simulate to make sure it's glitch-free
-    assign slow_ready = buf_ready & ~running;
+    // XXX formerly mixed domains; simulate to make sure new version's latency is OK
+    reg running_lb=0;
+    always @(posedge lb_clk) running_lb <= running;
+    assign slow_ready = buf_ready & ~running_lb;
+
 endmodule

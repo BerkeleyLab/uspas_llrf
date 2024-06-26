@@ -19,22 +19,23 @@ module zest_dac_interp #(
         .data_out       (d1)
     );
 
-    reg signed [DW-1:0] d2=0, d3=0, d4=0;
+    reg signed [DW-1:0] d2=0, d3=0;
     reg tick=0;
     always @(posedge dac_clk) begin
         tick <= ~tick;
         d2 <= d1;
         d3 <= d2;
-        d4 <= d3;
     end
 
     wire signed [DW:0] sum = d2 + d1;
-    reg signed [2*DW+1:0] r=0, r1=0;
+    reg signed [2*DW+1:0] r=0;
+    wire signed [2*DW+1:0] r1 = r >>> DW;
+    reg signed [DW-1:0] dout_r=0;
     always @(posedge dac_clk) begin
         r <= sum * coeff;
-        r1 <= r >>> DW;
+        // output is: s0, (s0+s1)/2*coeff, s1, (s1+s2)/2*coeff, s2, ...
+        dout_r <= ~tick ? r1[DW-1:0] : d3;
     end
-    // output is: s0, (s0+s1)/2*coeff, s1, (s1+s2)/2*coeff, s2, ...
-    assign dout = tick ? r1[DW-1:0] : d4;
+    assign dout = dout_r;
 
 endmodule

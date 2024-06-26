@@ -11,10 +11,12 @@ localparam BUF_DWI          = 16;
 localparam LB_ADW           = 18;
 localparam CLK_CYCLE        = 8;        // ns
 localparam LB_READ_DELAY    = 3;
-parameter CBUF_AW           = 8;
+parameter CBUF_AW           = 6;
 parameter CBUF_DW           = 24;
-parameter [17:0] DSP_CBUF_ADDR = 18'h20000;
-parameter [17:0] DSP_SLOW_ADDR = 18'h12011;
+parameter ADC_BUF_AW        = 3;
+localparam [17:0] DSP_CBUF_ADDR = 18'h20000;
+localparam [17:0] DSP_SLOW_ADDR = 18'h12011;
+localparam [17:0] ADC0_BUF_ADDR = 18'h14000;
 `define NULL 0
 
 integer cc=0;
@@ -46,7 +48,7 @@ end
     //  LocalBus functions
     // --------------------------------------------------------------
 
-    reg lb_write=0, lb_read=0;
+    reg lb_write=0, lb_read=0, lb_prefill=0;
     reg [LB_ADW-1:0] lb_addr=0;
     reg [31:0] lb_wdata=0;
     wire [31:0] lb_rdata;
@@ -172,11 +174,13 @@ end
     // DUT
     // ---------------------
     wire [N_ADC*DW-1:0] adc_in_flat;
-    wire [15:0] dac_a_out;
-    wire [15:0] dac_b_out;
+    wire [DW-1:0] dac_a_out;
+    wire [DW-1:0] dac_b_out;
+
     llrf_shell #(
         .CIC_BASE_PERIOD(`CIC_BASE_PERIOD),
         .SHIFT_BASE     (`SHIFT_BASE),
+        .ADC_BUF_AW     (ADC_BUF_AW),
         .CBUF_AW        (CBUF_AW),
         .CBUF_DW        (CBUF_DW)
     ) dut(
@@ -187,6 +191,7 @@ end
         .lb_rdata       (lb_rdata),
         .lb_read        (lb_read),
         .lb_rvalid      (lb_rvalid),
+        .lb_prefill     (lb_prefill),
 
         .dsp_clk        (dsp_clk),
         .adc_data_in    (adc_in_flat),
@@ -279,6 +284,8 @@ end
     real wfm_amp, wfm_phs;
     integer jx;
     reg inlk_check=0;
+    reg signed [DW-1:0] rxbuf [0:2**ADC_BUF_AW];
+
     initial begin
         init_task();
         while (!init_done);
@@ -385,6 +392,23 @@ end
         fail |= $abs(wfm_phs - phs_expect) > 0.1;
         $display("Time: %g ns, Cbuf Readout: adc1: phs = %8.2f deg, expect = %8.1f, %s",
             $time, wfm_phs, phs_expect, fail ? "FAIL":"OK");
+
+        $display("---- Check ADC buffer ----");
+        @(posedge dut.wave_trig);
+        @(posedge dut.dsp_clk);
+        // record adc values for checking against adc0_buf readout
+        for (jx=0; jx<2**ADC_BUF_AW; jx=jx+1) begin
+            @(negedge dut.dsp_clk);
+            rxbuf[jx] = adc;
+            // $display("%g ns, [%2d]: %4d", $time, jx, adc);
+        end
+        // readout and validate
+        for (jx=0; jx<2**ADC_BUF_AW; jx=jx+1) begin
+            lb_read_task(ADC0_BUF_ADDR + jx, rdata);
+            fail |= $signed(rdata[15:0]) != rxbuf[jx];
+            $display("[%2d]: adc_buf: %6d, expect: %6d, %s",
+                jx, $signed(rdata[15:0]), rxbuf[jx], fail ? "FAIL":"OK");
+        end
 
         $display("---- Check Min/Max ----");
         // wait for slow_ready
