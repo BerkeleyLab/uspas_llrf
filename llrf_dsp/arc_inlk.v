@@ -29,4 +29,5 @@ assign dev_reset_out = reset_arc_dev;
 
 assign permit_latch_out = permit_latch_r;
 assign permit_sum_out = & ( ~permit_mask[N_CH-1:0] | permit_latch_r);
+assign permit_raw_out = {N_CH{1'b0}};  // XXX
 endmodule

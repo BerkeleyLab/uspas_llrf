@@ -6,7 +6,7 @@ include $(APP_SOC_DIR)/common/common.mk
 
 TARGET = marble_zest
 
-.PHONY: all system_config clean
+.PHONY: all system_config system_test clean
 all: $(TARGET)_top.bit
 
 IP_EXPAND = $(UDP_RGMII_DIR)/udp_rgmii_expand.v
@@ -45,22 +45,21 @@ system_top.xdc: timing.xdc $(APP_SOC_SYN_DIR)/zest_fmc_dp.xdc top.xdc
 #: Build bitstream
 $(TARGET)_top.bit: system_top.xdc $(TARGET)_top.v $(IP_EXPAND) $(APP_SOC_SYN_DIR)/system32.dat $(GTP_DEPS)
 
-#: Program bitstream and ping with the default firmware IP address
-SERIAL = ""
-
-# If IP_ADDRESS is defined, this will do nothing (hopefully)
-# If SERIAL is set, IP_ADDRESS will be configured for that serial number
-# Otherwise, we fall back to the default 192.168.19.122
-ifeq ($(strip $(SERIAL)),)
-IP_ADDRESS?=192.168.19.122
-else
-IP_ADDRESS?=192.168.19.$(SERIAL)
-endif
+SERIAL ?= 122
+IP_ADDRESS = 192.168.19.$(SERIAL)
 
 system_config:
-	@echo "Using Marble with serial number ${SERIAL}"
-	openocd -c "adapter driver ftdi; ftdi_serial 0000${SERIAL};" -f marble.cfg -c "transport select jtag; init; xc7_program xc7.tap; pld load 0  $(TARGET)_top.bit; exit"
-	sleep 5 && ping -v -c 4 -w 20 $(IP_ADDRESS)
+	@echo "Using Marble with serial number $(SERIAL)"
+	openocd \
+	-c "adapter serial 0000$(SERIAL);" \
+	-f marble.cfg \
+	-c "init; xc7_program xc7.tap; pld load 0 $(TARGET)_top.bit; exit"
+
+# check Ethernet and system selftest status
+system_test:
+	ping -v -c 4 -w 20 $(IP_ADDRESS)
+	cd $(TOP)python && \
+	$(PYTHON) test.py leep://$(IP_ADDRESS):803 reg system_bist_pass | awk ' $$2!=00000001 { exit 1 }'
 
 CLEAN += system_top.xdc $(TARGET)_top.bin $(TARGET)_top.bit $(IP_BIT_D)
 CLEAN += $(TARGET)_top.prm

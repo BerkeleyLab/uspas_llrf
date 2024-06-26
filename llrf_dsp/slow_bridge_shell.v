@@ -84,6 +84,7 @@ module slow_bridge_shell #(
         .shift_out  (timestamp)
     );
 
+    wire [DW-1:0] timestamp_pad = {8'h0, timestamp};
     // Double-buffer evr_timestamp so we can simultaneously snapshot current and transfer previous
     reg [63:0] evr_ts_snap1, evr_ts_snap2;
     reg evr_ts_rd=0;
@@ -102,13 +103,12 @@ module slow_bridge_shell #(
     end
     wire [DW-1:0] evr_ts_word = evr_ts_rd ? evr_ts_snap1[64-DW +:DW] : evr_ts_snap2[64-DW +:DW];
 
+    reg [7:0] tag_old=0;
     wire [SR_LEN1-1:0] slow_sr_data = {buf_stat1, buf_stat2, buf_count, 8'h0, tag, 8'h0, tag_old};
     wire [DW-1:0] slow_dsp_data;
-    wire [DW-1:0] timestamp_pad = {8'h0, timestamp};
     // from cmoc/slow_bridge.v
     reg [SR_LEN1-1:0] slow_sr1=0;
     reg [SR_LEN2-1:0] slow_sr2=0;
-    reg [7:0] tag_old=0;
     always @(posedge dsp_clk) begin
         if (slow_op) begin
             slow_sr1 <= slow_snap ? slow_sr_data : {slow_sr1[SR_LEN1-DW-1:0], slow_dsp_data};
@@ -118,6 +118,9 @@ module slow_bridge_shell #(
     end
     assign slow_dsp_data = slow_sr2[SR_LEN2-DW +:DW];
     assign slow_data_in  = slow_sr1[SR_LEN1-DW +:DW];
-    // XXX mixes domains, simulate to make sure it's glitch-free
-    assign slow_ready = buf_ready & ~running;
+    // XXX formerly mixed domains; simulate to make sure new version's latency is OK
+    reg running_lb=0;
+    always @(posedge lb_clk) running_lb <= running;
+    assign slow_ready = buf_ready & ~running_lb;
+
 endmodule

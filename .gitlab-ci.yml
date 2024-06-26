@@ -43,6 +43,17 @@ cocotb_dsp_test:
   script:
     - make
 
+llrf_cdc_test:
+  before_script:
+    - cd llrf_dsp
+  stage: test
+  script:
+    - make clean && make llrf_shell_expand.v && make llrf_shell_cdc.txt
+  artifacts:
+    when: always
+    paths:
+      - llrf_dsp/llrf_shell_cdc.txt
+
 marble_zest_synth:
   before_script:
     - cd top/marble_zest
@@ -65,4 +76,4 @@ marble_run:
   dependencies:
     - marble_zest_synth
   script:
-    - make system_config SERIAL=42
+    - make system_config SERIAL=42 && make system_test SERIAL=42

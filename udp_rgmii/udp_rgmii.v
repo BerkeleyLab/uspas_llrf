@@ -24,6 +24,7 @@ module udp_rgmii #(
     output [31:0]   lb_wdata,
     input  [31:0]   lb_rdata,
     output          lb_rvalid,
+    output          lb_prefill,
 
     // rtefi_blob interface for IP/MAC configuration
     input enable_rx,
@@ -79,7 +80,6 @@ gmii_to_rgmii #( .in_phase_tx_clk(1)) gmii_to_rgmii_i (
 // localbus master
 wire rx_mon;
 wire tx_mon;
-wire tx_mac_done;
 
 rtefi_blob #(
     .ip(IP), .mac(MAC), .p3_read_pipe_len(LB_READ_DELAY)
@@ -116,6 +116,7 @@ rtefi_blob #(
     .p3_lb_rvalid   (lb_rvalid),
     .p3_lb_wdata    (lb_wdata),
     .p3_lb_rdata    (lb_rdata),
+    .p3_lb_prefill  (lb_prefill),
     .rx_mon         (rx_mon),
     .tx_mon         (tx_mon)
 );

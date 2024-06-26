@@ -177,6 +177,7 @@ wire lb0_rvalid;
 wire [23:0] lb0_addr;
 wire [31:0] lb0_wdata;
 wire [31:0] lb0_rdata;
+wire lb0_prefill;
 wire [7:0]  mac_status;
 udp_rgmii #(
     .IP(IP), .MAC(MAC), .LB_READ_DELAY(LB_READ_DELAY)
@@ -206,6 +207,7 @@ udp_rgmii #(
     .lb_wdata       (lb0_wdata    ),
     .lb_rdata       (lb0_rdata    ),
     .lb_rvalid      (lb0_rvalid   ),
+    .lb_prefill     (lb0_prefill  ),
     .mac_status     (mac_status   ),
 
     .enable_rx      (enable_rx    ),
@@ -214,6 +216,7 @@ udp_rgmii #(
     .config_s       (config_s     ),
     .config_p       (config_p     )
 );
+wire lb_prefill = lb0_prefill;  // no interaction with PicoRV, right?
 
 // merged localbus master
 wire lb_write;
@@ -278,7 +281,7 @@ wire [15:0] dac_b_out;
 `define GIT_32BIT_ID 32'hdeadf00d
 `endif
 
-llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) dsp (
+llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) llrf_inst (
     .lb_clk         (clk),
     .lb_write       (lb_write),
     .lb_addr        (lb_addr),
@@ -286,6 +289,7 @@ llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) dsp (
     .lb_rdata       (lb_rdata),
     .lb_read        (lb_read),
     .lb_rvalid      (lb_rvalid),
+    .lb_prefill     (lb_prefill),
 
     .dsp_clk        (dsp_clk),
     .adc_data_in    (adc_out_data),
@@ -296,14 +300,14 @@ llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) dsp (
     .slow_permit_in (1'b1)
 );
 
-// ----------------------------------
+// ---------------------------------
 // Zest Digitizer Board
 // ---------------------------------
 
 zest #(
-    .PH_DIFF_ADV (`PH_DIFF_ADV),
-    .BASE_ADDR  (8'h05),
-    .FCNT_WIDTH (16)
+    .DSP_FREQ_MHZ   (`DSP_FREQ_MHZ),
+    .DAC_INTERP_COEFF_R (`DAC_INTERP_COEFF_R),
+    .BASE_ADDR  (8'h05)
 ) zest_inst (
     .ADC_PDWN       (ZEST_ADC_PDWN      ),
     .ADC_CSB_0      (ZEST_ADC_CSB_0     ),

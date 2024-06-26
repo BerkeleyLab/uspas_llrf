@@ -1,17 +1,19 @@
 `include "settings.vams"
 
 task init_dds_task (
-    output [19:0] phase_step_h,
-    output [11:0] phase_step_l,
+    output [31:0] phase_step,
     output [11:0] modulo
 );
     integer m, r;
+    reg [19:0] phase_step_h;
+    reg [11:0] phase_step_l;
     begin
         m = 4096 / `DEN_DDS;
         modulo = 4096 - m * `DEN_DDS;
         r = {1'b1,{20{1'b0}}} * `NUM_DDS;
         phase_step_h =  r / `DEN_DDS;
         phase_step_l = (r % `DEN_DDS) * m;
+        phase_step = {phase_step_h, phase_step_l};
     end
 endtask
 

@@ -36,7 +36,7 @@ end
 //
 // For 100 kHz excitation signal:
 // calc_num_den(114.67375e6, 100e3) = (80, 91739)
-// calc_dds(80, 91739) = (29260, 0, 4095)
+// calc_dds(80, 91739) = (3745379 0 4096)
 
 parameter KW = 18;
 parameter dwi = 12;
@@ -70,11 +70,11 @@ begin
     // for now use already calculated values, hardware coded values
     f_out = freq/f_ref;
     @(posedge clk);
-    modulo = 4095;
+    modulo = 4096;
     @(posedge clk);
-    phase_step_l <= 1;
+    phase_step_l <= 0;
     @(posedge clk);
-    phase_step_h <= 29260;
+    phase_step_h <= 3745379;
     @(posedge clk);
 end
 endtask
@@ -132,7 +132,7 @@ wire trig_en = (ntw_amp_enable || ntw_phs_enable) ? trig : 0;
         .amp_setpoint     (amp_setpoint),
         .phs_setpoint     (phs_setpoint),
 
-        .lo_amp           (ntw_lo_amp),
+        .lo_amp           (lo_amp),
         .modulo           (modulo),
         .phase_step_l     (phase_step_l),
         .phase_step_h     (phase_step_h),
@@ -146,10 +146,10 @@ reg signed [17:0] cosc = 0, sinc = 0;
 real variance=0;
 integer npt=0;
 real err=10;
-always @(posedge clk) begin
+always @(negedge clk) begin
     if (cc > 20) begin
-        cosc <= $cos(n/d*`M_TWO_PI*(cc-272))*ntw_lo_amp*1.64676;
-        sinc <= $sin(n/d*`M_TWO_PI*(cc-272))*ntw_lo_amp*1.64676;
+        cosc <= $cos(n/d*`M_TWO_PI*(cc-272))*ntw_lo_amp;
+        sinc <= $sin(n/d*`M_TWO_PI*(cc-272))*ntw_lo_amp;
         npt +=1;
         if (cc==952) begin
             variance += (ntw_analyzer.sina-sinc)**2 + (ntw_analyzer.cosa-cosc)**2;

@@ -2,11 +2,19 @@
 
 module system_top_tb;
     localparam F_CLK = 125000000;                      // Simulated clock rate in [Hz]
-    localparam CLK_PERIOD_NS = 1000000000/F_CLK/2;     // Simulated clock period in [ns]
+    localparam PD_CLK = 1000000000/F_CLK;              // Simulated clock period in [ns]
     localparam BAUD_RATE = 9216000;                    // debug text baudrate
+
+    localparam PD_DAC_CLK = 1000.0 / `DSP_FREQ_MHZ;    // DAC Sampling clock period in [ns]
+    localparam PD_ADC_CLK = PD_DAC_CLK * 2;     // ADC Sampling clock period in [ns]
+    localparam DAC_DCO_DELAY_UI = 0.2;
+
+    localparam MAX_SIM_TIME = 35000;    // ns
+    localparam PH_DIFF_DW = 13;
+
+    reg pass=1;
     reg clk=1;
-    integer pass=0;
-    always #CLK_PERIOD_NS begin
+    always #(PD_CLK/2) begin
         clk = ~clk;
     end
 
@@ -19,13 +27,44 @@ module system_top_tb;
     // --------------------------------------------------------------
     reg adc_clk_dco = 1;
     reg adc_clk     = 1;
-    always #(4.3636/4) begin
+    reg dac_clk_dco = 1;
+    reg fpga_clk    = 1;
+    always #(PD_ADC_CLK/8) begin
         adc_clk_dco = ~adc_clk_dco;
     end
-    always #4.3636 begin
+    always #(PD_ADC_CLK/2) begin
         adc_clk = ~adc_clk;
     end
+    always #(PD_DAC_CLK/2) begin
+        fpga_clk = ~fpga_clk;
+    end
 
+    // matches phasex_tb.v
+    real dac_clk_delay;
+    reg signed [PH_DIFF_DW-1:0] dac_clk_ph_exp;
+    wire signed [PH_DIFF_DW-1:0] dac_clk_ph_meas;
+    initial begin
+        dac_clk_delay = DAC_DCO_DELAY_UI;
+        dac_clk_ph_exp = -dac_clk_delay * (1<<PH_DIFF_DW) / 2;
+        $display("dac_clk_delay: %.4f UI, %d", dac_clk_delay, dac_clk_ph_exp);
+        @(posedge dut.locked);  // wait for MMCM
+        @(posedge dut.dsp_clk_out);
+        #(PD_DAC_CLK * dac_clk_delay);
+        forever #(PD_DAC_CLK/2)  dac_clk_dco = ~dac_clk_dco;
+    end
+
+    assign dac_clk_ph_meas = dut.zest_inst.phase_diff_dac.phdiff_out;
+    real dac_dco_ph_err=0;
+    reg dac_phase_pass = 0;
+    always @(posedge clk) begin
+        if (dut.zest_inst.phase_diff_dac.dval) begin
+            dac_dco_ph_err = (dac_clk_ph_meas - dac_clk_ph_exp) / (1<<PH_DIFF_DW);
+            dac_phase_pass = dac_dco_ph_err > -0.02 && dac_dco_ph_err < 0.02;
+            pass = pass & dac_phase_pass;
+            $display("time: %8g ns, phase_diff_dac: exp =%5d, measured =%5d, pass=%s",
+                $time, dac_clk_ph_exp, dac_clk_ph_meas, dac_phase_pass ? "PASS" : "FAIL");
+        end
+    end
     // --------------------------------------------------------------
     // Simulate adc output
     // --------------------------------------------------------------
@@ -45,7 +84,6 @@ module system_top_tb;
         shifter <= {shifter[30:0],shifter[31]};
     end
 
-
     // ------------------------------------------------------------------------
     //  Handle the power on Reset
     // ------------------------------------------------------------------------
@@ -63,9 +101,14 @@ module system_top_tb;
         reset <= 0;
         $write("UART baud_rate: %d\n", BAUD_RATE);
         $fflush();
-        #200000 $display("\nSimulation finish. Not a validation test.");
-        //$display("\n%8s", pass ? "PASS" : "FAIL" );
-        $finish;
+        #MAX_SIM_TIME;
+        if (pass) begin
+            $display("PASS");
+            $finish();
+        end else begin
+            $display("FAIL");
+            $stop();
+        end
     end
 
     // ------------------------------------------------------------------------
@@ -87,7 +130,7 @@ module system_top_tb;
     wire [1:0] adc_dco_n = {1'b0, {~adc_clk_dco}};
 
     system_top #(
-        .FCNT_WIDTH             (8)         // speed up
+        .FCNT_WIDTH             (10)         // speed up, match FCNT_WIDTH in Makefile
     ) dut(
         .GTPREFCLK_P            (clk),                  // input
         .GTPREFCLK_N            (~clk),                 // input
@@ -120,8 +163,8 @@ module system_top_tb;
         .ZEST_LMK_DATAUWIRE     (1'b0),                 // input
         .ZEST_AD7794_DOUT       (1'b0),                 // input
         .ZEST_DAC_SDO           (zest_dac_sdo),         // input
-        .ZEST_CLK_TO_FPGA_P     ({adc_clk, 1'b0}),      // input
-        .ZEST_CLK_TO_FPGA_N     ({~adc_clk,1'b0}),      // input
+        .ZEST_CLK_TO_FPGA_P     ({fpga_clk, 1'b0}),     // input
+        .ZEST_CLK_TO_FPGA_N     ({~fpga_clk,1'b0}),     // input
         .ZEST_ADC_D0_P          (adc_d0_p),             // input [7:0]
         .ZEST_ADC_D0_N          (adc_d0_n),             // input [7:0]
         .ZEST_ADC_D1_P          (adc_d1_p),             // input [7:0]
@@ -134,8 +177,8 @@ module system_top_tb;
         .ZEST_DAC_D_N           (),                     // output [13:0]
         .ZEST_DAC_DCI_P         (),                     // output
         .ZEST_DAC_DCI_N         (),                     // output
-        .ZEST_DAC_DCO_P         (1'b0),                 // input
-        .ZEST_DAC_DCO_N         (1'b0),                 // input
+        .ZEST_DAC_DCO_P         (dac_clk_dco),          // input
+        .ZEST_DAC_DCO_N         (~dac_clk_dco),         // input
         .ZEST_PMOD1             (),                     // inout [7:0]
         .ZEST_PMOD2             ()                      // inout [7:0]
     );

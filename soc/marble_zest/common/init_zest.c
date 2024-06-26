@@ -10,10 +10,10 @@ t_reg32 regmap_lmk01801[] = {
     // CLKin1_MUX       ="01",
     // CLKin1_DIV       ="000",
     // CLKin0_MUX       ="01"
-    // CLKin0_DIV       ="100",   # LO / 4 @ 114.6MHz or 115MHz
+    // CLKin0_DIV       ="010",   # LO / 2
     // RESET            ="0",
-    // hex(0b01001000_01_000_01_100_11_00000000)
-    { 0x0, 0x4843300UL },
+    // hex(0b01001000_01_000_01_010_11_00000000)
+    { 0x0, 0x4842b00UL },
     // CLKout7_TYPE     ="0000",  # Powerdown
     // CLKout6_TYPE     ="0001",  # LVDS J12 U.FL
     // CLKout4_TYPE     ="0001",  # LVDS TO_FPGA
@@ -44,11 +44,11 @@ t_reg32 regmap_lmk01801[] = {
     // CLKout12_13_DDLY ="0000000000"
     { 0x4, 0x0UL },
     // CLKout12_13_DIV  ="00000000001",
-    // CLKout8_11_DIV   ="001",  # J20, J24         @ 114.6MHz
-    // CLKout4_7_DIV    ="001",  # FPGA, DAC, J12,  @ 114.6MHz
-    // CLKout0_3_DIV    ="001"   # ADC1/2, J13      @ 114.6MHz
-    // hex(0b0000_00000000001_00_0_0_001_001_001)
-    { 0x5, 0x2049UL },
+    // CLKout8_11_DIV   ="010",  # J20, J24         @ 1/2
+    // CLKout4_7_DIV    ="001",  # FPGA, DAC, J12,  @ 1/1
+    // CLKout0_3_DIV    ="010"   # ADC1/2, J13      @ 1/2
+    // hex(0b0000_00000000001_00_0_0_010_001_010)
+    { 0x5, 0x208aUL },
     // uWireLock =      ="1"
     // hex(0b101111_1)
     { 0xf, 0x5fUL }  // Lock
@@ -92,24 +92,30 @@ t_reg32 regmap_amc7823[] = {
     { (1<<6) | 0xd, 0x8010}, // # PWR Down: only enable ADC and PREFB
 };
 
-// #define FCNT_EXP FREQ_LO_MHZ * (1<<FCNT_WIDTH) / 4 / 125
-#ifndef FCNT_EXP
-#define FCNT_EXP 60074
+#ifndef DSP_FREQ_MHZ
+    #define DSP_FREQ_MHZ 115.0
 #endif
-// DSP_CLK, ADC0_DIV, ADC1_DIV, DAC_DCO
-uint16_t fcnt_exp[4] = {
+
+#define FCNT_EXP DSP_FREQ_MHZ * (1<<16) / 125
+
+// ADC0_DIV, ADC1_DIV, DAC_DCO, DSP_CLK
+uint32_t fcnt_exp[] = {
     FCNT_EXP,
     FCNT_EXP,
-    FCNT_EXP,
+    FCNT_EXP * 2,
     FCNT_EXP
 };
 
-// ADC0_DIV, ADC1_DIV, DAC_DCO, AD9781_SMP
-uint8_t phs_center[4] = {
-    70, 64, 32, 17
+// ADC0_DIV, ADC1_DIV, DAC_DCO
+int8_t phs_center[] = {
+    70, 64, 32
 };
 
-const t_zest_init zest_init_data = {
+uint8_t ad9781_smp[] = {
+    17, 17, 17
+};
+
+const zest_init_t zest_init_data = {
     {
         sizeof(regmap_lmk01801) / sizeof(regmap_lmk01801[0]),
         regmap_lmk01801
@@ -131,5 +137,6 @@ const t_zest_init zest_init_data = {
         regmap_amc7823
     },
     fcnt_exp,
-    phs_center
+    phs_center,
+    ad9781_smp
 };

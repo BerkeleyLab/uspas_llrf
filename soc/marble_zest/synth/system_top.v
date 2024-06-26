@@ -65,9 +65,10 @@ module system_top (
     inout [7:0]     ZEST_PMOD2
 );
 
-parameter FCNT_WIDTH = 16;
 parameter LB_READ_DELAY=3;
 parameter LB_ADW = 20;
+parameter FCNT_WIDTH = 16;
+parameter PH_DIFF_DW = 13;
 // Combine the 2 reset sources (USB, button)
 wire clk;
 wire clk_200;
@@ -163,8 +164,11 @@ wire [13:0] dac_in_data_i;
 wire [13:0] dac_in_data_q;
 
 zest #(
-    .BASE_ADDR  (8'h05),
-    .FCNT_WIDTH (FCNT_WIDTH)
+    .BASE_ADDR      (8'h05),
+    .DSP_FREQ_MHZ   (`DSP_FREQ_MHZ),
+    .DAC_INTERP_COEFF_R (`DAC_INTERP_COEFF_R),
+    .FCNT_WIDTH     (FCNT_WIDTH),
+    .PH_DIFF_DW     (PH_DIFF_DW)
 ) zest_inst (
     .ADC_PDWN       (ZEST_ADC_PDWN      ),
     .ADC_CSB_0      (ZEST_ADC_CSB_0     ),

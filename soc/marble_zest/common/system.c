@@ -14,7 +14,7 @@
 #include "llrf_regs_addr.h"
 #endif
 
-extern t_zest_init zest_init_data;
+extern zest_init_t zest_init_data;
 extern t_init_llrf_data llrf_init_data;
 
 void _putchar( char c ){
@@ -37,8 +37,8 @@ int main(void) {
     init();
 #ifdef SIMULATION
 #ifdef XSIM_DBG  // top level
-    printf("### XSIM SIMULATION ###\n");
-    // init_zest_dbg(BASE_ZEST);
+    // printf("# TOP SIM #\n");
+    pass = init_zest_dbg(BASE_ZEST, &zest_init_data);
 #else        // system_tb.v, faster
     printf("Simulating read XADC...:\n");
     uint32_t xadc_data;
@@ -63,12 +63,17 @@ int main(void) {
     printf(" \\___/|____/|_| /_/   \\_\\____/  |_____|_____|_| \\_\\_|    \n");
 
     debug_printf("=== VERBOSE MODE ===\n");
+    print_git_rev_id();
+
     pass &= init_marble();
-    printf("==== Marble Init       ====  : %s.\n", pass?"PASS":"FAIL");
+    printf("==== Marble Init       ==== : %s.\n", pass?"PASS":"FAIL");
     pass &= init_zest(BASE_ZEST, &zest_init_data);
-    printf("==== ZEST Init         ====  : %s.\n", pass?"PASS":"FAIL");
+    printf("==== ZEST Init         ==== : %s.\n", pass?"PASS":"FAIL");
     pass &= init_llrf(&llrf_init_data);
-    printf("==== LLRF Init         ====  : %s.\n", pass?"PASS":"FAIL");
+    printf("==== LLRF Init         ==== : %s.\n", pass?"PASS":"FAIL");
+    set_llrf_dac_permit(pass);
+    set_llrf_bist_pass(pass);
+
     while(1) {
         handle_ui();
     }

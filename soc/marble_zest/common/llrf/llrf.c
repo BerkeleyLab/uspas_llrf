@@ -2,8 +2,12 @@
 #include "llrf.h"
 #include "llrf_regs_addr.h"
 #include "timer.h"
-#include "printf.h"
 #include "settings.h"
+#ifdef NONSTD_PRINTF
+    #include "printf.h"
+#else
+    #include <stdio.h>
+#endif
 
 int32_t read_lb_reg(uint32_t addr) {
     return GET_REG(BASE_LOCALBUS + (addr<<2));
@@ -11,6 +15,10 @@ int32_t read_lb_reg(uint32_t addr) {
 
 void write_lb_reg(uint32_t addr, int32_t val) {
     SET_REG(BASE_LOCALBUS + (addr<<2), val);
+}
+
+void print_git_rev_id(void) {
+    printf("GIT_REV_ID: %x\n", (uint32_t)read_lb_reg(GIT_REV_ID));
 }
 
 void wait_cbuf_ready(void) {
@@ -60,12 +68,15 @@ bool align_mo_phase(void) {
     return pass;
 }
 
-bool reset_phase_loop(void) {
-    bool pass = true;
-    return pass;
+void set_llrf_dac_permit(bool permit) {
+    write_lb_reg(DAC_PERMIT, permit);
 }
 
-void reset_rf_permit(void) {
+void set_llrf_bist_pass(bool pass) {
+    write_lb_reg(SYSTEM_BIST_PASS, pass);
+}
+
+void reset_interlock_permit(void) {
     write_lb_reg(INLK_RESET_INLK, 1);
     write_lb_reg(INLK_RESET_INLK, 0);
 }

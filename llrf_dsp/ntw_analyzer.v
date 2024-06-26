@@ -1,5 +1,3 @@
-// second attempt to write network analyzer code
-// It's a simple encapsulation of
 `timescale 1ns / 1ps
 module ntw_analyzer #(
     parameter KW = 18  // signal width
@@ -12,10 +10,10 @@ module ntw_analyzer #(
     input signed [KW-1:0] amp_setpoint,       // Incoming amplitude setpoint
     input signed [KW-1:0] phs_setpoint,       // Incoming phase setpoint
 
-    input [KW-1:0] lo_amp,                    // Amplitude level
-    input [11:0] modulo,
-    input [31:0] phase_step_h,
-    input [11:0] phase_step_l,
+    input [17:0] lo_amp,                  // external; Amplitude level
+    input [11:0] modulo,                  // external;
+    input [31:0] phase_step_h,            // external;
+    input [11:0] phase_step_l,            // external;
 
     output signed [KW-1:0] ntw_cos_debug,      // for debug only
     output signed [KW:0] ntw_phase_debug,      // for debug only

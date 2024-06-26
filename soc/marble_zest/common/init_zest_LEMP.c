@@ -45,7 +45,7 @@ t_reg32 regmap_lmk01801[] = {
     { 0x4, 0x0UL },
     // CLKout12_13_DIV  ="00000000001",
     // CLKout8_11_DIV   ="011",  # J20, J24         @ 1/3, 158.67 MHz
-    // CLKout4_7_DIV    ="010",  # FPGA, DAC, J12,  @ 1/2, 238 MHz XXX needs DSP support
+    // CLKout4_7_DIV    ="010",  # FPGA, DAC, J12,  @ 1/2, 238 MHz
     // CLKout0_3_DIV    ="100"   # ADC1/2, J13      @ 1/4, 119 MHz
     // hex(0b0000_00000000001_00_0_0_011_010_100)
     { 0x5, 0x20d4UL },
@@ -92,24 +92,30 @@ t_reg32 regmap_amc7823[] = {
     { (1<<6) | 0xd, 0x8010}, // # PWR Down: only enable ADC and PREFB
 };
 
-// #define FCNT_EXP FREQ_LO_MHZ * (1<<FCNT_WIDTH) / 4 / 125
-#ifndef FCNT_EXP
-#define FCNT_EXP 60074
+#ifndef DSP_FREQ_MHZ
+    #define DSP_FREQ_MHZ 119.0
 #endif
-// DSP_CLK, ADC0_DIV, ADC1_DIV, DAC_DCO
-uint16_t fcnt_exp[4] = {
+
+#define FCNT_EXP DSP_FREQ_MHZ * (1<<16) / 125
+
+// ADC0_DIV, ADC1_DIV, DAC_DCO, DSP_CLK
+uint32_t fcnt_exp[] = {
     FCNT_EXP,
     FCNT_EXP,
-    FCNT_EXP,
+    FCNT_EXP * 2,
     FCNT_EXP
 };
 
-// ADC0_DIV, ADC1_DIV, DAC_DCO, AD9781_SMP
-uint8_t phs_center[4] = {
-    70, 64, 32, 17
+// ADC0_DIV, ADC1_DIV, DAC_DCO
+int8_t phs_center[] = {
+    64, 48, 66
 };
 
-const t_zest_init zest_init_data = {
+uint8_t ad9781_smp[] = {
+    0, 12, 25
+};
+
+const zest_init_t zest_init_data = {
     {
         sizeof(regmap_lmk01801) / sizeof(regmap_lmk01801[0]),
         regmap_lmk01801
@@ -131,5 +137,6 @@ const t_zest_init zest_init_data = {
         regmap_amc7823
     },
     fcnt_exp,
-    phs_center
+    phs_center,
+    ad9781_smp
 };

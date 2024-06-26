@@ -12,11 +12,11 @@
 #include "llrf.h"
 #include "llrf_regs_addr.h"
 
-extern t_zest_init zest_init_data;
+extern zest_init_t zest_init_data;
 
 void handle_ui( void ) {
-    uint16_t *fcnt_exp = zest_init_data.fcnt_exp;
-    uint8_t *phs_center = zest_init_data.phs_center;
+    uint32_t *fcnt_exp = zest_init_data.fcnt_exp;
+    int8_t *phs_center = zest_init_data.phs_center;
     uint16_t tempC = UART_GETC( BASE_UART0 );
     int16_t dval;
     int32_t dval32;
@@ -84,7 +84,7 @@ void handle_ui( void ) {
             break;
 
         case 'd':
-            init_zest_dbg(BASE_ZEST);
+            init_zest_dbg(BASE_ZEST, &zest_init_data);
             break;
 
         case 'l':
