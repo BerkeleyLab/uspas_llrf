@@ -24,6 +24,7 @@ module udp_rgmii #(
     output [31:0]   lb_wdata,
     input  [31:0]   lb_rdata,
     output          lb_rvalid,
+    output          lb_prefill,
 
     // rtefi_blob interface for IP/MAC configuration
     input enable_rx,
@@ -115,6 +116,7 @@ rtefi_blob #(
     .p3_lb_rvalid   (lb_rvalid),
     .p3_lb_wdata    (lb_wdata),
     .p3_lb_rdata    (lb_rdata),
+    .p3_lb_prefill  (lb_prefill),
     .rx_mon         (rx_mon),
     .tx_mon         (tx_mon)
 );

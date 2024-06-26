@@ -99,7 +99,7 @@ t_reg32 regmap_amc7823[] = {
 #define FCNT_EXP DSP_FREQ_MHZ * (1<<16) / 125
 
 // ADC0_DIV, ADC1_DIV, DAC_DCO, DSP_CLK
-uint32_t fcnt_exp[4] = {
+uint32_t fcnt_exp[] = {
     FCNT_EXP,
     FCNT_EXP,
     FCNT_EXP * 2,
@@ -107,12 +107,12 @@ uint32_t fcnt_exp[4] = {
 };
 
 // ADC0_DIV, ADC1_DIV, DAC_DCO
-int8_t phs_center[3] = {
+int8_t phs_center[] = {
     64, 48, 66
 };
 
-uint8_t ad9781_smp[2] = {
-    0, 12
+uint8_t ad9781_smp[] = {
+    0, 12, 25
 };
 
 const zest_init_t zest_init_data = {
