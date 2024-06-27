@@ -9,7 +9,8 @@ BOOTLOADER_BAUDRATE = 115200
 
 SRC_V  += xilinx7_clocks.v
 SRC_V  += $(ZEST_DIR)/zest_spi_dio_pack.v $(ZEST_DIR)/zest_clk_map.v
-SRC_V  += $(APP_COMMON_DIR)/zest.v
+SRC_V  += $(ZEST_DIR)/zest.v
+SRC_V  += $(ZEST_DIR)/zest_dac_interp.v
 SRC_V  += $(BOARD_SUPPORT_DIR)/fmc11x/dco_buf.v \
 		  $(BOARD_SUPPORT_DIR)/fmc11x/iserdes_pack.v \
 		  $(BOARD_SUPPORT_DIR)/fmc11x/idelay_wrap.v

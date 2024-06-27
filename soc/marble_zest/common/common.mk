@@ -21,14 +21,12 @@ SRC_V += sfr_pack.v gpio_pack.v gpioz_pack.v spi_engine.v \
 SRC_V += lb_bridge.v lb_merge.v lb_reading.v
 SRC_V += $(DSP_DIR)/flag_xdomain.v $(DSP_DIR)/freq_gcount.v $(DSP_DIR)/freq_count.v $(DSP_DIR)/dpram.v $(DSP_DIR)/data_xdomain.v $(DSP_DIR)/reg_tech_cdc.v
 SRC_V += $(DSP_DIR)/phaset.v $(DSP_DIR)/phase_diff.v
-SRC_V += $(APP_DSP_DIR)/zest_dac_interp.v
 
 SRCS   =  system.c print.c i2c_soft.c timer.c ui.c
 SRCS  +=  printf.c iserdes.c
 SRCS  +=  settings.h
 SRCS  +=  $(MARBLE_DIR)/firmware/marble.c $(MARBLE_DIR)/firmware/marble.h
-# SRCS  +=  $(ZEST_DIR)/firmware/zest.c $(ZEST_DIR)/firmware/zest.h
-SRCS  +=  $(APP_COMMON_DIR)/zest.c $(APP_COMMON_DIR)/zest.h
+SRCS  +=  $(ZEST_DIR)/firmware/zest.c $(ZEST_DIR)/firmware/zest.h
 SRCS  +=  init_zest_$(FSET).c
 OBJS  =  $(subst .c,.o,$(filter %.c, $(SRCS))) startup.o
 
