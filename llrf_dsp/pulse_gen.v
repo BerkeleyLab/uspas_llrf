@@ -11,14 +11,14 @@ module pulse_gen #(
 reg [AW-1:0] len=0;
 reg [AW-1:0] pc=0;
 reg counting=0;
-wire last = (pc==len-1);
+wire last = (pc==len);
 always @(posedge clk) begin
     len <= high_len;
     if (last) counting <= 1'b0;
     else if (trigger) counting <= 1'b1;
-    if (strobe) pc <= counting ? pc + 1'b1 : 0;
+    pc <= counting ? pc + strobe : 0;
 end
 
-assign pulse_out = counting;
+assign pulse_out = counting & ~last;
 
 endmodule
