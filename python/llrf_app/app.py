@@ -1,9 +1,7 @@
 from leep.raw import LEEPDevice
 import numpy as np
-from matplotlib import pyplot as plt
 import json
 import time
-import matplotlib.animation as animation
 import logging
 logger = logging.getLogger(__name__)
 
