@@ -91,7 +91,7 @@ class DDC(LLRFModule):
     def __init__(self, num: int = 4,  den: int = 11) -> None:
         """Non-IQ Digital Down-Conversion.
             Gateware: noniq_ddc.v: gain=sin(2 * pi * theta) * 2,
-                and fiq_interp.v: gain=2.
+                     fiq_interp.v: gain=2.
 
         Args:
             num (int): numerator of IF / Fs. Defaults to 4.
@@ -100,16 +100,15 @@ class DDC(LLRFModule):
         super().__init__(num, den)
         self.gain = np.sin(self.omega) * 4 * self.z**(-self.den+2)
 
-    def gen_ddc_exp(self, adc_data):
-        """Calculate expected I,Q values from 2 consecutive ADC samples using
+    def gen_ddc_data(self, adc_data):
+        """Calculate I,Q values from 2 consecutive ADC samples using
             non-IQ down conversion:
         | I | = gain * | sin([n + 1] * omega) -sin(n * omega)| X |a_data[n]  |
         | Q |          |-cos([n + 1] * omega)  cos(n * omega)|   |a_data[n+1]|
         where gain is 1 / sin(omega).
 
         Args:
-            adc_data (np.array): time series data samples for down conversion,
-                the first (n_samples+1) elements are used.
+            adc_data (np.array): time series data samples for down conversion
 
         Returns:
             generator: yields complex value after down conversion.
@@ -121,10 +120,24 @@ class DDC(LLRFModule):
             ])
         gain = 1 / np.sin(self.omega)
         s_pre = adc_data[0]
-        for n, s in enumerate(adc_data[1:self.n_samples+1]):
+        for n, s in enumerate(adc_data[1:]):
             i, q = gain * calc_coefficient_mat(n) @ np.array([s_pre, s])
             s_pre = s
             yield i + 1j * q
+
+    def calc_ddc_raw(self, adc_data):
+        """
+        Digital Down Conversion from raw ADC data, using non-IQ matrix over
+        adjacent samples. This will result in one less sample. Pad the result
+        with trailing element to match input data shape.
+
+        Args:
+            adc_data (np.array): time series data samples for down conversion
+
+        Returns:
+            ddc_data (np.array): complex array after down conversion.
+        """
+        return np.pad(list(self.gen_ddc_data(adc_data)), (0, 1), 'edge')
 
 
 class WashoutFilter(LLRFModule):
