@@ -1,9 +1,7 @@
 from leep.raw import LEEPDevice
 import numpy as np
-from matplotlib import pyplot as plt
 import json
 import time
-import matplotlib.animation as animation
 import logging
 logger = logging.getLogger(__name__)
 
@@ -13,7 +11,7 @@ class LLRFApp(LEEPDevice):
                  settings_fname='../llrf_dsp/settings.json',
                  chan_keep=0x3ff, wfm_len=4096,
                  timeout=0.1, **kwargs):
-        self.init_rom_addr = 0x08000
+        self.init_rom_addr = 0x04000
         super(LLRFApp, self).__init__(addr, timeout, **kwargs)
 
         with open(settings_fname) as f:

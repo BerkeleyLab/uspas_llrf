@@ -611,16 +611,16 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     always @(posedge lb_clk) begin
         case (lb_addr[3:0])
             4'h0: reg_bank_0 <= git_rev_id;
-            4'h1: reg_bank_0 <= inlk_hi_lb;
-            4'h2: reg_bank_0 <= inlk_lo_lb;
-            4'h3: reg_bank_0 <= inlk_status_lb;
-            4'h4: reg_bank_0 <= inlk_latch_lb;
-            4'h5: reg_bank_0 <= inlk_permit_out_lb;
-            4'h6: reg_bank_0 <= arc_permit_raw_lb;
-            4'h7: reg_bank_0 <= arc_permit_latch_lb;
-            4'h8: reg_bank_0 <= arc_permit_sum_lb;
-            4'h9: reg_bank_0 <= err_out_amp_lb;
-            4'ha: reg_bank_0 <= err_out_phs_lb;
+            4'h1: reg_bank_0 <= inlk_hi_lb;           // alias: inlk_hi
+            4'h2: reg_bank_0 <= inlk_lo_lb;           // alias: inlk_lo
+            4'h3: reg_bank_0 <= inlk_status_lb;       // alias: inlk_status
+            4'h4: reg_bank_0 <= inlk_latch_lb;        // alias: inlk_latch
+            4'h5: reg_bank_0 <= inlk_permit_out_lb;   // alias: inlk_permit
+            4'h6: reg_bank_0 <= arc_permit_raw_lb;    // alias: arc_permit_raw
+            4'h7: reg_bank_0 <= arc_permit_latch_lb;  // alias: arc_permit_latch
+            4'h8: reg_bank_0 <= arc_permit_sum_lb;    // alias: arc_permit_sum
+            4'h9: reg_bank_0 <= err_out_amp_lb;       // alias: loop_amp_err
+            4'ha: reg_bank_0 <= err_out_phs_lb;       // alias: loop_phs_err
             default: reg_bank_0 <= 32'hfaceface;
         endcase
     end
@@ -639,7 +639,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         lb_addr_d1 <= lb_addr;
         casez (lb_addr_d1)
             18'h3????: lb_rdata_r <= mirror_out_0;
-            18'b00_1000_0???_????_????: lb_rdata_r <= config_rom_out;
+            18'b00_0100_0???_????_????: lb_rdata_r <= config_rom_out;
+            18'b00_0000_1???_????_????: lb_rdata_r <= 0;
             18'h10800: lb_rdata_r <= slow_cbuf_ready;
             18'h120??: lb_rdata_r <= lb_slow_rdata;
             18'h1300?: lb_rdata_r <= mon_amp_lb;

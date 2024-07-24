@@ -1,6 +1,7 @@
 XILINX_TOOL = VIVADO
 include ../../dir_list.mk
 
+include $(TOP)settings.mk
 include $(BUILD_DIR)/top_rules.mk
 include $(APP_SOC_DIR)/common/common.mk
 
@@ -12,11 +13,6 @@ all: $(TARGET)_top.bit
 IP_EXPAND = $(UDP_RGMII_DIR)/udp_rgmii_expand.v
 IP_EXPAND += $(APP_SOC_SYN_DIR)/system_expand.v
 IP_EXPAND += $(APP_DSP_DIR)/llrf_shell_expand.v
-# All of the below are needed for the mmc mailbox
-IP_EXPAND += $(PROJECTS_DIR)/test_marble_family/mmc_mailbox.v
-IP_EXPAND += $(HOMELESS_DIR)/fake_dpram.v
-IP_EXPAND += $(BADGER_DIR)/tests/spi_gate.v
-IP_EXPAND += $(DSP_DIR)/dpram.v
 
 SUB_IP_DIR = $(foreach ip, $(IP_EXPAND), $(dir $(ip)))
 
@@ -45,13 +41,12 @@ system_top.xdc: timing.xdc $(APP_SOC_SYN_DIR)/zest_fmc_dp.xdc top.xdc
 #: Build bitstream
 $(TARGET)_top.bit: system_top.xdc $(TARGET)_top.v $(IP_EXPAND) $(APP_SOC_SYN_DIR)/system32.dat $(GTP_DEPS)
 
-SERIAL ?= 122
-IP_ADDRESS = 192.168.19.$(SERIAL)
+IP_ADDRESS = 192.168.19.$(MARBLE_SERIAL)
 
 system_config:
-	@echo "Using Marble with serial number $(SERIAL)"
+	@echo "Using Marble with serial number $(MARBLE_SERIAL)"
 	openocd \
-	-c "adapter serial 0000$(SERIAL);" \
+	-c "adapter serial 0000$(MARBLE_SERIAL);" \
 	-f marble.cfg \
 	-c "init; xc7_program xc7.tap; pld load 0 $(TARGET)_top.bit; exit"
 

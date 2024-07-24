@@ -12,18 +12,26 @@ To build CPU program only, use:
 
 # Programming to hardware
 
+In case of multiple FPGA boards are available, an optional arguments of `MARBEL_SERIAL` can be used to specify the target board.
 ```bash
-    make system_config
+    make system_config MARBEL_SERIAL=42
 ```
 
-# Reloading firmware
-Check Marble UART device, default is `/dev/ttyUSB3` in `Makefile`.
-This port is usually next to the last UART port of the Marble MMC.
+# Boot-loading firmware
+
+The Marble UART port is used to boot-load the CPU firmware.
+This port is usually next to the last UART port of the Marble MMC,
+and can be identified by the Marble serial number.
 
 For boot loading the CPU program after revising the source code,
 
 ```bash
     make system_load BOOTLOADER_SERIAL=/dev/ttyUSB2
+```
+
+Or,
+```bash
+    make system_load MARBEL_SERIAL=42
 ```
 
 # Booting log examples

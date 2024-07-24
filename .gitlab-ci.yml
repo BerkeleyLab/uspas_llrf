@@ -76,4 +76,4 @@ marble_run:
   dependencies:
     - marble_zest_synth
   script:
-    - make system_config SERIAL=42 && make system_test SERIAL=42
+    - make system_config MARBLE_SERIAL=42 && make system_test MARBLE_SERIAL=42

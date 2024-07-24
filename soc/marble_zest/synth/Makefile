@@ -1,10 +1,11 @@
 include ../../../dir_list.mk
 XILINX_TOOL         = VIVADO
+include $(TOP)settings.mk
 include $(BUILD_DIR)/top_rules.mk
 include $(APP_SOC_DIR)/common/common.mk
 
 TARGET              = system
-BOOTLOADER_SERIAL   = /dev/ttyUSB3
+BOOTLOADER_SERIAL   = $(shell readlink -f /dev/serial/by-id/usb-LBNL_Marble_0000$(MARBLE_SERIAL)-if02-port0)
 BOOTLOADER_BAUDRATE = 115200
 
 SRC_V  += xilinx7_clocks.v

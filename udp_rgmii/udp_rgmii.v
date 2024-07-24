@@ -1,8 +1,10 @@
 module udp_rgmii #(
     parameter IP ={8'd192, 8'd168, 8'd19, 8'd122},
     parameter MAC = 48'h00105ad155b2,
-    parameter LB_READ_DELAY = 3
+    parameter LB_READ_DELAY = 3,
+    parameter DEFAULT_ENABLE_RX = 1
 ) (
+    // RGMII
     output [3:0]    RGMII_TXD,
     output          RGMII_TX_CTRL,
     output          RGMII_TX_CLK,
@@ -11,6 +13,13 @@ module udp_rgmii #(
     input           RGMII_RX_CLK,
     output          PHY_RSTN,
 
+    // Mailbox SPI
+    input           FPGA_SCK,
+    input           FPGA_CSB,
+    input           FPGA_PICO,
+    output          FPGA_POCI,
+
+    // Clocks
     input           clk_locked,
     input           gmii_tx_clk,
     input           gmii_tx_clk90,
@@ -26,21 +35,37 @@ module udp_rgmii #(
     output          lb_rvalid,
     output          lb_prefill,
 
-    // rtefi_blob interface for IP/MAC configuration
-    input enable_rx,
-    input config_s,
-    input config_p,
-    input [3:0] config_a,
-    input [7:0] config_d,
-
-    // Mac control
-    input           host_clk,
-    input [10:0]    host_waddr,
-    input           host_write,
-    input [15:0]    host_wdata,
-    output          tx_mac_done,
     // diagnostics
     output [7:0]    mac_status
+);
+
+wire enable_rx;
+wire config_s, config_p;
+wire [7:0] config_a, config_d;
+
+mmc_mailbox #(
+    .DEFAULT_ENABLE_RX(DEFAULT_ENABLE_RX)
+) mailbox_i (
+    .clk                (gmii_tx_clk),  // input
+    // localbus mailbox memory interface
+    .lb_addr            (11'h000),      // input [10:0]
+    .lb_din             (8'h00),        // input [7:0]
+    .lb_dout            (),             // output [7:0]
+    .lb_write           (1'b0),         // input
+    .lb_control_strobe  (1'b0),         // input
+    // SPI PHY
+    .sck                (FPGA_SCK),     // input
+    .ncs                (FPGA_CSB),     // input
+    .pico               (FPGA_PICO),    // input
+    .poci               (FPGA_POCI),    // output
+    // Config pins for badger (rtefi) interface
+    .config_s           (config_s),     // output
+    .config_p           (config_p),     // output
+    .config_a           (config_a),     // output [7:0]
+    .config_d           (config_d),     // output [7:0]
+    // Special pins
+    .enable_rx          (enable_rx),    // output
+    .spi_pins_debug     () // {MISO, din, sclk_d1, csb_d1};
 );
 
 // Keep the PHY's reset pin low for the first 33 ms
@@ -95,7 +120,7 @@ rtefi_blob #(
 
     .enable_rx      (enable_rx),
     .config_clk     (gmii_tx_clk),
-    .config_a       (config_a),  // input [3:0]
+    .config_a       (config_a[3:0]),  // input [3:0]
     .config_d       (config_d),  // input [7:0]
     .config_s       (config_s),  // MAC/IP address write
     .config_p       (config_p),  // UDP port number write
@@ -107,7 +132,7 @@ rtefi_blob #(
     .tx_mac_start   (1'b0),
     .rx_mac_hbank   (1'b0),
     .rx_mac_accept  (1'b0),
-    .tx_mac_done    (tx_mac_done),
+    .tx_mac_done    (),
 
     .p3_lb_clk      (lb_clk),
     .p3_lb_addr     (lb_addr),
