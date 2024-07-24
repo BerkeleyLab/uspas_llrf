@@ -13,11 +13,6 @@ all: $(TARGET)_top.bit
 IP_EXPAND = $(UDP_RGMII_DIR)/udp_rgmii_expand.v
 IP_EXPAND += $(APP_SOC_SYN_DIR)/system_expand.v
 IP_EXPAND += $(APP_DSP_DIR)/llrf_shell_expand.v
-# All of the below are needed for the mmc mailbox
-IP_EXPAND += $(PROJECTS_DIR)/test_marble_family/mmc_mailbox.v
-IP_EXPAND += $(HOMELESS_DIR)/fake_dpram.v
-IP_EXPAND += $(BADGER_DIR)/tests/spi_gate.v
-IP_EXPAND += $(DSP_DIR)/dpram.v
 
 SUB_IP_DIR = $(foreach ip, $(IP_EXPAND), $(dir $(ip)))
 

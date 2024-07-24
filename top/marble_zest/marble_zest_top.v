@@ -2,8 +2,7 @@ module marble_zest_top #(
     parameter IP ={8'd192, 8'd168, 8'd19, 8'd122},
     parameter MAC = 48'h00105ad155b2,
     parameter LB_READ_DELAY=3,
-    parameter LB_ADW = 18,
-    parameter DEFAULT_ENABLE_RX = 1
+    parameter LB_ADW = 18
 ) (
     // Marble
     input           GTPREFCLK_P,
@@ -96,7 +95,7 @@ module marble_zest_top #(
     inout           ZEST_APP_I2C_SCL
 );
 
-// ----------------------------------
+// ---------------------------------
 // Clocking and reset
 // ---------------------------------
 
@@ -133,40 +132,7 @@ xilinx7_clocks #(
     .locked   (clk_locked)
 );
 
-// ----------------------------------
-// MMC mailbox instance
 // ---------------------------------
-
-wire enable_rx;
-wire config_s, config_p;
-wire [7:0] config_a, config_d;
-
-mmc_mailbox #(
-    .DEFAULT_ENABLE_RX(DEFAULT_ENABLE_RX)
-) mailbox_i (
-    .clk(gmii_tx_clk), // input
-    // localbus mailbox memory interface
-    .lb_addr(11'h000), // input [10:0]
-    .lb_din(8'h00), // input [7:0]
-    .lb_dout(), // output [7:0]
-    .lb_write(1'b0), // input
-    .lb_control_strobe(1'b0), // input
-    // SPI PHY
-    .sck(FPGA_SCK), // input
-    .ncs(FPGA_CSB), // input
-    .pico(FPGA_PICO), // input
-    .poci(FPGA_POCI), // output
-    // Config pins for badger (rtefi) interface
-    .config_s(config_s), // output
-    .config_p(config_p), // output
-    .config_a(config_a), // output [7:0]
-    .config_d(config_d), // output [7:0]
-    // Special pins
-    .enable_rx(enable_rx), // output
-    .spi_pins_debug() // {MISO, din, sclk_d1, csb_d1};
-);
-
-// ----------------------------------
 // Ethernet/UDP bridge
 // ---------------------------------
 
@@ -189,16 +155,16 @@ udp_rgmii #(
     .RGMII_RX_CTRL  (RGMII_RX_CTRL),
     .RGMII_RX_CLK   (RGMII_RX_CLK ),
     .PHY_RSTN       (PHY_RSTN     ),
+
+    .FPGA_SCK       (FPGA_SCK     ),
+    .FPGA_CSB       (FPGA_CSB     ),
+    .FPGA_PICO      (FPGA_PICO    ),
+    .FPGA_POCI      (FPGA_POCI    ),
+
     .clk_locked     (clk_locked   ),
     .gmii_tx_clk    (gmii_tx_clk  ),
     .gmii_tx_clk90  (gmii_tx_clk90),
     .gmii_rx_clk    (gmii_rx_clk  ),
-
-    .host_clk       (gmii_tx_clk  ),
-    .host_waddr     (11'h0        ),
-    .host_write     (1'b0         ),
-    .host_wdata     (16'h0        ),
-    .tx_mac_done    (             ),
 
     .lb_clk         (clk          ),
     .lb_addr        (lb0_addr     ),
@@ -208,13 +174,7 @@ udp_rgmii #(
     .lb_rdata       (lb0_rdata    ),
     .lb_rvalid      (lb0_rvalid   ),
     .lb_prefill     (lb0_prefill  ),
-    .mac_status     (mac_status   ),
-
-    .enable_rx      (enable_rx    ),
-    .config_a       (config_a[3:0]),
-    .config_d       (config_d     ),
-    .config_s       (config_s     ),
-    .config_p       (config_p     )
+    .mac_status     (mac_status   )
 );
 wire lb_prefill = lb0_prefill;  // no interaction with PicoRV, right?
 
