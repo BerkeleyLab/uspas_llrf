@@ -46,7 +46,7 @@ IP_ADDRESS = 192.168.19.$(MARBLE_SERIAL)
 system_config:
 	@echo "Using Marble with serial number $(MARBLE_SERIAL)"
 	openocd \
-	-c "adapter serial 0000$(MARBLE_SERIAL);" \
+	-c "adapter serial $(MARBLE_SN);" \
 	-f marble.cfg \
 	-c "init; xc7_program xc7.tap; pld load 0 $(TARGET)_top.bit; exit"
 

@@ -72,14 +72,15 @@ parameter PH_DIFF_DW = 13;
 // Combine the 2 reset sources (USB, button)
 wire clk;
 wire clk_200;
-wire locked;
+wire clk_locked;
 
 wire gtpclk0, gtpclk;
-// Gateway GTP refclk to fabric
 IBUFDS_GTE2 passi_125(.I(GTPREFCLK_P), .IB(GTPREFCLK_N), .CEB(1'b0), .O(gtpclk0));
-// Vivado fails, with egregiously useless error messages,
-// if you don't put this BUFG in the chain to the MMCM.
-BUFG passg_125(.I(gtpclk0), .O(gtpclk));
+
+// UG472 Figure 1-4
+BUFH passg_125(
+    .I(gtpclk0), .O(gtpclk)
+);
 
 xilinx7_clocks #(
     .DIFF_CLKIN("BYPASS"),
@@ -93,12 +94,21 @@ xilinx7_clocks #(
     .reset    (1'b0),
     .clk_out0 (clk),
     .clk_out1 (clk_200),
-    .locked   (locked)
+    .locked   (clk_locked)
 );
 
-reg reset_r=0;
-always @(posedge clk) reset_r <= UART_CTS;
-wire reset_system = (UART_CTS & ~reset_r);
+wire idelay_reset = ~clk_locked;
+IDELAYCTRL idelayctrl_inst (
+  .RST        (idelay_reset ),
+  .REFCLK     (clk_200      ),
+  .RDY        (idelayctrl_ready)
+);
+
+reg uart_cts1=0;
+always @(posedge clk) uart_cts1 <= UART_CTS;
+wire uart_cts_r = UART_CTS & ~uart_cts1;
+// keep system in reset before idelayctrl is ready
+wire reset_system = uart_cts_r | ~idelayctrl_ready;
 
 // localbus master
 reg lb0_write=0;
@@ -228,12 +238,6 @@ zest #(
     .rst            (rst           ),
     .mem_packed_fwd (mem_packed_fwd),
     .mem_packed_ret (mem_packed_ret_0)
-);
-
-IDELAYCTRL idelayctrl_inst (
-  .RST          ( reset_system ),
-  .REFCLK       ( clk_200      ),
-  .RDY          (              )
 );
 
 /// #define PIN_I2C_SDA              0

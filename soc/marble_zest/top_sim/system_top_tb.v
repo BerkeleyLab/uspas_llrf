@@ -47,7 +47,7 @@ module system_top_tb;
         dac_clk_delay = DAC_DCO_DELAY_UI;
         dac_clk_ph_exp = -dac_clk_delay * (1<<PH_DIFF_DW) / 2;
         $display("dac_clk_delay: %.4f UI, %d", dac_clk_delay, dac_clk_ph_exp);
-        @(posedge dut.locked);  // wait for MMCM
+        @(posedge dut.clk_locked);  // wait for MMCM
         @(posedge dut.dsp_clk_out);
         #(PD_DAC_CLK * dac_clk_delay);
         forever #(PD_DAC_CLK/2)  dac_clk_dco = ~dac_clk_dco;

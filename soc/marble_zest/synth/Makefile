@@ -5,7 +5,7 @@ include $(BUILD_DIR)/top_rules.mk
 include $(APP_SOC_DIR)/common/common.mk
 
 TARGET              = system
-BOOTLOADER_SERIAL   = $(shell readlink -f /dev/serial/by-id/usb-LBNL_Marble_0000$(MARBLE_SERIAL)-if02-port0)
+BOOTLOADER_SERIAL   = $(shell readlink -f /dev/serial/by-id/usb-LBNL_Marble_$(MARBLE_SN)-if02-port0)
 BOOTLOADER_BAUDRATE = 115200
 
 SRC_V  += xilinx7_clocks.v
@@ -35,7 +35,7 @@ system_config: $(TARGET)_top.bit
 	openocd -f $(BOARD_SUPPORT_DIR)/marblemini/marble.cfg -c "transport select jtag; init; xc7_program xc7.tap; pld load 0 $<; exit"
 
 # this is to avoid vivado critical warnings about duplicated / redefination of module since they are already in DSP
-EXCLUDE = $(addprefix $(DSP_DIR)/, dpram.v flag_xdomain.v data_xdomain.v reg_delay.v)
+EXCLUDE = $(addprefix $(DSP_DIR)/, dpram.v flag_xdomain.v data_xdomain.v reg_delay.v reg_tech_cdc.v)
 system_expand.v: $(SRC_V)
 	$(VERILOG) $(SYNTH_OPT) -E $(filter-out $(EXCLUDE),$(filter %.v, $^)) -o $@
 

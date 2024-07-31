@@ -108,11 +108,11 @@ uint32_t fcnt_exp[] = {
 
 // ADC0_DIV, ADC1_DIV, DAC_DCO
 int8_t phs_center[] = {
-    70, 64, 32
+    88, 85, 68
 };
 
 uint8_t ad9781_smp[] = {
-    17, 17, 17
+    0, 13, 28
 };
 
 const zest_init_t zest_init_data = {
