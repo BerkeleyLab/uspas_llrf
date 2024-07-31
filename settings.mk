@@ -15,5 +15,6 @@ SYNTH_OPT   += -DDSP_FREQ_MHZ=$(CFG_$(FSET)_DSP_FREQ_MHZ)
 SYNTH_OPT   += -DDAC_INTERP_COEFF_R=$(CFG_$(FSET)_DAC_INTERP_COEFF_R)
 CFLAGS      += -DDSP_FREQ_MHZ=$(CFG_$(FSET)_DSP_FREQ_MHZ)
 
-# Serial number of Marble board
+# Serial number of Marble board, 6 digits
 MARBLE_SERIAL = 122
+MARBLE_SN = $(shell printf %06d $(MARBLE_SERIAL))

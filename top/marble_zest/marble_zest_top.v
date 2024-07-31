@@ -103,7 +103,8 @@ module marble_zest_top #(
 wire clk;
 wire clk_200;
 wire gmii_tx_clk90;
-wire clk_locked;
+wire idelayctrl_ready;
+wire clk_locked;;
 
 wire gtpclk0, gtpclk;
 IBUFDS_GTE2 passi_125(
@@ -130,6 +131,13 @@ xilinx7_clocks #(
     .clk_out1 (clk_200),
     .clk_out2 (gmii_tx_clk90),
     .locked   (clk_locked)
+);
+
+wire idelay_reset = ~clk_locked;
+IDELAYCTRL idelayctrl_inst (
+  .RST        (idelay_reset ),
+  .REFCLK     (clk_200      ),
+  .RDY        (idelayctrl_ready)
 );
 
 // ---------------------------------
@@ -176,7 +184,7 @@ udp_rgmii #(
     .lb_prefill     (lb0_prefill  ),
     .mac_status     (mac_status   )
 );
-wire lb_prefill = lb0_prefill;  // no interaction with PicoRV, right?
+wire lb_prefill = lb0_prefill;
 
 // merged localbus master
 wire lb_write;
@@ -191,9 +199,12 @@ wire rst;
 wire [68:0]       mem_packed_fwd;
 wire [32:0]       mem_packed_ret;
 wire trap;
-reg reset_r=0;
-always @(posedge clk) reset_r <= UART_CTS;
-wire reset_system = (UART_CTS & ~reset_r);
+
+reg uart_cts1=0;
+always @(posedge clk) uart_cts1 <= UART_CTS;
+wire uart_cts_r = UART_CTS & ~uart_cts1;
+// keep system in reset before idelayctrl is ready
+wire reset_system = uart_cts_r | ~idelayctrl_ready;
 
 // ----------------------------------
 // PicoRV Subsystem
@@ -327,12 +338,6 @@ zest #(
     .rst            (rst           ),
     .mem_packed_fwd (mem_packed_fwd),
     .mem_packed_ret (mem_packed_ret)
-);
-
-IDELAYCTRL idelayctrl_inst (
-  .RST          ( reset_system ),
-  .REFCLK       ( clk_200      ),
-  .RDY          (              )
 );
 
 /// #define PIN_I2C_SDA              0

@@ -7,7 +7,7 @@
 //      0 to 0fff   LLRF controller
 // read:
 //      0 to 0fff   LLRF controller
-// 08000 to 087ff   Json ROM
+// 04000 to 047ff   Json ROM
 // 12011 to 120ff   Slow readout, see slow_bridge.v
 // 13000 to 13007   amp out
 // 13010 to 13017   phs out
