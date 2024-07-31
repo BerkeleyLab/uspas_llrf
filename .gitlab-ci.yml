@@ -54,7 +54,7 @@ llrf_cdc_test:
     paths:
       - llrf_dsp/llrf_shell_cdc.txt
 
-marble_zest_synth:
+marble_zest_lemp_synth:
   before_script:
     - cd top/marble_zest
   stage: synthesis
@@ -67,6 +67,20 @@ marble_zest_synth:
       - top/marble_zest/marble_zest_top.bit
       - top/marble_zest/_xilinx/marble_zest_top/*.runs/impl_1/*.rpt
 
+marble_zest_alsu_synth:
+  before_script:
+    - cd top/marble_zest
+  stage: synthesis
+  script:
+    - make clean && PATH=$XILINX_VIVADO/bin:$PATH make FSET=ALSU marble_zest_top.bit
+  artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+    expire_in: 2 days
+    paths:
+      - top/marble_zest/marble_zest_top.bit
+      - top/marble_zest/_xilinx/marble_zest_top/*.runs/impl_1/*.rpt
+
+
 marble_run:
   before_script:
     - cd top/marble_zest
@@ -74,6 +88,6 @@ marble_run:
   tags:
     - deploy
   dependencies:
-    - marble_zest_synth
+    - marble_zest_lemp_synth
   script:
     - make system_config MARBLE_SERIAL=42 && make system_test MARBLE_SERIAL=42
