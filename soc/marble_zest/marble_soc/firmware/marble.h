@@ -23,6 +23,25 @@ typedef struct t_reg16 {
     uint16_t data;
 } t_reg16;
 
+typedef struct {
+    unsigned int len;
+    t_reg16 *regmap;
+} marble_init_word_t;
+
+typedef struct {
+    unsigned int len;
+    t_reg8 *regmap;
+} marble_init_byte_t;
+
+typedef struct {
+    marble_init_word_t ina219_fmc1_data;
+    marble_init_word_t ina219_fmc2_data;
+    marble_init_word_t ina219_12v_data;
+    marble_init_byte_t pca9555_qsfp_data;   // u34
+    marble_init_byte_t pca9555_misc_data;   // u39
+    marble_init_byte_t adn4600_data;
+} marble_init_t;
+
 typedef struct ina219_info_t {
     const uint8_t i2c_mux_sel;
     const uint8_t i2c_addr;
@@ -79,11 +98,39 @@ typedef struct qsfp_info_t {
 	unsigned char serial_num[16];
 } qsfp_info_t;
 
+/**
+ * @struct si570
+ * @brief Structure holding si570 info
+ */
+typedef struct si570_info_t {
+    /** I2C multiplexer channel */
+    const uint8_t i2c_mux_sel;
+    /** I2C device address */
+    uint8_t i2c_addr;
+} si570_info_t;
+
+typedef enum marble_variant_t {
+    MARBLE_VAR_MARBLEMINI,
+    MARBLE_VAR_MARBLE_V1_2,
+    MARBLE_VAR_MARBLE_V1_3,
+    MARBLE_VAR_MARBLE_V1_4
+} marble_variant_t;
+
+/**
+ * @struct marble_dev
+ * @brief Structure holding marble board info
+ */
 typedef struct marble_dev_t {
-    ina219_info_t ina219[3];
-    pca9555_info_t pca9555[2];
-    qsfp_info_t qsfps[2];
+    const marble_variant_t variant;
+    ina219_info_t ina219_12v;
+    ina219_info_t ina219_fmc1;
+    ina219_info_t ina219_fmc2;
+    pca9555_info_t pca9555_qsfp;
+    pca9555_info_t pca9555_misc;
+    qsfp_info_t qsfp1;
+    qsfp_info_t qsfp2;
     adn4600_info_t adn4600;
+    si570_info_t si570;
 } marble_dev_t;
 
 // i2c device address (7bit)
@@ -95,7 +142,8 @@ typedef struct marble_dev_t {
 #define I2C_ADR_INA219_FMC1    0x40  // I2C_SEL_APPL: U17
 #define I2C_ADR_PCA9555_QSFP   0x22  // I2C_SEL_APPL: U34
 #define I2C_ADR_PCA9555_MISC   0x21  // I2C_SEL_APPL: U39
-#define I2C_ADR_SI570          0x77  // I2C_SEL_APPL: Y6
+#define I2C_ADR_SI570_125      0x77  // I2C_SEL_APPL: Y6, 570NCB000933DG
+#define I2C_ADR_SI570_270      0x55  // I2C_SEL_APPL: Y6, 570NBB001808DG
 #define I2C_ADR_ADN4600        0x48  // I2C_SEL_CLK:  U2
 #define I2C_ADR_QSFP           0x50  // I2C_SEL_QSFP1 / I2C_SEL_QSFP2
 
@@ -127,16 +175,43 @@ void marble_i2c_scan(void);
 void get_qsfp_info(qsfp_info_t *qsfp_param);
 
 /**
- * Poll 3 INA219 status
+ * Poll INA219 status
  * @param info pointer to ina219_info_t struct
  */
 bool get_ina219_info(ina219_info_t *info);
 
 /**
- * Poll 2 PCA9555 I0/I1 status
+ * Write INA219 registers
+ * @param info pointer to ina219_info_t struct
+ * @param p_data pointer to marble_init_word_t struct
+ */
+bool set_ina219_info(ina219_info_t *info, marble_init_word_t *p_data);
+
+/**
+ * Poll PCA9555 I0/I1 status
  * @param info pointer to pca9555_info_t struct
  */
 bool get_pca9555_info(pca9555_info_t *info);
+
+/**
+ * Write PCA9555 registers
+ * @param info pointer to pca9555_info_t struct
+ * @param p_data pointer to marble_init_byte_t struct
+ */
+bool set_pca9555_info(pca9555_info_t *info, marble_init_byte_t *p_data);
+
+/**
+ * Poll ADN4600 cross bar mapping status
+ * @param info pointer to adn4600_info_t struct
+ */
+bool get_adn4600_info(adn4600_info_t *info);
+
+/**
+ * Write ADN4600 registers
+ * @param info pointer to adn4600_info_t struct
+ * @param p_data pointer to marble_init_byte_t struct
+ */
+bool set_adn4600_info(adn4600_info_t *info, marble_init_byte_t *p_data);
 
 /**
  * Poll marble board device info including ina219, pca9555, qsfp
@@ -148,13 +223,12 @@ bool get_marble_info(marble_dev_t *marble);
  * Initialize Marble board by programming i2c devices
  * including pca9555 and clock settings;
  * Poll all device information into marble_dev;
- * @param marble pointer to marble_dev_t structure
+ * @param init_data pointer to marble_init_t structure
  */
-bool init_marble(marble_dev_t *marble);
+bool init_marble(marble_init_t *init_data);
 
 /**
  * Print marble dev information after get_marble_info()
- * @param marble pointer to marble_dev_t structure
  */
-void print_marble_status(const marble_dev_t *marble);
+void print_marble_status(void);
 #endif

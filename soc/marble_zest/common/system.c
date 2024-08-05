@@ -14,7 +14,7 @@
 #include "llrf_regs_addr.h"
 #endif
 
-extern marble_dev_t marble;
+extern marble_init_t marble_init_data;
 extern zest_init_t zest_init_data;
 extern t_init_llrf_data llrf_init_data;
 
@@ -66,7 +66,7 @@ int main(void) {
     debug_printf("=== VERBOSE MODE ===\n");
     print_git_rev_id();
 
-    pass &= init_marble(&marble);
+    pass &= init_marble(&marble_init_data);
     printf("==== Marble Init       ==== : %s.\n", pass?"PASS":"FAIL");
     pass &= init_zest(BASE_ZEST, &zest_init_data);
     printf("==== ZEST Init         ==== : %s.\n", pass?"PASS":"FAIL");

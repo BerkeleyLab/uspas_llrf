@@ -12,7 +12,6 @@
 #include "llrf.h"
 #include "llrf_regs_addr.h"
 
-extern marble_dev_t marble;
 extern zest_init_t zest_init_data;
 
 void handle_ui( void ) {
@@ -46,7 +45,7 @@ void handle_ui( void ) {
             break;
 
         case 'r':
-            print_marble_status(&marble);
+            print_marble_status();
             break;
 
         case 't':

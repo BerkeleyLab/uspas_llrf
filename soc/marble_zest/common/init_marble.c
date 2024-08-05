@@ -1,30 +1,107 @@
 #include "settings.h"
 #include "marble.h"
 
-const marble_dev_t marble = {
-    .pca9555 = {
-        {.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_PCA9555_QSFP},
-        {.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_PCA9555_MISC}
+// ----------------------------- ADN4600 -----------------------------
+// 500mV output swing to satisify DS182 table 55
+t_reg8 adn4600_regmap[] = {
+    {0xc0, 0x20},   // TX0
+    {0xc1, 0x40},
+    {0xc2, 0xd5},
+    {0xc8, 0x20},   // TX1
+    {0xc9, 0x40},
+    {0xca, 0xd5},
+    {0xd0, 0},      // TX2
+    {0xd8, 0},      // TX3
+    {0xe0, 0x20},   // TX4
+    {0xe1, 0x40},
+    {0xe2, 0xd5},
+    {0xe8, 0x20},   // TX5
+    {0xe9, 0x40},
+    {0xea, 0xd5},
+    {0xf0, 0},      // TX6
+    {0xf8, 0},      // TX7
+    // IP0-7: EXT0_CLK,     EX1_CLK,        FPGA_REF_CLK0,  SI570_CLK, 
+    //        FMC1_GBTCLK0, FMC1_GBTCLK1,   FMC2_GBTCLK0,   FMC2_GBTCLK1
+    // OP0-7: MGT_CLK_0, MGT_CLK_1, NC, NC,
+    //        MGT_CLK_2, MGT_CLK_3, NC, NC
+    // Configure XPT (first bank of latches)
+    {0x40, (2 << 4) | 0},   // FPGA_REF_CLK0    -> MGT_CLK_0 at OUT0
+    {0x40, (2 << 4) | 1},   // FPGA_REF_CLK0    -> MGT_CLK_1 at OUT1
+    {0x40, (2 << 4) | 4},   // FPGA_REF_CLK0    -> MGT_CLK_2 at OUT4
+    {0x40, (6 << 4) | 5},   // FMC2_GBTCLK0_M2C -> MGT_CLK_3 at OUT5
+    // Update XPT (second bank of latches, output connections programmed simultaneously)
+    {0x41, 1},
+};
+
+// ----------------------------- INA219 -----------------------------
+// VBUS_MAX = 12V
+// VSHUNT_MAX = 0.08    (PGA = /8, +-320mV @ config=0x399f)
+// RSHUNT = 0.082
+// CurrentLSB = 1e-5 A (10uA per bit)
+//   Cal = trunc (0.04096 / (CurrentLSB * RSHUNT)) = 49950 (0xc31e)
+t_reg16 ina219_fmc_regmap[] = {
+    {0, 0x399f},
+    {5, 0xc31e}
+};
+
+// RSHUNT = 0.082 / 3 for I2C_ADR_INA219_12V
+// CurrentLSB = 1e-4 A (100uA per bit)
+// hex(int(0.04096 / (0.082 / 3 * 1e-4))) = 0x3a88
+t_reg16 ina219_12v_regmap[] = {
+    {0, 0x399f},
+    {5, 0x3a88}
+};
+
+// ----------------------------- PCA9555 -----------------------------
+// U34
+// P0[7:3] = [QSFP1_MOD_SELB, QSFP1_RSTB, QSFP1_MOD_PRS, QSFP1_LPMODE]
+// P1[7:3] = [QSFP2_MOD_SELB, QSFP2_RSTB, QSFP2_MOD_PRS, QSFP2_LPMODE]
+t_reg8 pca9555_u34_regmap[] = {
+    {2, 0x48},  // Output: assert LPMODE, RSTB, dissert MOD_SELB on QSFP1
+    {3, 0x48},  // Output: assert LPMODE, RSTB, dissert MOD_SELB on QSFP2
+    {4, 0},
+    {5, 0},
+    {6, 0x37},  // Config: enable output on RST, LPMODE, MOD_SEL on QSFP1
+    {7, 0x37}   // Config: enable output on RST, LPMODE, MOD_SEL on QSFP2
+};
+
+// U39
+// P0[7:4] = CFG_WP_B, THERM, FANFAIL, ALERT
+// P0[3:0] = EN_CON_JTAG, EN_USB_JTAG, NC, SI570_OE
+// P1[7:4] = CLKMUX_RST, NC, NC, NC,
+// P1[3:0] = LD13, LD14, NC, NC
+t_reg8 pca9555_u39_regmap[] = {
+    {2, 0xfe},  // Output: Disable SI570
+    {3, 0x80},  // LED on, do not reset ADN4600
+    {4, 0},
+    {5, 0},
+    {6, 0xfe},  // Config: low for enabling output (only for Si570)
+    {7, 0x73}
+};
+
+const marble_init_t marble_init_data = {
+    .adn4600_data = {
+        sizeof(adn4600_regmap) / sizeof(adn4600_regmap[0]),
+        adn4600_regmap
     },
-    .ina219 = {
-        {.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_INA219_12V,  .rshunt_mOhm = 27, .current_lsb_uA = 100},
-        {.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_INA219_FMC1, .rshunt_mOhm = 82, .current_lsb_uA = 10},
-        {.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_INA219_FMC2, .rshunt_mOhm = 82, .current_lsb_uA = 10},
+    .ina219_fmc1_data = {
+        sizeof(ina219_fmc_regmap) / sizeof(ina219_fmc_regmap[0]),
+        ina219_fmc_regmap
     },
-    .qsfps = {
-        {.module_present = false, .page_select = 0, .i2c_mux_sel=I2C_SEL_QSFP1, .i2c_addr=I2C_ADR_QSFP},
-        {.module_present = false, .page_select = 0, .i2c_mux_sel=I2C_SEL_QSFP2, .i2c_addr=I2C_ADR_QSFP}
+    .ina219_fmc2_data = {
+        sizeof(ina219_fmc_regmap) / sizeof(ina219_fmc_regmap[0]),
+        ina219_fmc_regmap
     },
-    .adn4600 = {
-        .i2c_mux_sel = I2C_SEL_CLK,
-        .i2c_addr = I2C_ADR_ADN4600,
-        // IP0-7: EXT0_CLK, EX1_CLK, FPGA_REF_CLK0, SI570_CLK, FMC1_GBTCLK0, FMC1_GBTCLK1, FMC2_GBTCLK0, FMC2_GBTCLK1
-        // OP0-7: MGT_CLK_0, MGT_CLK_1, NC, NC, MGT_CLK_2, MGT_CLK_3, NC, NC
-        .xpt_cfgs = {
-            (2 << 4) | 0,   // FPGA_REF_CLK0    -> MGT_CLK_0 at OUT0
-            (2 << 4) | 1,   // FPGA_REF_CLK0    -> MGT_CLK_1 at OUT1
-            (2 << 4) | 4,   // FPGA_REF_CLK0    -> MGT_CLK_2 at OUT4
-            (6 << 4) | 5,   // FMC2_GBTCLK0_M2C -> MGT_CLK_3 at OUT5
-        }
+    .ina219_12v_data = {
+        sizeof(ina219_12v_regmap) / sizeof(ina219_12v_regmap[0]),
+        ina219_12v_regmap
+    },
+    .pca9555_qsfp_data = {
+        sizeof(pca9555_u34_regmap) / sizeof(pca9555_u34_regmap[0]),
+        pca9555_u34_regmap
+    },
+    .pca9555_misc_data = {
+        sizeof(pca9555_u39_regmap) / sizeof(pca9555_u39_regmap[0]),
+        pca9555_u39_regmap
     }
 };
