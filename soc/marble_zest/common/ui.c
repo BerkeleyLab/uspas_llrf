@@ -12,7 +12,7 @@
 #include "llrf.h"
 #include "llrf_regs_addr.h"
 
-extern t_marble_dev marble;
+extern marble_dev_t marble;
 extern zest_init_t zest_init_data;
 
 void handle_ui( void ) {

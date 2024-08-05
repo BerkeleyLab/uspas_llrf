@@ -11,7 +11,7 @@
 #endif
 #include "marble.h"
 
-extern struct t_marble_dev marble;
+extern struct marble_dev_t marble;
 
 static bool marble_i2c_write(uint8_t i2c_addr, uint8_t reg_addr, const uint8_t *data, uint16_t len)
 {
@@ -69,7 +69,7 @@ bool i2c_write_regmap_word(uint8_t i2c_addr, t_reg16 *regmap, size_t len) {
     return ret;
 }
 
-void get_qsfp_info(t_qsfp_info *qsfp_param)
+void get_qsfp_info(qsfp_info_t *qsfp_param)
 {
     unsigned short i=0;
     unsigned char buf[8];
@@ -101,7 +101,7 @@ void get_qsfp_info(t_qsfp_info *qsfp_param)
     }
 }
 
-static bool marble_clk_init(const t_marble_dev *marble)
+static bool marble_clk_init(const marble_dev_t *marble)
 {
     bool ret = true;
     // 500mV output swing to satisify DS182 table 55
@@ -215,7 +215,7 @@ static bool init_i2c_app_dev(void) {
     return ret;
 }
 
-bool init_marble(t_marble_dev *marble)
+bool init_marble(marble_dev_t *marble)
 {
     bool ret = true;
 
@@ -244,7 +244,7 @@ bool init_marble(t_marble_dev *marble)
     return ret;
 }
 
-bool get_ina219_info(t_ina219_info *info) {
+bool get_ina219_info(ina219_info_t *info) {
     bool ret = true;
     uint16_t regs[5];
     marble_i2c_mux_set(info->i2c_mux_sel);
@@ -260,7 +260,7 @@ bool get_ina219_info(t_ina219_info *info) {
     return ret;
 }
 
-bool get_pca9555_info(t_pca9555_info *info) {
+bool get_pca9555_info(pca9555_info_t *info) {
     bool ret = true;
     marble_i2c_mux_set(info->i2c_mux_sel);
 
@@ -269,7 +269,7 @@ bool get_pca9555_info(t_pca9555_info *info) {
     return ret;
 }
 
-bool get_marble_info(t_marble_dev *marble) {
+bool get_marble_info(marble_dev_t *marble) {
     bool ret = true;
 
     ret &= get_ina219_info(&marble->ina219[0]);
@@ -287,7 +287,7 @@ bool get_marble_info(t_marble_dev *marble) {
     return ret;
 }
 
-void print_marble_status(const t_marble_dev *marble) {
+void print_marble_status(const marble_dev_t *marble) {
     for (unsigned i=0; i<3; i++) {
         printf(" %s: INA219 %1d:\n", __func__, i+1);
         printf(" %s: Vshunt:  %8d mV\n",  __func__, marble->ina219[i].vshunt_uV / 1000);

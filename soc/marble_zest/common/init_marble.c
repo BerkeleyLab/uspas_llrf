@@ -1,7 +1,7 @@
 #include "settings.h"
 #include "marble.h"
 
-const t_marble_dev marble = {
+const marble_dev_t marble = {
     .pca9555 = {
         {.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_PCA9555_QSFP},
         {.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_PCA9555_MISC}

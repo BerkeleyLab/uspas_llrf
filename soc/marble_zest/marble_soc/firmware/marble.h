@@ -23,7 +23,7 @@ typedef struct t_reg16 {
     uint16_t data;
 } t_reg16;
 
-typedef struct t_ina219_info {
+typedef struct ina219_info_t {
     const uint8_t i2c_mux_sel;
     const uint8_t i2c_addr;
     const uint16_t rshunt_mOhm;
@@ -32,26 +32,26 @@ typedef struct t_ina219_info {
     uint16_t vbus_mV;
     uint16_t power_uW;
     int32_t curr_uA;
-} t_ina219_info;
+} ina219_info_t;
 
-typedef struct t_pca9555_info {
+typedef struct pca9555_info_t {
     const uint8_t i2c_mux_sel;
     const uint8_t i2c_addr;
     uint8_t i0_val;
     uint8_t i1_val;
-} t_pca9555_info;
+} pca9555_info_t;
 
-typedef struct t_adn4600_info {
+typedef struct adn4600_info_t {
     const uint8_t i2c_mux_sel;
     const uint8_t i2c_addr;
     const uint8_t xpt_cfgs[4];     // XPT Configuration for 4 outputs
-} t_adn4600_info;
+} adn4600_info_t;
 
 /**
  * @struct qsfp_status
  * @brief Structure holding the parameters for QSFP status SFF-8636
  */
-typedef struct t_qsfp_info {
+typedef struct qsfp_info_t {
     bool module_present;
     /** I2C multiplexer channel */
     const uint8_t i2c_mux_sel;
@@ -77,19 +77,19 @@ typedef struct t_qsfp_info {
 	unsigned char part_num[16];
     /** Page 00h Byte 196-211 */
 	unsigned char serial_num[16];
-} t_qsfp_info;
+} qsfp_info_t;
 
-typedef struct t_marble_dev {
-    t_ina219_info ina219[3];
-    t_pca9555_info pca9555[2];
-    t_qsfp_info qsfps[2];
-    t_adn4600_info adn4600;
-} t_marble_dev;
+typedef struct marble_dev_t {
+    ina219_info_t ina219[3];
+    pca9555_info_t pca9555[2];
+    qsfp_info_t qsfps[2];
+    adn4600_info_t adn4600;
+} marble_dev_t;
 
 // i2c device address (7bit)
 #define I2C_ADR_PCA9548        0x70
-#define I2C_ADR_FMC1           0x50   // M24C02, GA0=0, GA1=0
-#define I2C_ADR_FMC2           0x52   // M24C02, GA0=1, GA1=0
+#define I2C_ADR_FMC1           0x50  // M24C02, GA0=0, GA1=0
+#define I2C_ADR_FMC2           0x52  // M24C02, GA0=1, GA1=0
 #define I2C_ADR_INA219_12V     0x42  // I2C_SEL_APPL: U57
 #define I2C_ADR_INA219_FMC2    0x41  // I2C_SEL_APPL: U32
 #define I2C_ADR_INA219_FMC1    0x40  // I2C_SEL_APPL: U17
@@ -124,37 +124,37 @@ void marble_i2c_scan(void);
  * Poll QSFP status
  * @param qsfp_param qsfp status struct
  */
-void get_qsfp_info(t_qsfp_info *qsfp_param);
+void get_qsfp_info(qsfp_info_t *qsfp_param);
 
 /**
  * Poll 3 INA219 status
- * @param info pointer to t_ina219_info struct
+ * @param info pointer to ina219_info_t struct
  */
-bool get_ina219_info(t_ina219_info *info);
+bool get_ina219_info(ina219_info_t *info);
 
 /**
  * Poll 2 PCA9555 I0/I1 status
- * @param info pointer to t_pca9555_info struct
+ * @param info pointer to pca9555_info_t struct
  */
-bool get_pca9555_info(t_pca9555_info *info);
+bool get_pca9555_info(pca9555_info_t *info);
 
 /**
  * Poll marble board device info including ina219, pca9555, qsfp
- * @param marble pointer to t_marble_dev structure
+ * @param marble pointer to marble_dev_t structure
  */
-bool get_marble_info(t_marble_dev *marble);
+bool get_marble_info(marble_dev_t *marble);
 
 /**
  * Initialize Marble board by programming i2c devices
  * including pca9555 and clock settings;
  * Poll all device information into marble_dev;
- * @param marble pointer to t_marble_dev structure
+ * @param marble pointer to marble_dev_t structure
  */
-bool init_marble(t_marble_dev *marble);
+bool init_marble(marble_dev_t *marble);
 
 /**
  * Print marble dev information after get_marble_info()
- * @param marble pointer to t_marble_dev structure
+ * @param marble pointer to marble_dev_t structure
  */
-void print_marble_status(const t_marble_dev *marble);
+void print_marble_status(const marble_dev_t *marble);
 #endif

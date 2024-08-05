@@ -14,7 +14,7 @@
 #include "llrf_regs_addr.h"
 #endif
 
-extern t_marble_dev marble;
+extern marble_dev_t marble;
 extern zest_init_t zest_init_data;
 extern t_init_llrf_data llrf_init_data;
 
