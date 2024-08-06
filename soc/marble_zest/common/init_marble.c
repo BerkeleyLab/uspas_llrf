@@ -80,6 +80,7 @@ t_reg8 pca9555_u39_regmap[] = {
 };
 
 const marble_init_t marble_init_data = {
+    .marble_variant = MARBLE_VAR_MARBLE_V1_3,
     .adn4600_data = {
         sizeof(adn4600_regmap) / sizeof(adn4600_regmap[0]),
         adn4600_regmap

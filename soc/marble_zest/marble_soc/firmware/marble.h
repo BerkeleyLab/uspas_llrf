@@ -33,7 +33,15 @@ typedef struct {
     t_reg8 *regmap;
 } marble_init_byte_t;
 
+typedef enum {
+    MARBLE_VAR_MARBLEMINI,
+    MARBLE_VAR_MARBLE_V1_2,
+    MARBLE_VAR_MARBLE_V1_3,
+    MARBLE_VAR_MARBLE_V1_4
+} MARBLE_VAR;
+
 typedef struct {
+    MARBLE_VAR marble_variant;
     marble_init_word_t ina219_fmc1_data;
     marble_init_word_t ina219_fmc2_data;
     marble_init_word_t ina219_12v_data;
@@ -107,21 +115,19 @@ typedef struct si570_info_t {
     const uint8_t i2c_mux_sel;
     /** I2C device address */
     uint8_t i2c_addr;
+    /** start address */
+    uint8_t start_addr;
+    uint64_t rfreq;
+    uint8_t hs_div;
+    uint8_t n1;
 } si570_info_t;
-
-typedef enum marble_variant_t {
-    MARBLE_VAR_MARBLEMINI,
-    MARBLE_VAR_MARBLE_V1_2,
-    MARBLE_VAR_MARBLE_V1_3,
-    MARBLE_VAR_MARBLE_V1_4
-} marble_variant_t;
 
 /**
  * @struct marble_dev
  * @brief Structure holding marble board info
  */
 typedef struct marble_dev_t {
-    const marble_variant_t variant;
+    MARBLE_VAR variant;
     ina219_info_t ina219_12v;
     ina219_info_t ina219_fmc1;
     ina219_info_t ina219_fmc2;
@@ -212,6 +218,12 @@ bool get_adn4600_info(adn4600_info_t *info);
  * @param p_data pointer to marble_init_byte_t struct
  */
 bool set_adn4600_info(adn4600_info_t *info, marble_init_byte_t *p_data);
+
+/**
+ * Poll SI570 status
+ * @param info pointer to si570_info_t struct
+ */
+bool get_si570_info(si570_info_t *info);
 
 /**
  * Poll marble board device info including ina219, pca9555, qsfp
