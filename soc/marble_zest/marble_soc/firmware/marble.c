@@ -174,6 +174,31 @@ bool get_si570_info(si570_info_t *info) {
     return ret;
 }
 
+bool set_si570_info(si570_info_t *info, marble_init_byte_t *p_data) {
+    bool ret = true;
+    uint8_t reg_freeze_dco = (1<<4);
+    uint8_t reg_unfreeze_dco = 0;
+    uint8_t reg_newfreq = (1<<6);
+
+    ret &= marble_i2c_mux_set(info->i2c_mux_sel);
+    // freeze DCO
+    ret &= i2c_write_regs(info->i2c_addr, 137, &reg_freeze_dco, 1);
+
+    // ret &= i2c_write_regmap_byte(
+    //     info->i2c_addr, p_data->regmap, p_data->len);
+    t_reg8 *regmap = p_data->regmap;
+    for (unsigned ix=0; ix<p_data->len; ix++) {
+        i2c_write_regs(info->i2c_addr, regmap->addr + info->start_addr, &(regmap->data), 1);
+        regmap++;
+    }
+    // Unfreeze DCO
+    ret &= i2c_write_regs(info->i2c_addr, 137, &reg_unfreeze_dco, 1);
+    // Assert NewFreq bit
+    ret &= i2c_write_regs(info->i2c_addr, 135, &reg_newfreq, 1);
+    return ret;
+}
+
+
 bool set_ina219_info(ina219_info_t *info, marble_init_word_t *p_data) {
     bool ret = true;
     ret &= marble_i2c_mux_set(info->i2c_mux_sel);
@@ -306,6 +331,9 @@ bool init_marble(marble_init_t *init_data)
     printf("--===========  Marble Init  =============--\n");
 
     configure_marble_variant(init_data);
+
+    p = set_si570_info(&marble.si570, &init_data->si570_data); pass &= p;
+    printf("==== SI570 init  ====   : %s.\n", p?"PASS":"FAIL");
 
     p = set_ina219_info(&marble.ina219_fmc1, &init_data->ina219_fmc1_data);  pass &= p;
     p = set_ina219_info(&marble.ina219_fmc2, &init_data->ina219_fmc2_data);  pass &= p;

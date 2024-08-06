@@ -48,6 +48,7 @@ typedef struct {
     marble_init_byte_t pca9555_qsfp_data;   // u34
     marble_init_byte_t pca9555_misc_data;   // u39
     marble_init_byte_t adn4600_data;
+    marble_init_byte_t si570_data;
 } marble_init_t;
 
 typedef struct ina219_info_t {
@@ -228,6 +229,13 @@ bool set_adn4600_info(adn4600_info_t *info, marble_init_byte_t *p_data);
  * @param info pointer to si570_info_t struct
  */
 bool get_si570_info(si570_info_t *info);
+
+/**
+ * Write SI570 registers
+ * @param info pointer to si570_info_t struct
+ * @param p_data pointer to marble_init_byte_t struct
+ */
+bool set_si570_info(si570_info_t *info, marble_init_byte_t *p_data);
 
 /**
  * Poll marble board device info including ina219, pca9555, qsfp
