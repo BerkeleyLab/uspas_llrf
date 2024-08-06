@@ -64,8 +64,8 @@ marble_zest_lemp_synth:
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
     expire_in: 2 days
     paths:
-      - top/marble_zest/marble_zest_top.bit
-      - top/marble_zest/_xilinx/marble_zest_top/*.runs/impl_1/*.rpt
+      - top/marble_zest/lemp/marble_zest_top.bit
+      - top/marble_zest/lemp/_xilinx/marble_zest_top/*.runs/impl_1/*.rpt
 
 marble_zest_alsu_synth:
   before_script:
@@ -77,8 +77,8 @@ marble_zest_alsu_synth:
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
     expire_in: 2 days
     paths:
-      - top/marble_zest/marble_zest_top.bit
-      - top/marble_zest/_xilinx/marble_zest_top/*.runs/impl_1/*.rpt
+      - top/marble_zest/alsu/marble_zest_top.bit
+      - top/marble_zest/alsu/_xilinx/marble_zest_top/*.runs/impl_1/*.rpt
 
 
 marble_run:
