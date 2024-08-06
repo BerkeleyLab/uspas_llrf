@@ -95,31 +95,31 @@ const marble_init_t marble_init_data = {
     // XXX should really be reading from hardware, where is it stored?
     .marble_variant = MARBLE_VAR_MARBLE_V1_3,
     .adn4600_data = {
-        sizeof(adn4600_regmap) / sizeof(adn4600_regmap[0]),
-        adn4600_regmap
+        .len = ARRAY_SIZE(adn4600_regmap),
+        .regmap = adn4600_regmap
     },
     .ina219_fmc1_data = {
-        sizeof(ina219_fmc_regmap) / sizeof(ina219_fmc_regmap[0]),
-        ina219_fmc_regmap
+        .len = ARRAY_SIZE(ina219_fmc_regmap),
+        .regmap = ina219_fmc_regmap
     },
     .ina219_fmc2_data = {
-        sizeof(ina219_fmc_regmap) / sizeof(ina219_fmc_regmap[0]),
-        ina219_fmc_regmap
+        .len = ARRAY_SIZE(ina219_fmc_regmap),
+        .regmap = ina219_fmc_regmap
     },
     .ina219_12v_data = {
-        sizeof(ina219_12v_regmap) / sizeof(ina219_12v_regmap[0]),
-        ina219_12v_regmap
+        .len = ARRAY_SIZE(ina219_12v_regmap),
+        .regmap = ina219_12v_regmap
     },
     .pca9555_qsfp_data = {
-        sizeof(pca9555_u34_regmap) / sizeof(pca9555_u34_regmap[0]),
-        pca9555_u34_regmap
+        .len = ARRAY_SIZE(pca9555_u34_regmap),
+        .regmap = pca9555_u34_regmap
     },
     .pca9555_misc_data = {
-        sizeof(pca9555_u39_regmap) / sizeof(pca9555_u39_regmap[0]),
-        pca9555_u39_regmap
+        .len = ARRAY_SIZE(pca9555_u39_regmap),
+        .regmap = pca9555_u39_regmap
     },
     .si570_data = {
-        sizeof(si570_regmap) / sizeof(si570_regmap[0]),
-        si570_regmap
+        .len = ARRAY_SIZE(si570_regmap),
+        .regmap = si570_regmap
     }
 };
