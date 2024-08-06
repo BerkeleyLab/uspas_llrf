@@ -95,7 +95,7 @@ typedef struct qsfp_info_t {
     /** Tx bias current, LSB 2 µA, Page 00h Byte 42-49 */
     uint16_t bias_current[4];
     /** Rx power, LSB 0.1 µW, Page 00h Byte 34-41 */
-    uint16_t rx_power[4];    
+    uint16_t rx_power[4];
     /** Tx power, LSB 0.1 µW, Page 00h Byte 50-57 */
     uint16_t tx_power[4];
     /** Page 00h Byte 148-163 */
@@ -117,6 +117,10 @@ typedef struct si570_info_t {
     uint8_t i2c_addr;
     /** start address */
     uint8_t start_addr;
+    /** f_xtal, fixed,  0.09 ppb */
+    uint64_t f_xtal_hz;
+    unsigned char regs[6];
+    /** 38-bit fractional multiplier  */
     uint64_t rfreq;
     uint8_t hs_div;
     uint8_t n1;
@@ -148,8 +152,8 @@ typedef struct marble_dev_t {
 #define I2C_ADR_INA219_FMC1    0x40  // I2C_SEL_APPL: U17
 #define I2C_ADR_PCA9555_QSFP   0x22  // I2C_SEL_APPL: U34
 #define I2C_ADR_PCA9555_MISC   0x21  // I2C_SEL_APPL: U39
-#define I2C_ADR_SI570_125      0x77  // I2C_SEL_APPL: Y6, 570NCB000933DG
-#define I2C_ADR_SI570_270      0x55  // I2C_SEL_APPL: Y6, 570NBB001808DG
+#define I2C_ADR_SI570_NCB      0x77  // I2C_SEL_APPL: Y6, 570NCB000933DG, 7ppm stability
+#define I2C_ADR_SI570_NBB      0x55  // I2C_SEL_APPL: Y6, 570NBB001808DG, 20ppm stability
 #define I2C_ADR_ADN4600        0x48  // I2C_SEL_CLK:  U2
 #define I2C_ADR_QSFP           0x50  // I2C_SEL_QSFP1 / I2C_SEL_QSFP2
 

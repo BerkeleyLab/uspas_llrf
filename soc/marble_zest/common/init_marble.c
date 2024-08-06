@@ -20,10 +20,10 @@ t_reg8 adn4600_regmap[] = {
     {0xea, 0xd5},
     {0xf0, 0},      // TX6
     {0xf8, 0},      // TX7
-    // IP0-7: EXT0_CLK,     EX1_CLK,        FPGA_REF_CLK0,  SI570_CLK, 
-    //        FMC1_GBTCLK0, FMC1_GBTCLK1,   FMC2_GBTCLK0,   FMC2_GBTCLK1
-    // OP0-7: MGT_CLK_0, MGT_CLK_1, NC, NC,
-    //        MGT_CLK_2, MGT_CLK_3, NC, NC
+    // IP0-3: EXT0_CLK,     EX1_CLK,        FPGA_REF_CLK0,  SI570_CLK,
+    // IP4-7: FMC1_GBTCLK0, FMC1_GBTCLK1,   FMC2_GBTCLK0,   FMC2_GBTCLK1
+    // OP0-3: MGT_CLK_0,    MGT_CLK_1,      OUT1_CLK,       NC,
+    // OP4-7: MGT_CLK_2,    MGT_CLK_3,      NC,             NC
     // Configure XPT (first bank of latches)
     {0x40, (2 << 4) | 0},   // FPGA_REF_CLK0    -> MGT_CLK_0 at OUT0
     {0x40, (2 << 4) | 1},   // FPGA_REF_CLK0    -> MGT_CLK_1 at OUT1
@@ -71,15 +71,16 @@ t_reg8 pca9555_u34_regmap[] = {
 // P1[7:4] = CLKMUX_RST, NC, NC, NC,
 // P1[3:0] = LD13, LD14, NC, NC
 t_reg8 pca9555_u39_regmap[] = {
-    {2, 0xfe},  // Output: Disable SI570
-    {3, 0x80},  // LED on, do not reset ADN4600
+    {2, 0x00},  // Output: Write protection, Enable SI570 (NCB & NBB both are low polarity)
+    {3, 0x80},  // Output: LED on, do not reset ADN4600
     {4, 0},
     {5, 0},
     {6, 0xfe},  // Config: low for enabling output (only for Si570)
-    {7, 0x73}
+    {7, 0x73}   // Config: low for enabling output: CLK_MUX, LD13, LD14
 };
 
 const marble_init_t marble_init_data = {
+    // XXX should really be reading from hardware, where is it stored?
     .marble_variant = MARBLE_VAR_MARBLE_V1_3,
     .adn4600_data = {
         sizeof(adn4600_regmap) / sizeof(adn4600_regmap[0]),

@@ -13,27 +13,28 @@
 
 marble_dev_t marble = {
     .variant = MARBLE_VAR_MARBLE_V1_4,
-    .pca9555_qsfp ={.i2c_mux_sel=I2C_SEL_APPL, .i2c_addr=I2C_ADR_PCA9555_QSFP},
-    .pca9555_misc ={.i2c_mux_sel=I2C_SEL_APPL, .i2c_addr=I2C_ADR_PCA9555_MISC},
+    .pca9555_qsfp ={.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_PCA9555_QSFP},
+    .pca9555_misc ={.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_PCA9555_MISC},
     .ina219_12v = {
-        .i2c_mux_sel=I2C_SEL_APPL, .i2c_addr=I2C_ADR_INA219_12V,
-        .rshunt_mOhm=27, .current_lsb_uA=100},
+        .i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_INA219_12V,
+        .rshunt_mOhm = 27, .current_lsb_uA = 100},
     .ina219_fmc1 = {
-        .i2c_mux_sel=I2C_SEL_APPL, .i2c_addr=I2C_ADR_INA219_FMC1,
-        .rshunt_mOhm=82, .current_lsb_uA=10},
+        .i2c_mux_sel=I2C_SEL_APPL, .i2c_addr = I2C_ADR_INA219_FMC1,
+        .rshunt_mOhm = 82, .current_lsb_uA = 10},
     .ina219_fmc2 = {
-        .i2c_mux_sel=I2C_SEL_APPL, .i2c_addr=I2C_ADR_INA219_FMC2,
-        .rshunt_mOhm=82, .current_lsb_uA=10},
+        .i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_INA219_FMC2,
+        .rshunt_mOhm = 82, .current_lsb_uA = 10},
     .qsfp1 = {
-        .module_present=false, .page_select=0,
+        .module_present = false, .page_select = 0,
         .i2c_mux_sel=I2C_SEL_QSFP1, .i2c_addr=I2C_ADR_QSFP},
     .qsfp2 = {
-        .module_present=false, .page_select=0,
-        .i2c_mux_sel=I2C_SEL_QSFP2, .i2c_addr=I2C_ADR_QSFP},
+        .module_present = false, .page_select = 0,
+        .i2c_mux_sel = I2C_SEL_QSFP2, .i2c_addr = I2C_ADR_QSFP},
     .adn4600 = {
-        .i2c_mux_sel=I2C_SEL_CLK, .i2c_addr=I2C_ADR_ADN4600},
+        .i2c_mux_sel = I2C_SEL_CLK, .i2c_addr = I2C_ADR_ADN4600},
     .si570 = {
-        .i2c_mux_sel=I2C_SEL_APPL, .i2c_addr=I2C_ADR_SI570_270}
+        .f_xtal_hz = 114285000,
+        .i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_SI570_NBB}
 };
 
 static bool marble_i2c_write(uint8_t i2c_addr, uint8_t reg_addr, const uint8_t *data, uint16_t len) {
@@ -156,16 +157,20 @@ bool get_adn4600_info(adn4600_info_t *info) {
 
 bool get_si570_info(si570_info_t *info) {
     bool ret = true;
-    uint8_t reg[6];
+    unsigned char *regs = &info->regs[0];
+
     ret &= marble_i2c_mux_set(info->i2c_mux_sel);
     for (unsigned ix=0; ix<6; ix++) {
-        ret &= marble_i2c_read(
-            info->i2c_addr, info->start_addr+ix, &reg[ix], 1);
-        printf("si570: addr=%1u, val=%2x \n", info->start_addr+ix, reg[ix]);
+        ret &= marble_i2c_read(info->i2c_addr, info->start_addr+ix, regs+ix, 1);
     }
-    info->hs_div = (reg[0] >> 5) + 4;
-    info->n1 = (((reg[0] & 0x1f) << 2) | (reg[1] >> 6)) + 1;
-    info->rfreq = ((uint64_t)(reg[1] & 0x3f) << 32) | (reg[2] << 24) | (reg[3] << 16) | (reg[4] << 8) | reg[5];
+    info->hs_div = (regs[0] >> 5) + 4;
+    info->n1 = (((regs[0] & 0x1f) << 2) | (regs[1] >> 6)) + 1;
+    info->rfreq = ((uint64_t)(regs[1] & 0x3f) << 32) | (regs[2] << 24) | (regs[3] << 16) | (regs[4] << 8) | regs[5];
+
+    // The f_out_hz calculation takes 2.6 kB memory...
+    // float rfreq_f;
+    // rfreq_f = info->rfreq / (1 << 28);
+    // info->f_out_hz = rfreq_f * info->f_xtal_hz / (info->hs_div * info->n1);
     return ret;
 }
 
@@ -223,21 +228,26 @@ void print_marble_status(void) {
     for (unsigned ix=0; ix<8; ix++) {
         printf(" %s: ADN4600: IN%1u -> OUT%1u\n", __func__, marble.adn4600.xpt_status[ix], ix);
     }
-    printf(" %s: SI570 HS_DIV: %12u\n", __func__, marble.si570.hs_div);
-    printf(" %s: SI570 N1    : %12u\n", __func__, marble.si570.n1);
-    // printf(" %s: SI570 rfreq : %12llu\n", __func__, marble.si570.rfreq);
+
+    // si570 register dump
+    for (unsigned ix=0; ix<6; ix++) {
+        printf(" %s SI570: addr = %1u, val = %#04x \n",
+            __func__, marble.si570.start_addr+ix, marble.si570.regs[ix]);
+    }
+    printf(" %s: SI570 HSDIV: %12u\n", __func__, marble.si570.hs_div);
+    printf(" %s: SI570 N1   : %12u\n", __func__, marble.si570.n1);
 
     for (unsigned i=0; i<3; i++) {
         printf(" %s: INA219 %1u:\n", __func__, i+1);
-        printf(" %s: Vshunt:  %12d mV\n",  __func__, ina219[i].vshunt_uV / 1000);
-        printf(" %s: Power:   %12d mW\n",  __func__, ina219[i].power_uW / 1000);
-        printf(" %s: Vbus:    %12d mV\n",  __func__, ina219[i].vbus_mV);
-        printf(" %s: Current: %12ld mA\n", __func__, ina219[i].curr_uA / 1000);
+        printf(" %s: Vshunt     :  %12d mV\n",  __func__, ina219[i].vshunt_uV / 1000);
+        printf(" %s: Power      :  %12d mW\n",  __func__, ina219[i].power_uW / 1000);
+        printf(" %s: Vbus       :  %12d mV\n",  __func__, ina219[i].vbus_mV);
+        printf(" %s: Current    : %12ld mA\n", __func__, ina219[i].curr_uA / 1000);
     }
     for (unsigned i=0; i<2; i++) {
         printf(" %s: PCA9555 %1u:\n",  __func__, i+1);
-        printf(" %s: I0:      %#12X\n",__func__,  pca9555[i].i0_val);
-        printf(" %s: I1:      %#12X\n",__func__,  pca9555[i].i1_val);
+        printf(" %s: I0         :      %#12X\n",__func__,  pca9555[i].i0_val);
+        printf(" %s: I1         :      %#12X\n",__func__,  pca9555[i].i1_val);
     }
     for (unsigned i=0; i<2; i++) {
         if (qsfp[i].module_present) {
@@ -263,21 +273,20 @@ static void configure_marble_variant(marble_init_t *init_data) {
     marble.variant = init_data->marble_variant;
     // look up si570 for i2c address:
     // https://tools.skyworksinc.com/TimingUtility/timing-part-number-search-results.aspx
-    // Start address: 3.1.1 in datasheet:
     // https://www.skyworksinc.com/-/media/SkyWorks/SL/documents/public/data-sheets/Si570-71.pdf
 
     switch (marble.variant) {
     case MARBLE_VAR_MARBLE_V1_4:
-        marble.si570.i2c_addr = I2C_ADR_SI570_270;
-        marble.si570.start_addr = 7;
         printf("Marble Variant 1.4\n");
+        marble.si570.i2c_addr = I2C_ADR_SI570_NBB;
+        marble.si570.start_addr = 7;
         break;
-    
+
     case MARBLE_VAR_MARBLE_V1_3:
     case MARBLE_VAR_MARBLE_V1_2:
-        marble.si570.i2c_addr = I2C_ADR_SI570_125;
-        marble.si570.start_addr = 13;
         printf("Marble Variant 1.3 or 1.2\n");
+        marble.si570.i2c_addr = I2C_ADR_SI570_NCB;
+        marble.si570.start_addr = 13;
         break;
 
     case MARBLE_VAR_MARBLEMINI:
