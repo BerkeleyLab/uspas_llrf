@@ -63,7 +63,7 @@ typedef struct pca9555_info_t {
 typedef struct adn4600_info_t {
     const uint8_t i2c_mux_sel;
     const uint8_t i2c_addr;
-    const uint8_t xpt_cfgs[4];     // XPT Configuration for 4 outputs
+    uint8_t xpt_status[8];
 } adn4600_info_t;
 
 /**

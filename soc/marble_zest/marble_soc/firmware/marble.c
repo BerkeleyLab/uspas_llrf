@@ -13,40 +13,40 @@
 
 marble_dev_t marble = {
     .variant = MARBLE_VAR_MARBLE_V1_4,
-    .pca9555_qsfp =
-        {.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_PCA9555_QSFP},
-    .pca9555_misc =
-        {.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_PCA9555_MISC},
-    .ina219_12v =
-        {.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_INA219_12V,  .rshunt_mOhm = 27, .current_lsb_uA = 100},
-    .ina219_fmc1 =
-        {.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_INA219_FMC1, .rshunt_mOhm = 82, .current_lsb_uA = 10},
-    .ina219_fmc2 =
-        {.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_INA219_FMC2, .rshunt_mOhm = 82, .current_lsb_uA = 10},
-    .qsfp1 =
-        {.module_present = false, .page_select = 0, .i2c_mux_sel = I2C_SEL_QSFP1, .i2c_addr = I2C_ADR_QSFP},
-    .qsfp2 =
-        {.module_present = false, .page_select = 0, .i2c_mux_sel = I2C_SEL_QSFP2, .i2c_addr = I2C_ADR_QSFP},
-    .adn4600 ={.i2c_mux_sel = I2C_SEL_CLK, .i2c_addr = I2C_ADR_ADN4600},
-    .si570 = {.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_SI570_270}
+    .pca9555_qsfp ={.i2c_mux_sel=I2C_SEL_APPL, .i2c_addr=I2C_ADR_PCA9555_QSFP},
+    .pca9555_misc ={.i2c_mux_sel=I2C_SEL_APPL, .i2c_addr=I2C_ADR_PCA9555_MISC},
+    .ina219_12v = {
+        .i2c_mux_sel=I2C_SEL_APPL, .i2c_addr=I2C_ADR_INA219_12V,
+        .rshunt_mOhm=27, .current_lsb_uA=100},
+    .ina219_fmc1 = {
+        .i2c_mux_sel=I2C_SEL_APPL, .i2c_addr=I2C_ADR_INA219_FMC1,
+        .rshunt_mOhm=82, .current_lsb_uA=10},
+    .ina219_fmc2 = {
+        .i2c_mux_sel=I2C_SEL_APPL, .i2c_addr=I2C_ADR_INA219_FMC2,
+        .rshunt_mOhm=82, .current_lsb_uA=10},
+    .qsfp1 = {
+        .module_present=false, .page_select=0,
+        .i2c_mux_sel=I2C_SEL_QSFP1, .i2c_addr=I2C_ADR_QSFP},
+    .qsfp2 = {
+        .module_present=false, .page_select=0,
+        .i2c_mux_sel=I2C_SEL_QSFP2, .i2c_addr=I2C_ADR_QSFP},
+    .adn4600 = {.i2c_mux_sel=I2C_SEL_CLK, .i2c_addr=I2C_ADR_ADN4600},
+    .si570 = {.i2c_mux_sel=I2C_SEL_APPL, .i2c_addr=I2C_ADR_SI570_270}
 };
 
-static bool marble_i2c_write(uint8_t i2c_addr, uint8_t reg_addr, const uint8_t *data, uint16_t len)
-{
+static bool marble_i2c_write(uint8_t i2c_addr, uint8_t reg_addr, const uint8_t *data, uint16_t len) {
     return i2c_write_regs(i2c_addr, reg_addr, data, len);
 }
 
-static bool marble_i2c_read(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *data, uint16_t len)
-{
+static bool marble_i2c_read(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *data, uint16_t len) {
     return i2c_read_regs(i2c_addr, reg_addr, data, len);
 }
 
-bool marble_i2c_mux_set( uint8_t ch ){
+bool marble_i2c_mux_set( uint8_t ch ) {
     return i2c_write_regs(I2C_ADR_PCA9548, ch, 0, 0);
 }
 
-static uint16_t reorder_bytes(uint16_t a)
-{
+static uint16_t reorder_bytes(uint16_t a) {
 	uint16_t ret = ((a >> 8) & 0xff) | ((a & 0xff) << 8);
 	return ret;
 }
@@ -87,8 +87,7 @@ bool i2c_write_regmap_word(uint8_t i2c_addr, t_reg16 *regmap, size_t len) {
     return ret;
 }
 
-void get_qsfp_info(qsfp_info_t *qsfp_param)
-{
+void get_qsfp_info(qsfp_info_t *qsfp_param) {
     unsigned short i=0;
     unsigned char buf[8];
 
@@ -122,7 +121,7 @@ void get_qsfp_info(qsfp_info_t *qsfp_param)
 bool get_ina219_info(ina219_info_t *info) {
     bool ret = true;
     uint16_t regs[5];
-    ret &=marble_i2c_mux_set(info->i2c_mux_sel);
+    ret &= marble_i2c_mux_set(info->i2c_mux_sel);
 
     for (size_t i=0; i<5; i++) {
         ret &= i2c_read_word(info->i2c_addr, i, regs+i);
@@ -137,7 +136,7 @@ bool get_ina219_info(ina219_info_t *info) {
 
 bool get_pca9555_info(pca9555_info_t *info) {
     bool ret = true;
-    ret &=marble_i2c_mux_set(info->i2c_mux_sel);
+    ret &= marble_i2c_mux_set(info->i2c_mux_sel);
 
     ret &= marble_i2c_read(info->i2c_addr, 0, &(info->i0_val), 1);
     ret &= marble_i2c_read(info->i2c_addr, 1, &(info->i1_val), 1);
@@ -146,11 +145,9 @@ bool get_pca9555_info(pca9555_info_t *info) {
 
 bool get_adn4600_info(adn4600_info_t *info) {
     bool ret = true;
-    uint8_t buf;
-    ret &=marble_i2c_mux_set(info->i2c_mux_sel);
+    ret &= marble_i2c_mux_set(info->i2c_mux_sel);
     for (unsigned ix=0; ix<8; ix++) {
-        ret &= marble_i2c_read(info->i2c_addr, 0x50+ix, &buf, 1);
-        printf(" %s: ADN4600 %#02x: IN%1d -> OUT%1d\n", __func__, 0x50+ix, buf, ix);
+        ret &= marble_i2c_read(info->i2c_addr, 0x50+ix, &info->xpt_status[ix], 1);
     }
     return ret;
 }
@@ -204,6 +201,10 @@ void print_marble_status(void) {
     ina219_info_t ina219[3] = {marble.ina219_fmc1, marble.ina219_fmc2, marble.ina219_12v};
     pca9555_info_t pca9555[2] = {marble.pca9555_qsfp, marble.pca9555_misc};
     qsfp_info_t qsfp[2] = {marble.qsfp1, marble.qsfp2};
+
+    for (unsigned ix=0; ix<8; ix++) {
+        printf(" %s: ADN4600: IN%1u -> OUT%1u\n", __func__, marble.adn4600.xpt_status[ix], ix);
+    }
 
     for (unsigned i=0; i<3; i++) {
         printf(" %s: INA219 %1u:\n", __func__, i+1);
@@ -260,7 +261,7 @@ bool init_marble(marble_init_t *init_data)
     printf("==== PCA9555 init ====  : %s.\n", p?"PASS":"FAIL");
 
     p = set_adn4600_info(&marble.adn4600, &init_data->adn4600_data); pass &= p;
-    printf("==== PCA9555 init ====  : %s.\n", p?"PASS":"FAIL");
+    printf("==== ADN4600 init ====  : %s.\n", p?"PASS":"FAIL");
 
     pass &= get_marble_info(&marble);
     print_marble_status();
