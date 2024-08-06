@@ -13,16 +13,18 @@
 
 marble_dev_t marble = {
     .variant = MARBLE_VAR_MARBLE_V1_4,
-    .pca9555_qsfp ={.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_PCA9555_QSFP},
-    .pca9555_misc ={.i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_PCA9555_MISC},
+    .pca9555_qsfp ={
+        .i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_PCA9555_QSFP, .refdes = "U34", .name="QSFP"},
+    .pca9555_misc ={
+        .i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_PCA9555_MISC, .refdes = "U39", .name="MISC"},
     .ina219_12v = {
-        .i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_INA219_12V,
+        .i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_INA219_12V, .refdes = "U57", .name="12V",
         .rshunt_mOhm = 27, .current_lsb_uA = 100},
     .ina219_fmc1 = {
-        .i2c_mux_sel=I2C_SEL_APPL, .i2c_addr = I2C_ADR_INA219_FMC1,
+        .i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_INA219_FMC1, .refdes = "U17", .name="FMC1",
         .rshunt_mOhm = 82, .current_lsb_uA = 10},
     .ina219_fmc2 = {
-        .i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_INA219_FMC2,
+        .i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_INA219_FMC2, .refdes = "U32", .name="FMC2",
         .rshunt_mOhm = 82, .current_lsb_uA = 10},
     .qsfp1 = {
         .module_present = false, .page_select = 0,
@@ -33,12 +35,12 @@ marble_dev_t marble = {
     .adn4600 = {
         .i2c_mux_sel = I2C_SEL_CLK, .i2c_addr = I2C_ADR_ADN4600},
     .si570 = {
-        .f_xtal_hz = 114285000,
+        .f_xtal_hz = 114285000ULL, .rfreq = 0ULL,
         .i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_SI570_NBB}
 };
 
 static bool marble_i2c_write(uint8_t i2c_addr, uint8_t reg_addr, const uint8_t *data, uint16_t len) {
-    return i2c_write_regs(i2c_addr, reg_addr, data, len);
+    return i2c_write_regs(i2c_addr, reg_addr, (uint8_t *)data, len);
 }
 
 static bool marble_i2c_read(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *data, uint16_t len) {
@@ -165,12 +167,9 @@ bool get_si570_info(si570_info_t *info) {
     }
     info->hs_div = (regs[0] >> 5) + 4;
     info->n1 = (((regs[0] & 0x1f) << 2) | (regs[1] >> 6)) + 1;
-    info->rfreq = ((uint64_t)(regs[1] & 0x3f) << 32) | (regs[2] << 24) | (regs[3] << 16) | (regs[4] << 8) | regs[5];
-
-    // The f_out_hz calculation takes 2.6 kB memory...
-    // float rfreq_f;
-    // rfreq_f = info->rfreq / (1 << 28);
-    // info->f_out_hz = rfreq_f * info->f_xtal_hz / (info->hs_div * info->n1);
+    info->rfreq = ((uint64_t)(regs[1] & 0x3f) << 32) + ((uint64_t)regs[2] << 24) + ((uint64_t)regs[3] << 16)
+                    + ((uint64_t)regs[4] << 8) + (uint64_t)regs[5];
+    info->f_out_hz = info->rfreq * info->f_xtal_hz / (info->hs_div * info->n1) / (1 << 28);
     return ret;
 }
 
@@ -256,21 +255,22 @@ void print_marble_status(void) {
 
     // si570 register dump
     for (unsigned ix=0; ix<6; ix++) {
-        printf(" %s SI570: addr = %1u, val = %#04x \n",
+        debug_printf(" %s SI570: addr = %1u, val = %#04x \n",
             __func__, marble.si570.start_addr+ix, marble.si570.regs[ix]);
     }
-    printf(" %s: SI570 HSDIV: %12u\n", __func__, marble.si570.hs_div);
-    printf(" %s: SI570 N1   : %12u\n", __func__, marble.si570.n1);
+    debug_printf(" %s: SI570 HSDIV:  %12u\n", __func__, marble.si570.hs_div);
+    debug_printf(" %s: SI570 N1   :  %12u\n", __func__, marble.si570.n1);
+    printf(" %s: SI570 f_out:  %12lu kHz\n", __func__, marble.si570.f_out_hz / 1000);
 
     for (unsigned i=0; i<3; i++) {
-        printf(" %s: INA219 %1u:\n", __func__, i+1);
+        printf(" %s: INA219 %.4s, %.4s:\n", __func__, ina219[i].refdes, ina219[i].name);
         printf(" %s: Vshunt     :  %12d mV\n",  __func__, ina219[i].vshunt_uV / 1000);
         printf(" %s: Power      :  %12d mW\n",  __func__, ina219[i].power_uW / 1000);
         printf(" %s: Vbus       :  %12d mV\n",  __func__, ina219[i].vbus_mV);
-        printf(" %s: Current    : %12ld mA\n", __func__, ina219[i].curr_uA / 1000);
+        printf(" %s: Current    :  %12ld mA\n", __func__, ina219[i].curr_uA / 1000);
     }
     for (unsigned i=0; i<2; i++) {
-        printf(" %s: PCA9555 %1u:\n",  __func__, i+1);
+        printf(" %s: PCA9555 %.4s, %.4s:\n",  __func__, pca9555[i].refdes, pca9555[i].name);
         printf(" %s: I0         :      %#12X\n",__func__,  pca9555[i].i0_val);
         printf(" %s: I1         :      %#12X\n",__func__,  pca9555[i].i1_val);
     }

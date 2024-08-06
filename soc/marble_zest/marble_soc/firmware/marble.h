@@ -54,6 +54,10 @@ typedef struct {
 typedef struct ina219_info_t {
     const uint8_t i2c_mux_sel;
     const uint8_t i2c_addr;
+    /** schematic refdes */
+    const unsigned char refdes[4];
+    /** function name */
+    const unsigned char name[4];
     const uint16_t rshunt_mOhm;
     const uint16_t current_lsb_uA;
     int16_t vshunt_uV;
@@ -65,6 +69,10 @@ typedef struct ina219_info_t {
 typedef struct pca9555_info_t {
     const uint8_t i2c_mux_sel;
     const uint8_t i2c_addr;
+    /** schematic refdes */
+    const unsigned char refdes[4];
+    /** function name */
+    const unsigned char name[4];
     uint8_t i0_val;
     uint8_t i1_val;
 } pca9555_info_t;
@@ -72,6 +80,10 @@ typedef struct pca9555_info_t {
 typedef struct adn4600_info_t {
     const uint8_t i2c_mux_sel;
     const uint8_t i2c_addr;
+    /** schematic refdes */
+    const unsigned char refdes[4];
+    /** function name */
+    const unsigned char name[4];
     uint8_t xpt_status[8];
 } adn4600_info_t;
 
@@ -100,11 +112,11 @@ typedef struct qsfp_info_t {
     /** Tx power, LSB 0.1 µW, Page 00h Byte 50-57 */
     uint16_t tx_power[4];
     /** Page 00h Byte 148-163 */
-	unsigned char vendor_name[16];
+    unsigned char vendor_name[16];
     /** Page 00h Byte 168-183 */
-	unsigned char part_num[16];
+    unsigned char part_num[16];
     /** Page 00h Byte 196-211 */
-	unsigned char serial_num[16];
+    unsigned char serial_num[16];
 } qsfp_info_t;
 
 /**
@@ -125,6 +137,7 @@ typedef struct si570_info_t {
     uint64_t rfreq;
     uint8_t hs_div;
     uint8_t n1;
+    uint64_t f_out_hz;
 } si570_info_t;
 
 /**
