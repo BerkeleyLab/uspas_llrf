@@ -26,9 +26,9 @@ t_reg8 adn4600_regmap[] = {
     // OP4-7: MGT_CLK_2,    MGT_CLK_3,      NC,             NC
     // Configure XPT (first bank of latches)
     {0x40, (2 << 4) | 0},   // FPGA_REF_CLK0    -> MGT_CLK_0 at OUT0
-    {0x40, (2 << 4) | 1},   // FPGA_REF_CLK0    -> MGT_CLK_1 at OUT1
-    {0x40, (2 << 4) | 4},   // FPGA_REF_CLK0    -> MGT_CLK_2 at OUT4
-    {0x40, (6 << 4) | 5},   // FMC2_GBTCLK0_M2C -> MGT_CLK_3 at OUT5
+    {0x40, (3 << 4) | 1},   // SI570_CLK        -> MGT_CLK_1 at OUT1
+    {0x40, (4 << 4) | 4},   // FMC1_GBTCLK0     -> MGT_CLK_2 at OUT4
+    {0x40, (6 << 4) | 5},   // FMC2_GBTCLK0     -> MGT_CLK_3 at OUT5
     // Update XPT (second bank of latches, output connections programmed simultaneously)
     {0x41, 1},
 };
