@@ -192,6 +192,7 @@ end
         .lb_read        (lb_read),
         .lb_rvalid      (lb_rvalid),
         .lb_prefill     (lb_prefill),
+        .mbox_in        (8'd0),
 
         .dsp_clk        (dsp_clk),
         .adc_data_in    (adc_in_flat),

@@ -153,6 +153,7 @@ wire [31:0] lb0_wdata;
 wire [31:0] lb0_rdata;
 wire lb0_prefill;
 wire [7:0]  mac_status;
+wire [7:0]  mbox_out;
 udp_rgmii #(
     .IP(IP), .MAC(MAC), .LB_READ_DELAY(LB_READ_DELAY)
 ) udp_rgmii_i (
@@ -182,6 +183,7 @@ udp_rgmii #(
     .lb_rdata       (lb0_rdata    ),
     .lb_rvalid      (lb0_rvalid   ),
     .lb_prefill     (lb0_prefill  ),
+    .mbox_out       (mbox_out     ),
     .mac_status     (mac_status   )
 );
 wire lb_prefill = lb0_prefill;
@@ -266,6 +268,8 @@ llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) llrf_inst (
     .adc_data_in    (adc_out_data),
     .dac_data_a_out (dac_a_out),
     .dac_data_b_out (dac_b_out),
+
+    .mbox_in        (mbox_out),
 
     .drive_permit_in (1'b1),
     .slow_permit_in (1'b1)

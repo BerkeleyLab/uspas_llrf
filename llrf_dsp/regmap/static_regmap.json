@@ -83,6 +83,13 @@
         "data_width": 16,
         "sign": "signed"
     },
+    "spi_mbox": {
+        "access": "r",
+        "addr_width": 11,
+        "base_addr": "0x1e000",
+        "data_width": 8,
+        "sign": "unsigned"
+    },
     "mon_amp": {
         "base_addr": "0x13000",
         "addr_width": 4,

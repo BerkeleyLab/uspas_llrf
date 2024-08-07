@@ -36,6 +36,7 @@ module udp_rgmii #(
     output          lb_prefill,
 
     // diagnostics
+    output [7:0]    mbox_out,
     output [7:0]    mac_status
 );
 
@@ -43,16 +44,18 @@ wire enable_rx;
 wire config_s, config_p;
 wire [7:0] config_a, config_d;
 
+wire lb_mbox_sel = (lb_addr[12+:6] == 6'h1e);
+
 mmc_mailbox #(
     .DEFAULT_ENABLE_RX(DEFAULT_ENABLE_RX)
 ) mailbox_i (
     .clk                (gmii_tx_clk),  // input
     // localbus mailbox memory interface
-    .lb_addr            (11'h000),      // input [10:0]
-    .lb_din             (8'h00),        // input [7:0]
-    .lb_dout            (),             // output [7:0]
-    .lb_write           (1'b0),         // input
-    .lb_control_strobe  (1'b0),         // input
+    .lb_addr            (lb_addr[10:0]), // input [10:0]
+    .lb_din             (lb_wdata[7:0]), // input [7:0]
+    .lb_dout            (mbox_out),      // output [7:0]
+    .lb_write           (lb_mbox_sel & lb_write), // input
+    .lb_control_strobe  (lb_mbox_sel & lb_read),  // input
     // SPI PHY
     .sck                (FPGA_SCK),     // input
     .ncs                (FPGA_CSB),     // input

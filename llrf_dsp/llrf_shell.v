@@ -43,6 +43,8 @@ module llrf_shell #(
     output [31:0]        lb_rdata,
     input                lb_prefill,
 
+    input [7:0]          mbox_in,
+
     // ---------------------
     // Digitizer interface
     // ---------------------
@@ -655,6 +657,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             18'h1b???: lb_rdata_r <= adc_buf_out[7];
             18'h1c???: lb_rdata_r <= dac_buf_out[0];
             18'h1d???: lb_rdata_r <= dac_buf_out[1];
+            18'h1e???: lb_rdata_r <= mbox_in;
             18'h2????: lb_rdata_r <= cbuf_out;
             18'h???0?: lb_rdata_r <= reg_bank_0;
             18'h???1?: lb_rdata_r <= lb_reg_bank_1;
