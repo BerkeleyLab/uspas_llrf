@@ -84,7 +84,12 @@ void handle_ui( void ) {
             break;
 
         case 'd':
-            init_zest_dbg(BASE_ZEST, &zest_init_data);
+            // init_zest_dbg(BASE_ZEST, &zest_init_data);
+            for (ix=0; ix<100; ix++) {
+                write_lb_reg(0x40000 + ix, 0x1234);
+                dval32 = read_lb_reg(0x40000 + ix);
+                printf("mbox[%u]: %x\n", ix, dval32);
+            }
             break;
 
         case 'l':

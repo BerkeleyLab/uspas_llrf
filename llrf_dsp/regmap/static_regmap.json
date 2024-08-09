@@ -86,7 +86,7 @@
     "spi_mbox": {
         "access": "r",
         "addr_width": 11,
-        "base_addr": "0x1e000",
+        "base_addr": "0x40000",
         "data_width": 8,
         "sign": "unsigned"
     },

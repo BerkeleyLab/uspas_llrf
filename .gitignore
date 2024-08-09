@@ -8,6 +8,7 @@
 *_tb
 *__pycache__
 *_dep/
+*_ipx/
 *_autogen/
 soc/marble_zest/*/*.o
 *.elf
