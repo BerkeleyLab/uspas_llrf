@@ -35,10 +35,10 @@ llrf_dsp/_autogen/addr_map_llrf_shell.vh
 soc/marble_zest/*/init_llrf.c
 soc/marble_zest/*/llrf_regs_addr.h
 soc/marble_zest/common/llrf/llrf.o
-udp_rgmii/construct_tx_table.v
-udp_rgmii/rtefi_blob.v
-udp_rgmii/rtefi_preblob.vh
-udp_rgmii/udp_rgmii_expand.v
+marble_bsp/construct_tx_table.v
+marble_bsp/rtefi_blob.v
+marble_bsp/rtefi_preblob.vh
+marble_bsp/marble_bsp_expand.v
 top/marble_zest/top.xdc
 top/marble_zest/system_top.xdc
 soc/marble_zest/synth/system_expand.v

@@ -1,4 +1,4 @@
-module udp_rgmii #(
+module marble_bsp #(
     parameter IP ={8'd192, 8'd168, 8'd19, 8'd122},
     parameter MAC = 48'h00105ad155b2,
     parameter LB_READ_DELAY = 3,
@@ -78,7 +78,17 @@ mmc_mailbox #(
     .spi_pins_debug     () // {MISO, din, sclk_d1, csb_d1};
 );
 
-assign lb_rdata = {24'h0, mbox_out};
+reg [31:0] lb_rdata_r=0;
+wire [3:0] lb_addr_mux = lb_addr[12+:4];
+
+always @(*) begin
+    case(lb_addr_mux)
+    4'h0: lb_rdata_r = {24'h0, mbox_out};
+    4'h1: lb_rdata_r = {24'h0, mac_status};
+    default: lb_rdata_r = 32'hdeaddead;
+    endcase
+end
+assign lb_rdata = lb_rdata_r;
 
 // Keep the PHY's reset pin low for the first 33 ms
 reg [26:0] rx_heartbeat=0, tx_heartbeat=0;

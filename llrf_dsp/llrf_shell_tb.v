@@ -483,6 +483,8 @@ end
         #200;
         inlk_check = 1'b0;
 
+        lb_read_task(18'h1e000, rdata);
+
         $display("Time: %g ns, Validation: %s.", $time, !fail ? "PASS":"FAIL");
         $display("##################################################");
         if (!fail) $finish();

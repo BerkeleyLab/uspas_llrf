@@ -158,7 +158,6 @@ assign clk = m_lb_clk;
 wire lb_prefill = m_lb_prefill;
 
 // localbus declaration
-wire lb_clk = clk;
 wire lb_write;
 wire lb_read;
 wire lb_rvalid;
@@ -234,7 +233,15 @@ wire lb_read_3  = lb_read & lb_base_3;
 wire [31:0] lb_rdata_0, lb_rdata_1, lb_rdata_2, lb_rdata_3;
 reg [31:0] lb_rdata_r=0;
 
-// XXX move config_romx here from llrf_shell.v
+wire [15:0] config_rom_out;
+config_romx config_romx(
+    .clk    (lb_clk),
+    .address(lb_addr[10:0]),
+    .data   (config_rom_out)
+);
+// 11-bit ROM address: 0x4000 to 0x47ff
+wire json_rom_sel = (lb_addr[21:11] == 11'b00_0000_0100_0);
+
 always @(*) begin
     case(lb_addr_mux)
     4'h0: lb_rdata_r = lb_rdata_0;
@@ -242,7 +249,7 @@ always @(*) begin
     default: lb_rdata_r = 32'hdeaddead;
     endcase
 end
-assign lb_rdata = lb_rdata_r;
+assign lb_rdata = json_rom_sel ? config_rom_out : lb_rdata_r;
 
 // ----------------------------------
 // LLRF Subsystem, @ lb_base_0
@@ -259,7 +266,7 @@ wire [15:0] dac_b_out;
 `endif
 
 llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) llrf_inst (
-    .lb_clk         (lb_clk),
+    .lb_clk         (clk),
     .lb_addr        (lb_addr[17:0]),
     .lb_write       (lb_write_0),
     .lb_read        (lb_read_0),
@@ -280,7 +287,7 @@ llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) llrf_inst (
 // ----------------------------------
 // Marble Board Support (MMC, Badger, GTX, etc.), @ lb_base_1
 // ---------------------------------
-udp_rgmii #(
+marble_bsp #(
     .IP(IP), .MAC(MAC), .LB_READ_DELAY(LB_READ_DELAY)
 ) marble_inst (
     .RGMII_TXD      (RGMII_TXD    ),

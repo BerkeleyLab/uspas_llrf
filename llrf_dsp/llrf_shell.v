@@ -7,7 +7,6 @@
 //      0 to 0fff   LLRF controller
 // read:
 //      0 to 0fff   LLRF controller
-// 04000 to 047ff   Json ROM
 // 12011 to 120ff   Slow readout, see slow_bridge.v
 // 13000 to 13007   amp out
 // 13010 to 13017   phs out
@@ -538,12 +537,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     assign dac_data_a_out = drive_on1 ? dac_out : 16'h0;
     assign dac_data_b_out = drive_on2 ? dac_out : 16'h0;
 
-    wire [15:0] config_rom_out;
-    config_romx config_romx(
-        .clk    (lb_clk),
-        .address(lb_addr[10:0]),
-        .data   (config_rom_out));
-
     // ---------------------
     // Scalar register readback
     // ---------------------
@@ -608,7 +601,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     );
 
     // LB read mux: Match READ_DELAY=3 in system.v
-    always @(posedge lb_clk) begin
+    always @(posedge lb_clk) if(lb_read) begin
         case (lb_addr[3:0])
             4'h0: reg_bank_0 <= git_rev_id;
             4'h1: reg_bank_0 <= inlk_hi_lb;           // alias: inlk_hi
@@ -639,8 +632,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         lb_addr_d1 <= lb_addr;
         casez (lb_addr_d1)
             18'h3????: lb_rdata_r <= mirror_out_0;
-            18'b00_0100_0???_????_????: lb_rdata_r <= config_rom_out;
-            18'b00_0000_1???_????_????: lb_rdata_r <= 0;
             18'h10800: lb_rdata_r <= slow_cbuf_ready;
             18'h120??: lb_rdata_r <= lb_slow_rdata;
             18'h1300?: lb_rdata_r <= mon_amp_lb;
