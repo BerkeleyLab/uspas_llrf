@@ -15,8 +15,6 @@ module llrf_skin #(
     output [31:0]        lb_rdata,
     input                lb_prefill,
 
-    input [7:0]          mbox_in,
-
     // ---------------------
     // Digitizer interface
     // ---------------------
@@ -51,7 +49,6 @@ module llrf_skin #(
 (* magic_cdc *) reg [31:0]        lb_rdata_r=0;
 /*           */ wire [31:0]       lb_rdata_x;
 (* magic_cdc *) reg               lb_prefill_r=0;
-(* magic_cdc *) reg [7:0]         mbox_in_r=0;
 always @(posedge lb_clk) begin
 	lb_addr_r <= lb_addr;
 	lb_write_r <= lb_write;
@@ -60,7 +57,6 @@ always @(posedge lb_clk) begin
 	lb_wdata_r <= lb_wdata;
 	lb_rdata_r <= lb_rdata_x;
     lb_prefill_r <= lb_prefill;
-    mbox_in_r <= mbox_in;
 end
 assign lb_rdata = lb_rdata_r;
 
@@ -90,8 +86,6 @@ llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID), .CBUF_AW(11)) dsp (
     .lb_wdata       (lb_wdata_r),
     .lb_rdata       (lb_rdata_x),
     .lb_prefill     (lb_prefill_r),
-
-    .mbox_in        (mbox_in_r),
 
     .dsp_clk        (dsp_clk),
     .adc_data_in    (adc_data_in_r),
