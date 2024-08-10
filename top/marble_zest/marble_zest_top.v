@@ -158,6 +158,7 @@ assign clk = m_lb_clk;
 wire lb_prefill = m_lb_prefill;
 
 // localbus declaration
+wire lb_clk = clk;
 wire lb_write;
 wire lb_read;
 wire lb_rvalid;
@@ -266,7 +267,7 @@ wire [15:0] dac_b_out;
 `endif
 
 llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) llrf_inst (
-    .lb_clk         (clk),
+    .lb_clk         (lb_clk),
     .lb_addr        (lb_addr[17:0]),
     .lb_write       (lb_write_0),
     .lb_read        (lb_read_0),
@@ -339,9 +340,9 @@ marble_bsp #(
 `endif
 
 zest #(
-    .DSP_FREQ_MHZ   (`DSP_FREQ_MHZ),
+    .DSP_FREQ_MHZ       (`DSP_FREQ_MHZ),
     .DAC_INTERP_COEFF_R (`DAC_INTERP_COEFF_R),
-    .BASE_ADDR      (8'h05)
+    .BASE_ADDR          (8'h05)
 ) zest_inst (
     .ADC_PDWN       (ZEST_ADC_PDWN      ),
     .ADC_CSB_0      (ZEST_ADC_CSB_0     ),
