@@ -3,6 +3,7 @@ include $(BUILD_DIR)/top_rules.mk
 
 IP_NAME     = marble_bsp
 TEST_BENCH  = $(IP_NAME)_tb
+CHECKS      = $(IP_NAME)_check
 
 vpath %.v $(DSP_DIR)
 VFLAGS_DEP += -I$(BADGER_DIR) -y$(BADGER_DIR)
@@ -17,7 +18,7 @@ VFLAGS += -g2012
 
 .DEFAULT_GOAL = all
 .PHONY: all clean
-all: $(TEST_BENCH)
+all: $(TEST_BENCH) $(CHECKS)
 
 ##### build.mk
 TEST_BENCH_D      = $(TEST_BENCH:%_tb=$(DEPDIR)/%_tb.d)

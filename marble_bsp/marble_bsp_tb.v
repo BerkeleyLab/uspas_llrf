@@ -102,12 +102,30 @@ wire lb_clk = clk;
     );
 
     localparam [24:0] SPI_MBOX_BASE=24'h40_000;
+    localparam [3:0]
+        MBOX_CONFIG_S = 4'h1,
+        MBOX_CONFIG_P = 4'h3,
+        MBOX_CONFIG_R = 4'h4,
+        MBOX_CONFIG_W = 4'h5;
+
     // Main procedure
     reg [31:0] rdata = 0;
+    reg fail=0;
+    reg [3:0] test_addr = 8'h2;
+    reg [7:0] test_byte = 8'h13;
     initial begin
         repeat (100) @ (posedge clk);
-        mmc_spi_write_task(4'h1, 4'h2, 8'h3);
-        lb_read_task(SPI_MBOX_BASE, rdata);
+        mmc_spi_write_task(MBOX_CONFIG_S, 4'h7, 8'h1);
+        mmc_spi_write_task(MBOX_CONFIG_W, test_addr, test_byte);
+        $display("Time: %g ns: MBOX write addr: %2d, data: 0x%08x.",
+            $time, test_addr, test_byte);
+
+        lb_read_task(SPI_MBOX_BASE + test_addr, rdata);
+        fail |= (rdata != test_byte);
+        $display("Time: %g ns:    LB read addr: %2d, data: 0x%08x, %s",
+            $time, test_addr, rdata, fail ? "FAIL":"OK");
+        if (!fail) $finish();
+        else $stop();
     end
 
    initial begin
@@ -116,9 +134,9 @@ wire lb_clk = clk;
             $dumpvars(5, marble_bsp_tb);
         end
         #(400_000 / CLK_PERIOD);
-        $display("Simulation timeout");
-        $display("INFO: Not a self-checking testbench. Will always pass.");
-        $finish;
+        $display("Simulation timed-out");
+        $display("FAIL");
+        $stop();
    end
 
 endmodule

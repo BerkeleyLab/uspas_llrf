@@ -1,22 +1,47 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Sun Aug 11 16:56:07 2024
+[*] Sun Aug 11 22:46:03 2024
 [*]
 [dumpfile] "marble_bsp.vcd"
-[dumpfile_mtime] "Sun Aug 11 16:55:05 2024"
-[dumpfile_size] 128423
+[dumpfile_mtime] "Sun Aug 11 22:45:52 2024"
+[dumpfile_size] 254409
 [savefile] "marble_bsp.gtkw"
-[timestart] 0
+[timestart] 538
 [size] 1296 600
-[pos] 282 671
-*-11.764961 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+[pos] -1 -1
+*-10.408035 3508 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+[markername] AA
+[markername] BB
+[markername] CC
+[markername] DD
+[markername] EE
+[markername] FF
+[markername] GG
+[markername] HH
+[markername] II
+[markername] JJ
+[markername] KK
+[markername] LL
+[markername] MM
+[markername] NN
+[markername] OO
+[markername] PP
+[markername] QQ
+[markername] RR
+[markername] SS
+[markername] TT
+[markername] UU
+[markername] VV
+[markername] WW
+[markername] XX
+[markername] YY
+[markername] ZZ
+[treeopen] marble_bsp_tb.
 [sst_width] 253
-[signals_width] 103
+[signals_width] 152
 [sst_expanded] 1
 [sst_vpaned_height] 159
-@420
-marble_bsp_tb.cc
-@29
+@28
 marble_bsp_tb.clk
 @800200
 -mmc_spi
@@ -27,5 +52,31 @@ marble_bsp_tb.FPGA_POCI
 marble_bsp_tb.FPGA_SCK
 @1000200
 -mmc_spi
+@28
+marble_bsp_tb.spi_busy
+marble_bsp_tb.spi_wdata_val
+@22
+marble_bsp_tb.spi_wdata[31:0]
+@800200
+-localbus
+@28
+marble_bsp_tb.lb_clk
+marble_bsp_tb.lb_read
+marble_bsp_tb.lb_write
+@22
+marble_bsp_tb.lb_addr[17:0]
+@28
+marble_bsp_tb.lb_rvalid
+@22
+marble_bsp_tb.lb_rdata[31:0]
+marble_bsp_tb.lb_wdata[31:0]
+@28
+marble_bsp_tb.lb_prefill
+@1000200
+-localbus
+@22
+marble_bsp_tb.rdata[31:0]
+@29
+marble_bsp_tb.fail
 [pattern_trace] 1
 [pattern_trace] 0
