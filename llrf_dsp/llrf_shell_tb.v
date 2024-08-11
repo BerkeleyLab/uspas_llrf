@@ -4,13 +4,12 @@
 module llrf_shell_tb;
 
 parameter  LB_VERBOSE       = 0;        // show LB transactions
+localparam LB_ADW           = 18;
 parameter  N_ADC            = 8;
 localparam MAX_SIM          = 8000000;  // ns
 localparam DW               = 16;
 localparam BUF_DWI          = 16;
-localparam LB_ADW           = 18;
 localparam CLK_CYCLE        = 8;        // ns
-localparam LB_READ_DELAY    = 3;
 parameter CBUF_AW           = 6;
 parameter CBUF_DW           = 24;
 parameter ADC_BUF_AW        = 3;
@@ -38,6 +37,7 @@ initial begin
 end
 
     `include "settings.vh"
+    `include "localbus.vh"
     `include "regmap_llrf_shell.vh"
 
     // --------------------------------------------------------------
@@ -47,46 +47,6 @@ end
     // --------------------------------------------------------------
     //  LocalBus functions
     // --------------------------------------------------------------
-
-    reg lb_write=0, lb_read=0, lb_prefill=0;
-    reg [LB_ADW-1:0] lb_addr=0;
-    reg [31:0] lb_wdata=0;
-    wire [31:0] lb_rdata;
-    reg [31:0] rdata=0;
-    reg lb_rvalid=0;
-
-    task lb_write_task(
-        input [LB_ADW-1:0] addr,
-        input [31:0] data
-    );
-        begin
-            @ (posedge lb_clk);
-            lb_addr  = addr;
-            lb_wdata = data;
-            lb_write = 1'b1;
-            @ (posedge lb_clk);
-            lb_write = 1'b0;
-        end
-    endtask
-
-    task lb_read_task(
-        input [LB_ADW-1:0] addr,
-        output [31:0] data
-    );
-        begin
-            @ (posedge lb_clk);
-            lb_addr = addr;
-            lb_read = 1'b1;
-            // repeat (4 + LB_READ_DELAY) @ (posedge lb_clk);    // badger timing
-            repeat (0 + LB_READ_DELAY) @ (posedge lb_clk);
-            lb_rvalid = 1'b1;
-            data = lb_rdata;
-            // $display("time: %g Read ack: ADDR 0x%x DATA 0x%x", $time, addr, lb_rdata);
-            @ (posedge lb_clk);
-            lb_read = 1'b0;
-            lb_rvalid = 1'b0;
-        end
-    endtask
 
     task read_inlk_task(
         input [7:0] chan,
@@ -212,6 +172,8 @@ end
     // ---------------------
     // Main sequence
     // ---------------------
+    reg [31:0] rdata=0;
+
     reg [31:0] phase_step;
     reg [11:0] modulo;
     reg [18:0] phase_shift=0;

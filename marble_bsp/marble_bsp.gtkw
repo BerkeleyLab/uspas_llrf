@@ -1,0 +1,31 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Sun Aug 11 16:56:07 2024
+[*]
+[dumpfile] "marble_bsp.vcd"
+[dumpfile_mtime] "Sun Aug 11 16:55:05 2024"
+[dumpfile_size] 128423
+[savefile] "marble_bsp.gtkw"
+[timestart] 0
+[size] 1296 600
+[pos] 282 671
+*-11.764961 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+[sst_width] 253
+[signals_width] 103
+[sst_expanded] 1
+[sst_vpaned_height] 159
+@420
+marble_bsp_tb.cc
+@29
+marble_bsp_tb.clk
+@800200
+-mmc_spi
+@28
+marble_bsp_tb.FPGA_CSB
+marble_bsp_tb.FPGA_PICO
+marble_bsp_tb.FPGA_POCI
+marble_bsp_tb.FPGA_SCK
+@1000200
+-mmc_spi
+[pattern_trace] 1
+[pattern_trace] 0

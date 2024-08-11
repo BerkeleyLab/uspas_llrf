@@ -25,12 +25,14 @@ $(AUTOGEN_DIR)/%_expand.v: %.v $(AUTOGEN_DIR)/%_auto.vh $(AUTOGEN_DIR)/addr_map_
 	sed -i '/^$$/d' $@
 
 $(AUTOGEN_DIR)/regmap_%.vh: %.json
-	$(PYTHON) $(JSON_DIR)/gen_regmap.py -i $< -o $@
+	mkdir -p $(AUTOGEN_DIR); \
+	$(PYTHON) $(BEDROCK_DIR)/localbus/gen_regmap.py -i $< -o $@
 
 $(APP_NAME).json: $(AUTOGEN_DIR)/regmap_$(APP_NAME).json $(AUTOGEN_DIR)/scalar_$(APP_NAME)_regmap.json $(JSON_DIR)/static_regmap.json
 	$(PYTHON) $(BUILD_DIR)/merge_json.py -o $@ -i $^
 
 $(AUTOGEN_DIR)/scalar_%_regmap.json: %.v
+	mkdir -p $(AUTOGEN_DIR); \
 	$(PYTHON) $(BUILD_DIR)/reverse_json.py $< > $@
 
 $(APP_NAME)_expand.v: $(APP_NAME).v
