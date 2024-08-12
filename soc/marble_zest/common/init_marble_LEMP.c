@@ -84,12 +84,12 @@ t_reg8 pca9555_u39_regmap[] = {
 // register address starts relative to si570 start address
 // 119 MHz
 t_reg8 si570_regmap[] = {
-    {0, 0x97},
-    {1, 0x42},
-    {2, 0xbb},
-    {3, 0x81},
-    {4, 0x18},
-    {5, 0x1c},
+    {0, 0xe0},
+    {1, 0xc2},
+    {2, 0xdd},
+    {3, 0x0b},
+    {4, 0x69},
+    {5, 0xb2},
 };
 
 const marble_init_t marble_init_data = {
