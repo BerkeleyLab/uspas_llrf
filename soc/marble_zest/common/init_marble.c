@@ -92,6 +92,7 @@ t_reg8 si570_regmap[] = {
 };
 
 const marble_init_t marble_init_data = {
+    .marble_variant = MARBLE_VAR_UNKNOWN,
     .adn4600_data = {
         .len = ARRAY_SIZE(adn4600_regmap),
         .regmap = adn4600_regmap

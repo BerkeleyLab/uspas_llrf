@@ -241,7 +241,7 @@ bool get_marble_info(marble_dev_t *marble) {
         get_qsfp_info(&marble->qsfp2);
     }
 
-    get_si570_info(&marble->si570);
+    ret &= get_si570_info(&marble->si570);
     return ret;
 }
 
@@ -295,32 +295,28 @@ void print_marble_status(void) {
     }
 }
 
-// Optional MMC Mailbox support, when marble.variant is MARBLE_VAR_UNKNOWN:
-//    Read `MB4_PCB_REV` from mmc_mailbox.v through localbus, if gateware supports.
-// Refer to mailbox content at:
-// https://gitlab.lbl.gov/hdl-libraries/marble_mmc/-/blob/master/doc/mailbox.md
-#ifndef LB_MARBLE_SPI_MBOX
-#define LB_MARBLE_SPI_MBOX     0x40000
-#endif
-
 // Set Marble variants, by init data
 static void set_marble_variant(marble_init_t *init_data) {
     int8_t mb4_pcb_rev;
 
     if (init_data->marble_variant == MARBLE_VAR_UNKNOWN) {
+#ifdef LB_MARBLE_SPI_MBOX
+// Optional MMC Mailbox support, when marble.variant is MARBLE_VAR_UNKNOWN:
+//    Read `MB4_PCB_REV` from mmc_mailbox.v through localbus, if gateware supports.
+// Refer to mailbox content at:
+// https://gitlab.lbl.gov/hdl-libraries/marble_mmc/-/blob/master/doc/mailbox.md
         // MB4_PCB_REV is at page 4 (page size is 16), offset 8
         mb4_pcb_rev = read_lb_reg(LB_MARBLE_SPI_MBOX + 4*16 + 8);
-        if (mb4_pcb_rev == 0x1) {
+        if ((mb4_pcb_rev >> 4) == 0x1) {
             marble.variant = mb4_pcb_rev & 0xf;
-            printf(" %s: Read mb4_pcb_rev = %x\n", __func__, mb4_pcb_rev);
+            printf(" %s: Found MMC Mailbox. mb4_pcb_rev = %x\n", __func__, mb4_pcb_rev);
         }
-    } else {
-        // known Marble variant
+#endif
+    } else { // known Marble variant
         marble.variant = init_data->marble_variant;
     }
 }
 
-// configure Marble variants, including si570
 static void configure_marble_variant(void) {
     // look up si570 for i2c address:
     // https://tools.skyworksinc.com/TimingUtility/timing-part-number-search-results.aspx
@@ -340,8 +336,23 @@ static void configure_marble_variant(void) {
         marble.si570.start_addr = 13;
         break;
 
+    case MARBLE_VAR_UNKNOWN:
     default:
+        // in case mmc mailbox is not available, test i2c address for si570
         printf("Marble Variant Unknown\n");
+        marble.si570.i2c_addr = I2C_ADR_SI570_NBB;
+        marble.si570.start_addr = 7;
+        if (get_si570_info(&marble.si570)) {
+            printf(" %s: Found SI570 NBB (Marble 1.4)\n", __func__);
+            break;
+        }
+
+        marble.si570.i2c_addr = I2C_ADR_SI570_NCB;
+        marble.si570.start_addr = 13;
+        if (get_si570_info(&marble.si570)) {
+            printf(" %s: Found SI570 NCB (Marble 1.3).\n", __func__);
+            break;
+        }
         break;
     }
 }
