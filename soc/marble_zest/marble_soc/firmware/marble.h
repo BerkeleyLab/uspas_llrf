@@ -33,14 +33,15 @@ typedef struct {
     t_reg8 *regmap;
 } marble_init_byte_t;
 
+// # marble_v1_2 = 0, marble_v1_3 = 1, marble_v1_4 = 2 and so on..
 typedef enum {
-    MARBLE_VAR_MARBLEMINI,
     MARBLE_VAR_MARBLE_V1_2,
     MARBLE_VAR_MARBLE_V1_3,
-    MARBLE_VAR_MARBLE_V1_4
+    MARBLE_VAR_MARBLE_V1_4,
+    MARBLE_VAR_UNKNOWN
 } MARBLE_VAR;
 
-typedef struct {
+typedef struct marble_init_t {
     MARBLE_VAR marble_variant;
     marble_init_word_t ina219_fmc1_data;
     marble_init_word_t ina219_fmc2_data;

@@ -93,8 +93,6 @@ t_reg8 si570_regmap[] = {
 };
 
 const marble_init_t marble_init_data = {
-    // XXX should really be reading from hardware, where is it stored?
-    .marble_variant = MARBLE_VAR_MARBLE_V1_4,
     .adn4600_data = {
         .len = ARRAY_SIZE(adn4600_regmap),
         .regmap = adn4600_regmap

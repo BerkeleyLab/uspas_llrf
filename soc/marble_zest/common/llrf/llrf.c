@@ -3,19 +3,12 @@
 #include "llrf_regs_addr.h"
 #include "timer.h"
 #include "settings.h"
+#include "system.h"
 #ifdef NONSTD_PRINTF
     #include "printf.h"
 #else
     #include <stdio.h>
 #endif
-
-int32_t read_lb_reg(uint32_t addr) {
-    return GET_REG(BASE_LOCALBUS + (addr<<2));
-}
-
-void write_lb_reg(uint32_t addr, int32_t val) {
-    SET_REG(BASE_LOCALBUS + (addr<<2), val);
-}
 
 void print_git_rev_id(void) {
     printf("GIT_REV_ID: %x\n", (uint32_t)read_lb_reg(GIT_REV_ID));

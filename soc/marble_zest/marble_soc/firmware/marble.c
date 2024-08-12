@@ -2,6 +2,7 @@
 #include "i2c_soft.h"
 #include "sfr.h"
 #include "xadc.h"
+#include "system.h"
 #include "settings.h"
 #include "print.h"
 #ifdef NONSTD_PRINTF
@@ -12,7 +13,7 @@
 #include "marble.h"
 
 marble_dev_t marble = {
-    .variant = MARBLE_VAR_MARBLE_V1_4,
+    .variant = MARBLE_VAR_UNKNOWN,
     .pca9555_qsfp ={
         .i2c_mux_sel = I2C_SEL_APPL, .i2c_addr = I2C_ADR_PCA9555_QSFP, .refdes = "U34", .name="QSFP"},
     .pca9555_misc ={
@@ -294,8 +295,33 @@ void print_marble_status(void) {
     }
 }
 
-static void configure_marble_variant(marble_init_t *init_data) {
-    marble.variant = init_data->marble_variant;
+// Optional MMC Mailbox support, when marble.variant is MARBLE_VAR_UNKNOWN:
+//    Read `MB4_PCB_REV` from mmc_mailbox.v through localbus, if gateware supports.
+// Refer to mailbox content at:
+// https://gitlab.lbl.gov/hdl-libraries/marble_mmc/-/blob/master/doc/mailbox.md
+#ifndef LB_MARBLE_SPI_MBOX
+#define LB_MARBLE_SPI_MBOX     0x40000
+#endif
+
+// Set Marble variants, by init data
+static void set_marble_variant(marble_init_t *init_data) {
+    int8_t mb4_pcb_rev;
+
+    if (init_data->marble_variant == MARBLE_VAR_UNKNOWN) {
+        // MB4_PCB_REV is at page 4 (page size is 16), offset 8
+        mb4_pcb_rev = read_lb_reg(LB_MARBLE_SPI_MBOX + 4*16 + 8);
+        if (mb4_pcb_rev == 0x1) {
+            marble.variant = mb4_pcb_rev & 0xf;
+            printf(" %s: Read mb4_pcb_rev = %x\n", __func__, mb4_pcb_rev);
+        }
+    } else {
+        // known Marble variant
+        marble.variant = init_data->marble_variant;
+    }
+}
+
+// configure Marble variants, including si570
+static void configure_marble_variant(void) {
     // look up si570 for i2c address:
     // https://tools.skyworksinc.com/TimingUtility/timing-part-number-search-results.aspx
     // https://www.skyworksinc.com/-/media/SkyWorks/SL/documents/public/data-sheets/Si570-71.pdf
@@ -314,11 +340,8 @@ static void configure_marble_variant(marble_init_t *init_data) {
         marble.si570.start_addr = 13;
         break;
 
-    case MARBLE_VAR_MARBLEMINI:
-        printf("Marble Variant Mini\n");
-        break;
-
     default:
+        printf("Marble Variant Unknown\n");
         break;
     }
 }
@@ -330,7 +353,8 @@ bool init_marble(marble_init_t *init_data)
 
     printf("--===========  Marble Init  =============--\n");
 
-    configure_marble_variant(init_data);
+    set_marble_variant(init_data);
+    configure_marble_variant();
 
     p = set_si570_info(&marble.si570, &init_data->si570_data); pass &= p;
     printf("==== SI570 init  ====   : %s.\n", p?"PASS":"FAIL");
