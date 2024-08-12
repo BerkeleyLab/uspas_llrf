@@ -5,6 +5,7 @@
 #include "uart.h"
 #include "printf.h"
 #include "system.h"
+#include "localbus.h"
 #include "marble.h"
 #include "xadc.h"
 #include "zest.h"

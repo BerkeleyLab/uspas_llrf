@@ -4,6 +4,7 @@
 #include "timer.h"
 #include "settings.h"
 #include "system.h"
+#include "localbus.h"
 #ifdef NONSTD_PRINTF
     #include "printf.h"
 #else

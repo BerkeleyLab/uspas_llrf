@@ -3,6 +3,8 @@
 module marble_bsp_tb;
 
 localparam LB_ADW     = 18;
+localparam LB_READ_DELAY = 3;
+
 localparam CLK_PERIOD = 8;
 
 // clock generation

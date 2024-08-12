@@ -2,7 +2,7 @@
 #include "i2c_soft.h"
 #include "sfr.h"
 #include "xadc.h"
-#include "system.h"
+#include "localbus.h"
 #include "settings.h"
 #include "print.h"
 #ifdef NONSTD_PRINTF

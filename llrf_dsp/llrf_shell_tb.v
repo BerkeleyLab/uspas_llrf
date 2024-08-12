@@ -5,6 +5,7 @@ module llrf_shell_tb;
 
 parameter  LB_VERBOSE       = 0;        // show LB transactions
 localparam LB_ADW           = 18;
+localparam LB_READ_DELAY    = 3;
 parameter  N_ADC            = 8;
 localparam MAX_SIM          = 8000000;  // ns
 localparam DW               = 16;
@@ -47,6 +48,8 @@ end
     // --------------------------------------------------------------
     //  LocalBus functions
     // --------------------------------------------------------------
+
+    reg [31:0] rdata=0;
 
     task read_inlk_task(
         input [7:0] chan,
@@ -172,8 +175,6 @@ end
     // ---------------------
     // Main sequence
     // ---------------------
-    reg [31:0] rdata=0;
-
     reg [31:0] phase_step;
     reg [11:0] modulo;
     reg [18:0] phase_shift=0;
