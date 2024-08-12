@@ -56,7 +56,7 @@ llrf_cdc_test:
 
 marble_bsp_test:
   before_script:
-    - cd marble_dsp
+    - cd marble_bsp
   stage: test
   script:
     - make
