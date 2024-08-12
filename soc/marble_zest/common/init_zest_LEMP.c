@@ -116,27 +116,27 @@ uint8_t ad9781_smp[] = {
 };
 
 const zest_init_t zest_init_data = {
-    {
-        sizeof(regmap_lmk01801) / sizeof(regmap_lmk01801[0]),
-        regmap_lmk01801
+    .lmk01801_data = {
+        .len = ARRAY_SIZE(regmap_lmk01801),
+        .regmap = regmap_lmk01801
     },
-    {
-        sizeof(regmap_ad9653) / sizeof(regmap_ad9653[0]),
-        regmap_ad9653
+    .ad9653_data = {
+        .len = ARRAY_SIZE(regmap_ad9653),
+        .regmap = regmap_ad9653
     },
-    {
-        sizeof(regmap_ad9781) / sizeof(regmap_ad9781[0]),
-        regmap_ad9781
+    .ad9781_data = {
+        .len = ARRAY_SIZE(regmap_ad9781),
+        .regmap = regmap_ad9781
     },
-    {
-        sizeof(regmap_ad7794) / sizeof(regmap_ad7794[0]),
-        regmap_ad7794
+    .ad7794_data = {
+        .len = ARRAY_SIZE(regmap_ad7794),
+        .regmap = regmap_ad7794
     },
-    {
-        sizeof(regmap_amc7823) / sizeof(regmap_amc7823[0]),
-        regmap_amc7823
+    .amc7823_data = {
+        .len = ARRAY_SIZE(regmap_amc7823),
+        .regmap = regmap_amc7823
     },
-    fcnt_exp,
-    phs_center,
-    ad9781_smp
+    .fcnt_exp = fcnt_exp,
+    .phs_center = phs_center,
+    .ad9781_smp = ad9781_smp
 };

@@ -1,4 +1,4 @@
-module udp_rgmii #(
+module marble_bsp #(
     parameter IP ={8'd192, 8'd168, 8'd19, 8'd122},
     parameter MAC = 48'h00105ad155b2,
     parameter LB_READ_DELAY = 3,
@@ -25,15 +25,24 @@ module udp_rgmii #(
     input           gmii_tx_clk90,
     output          gmii_rx_clk,
 
-    // lb master
-    output          lb_clk,
-    output [23:0]   lb_addr,
-    output          lb_write,
-    output          lb_read,
-    output [31:0]   lb_wdata,
-    input  [31:0]   lb_rdata,
-    output          lb_rvalid,
-    output          lb_prefill,
+    // lb controller
+    output          m_lb_clk,
+    output [23:0]   m_lb_addr,
+    output          m_lb_write,
+    output          m_lb_read,
+    output [31:0]   m_lb_wdata,
+    input  [31:0]   m_lb_rdata,
+    output          m_lb_rvalid,
+    output          m_lb_prefill,
+
+    // lb peripheral
+    input           lb_clk,
+    input [17:0]    lb_addr,
+    input           lb_write,
+    input           lb_read,
+    input           lb_rvalid,
+    input [31:0]    lb_wdata,
+    output [31:0]   lb_rdata,
 
     // diagnostics
     output [7:0]    mac_status
@@ -42,17 +51,18 @@ module udp_rgmii #(
 wire enable_rx;
 wire config_s, config_p;
 wire [7:0] config_a, config_d;
+wire [7:0] mbox_out;
 
 mmc_mailbox #(
     .DEFAULT_ENABLE_RX(DEFAULT_ENABLE_RX)
 ) mailbox_i (
-    .clk                (gmii_tx_clk),  // input
+    .clk                (lb_clk),  // input
     // localbus mailbox memory interface
-    .lb_addr            (11'h000),      // input [10:0]
-    .lb_din             (8'h00),        // input [7:0]
-    .lb_dout            (),             // output [7:0]
-    .lb_write           (1'b0),         // input
-    .lb_control_strobe  (1'b0),         // input
+    .lb_addr            (lb_addr[10:0]), // input [10:0]
+    .lb_din             (lb_wdata[7:0]), // input [7:0]
+    .lb_dout            (mbox_out),      // output [7:0]
+    .lb_write           (lb_write), // input
+    .lb_control_strobe  (lb_read),  // input
     // SPI PHY
     .sck                (FPGA_SCK),     // input
     .ncs                (FPGA_CSB),     // input
@@ -67,6 +77,18 @@ mmc_mailbox #(
     .enable_rx          (enable_rx),    // output
     .spi_pins_debug     () // {MISO, din, sclk_d1, csb_d1};
 );
+
+reg [31:0] lb_rdata_r=0;
+wire [3:0] lb_addr_mux = lb_addr[12+:4];
+
+always @(*) begin
+    case(lb_addr_mux)
+    4'h0: lb_rdata_r = {24'h0, mbox_out};
+    4'h1: lb_rdata_r = {24'h0, mac_status};
+    default: lb_rdata_r = 32'hdeaddead;
+    endcase
+end
+assign lb_rdata = lb_rdata_r;
 
 // Keep the PHY's reset pin low for the first 33 ms
 reg [26:0] rx_heartbeat=0, tx_heartbeat=0;
@@ -134,14 +156,14 @@ rtefi_blob #(
     .rx_mac_accept  (1'b0),
     .tx_mac_done    (),
 
-    .p3_lb_clk      (lb_clk),
-    .p3_lb_addr     (lb_addr),
-    .p3_lb_write    (lb_write),
-    .p3_lb_read     (lb_read),
-    .p3_lb_rvalid   (lb_rvalid),
-    .p3_lb_wdata    (lb_wdata),
-    .p3_lb_rdata    (lb_rdata),
-    .p3_lb_prefill  (lb_prefill),
+    .p3_lb_clk      (m_lb_clk),
+    .p3_lb_addr     (m_lb_addr),
+    .p3_lb_write    (m_lb_write),
+    .p3_lb_read     (m_lb_read),
+    .p3_lb_rvalid   (m_lb_rvalid),
+    .p3_lb_wdata    (m_lb_wdata),
+    .p3_lb_rdata    (m_lb_rdata),
+    .p3_lb_prefill  (m_lb_prefill),
     .rx_mon         (rx_mon),
     .tx_mon         (tx_mon)
 );

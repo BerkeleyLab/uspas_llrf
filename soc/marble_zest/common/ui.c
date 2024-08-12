@@ -5,6 +5,7 @@
 #include "uart.h"
 #include "printf.h"
 #include "system.h"
+#include "localbus.h"
 #include "marble.h"
 #include "xadc.h"
 #include "zest.h"
@@ -84,7 +85,12 @@ void handle_ui( void ) {
             break;
 
         case 'd':
-            init_zest_dbg(BASE_ZEST, &zest_init_data);
+            // init_zest_dbg(BASE_ZEST, &zest_init_data);
+            for (ix=6*16; ix<6*16+10; ix++) {  // read page 4
+                // write_lb_reg(LB_MARBLE_SPI_MBOX + ix, 0x1234);
+                dval32 = read_lb_reg(LB_MARBLE_SPI_MBOX + ix);
+                printf("mbox[%u]: %x\n", ix, dval32);
+            }
             break;
 
         case 'l':

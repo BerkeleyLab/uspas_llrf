@@ -10,18 +10,34 @@ TARGET = marble_zest
 .PHONY: all system_config system_test clean
 all: $(TARGET)_top.bit
 
-IP_EXPAND = $(UDP_RGMII_DIR)/udp_rgmii_expand.v
+IP_EXPAND = $(BSP_DIR)/marble_bsp_expand.v
 IP_EXPAND += $(APP_SOC_SYN_DIR)/system_expand.v
 IP_EXPAND += $(APP_DSP_DIR)/llrf_shell_expand.v
 
 SUB_IP_DIR = $(foreach ip, $(IP_EXPAND), $(dir $(ip)))
 
-$(UDP_RGMII_DIR)/udp_rgmii_expand.v:
+$(BSP_DIR)/marble_bsp_expand.v:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 $(APP_SOC_SYN_DIR)/system_expand.v:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 $(APP_DSP_DIR)/llrf_shell_expand.v:
 	$(MAKE) -C $(dir $@) $(notdir $@)
+
+IP_JSON  = $(APP_DSP_DIR)/llrf_shell.json
+IP_JSON += $(BSP_DIR)/marble_bsp.json
+IP_JSON += marble_zest_top.json
+
+$(APP_DSP_DIR)/llrf_shell.json:
+	$(MAKE) -C $(dir $@) $(notdir $@)
+
+$(BSP_DIR)/marble_bsp.json:
+	$(MAKE) -C $(dir $@) $(notdir $@)
+
+$(TARGET).json: $(IP_JSON)
+	$(PYTHON) $(BUILD_DIR)/merge_json.py -o $@ -i $^
+
+config_romx.v: $(TARGET).json
+	$(PYTHON) $(BUILD_DIR)/build_rom.py -v $@ -j $<
 
 GIT_32BIT_ID = $(shell git rev-parse --short=8 --verify HEAD)
 SYNTH_OPT += -DGIT_32BIT_ID=32'h$(GIT_32BIT_ID)
@@ -39,7 +55,7 @@ system_top.xdc: timing.xdc $(APP_SOC_SYN_DIR)/zest_fmc_dp.xdc top.xdc
 	cat $^ > $@
 
 #: Build bitstream
-$(TARGET)_top.bit: system_top.xdc $(TARGET)_top.v $(IP_EXPAND) $(APP_SOC_SYN_DIR)/system32.dat $(GTP_DEPS)
+$(TARGET)_top.bit: system_top.xdc $(TARGET)_top.v config_romx.v $(IP_EXPAND) $(APP_SOC_SYN_DIR)/system32.dat $(GTP_DEPS)
 
 IP_ADDRESS = 192.168.19.$(MARBLE_SERIAL)
 
@@ -58,6 +74,7 @@ system_test:
 
 CLEAN += system_top.xdc $(TARGET)_top.bin $(TARGET)_top.bit $(IP_BIT_D)
 CLEAN += $(TARGET)_top.prm
+CLEAN += config_romx.v $(TARGET).json
 CLEAN_DIRS += .Xil _xilinx
 
 include $(BUILD_DIR)/bottom_rules.mk

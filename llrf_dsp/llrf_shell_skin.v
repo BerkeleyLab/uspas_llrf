@@ -38,23 +38,6 @@ module llrf_skin #(
     output [2:0]         arc_test_out,
     output               arc_reset_out,
 
-    // ---------------------
-    // MRF Fiber interface
-    // ---------------------
-`ifdef TEST_EVG
-    output               evg_permit_out,   // To MRF EVG
-    input                evg_tx_out_clk,
-    output [15:0]        evg_txd,
-    output [1:0]         evg_txk,
-`endif
-
-`ifdef TEST_EVR
-    input                evr_rx_out_clk,
-    input [15:0]         evr_rxd,
-    input [1:0]          evr_rxk,
-    input                evr_pll_locked
-`endif
-
     output               trig_out
 );
 
@@ -81,16 +64,6 @@ assign lb_rdata = lb_rdata_r;
 (* magic_cdc *) reg [DW*N_ADC-1:0] adc_data_in_r=0;
 always @(posedge dsp_clk) adc_data_in_r <= adc_data_in;
 
-// MRF
-`ifdef TEST_EVR
-(* magic_cdc *) reg [15:0] evr_rxd_r=0;
-(* magic_cdc *) reg [1:0] evr_rxx_r=0;
-always @(posedge evr_rx_out_clk) begin
-	evr_rxd_r <= evr_rxd;
-	evr_rxx_r <= evr_rxx;
-end
-`endif
-
 (* magic_cdc *) reg drive_permit_in_r=0;
 (* magic_cdc *) reg slow_permit_in_r=0;
 (* magic_cdc *) reg [2:0] arc_permit_in_r=0;
@@ -100,11 +73,7 @@ always @(posedge dsp_clk) begin
 	arc_permit_in_r <= arc_permit_in;
 end
 
-`ifndef GIT_32BIT_ID
-`define GIT_32BIT_ID 32'hdeadf00d
-`endif
-
-llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID), .CBUF_AW(11)) dsp (
+llrf_shell #(.CBUF_AW(11)) dsp (
     .lb_clk         (lb_clk),
     .lb_addr        (lb_addr_r),
     .lb_write       (lb_write_r),
@@ -127,20 +96,6 @@ llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID), .CBUF_AW(11)) dsp (
     .arc_permit_in  (arc_permit_in_r),
     .arc_test_out   (arc_test_out),
     .arc_reset_out  (arc_reset_out),
-
-`ifdef TEST_EVG
-    .evg_permit_out (evg_permit_out),
-    .evg_tx_out_clk (gt0_tx_out_clk),
-    .evg_txd        (gt0_txd),
-    .evg_txk        (gt0_txk),
-`endif
-
-`ifdef TEST_EVR
-    .evr_rx_out_clk (evr_rx_out_clk),
-    .evr_rxd        (evr_rxd_r),
-    .evr_rxk        (evr_rxk_r),
-    .evr_pll_locked (evr_pll_locked),
-`endif
 
     .trig_out       (trig_out)
 );

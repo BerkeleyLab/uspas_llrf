@@ -37,7 +37,7 @@ system_config: $(TARGET)_top.bit
 # this is to avoid vivado critical warnings about duplicated / redefination of module since they are already in DSP
 EXCLUDE = $(addprefix $(DSP_DIR)/, dpram.v flag_xdomain.v data_xdomain.v reg_delay.v reg_tech_cdc.v)
 system_expand.v: $(SRC_V)
-	$(VERILOG) $(SYNTH_OPT) -E $(filter-out $(EXCLUDE),$(filter %.v, $^)) -o $@
+	$(VERILOG) $(SYNTH_OPT) -E -o$@ $(filter-out $(EXCLUDE),$(filter %.v, $^))
 
 CLEAN += $(TARGET)_top.bin $(TARGET)_top.bit $(TARGET)_top.xdc
 CLEAN += zest_pinmap.txt zest_fmc_dp.xdc

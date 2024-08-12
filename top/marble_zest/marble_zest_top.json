@@ -1,0 +1,16 @@
+{
+    "llrf_rom": {
+        "access": "r",
+        "addr_width": 11,
+        "base_addr": "0x04000",
+        "data_width": 32,
+        "sign": "signed"
+    },
+    "git_rev_id": {
+        "access": "r",
+        "addr_width": 0,
+        "base_addr": 0,
+        "data_width": 32,
+        "sign": "unsigned"
+    }
+}

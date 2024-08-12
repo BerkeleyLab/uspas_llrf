@@ -22,8 +22,16 @@
 #define PIN_PCA9548_RST         2
 #define I2C_DELAY_US            3            //~half a clock period [us]
 
+// LOCALBUS registers:
+// marble_bsp.json:
+#define LB_MARBLE_SPI_MBOX     0x40000
+// marble_zest_top.json:
+#define LB_GIT_REV_ID          0x0
+
 #define DEBUG_PRINT 0
 #define debug_printf(...) \
         do { if (DEBUG_PRINT) printf(__VA_ARGS__); } while (0)
+
+#define ARRAY_SIZE(arr) ((sizeof arr) / (sizeof arr[0]))
 
 #endif
