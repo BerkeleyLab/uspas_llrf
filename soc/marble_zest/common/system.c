@@ -6,6 +6,7 @@
 #include "gpio.h"
 #include "timer.h"
 #include "system.h"
+#include "localbus.h"
 #include "marble.h"
 #include "zest.h"
 #include "xadc.h"
@@ -64,7 +65,7 @@ int main(void) {
     printf(" \\___/|____/|_| /_/   \\_\\____/  |_____|_____|_| \\_\\_|    \n");
 
     debug_printf("=== VERBOSE MODE ===\n");
-    print_git_rev_id();
+    printf("GIT_REV_ID: %x\n", (uint32_t)read_lb_reg(LB_GIT_REV_ID));
 
     pass &= init_marble(&marble_init_data);
     printf("==== Marble Init       ==== : %s.\n", pass?"PASS":"FAIL");

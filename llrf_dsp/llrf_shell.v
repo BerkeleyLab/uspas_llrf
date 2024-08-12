@@ -19,7 +19,6 @@ module llrf_shell #(
     parameter integer CBUF_DW = 24,
     parameter integer CBUF_AW = 16,
     parameter integer ADC_BUF_AW = 12,
-    parameter integer GIT_REV_ID = 0,
     localparam integer MON_RW = 44, // must <= 44, see ccfilt.v:51
     localparam integer LB_DW = 32,
     localparam integer LB_ADW = 18,
@@ -582,8 +581,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // ---------------------
     // Read-only address space decoding
     // ---------------------
-    wire [31:0] git_rev_id = GIT_REV_ID;
-
     reg [LB_DW-1:0] lb_rdata_r=0;
     reg [LB_ADW-1:0] lb_addr_d1=0;
     reg [31:0] reg_bank_0=0, reg_bank_1=0;
@@ -603,7 +600,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // LB read mux: Match READ_DELAY=3 in system.v
     always @(posedge lb_clk) if(lb_read) begin
         case (lb_addr[3:0])
-            4'h0: reg_bank_0 <= git_rev_id;
             4'h1: reg_bank_0 <= inlk_hi_lb;           // alias: inlk_hi
             4'h2: reg_bank_0 <= inlk_lo_lb;           // alias: inlk_lo
             4'h3: reg_bank_0 <= inlk_status_lb;       // alias: inlk_status

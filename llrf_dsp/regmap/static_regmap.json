@@ -1,11 +1,4 @@
 {
-    "llrf_rom": {
-        "access": "r",
-        "addr_width": 11,
-        "base_addr": "0x04000",
-        "data_width": 32,
-        "sign": "signed"
-    },
     "circle_data": {
         "base_addr": "0x20000",
         "addr_width": 16,

@@ -22,9 +22,11 @@
 #define PIN_PCA9548_RST         2
 #define I2C_DELAY_US            3            //~half a clock period [us]
 
-// Marble MMC mailbox access, inside LOCALBUS
-// see marble_bsp.json
+// LOCALBUS registers:
+// marble_bsp.json:
 #define LB_MARBLE_SPI_MBOX     0x40000
+// marble_zest_top.json:
+#define LB_GIT_REV_ID          0x0
 
 #define DEBUG_PRINT 0
 #define debug_printf(...) \

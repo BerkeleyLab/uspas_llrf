@@ -25,6 +25,7 @@ $(APP_DSP_DIR)/llrf_shell_expand.v:
 
 IP_JSON  = $(APP_DSP_DIR)/llrf_shell.json
 IP_JSON += $(BSP_DIR)/marble_bsp.json
+IP_JSON += marble_zest_top.json
 
 $(APP_DSP_DIR)/llrf_shell.json:
 	$(MAKE) -C $(dir $@) $(notdir $@)

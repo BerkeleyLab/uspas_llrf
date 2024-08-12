@@ -234,14 +234,22 @@ wire lb_read_3  = lb_read & lb_base_3;
 wire [31:0] lb_rdata_0, lb_rdata_1, lb_rdata_2, lb_rdata_3;
 reg [31:0] lb_rdata_r=0;
 
+`ifndef GIT_32BIT_ID
+`define GIT_32BIT_ID 32'hdeadf00d
+`endif
+wire [31:0] git_rev_id = `GIT_32BIT_ID;
+
 wire [15:0] config_rom_out;
 config_romx config_romx(
     .clk    (lb_clk),
     .address(lb_addr[10:0]),
     .data   (config_rom_out)
 );
+
+// marble_zest_top.json:
 // 11-bit ROM address: 0x4000 to 0x47ff
 wire json_rom_sel = (lb_addr[21:11] == 11'b00_0000_0100_0);
+wire git_rev_id_sel = (lb_addr == 22'h0);
 
 always @(*) begin
     case(lb_addr_mux)
@@ -250,7 +258,8 @@ always @(*) begin
     default: lb_rdata_r = 32'hdeaddead;
     endcase
 end
-assign lb_rdata = json_rom_sel ? config_rom_out : lb_rdata_r;
+assign lb_rdata = git_rev_id_sel ? git_rev_id :
+                    json_rom_sel ? config_rom_out : lb_rdata_r;
 
 // ----------------------------------
 // LLRF Subsystem, @ lb_base_0
@@ -262,11 +271,7 @@ wire [7:0]  adc_out_clk;
 wire [15:0] dac_a_out;
 wire [15:0] dac_b_out;
 
-`ifndef GIT_32BIT_ID
-`define GIT_32BIT_ID 32'hdeadf00d
-`endif
-
-llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID)) llrf_inst (
+llrf_shell llrf_inst (
     .lb_clk         (lb_clk),
     .lb_addr        (lb_addr[17:0]),
     .lb_write       (lb_write_0),

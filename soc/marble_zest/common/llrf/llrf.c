@@ -11,10 +11,6 @@
     #include <stdio.h>
 #endif
 
-void print_git_rev_id(void) {
-    printf("GIT_REV_ID: %x\n", (uint32_t)read_lb_reg(GIT_REV_ID));
-}
-
 void wait_cbuf_ready(void) {
 #ifndef SIMULATION
     uint32_t count=0;
