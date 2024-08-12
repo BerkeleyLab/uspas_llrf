@@ -73,11 +73,7 @@ always @(posedge dsp_clk) begin
 	arc_permit_in_r <= arc_permit_in;
 end
 
-`ifndef GIT_32BIT_ID
-`define GIT_32BIT_ID 32'hdeadf00d
-`endif
-
-llrf_shell #(.GIT_REV_ID(`GIT_32BIT_ID), .CBUF_AW(11)) dsp (
+llrf_shell #(.CBUF_AW(11)) dsp (
     .lb_clk         (lb_clk),
     .lb_addr        (lb_addr_r),
     .lb_write       (lb_write_r),
