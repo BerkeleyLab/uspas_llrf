@@ -12,9 +12,9 @@ To build CPU program only, use:
 
 # Programming to hardware
 
-In case of multiple FPGA boards are available, an optional arguments of `MARBEL_SERIAL` can be used to specify the target board.
+In case of multiple FPGA boards are available, an optional arguments of `MARBLE_SERIAL` can be used to specify the target board.
 ```bash
-    make system_config MARBEL_SERIAL=42
+    make system_config MARBLE_SERIAL=42
 ```
 
 # Boot-loading firmware
@@ -31,7 +31,7 @@ For boot loading the CPU program after revising the source code,
 
 Or,
 ```bash
-    make system_load MARBEL_SERIAL=42
+    make system_load MARBLE_SERIAL=42
 ```
 
 # Booting log examples
