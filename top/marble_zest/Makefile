@@ -20,8 +20,6 @@ vpath %.c $(BUILD_DIR)
 .PHONY: all system_config system_test clean
 all: $(TARGET)_top.bit
 
-VFLAGS_DEP += -DSKIP_XILINX
-
 IP_EXPAND = $(BSP_DIR)/marble_bsp_expand.v
 IP_EXPAND += $(APP_SOC_SYN_DIR)/system_expand.v
 IP_EXPAND += $(APP_DSP_DIR)/llrf_shell_expand.v

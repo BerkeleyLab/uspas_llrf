@@ -63,7 +63,8 @@ always @(posedge rx_usrclk) begin
     rxcharisk_good <= rxcharisk_out;
 end
 
-`ifndef SKIP_XILINX
+`ifndef SIMULATE
+`ifndef YOSYS
 BUFG rx_bufg (.I(rx_outclk), .O(rx_usrclk));
 assign rx_bufg_outclk = rx_usrclk;
 
@@ -136,6 +137,10 @@ gtx_config gtx_config_i (
 `else
    // Should we set rx_bufg_outclk=0 before a reset?
    // In a yosys-compatible way?
+   assign rx_bufg_outclk = gtx_refclk;
+   assign rx_usrclk = gtx_refclk;
+`endif
+`else
    assign rx_bufg_outclk = gtx_refclk;
    assign rx_usrclk = gtx_refclk;
 `endif

@@ -169,7 +169,8 @@ wire [15:0] vaux_n = ~vaux_p;
 // --------------------------------------------------------------
 //  xadc_pack module
 // --------------------------------------------------------------
-`ifndef SKIP_XILINX
+`ifndef SIMULATE
+`ifndef YOSYS
 xadc_pack #(
     .SIM_MONITOR_FILE("xadc_sim_data.txt"),
     .BASE_ADDR     (BASE_XADC)
@@ -187,6 +188,9 @@ xadc_pack #(
     .mem_packed_fwd( packed_cpu_fwd ),
     .mem_packed_ret( packed_xadc_ret)
 );
+`else
+assign packed_xadc_ret = 0;
+`endif
 `else
 assign packed_xadc_ret = 0;
 `endif
