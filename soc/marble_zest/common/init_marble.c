@@ -2,7 +2,7 @@
 #include "marble.h"
 
 // ----------------------------- ADN4600 -----------------------------
-// 500mV output swing to satisify DS182 table 55
+// 500mV output swing to satisfy DS182 table 55
 t_reg8 adn4600_regmap[] = {
     {0xc0, 0x20},   // TX0
     {0xc1, 0x40},
@@ -57,8 +57,8 @@ t_reg16 ina219_12v_regmap[] = {
 // P0[7:3] = [QSFP1_MOD_SELB, QSFP1_RSTB, QSFP1_MOD_PRS, QSFP1_LPMODE]
 // P1[7:3] = [QSFP2_MOD_SELB, QSFP2_RSTB, QSFP2_MOD_PRS, QSFP2_LPMODE]
 t_reg8 pca9555_u34_regmap[] = {
-    {2, 0x48},  // Output: assert LPMODE, RSTB, dissert MOD_SELB on QSFP1
-    {3, 0x48},  // Output: assert LPMODE, RSTB, dissert MOD_SELB on QSFP2
+    {2, 0x48},  // Output: assert LPMODE, RSTB, deassert MOD_SELB on QSFP1
+    {3, 0x48},  // Output: assert LPMODE, RSTB, deassert MOD_SELB on QSFP2
     {4, 0},
     {5, 0},
     {6, 0x37},  // Config: enable output on RST, LPMODE, MOD_SEL on QSFP1

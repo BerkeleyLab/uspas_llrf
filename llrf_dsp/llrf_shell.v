@@ -543,7 +543,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire pulse_val;
     pulse_gen #(.AW(32)) pulse(
         .clk        (dsp_clk),
-        .trigger    (cbuf_sync),        // syncn with waveform
+        .trigger    (cbuf_sync),        // sync with waveform
         .strobe     (cic_sample),       // CIC_BASE_PERIOD cycles per strobe
         .high_len   (pulse_high_len),   // unit: DSP_CLK_CYCLE * CIC_BASE_PERIOD
         .pulse_out  (pulse_val)

@@ -17,7 +17,7 @@ module pi_scalar #(
 );
 
 localparam [KW:0] full = (1<<KW);
-localparam [KW:0] half = full >> 1; // halfinuity, i.e. 180 deg
+localparam [KW:0] half = full >> 1;  // 180 deg
 
 `define SAT(x,old,new) ((~|x[old:new] | &x[old:new]) ? x[new:0] : {x[old],{new{~x[old]}}})
 
