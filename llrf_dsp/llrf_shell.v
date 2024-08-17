@@ -64,7 +64,13 @@ module llrf_shell #(
     output [2:0]         arc_test_out,
     output               arc_reset_out,
 
-    output               trig_out
+    output               trig_out,
+    // ---------------------
+    // GTX transceiver interface
+    // ---------------------
+    input                gtx_rx_bufg_outclk,
+    input [15:0]         gtx_rxdata_good,
+    input [1:0]          gtx_rxcharisk_good
 );
 
 
@@ -174,10 +180,20 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
  wire [LB_DW-1:0] lb1_data;
  wire [LB_ADW-1:0] lb1_addr;
  wire lb1_write;
-`AUTOMATIC_decode
  data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_1x(
      .clk_in(lb_clk), .gate_in(lb_write), .data_in({lb_addr,lb_data}),
      .clk_out(lb1_clk), .gate_out(lb1_write), .data_out({lb1_addr,lb1_data})
+ );
+
+ // Transfer local bus to evr clk domain:
+ wire lb2_clk = gtx_rx_bufg_outclk;
+ wire [LB_DW-1:0] lb2_data;
+ wire [LB_ADW-1:0] lb2_addr;
+ wire lb2_write;
+`AUTOMATIC_decode
+ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_2x(
+     .clk_in(lb_clk), .gate_in(lb_write), .data_in({lb_addr,lb_data}),
+     .clk_out(lb2_clk), .gate_out(lb2_write), .data_out({lb2_addr,lb2_data})
  );
 
     wire signed [DWLO-1:0] cosd, sind;
@@ -441,6 +457,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // wire lb_slow_read = lb_read && (lb_addr[17:8] == 'b1_0010_0000);  // 0x12000 to 0x120ff
     wire [15:0] lb_slow_rdata;
     wire [15:0] cbuf_stat2_pad = cbuf_stat2;
+    wire [63:0] evr_live_ts;
     slow_bridge_shell #(.AW(7), .DW(DW), .N_CH(N_ADC)) slow_bridge_i (
         .lb_clk         (lb_clk),
         .lb_addr        (lb_addr[6:0]),
@@ -456,7 +473,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .buf_count      (cbuf_count),
         .buf_ready      (llrf_circle_ready),
         .data_in        (adc_data_in),
-        .evr_timestamp  (64'h0),
+        .evr_timestamp  (evr_live_ts),
 
         .slow_snap      (cbuf_transferred),
         .slow_ready     (slow_ready)
@@ -536,6 +553,31 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     assign dac_data_a_out = drive_on1 ? dac_out : 16'h0;
     assign dac_data_b_out = drive_on2 ? dac_out : 16'h0;
 
+    // timing module with EVR
+    wire [15:0] evr_evcnt;
+    wire [0:0]  evr_timestamp_valid;
+    wire [0:0]  evr_live_pps_marker;
+    wire [0:0]  evr_live_hb_marker;
+    timing_core #(.DSP_EV1(`DSP_EV1)) timing // auto lb2
+    (
+        .lb_clk              (lb_clk),
+        .evr_clk             (gtx_rx_bufg_outclk),
+        .evr_rxd             (gtx_rxdata_good),
+        .evr_rxk             (gtx_rxcharisk_good),
+        .evr_evcnt           (evr_evcnt),
+        .evr_timestamp_valid (evr_timestamp_valid),
+        .dsp_clk             (dsp_clk),
+        .dsp_live_ts         (evr_live_ts),
+        // unused: these markers cannot be seen without stretching
+        .dsp_pps_marker      (evr_live_pps_marker),
+        .dsp_hb_marker       (evr_live_hb_marker),
+        // unused
+        .evr_event1          (),
+        .dsp_event1          (),
+        .dsp_event2          (),
+        `AUTOMATIC_timing
+    );
+
     // ---------------------
     // Scalar register readback
     // ---------------------
@@ -583,7 +625,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // ---------------------
     reg [LB_DW-1:0] lb_rdata_r=0;
     reg [LB_ADW-1:0] lb_addr_d1=0;
-    reg [31:0] reg_bank_0=0, reg_bank_1=0;
+    reg [31:0] reg_bank_0=0, reg_bank_1=0, reg_bank_2=0;
     // jit_rad == Just In Time Readout Across Domains
     wire lb_error;
     wire xfer_clk, xfer_strobe, xfer_snap;
@@ -597,8 +639,15 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .xfer_addr(xfer_addr), .xfer_odata(reg_bank_1), .xfer_snap(xfer_snap)
     );
 
-    // LB read mux: Match READ_DELAY=3 in system.v
-    always @(posedge lb_clk) if(lb_read) begin
+    // Want self-consistent readout of all 64 bits of evr_live_ts.
+    // Depends on evr_live_ts_lo being given the xfer_addr[3:0] == 0 slot.
+    // See jit_rad_gateway_demo.v for discussion.
+    wire [31:0] evr_live_ts_lo = evr_live_ts[31:0];
+    reg  [31:0] evr_live_ts_hi = 0;
+    always @(posedge xfer_clk) if (xfer_snap) evr_live_ts_hi = evr_live_ts[63:32];
+
+    // lb_read: Match READ_DELAY=3 in system.v, check timing in simulation
+    always @(posedge lb_clk) if (lb_read) begin
         case (lb_addr[3:0])
             4'h1: reg_bank_0 <= inlk_hi_lb;           // alias: inlk_hi
             4'h2: reg_bank_0 <= inlk_lo_lb;           // alias: inlk_lo
@@ -610,6 +659,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             4'h8: reg_bank_0 <= arc_permit_sum_lb;    // alias: arc_permit_sum
             4'h9: reg_bank_0 <= err_out_amp_lb;       // alias: loop_amp_err
             4'ha: reg_bank_0 <= err_out_phs_lb;       // alias: loop_phs_err
+            4'hb: reg_bank_0 <= evr_evcnt;
+            4'hc: reg_bank_0 <= evr_timestamp_valid;
             default: reg_bank_0 <= 32'hfaceface;
         endcase
     end
@@ -617,14 +668,16 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         case (xfer_addr[3:0])
             // All these signals are in dsp_clk domain
             // (and handled with jit_rad)
-            4'h0: reg_bank_1 <= amp_setpoint_ntw;
-            4'h1: reg_bank_1 <= phs_setpoint_ntw;
-            4'h2: reg_bank_1 <= ntw_cos_debug;
-            4'h3: reg_bank_1 <= ntw_phase_debug;
+            4'h0: reg_bank_1 <= evr_live_ts_lo;
+            4'h1: reg_bank_1 <= evr_live_ts_hi;
+            4'h2: reg_bank_1 <= amp_setpoint_ntw;
+            4'h3: reg_bank_1 <= phs_setpoint_ntw;
+            4'h4: reg_bank_1 <= ntw_cos_debug;
+            4'h5: reg_bank_1 <= ntw_phase_debug;
             default: reg_bank_1 <= 32'hfaceface;
         endcase
     end
-    always @(posedge lb_clk) begin
+    always @(posedge lb_clk) if (lb_read) begin
         lb_addr_d1 <= lb_addr;
         casez (lb_addr_d1)
             18'h3????: lb_rdata_r <= mirror_out_0;
@@ -643,8 +696,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             18'h1c???: lb_rdata_r <= dac_buf_out[0];
             18'h1d???: lb_rdata_r <= dac_buf_out[1];
             18'h2????: lb_rdata_r <= cbuf_out;
-            18'h0000?: lb_rdata_r <= reg_bank_0;
-            18'h0001?: lb_rdata_r <= lb_reg_bank_1;
+            18'h???0?: lb_rdata_r <= reg_bank_0;
+            18'h???1?: lb_rdata_r <= lb_reg_bank_1;
             default:   lb_rdata_r <= 32'hfaceface;
         endcase
     end

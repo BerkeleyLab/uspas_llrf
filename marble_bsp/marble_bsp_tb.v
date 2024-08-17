@@ -6,12 +6,19 @@ localparam LB_ADW     = 18;
 localparam LB_READ_DELAY = 3;
 
 localparam CLK_PERIOD = 8;
+localparam GTX_REF_PERIOD = 7.9936;
 
 // clock generation
 reg clk;
 initial begin
     clk = 0;
     forever #(CLK_PERIOD/2) clk = ~clk;
+end
+// GTX clock generation
+reg gtx_clk;
+initial begin
+    gtx_clk = 0;
+    forever #(GTX_REF_PERIOD/2) gtx_clk = ~gtx_clk;
 end
 
 wire lb_clk = clk;
@@ -79,10 +86,12 @@ wire lb_clk = clk;
     marble_bsp #(
         .LB_READ_DELAY(LB_READ_DELAY)
     ) dut (
-        // Ignore UDP / badger
-        .RGMII_RXD      (4'h0),
-        .RGMII_RX_CTRL  (1'b0),
-        .RGMII_RX_CLK   (1'b0),
+        // Ignore Ethernet / Packet Badger for now
+        .gmii_tx_clk    (1'b0),
+        .gmii_rx_clk    (1'b0),
+        .gmii_rxd       (8'h0),
+        .gmii_rx_dv     (1'b0),
+        .gmii_rx_er     (1'b0),
 
         .FPGA_SCK       (FPGA_SCK),
         .FPGA_CSB       (FPGA_CSB),
@@ -90,8 +99,6 @@ wire lb_clk = clk;
         .FPGA_POCI      (FPGA_POCI),
 
         .clk_locked     (1'b1),
-        .gmii_tx_clk    (1'b0),
-        .gmii_tx_clk90  (1'b0),
         .m_lb_rdata     (32'h0),
 
         .lb_clk         (lb_clk),
@@ -100,10 +107,14 @@ wire lb_clk = clk;
         .lb_read        (lb_read),
         .lb_rvalid      (lb_rvalid),
         .lb_wdata       (lb_wdata),
-        .lb_rdata       (lb_rdata)
+        .lb_rdata       (lb_rdata),
+
+        .gtx_refclk     (gtx_clk),
+        .QSFP2_RXN      (1'b0),
+        .QSFP2_RXP      (1'b0)
     );
 
-    localparam [24:0] SPI_MBOX_BASE=24'h40_000;
+    localparam [24:0] SPI_MBOX_BASE=24'h41_000;
     localparam [3:0]
         MBOX_CONFIG_S = 4'h1,
         MBOX_CONFIG_P = 4'h3,
@@ -112,21 +123,51 @@ wire lb_clk = clk;
 
     // Main procedure
     reg [31:0] rdata = 0;
-    reg fail=0;
+    reg fault, fail=0;
     reg [3:0] test_addr = 8'h2;
-    reg [7:0] test_byte = 8'h13;
+    reg [7:0] test_byte = 8'h15;
     initial begin
         repeat (100) @ (posedge clk);
+        // write through SPI
         mmc_spi_write_task(MBOX_CONFIG_S, 4'h7, 8'h1);
         mmc_spi_write_task(MBOX_CONFIG_W, test_addr, test_byte);
-        $display("Time: %g ns: MBOX write addr: %2d, data: 0x%08x.",
+        $display("Time: %g ns: MBOX write addr: 0x%x, data: 0x%08x.",
             $time, test_addr, test_byte);
-
+        // read through localbus
         lb_read_task(SPI_MBOX_BASE + test_addr, rdata);
-        fail |= (rdata != test_byte);
-        $display("Time: %g ns:    LB read addr: %2d, data: 0x%08x, %s",
-            $time, test_addr, rdata, fail ? "FAIL":"OK");
-        if (!fail) $finish();
+        fault = rdata != test_byte;
+        $display("Time: %g ns:    LB read addr: 0x%x, data: 0x%08x, %s",
+            $time, test_addr, rdata, fault ? "BAD":" OK");
+        fail |= fault;
+
+        // write/read through localbus to mailbox
+        lb_write_task(SPI_MBOX_BASE + test_addr, 8'h30);
+        lb_read_task(SPI_MBOX_BASE + test_addr, rdata);
+        fault = rdata != 8'h30;
+        $display("Time: %g ns:    LB read addr: 0x%x, data: 0x%08x, %s",
+            $time, SPI_MBOX_BASE + test_addr, rdata, fault ? "BAD":" OK");
+        fail |= fault;
+
+        // write/read through localbus to GTX_CPLL_RESET
+        lb_write_task(GTX_CPLL_RESET, 4'h1);
+        lb_read_task(GTX_CPLL_RESET, rdata);
+        fault = rdata != 4'h1;
+        $display("Time: %g ns:    LB read addr: 0x%x, data: 0x%04x, %s",
+            $time, GTX_CPLL_RESET, rdata, fault ? "BAD":" OK");
+        fail |= fault;
+
+        // TODO: Fix me!
+        // read only register through localbus
+        // this is the frequency counter for GTX reference frequency
+        # (GTX_REF_PERIOD * 100);
+        lb_read_task(GTX_REFCLK_FREQUENCY, rdata);
+        fault = rdata > 32'h01005000 || rdata < 32'h01000000;
+        $display("Time: %g ns:    LB read addr: 0x%x, data: 0x%08x, %s",
+            $time, GTX_REFCLK_FREQUENCY, rdata, fault ? "---":" OK");
+        // fail |= fault;
+
+        @(posedge lb_clk);  // just for ease of waveform viewing
+        if (!fail) begin $display("PASS"); $finish(); end
         else $stop();
     end
 

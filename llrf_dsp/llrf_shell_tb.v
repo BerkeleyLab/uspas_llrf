@@ -11,6 +11,7 @@ localparam MAX_SIM          = 8000000;  // ns
 localparam DW               = 16;
 localparam BUF_DWI          = 16;
 localparam CLK_CYCLE        = 8;        // ns
+localparam GTX_RX_CYCLE     = 8;        // ns
 parameter CBUF_AW           = 6;
 parameter CBUF_DW           = 24;
 parameter ADC_BUF_AW        = 3;
@@ -20,7 +21,7 @@ localparam [17:0] ADC0_BUF_ADDR = 18'h14000;
 `define NULL 0
 
 integer cc=0;
-reg lb_clk=0, dsp_clk=0;
+reg lb_clk=0, dsp_clk=0, gtx_rx_clk=0;
 initial begin
     $display("##################################################");
     $display("    ---- Checking llrf_shell.v ----");
@@ -45,6 +46,7 @@ end
     //  Generate Clocks
     // --------------------------------------------------------------
     always #(CLK_CYCLE/2) lb_clk = ~lb_clk;
+    always #(GTX_RX_CYCLE/2) gtx_rx_clk = ~gtx_rx_clk;
     // --------------------------------------------------------------
     //  LocalBus functions
     // --------------------------------------------------------------
@@ -140,6 +142,9 @@ end
     wire [DW-1:0] dac_a_out;
     wire [DW-1:0] dac_b_out;
 
+    wire [15:0] gtx_rxdata_good;
+    wire [1:0] gtx_rxcharisk_good;
+
     llrf_shell #(
         .CIC_BASE_PERIOD(`CIC_BASE_PERIOD),
         .SHIFT_BASE     (`SHIFT_BASE),
@@ -163,8 +168,11 @@ end
 
         .drive_permit_in (1'b1),
         .slow_permit_in (1'b1),
+        .arc_permit_in  (3'b111),
 
-        .arc_permit_in  (3'b111)
+        .gtx_rx_bufg_outclk (gtx_rx_clk),
+        .gtx_rxdata_good    (gtx_rxdata_good),
+        .gtx_rxcharisk_good (gtx_rxcharisk_good)
     );
 
     assign adc_in_flat = {

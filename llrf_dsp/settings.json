@@ -9,7 +9,8 @@
         "SHIFT_INLK":       12,
         "AMP_RX_GAIN":      4.8312645,
         "RX_LO_PHS":        191879,
-        "TX_LO_PHS":        -47662
+        "TX_LO_PHS":        -47662,
+        "DSP_EV1":          5
     },
     "USPAS": {
         "DSP_CLK_CYCLE":    8.7,
@@ -21,7 +22,8 @@
         "SHIFT_INLK":       12,
         "AMP_RX_GAIN":      5.6686486,
         "RX_LO_PHS":        95602,
-        "TX_LO_PHS":        250746
+        "TX_LO_PHS":        250746,
+        "DSP_EV1":          5
     },
     "LEMP": {
         "DSP_CLK_CYCLE":    8.4,
@@ -33,6 +35,7 @@
         "SHIFT_INLK":       13,
         "AMP_RX_GAIN":      6.2280254,
         "RX_LO_PHS":        115720,
-        "TX_LO_PHS":        187245
+        "TX_LO_PHS":        187245,
+        "DSP_EV1":          5
     }
 }

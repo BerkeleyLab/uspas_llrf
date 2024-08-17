@@ -1,14 +1,26 @@
-XILINX_TOOL = VIVADO
 include ../../dir_list.mk
-
 include $(TOP)settings.mk
-include $(BUILD_DIR)/top_rules.mk
-include $(APP_SOC_DIR)/common/common.mk
 
-TARGET = marble_zest
+include $(APP_SOC_DIR)/common/common.mk
+include $(BUILD_DIR)/top_rules.mk
+
+TARGET   = marble_zest
+HARDWARE = marble
+# Connection to swap-git-ID feature; see comments in that file
+GITID_TCL = $(BUILD_DIR)/vivado_tcl/swap_gitid.tcl
+
+# GTX TCL configuration
+GTX_CONFIG: $(BSP_DIR)/gtx_evr_config.tcl
+	tclsh $(BSP_DIR)/gtx_evr_config.tcl $(FSET)
+
+GTX_TCL = $(BSP_DIR)/gtx_evr_config.tcl
+
+vpath %.c $(BUILD_DIR)
 
 .PHONY: all system_config system_test clean
 all: $(TARGET)_top.bit
+
+VFLAGS_DEP += -DSKIP_XILINX
 
 IP_EXPAND = $(BSP_DIR)/marble_bsp_expand.v
 IP_EXPAND += $(APP_SOC_SYN_DIR)/system_expand.v
@@ -54,8 +66,13 @@ top.xdc: $(BOARD_SUPPORT_DIR)/$(HARDWARE)/Marble.xdc pin_map.csv
 system_top.xdc: timing.xdc $(APP_SOC_SYN_DIR)/zest_fmc_dp.xdc top.xdc
 	cat $^ > $@
 
+# Construct an overall (configuration-dependent) .d file.
+$(TARGET)_top.d: $(TARGET)_top.v config_romx.v $(BEDROCK_DIR)/serial_io/gmii_to_rgmii.v $(IP_EXPAND) system_top.xdc $(APP_SOC_SYN_DIR)/system32.dat
+	echo $^ | tr ' ' '\n' > $@
+
 #: Build bitstream
-$(TARGET)_top.bit: system_top.xdc $(TARGET)_top.v config_romx.v $(IP_EXPAND) $(APP_SOC_SYN_DIR)/system32.dat $(GTP_DEPS)
+$(TARGET)_top.bit: $(TARGET)_top.tcl $(GTX_TCL) $(GITID_TCL) $(TARGET)_top.d bit_stamp_mod
+	$(VIVADO_CMD) -source $< -tclargs $(TARGET)_top.d $(FSET) $(HARDWARE) "$(SYNTH_OPT)" $(GITID_TCL) $(GTX_TCL)
 
 IP_ADDRESS = 192.168.19.$(MARBLE_SERIAL)
 
@@ -64,7 +81,7 @@ system_config:
 	openocd \
 	-c "adapter serial $(MARBLE_SN);" \
 	-f marble.cfg \
-	-c "init; xc7_program xc7.tap; pld load 0 $(TARGET)_top.bit; exit"
+	-c "init; xc7_program xc7.tap; pld load 0 $(TARGET)_top.$(GIT_32BIT_ID).bit; exit"
 
 # check Ethernet and system selftest status
 system_test:
@@ -72,10 +89,10 @@ system_test:
 	cd $(TOP)python && \
 	$(PYTHON) test.py leep://$(IP_ADDRESS):803 reg system_bist_pass | awk ' $$2!=00000001 { exit 1 }'
 
-CLEAN += system_top.xdc $(TARGET)_top.bin $(TARGET)_top.bit $(IP_BIT_D)
-CLEAN += $(TARGET)_top.prm
-CLEAN += config_romx.v $(TARGET).json
-CLEAN_DIRS += .Xil _xilinx
+CLEAN += system_top.xdc top.xdc *.bin *.bit $(IP_BIT_D)
+CLEAN += config_romx.v $(TARGET).json topsim.d Vmarble_zest_frame
+CLEAN += $(TARGET)_top.prm bit_stamp_mod $(TARGET)_top.d *.log *.jou
+CLEAN_DIRS += .Xil _xilinx obj_dir
 
 include $(BUILD_DIR)/bottom_rules.mk
 clean::

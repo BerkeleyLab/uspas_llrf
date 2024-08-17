@@ -11,6 +11,7 @@
 #include "zest.h"
 #include "xadc.h"
 #include "llrf.h"
+#include "mgt.h"
 #ifdef SIMULATION
 #include "llrf_regs_addr.h"
 #endif
@@ -75,9 +76,10 @@ int main(void) {
     printf("==== LLRF Init         ==== : %s.\n", pass?"PASS":"FAIL");
     set_llrf_dac_permit(pass);
     set_llrf_bist_pass(pass);
-
+    reset_mgt();
     while(1) {
         handle_ui();
+        check_mgt_align();
     }
 
 #endif
