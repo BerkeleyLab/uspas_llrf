@@ -4,8 +4,15 @@ module marble_zest_top #(
     parameter LB_READ_DELAY=3
 ) (
     // Marble
-    input           GTPREFCLK_P,
-    input           GTPREFCLK_N,
+    input           SYSCLK_P,
+    input           SYSCLK_N,
+
+    input           GTXREFCLK_P,
+    input           GTXREFCLK_N,
+    // QSFP2 channel 3
+    // XXX option to change this?
+    input           QSFP2_RXN,
+    input           QSFP2_RXP,
 
     output [3:0]    RGMII_TXD,
     output          RGMII_TX_CTRL,
@@ -105,16 +112,17 @@ wire gmii_tx_clk90;
 wire idelayctrl_ready;
 wire clk_locked;
 
-wire gtpclk0, gtpclk;
+wire sysclk0, sysclk;
 IBUFDS_GTE2 passi_125(
-    .I(GTPREFCLK_P), .IB(GTPREFCLK_N), .CEB(1'b0), .O(gtpclk0)
+    .I(SYSCLK_P), .IB(SYSCLK_N), .CEB(1'b0), .O(sysclk0)
 );
 // UG472 Figure 1-4
 BUFH passg_125(
-    .I(gtpclk0), .O(gtpclk)
+    .I(sysclk0), .O(sysclk)
 );
 
-// XXX move to system.v
+// Move to system.v?  Gack, no!
+// Rather, push system.v towards being vendor-neutral and easily simulatable.
 wire gmii_tx_clk, gmii_rx_clk;
 xilinx7_clocks #(
     .DIFF_CLKIN("BYPASS"),
@@ -123,7 +131,7 @@ xilinx7_clocks #(
     .DIV0     (8),     // 1 GHz / 8 = 125 MHz
     .DIV1     (5)      // 1 GHz / 5 = 200 MHz
 ) clocks_i(
-    .sysclk_p (gtpclk),
+    .sysclk_p (sysclk),
     .sysclk_n (1'b0),
     .reset    (1'b0),
     .clk_out0 (gmii_tx_clk),
@@ -139,209 +147,50 @@ IDELAYCTRL idelayctrl_inst (
   .RDY        (idelayctrl_ready)
 );
 
-// ---------------------------------
-// Ethernet/UDP bridge
-// ---------------------------------
-
-// localbus master declaration, driven by badger
-wire        m_lb_clk;
-wire        m_lb_write;
-wire        m_lb_read;
-wire        m_lb_rvalid;
-wire [23:0] m_lb_addr;
-wire [31:0] m_lb_wdata;
-wire [31:0] m_lb_rdata;
-wire        m_lb_prefill;
-wire [7:0]  mac_status;
-
-assign clk = m_lb_clk;
-wire lb_prefill = m_lb_prefill;
-
-// localbus declaration
-wire lb_clk = clk;
-wire lb_write;
-wire lb_read;
-wire lb_rvalid;
-wire [21:0] lb_addr;
-wire [31:0] lb_wdata;
-wire [31:0] lb_rdata;
-
-wire [31:0] gpio_z;
-wire rst;
-wire [68:0] mem_packed_fwd;
-wire [32:0] mem_packed_ret;
-wire trap;
-
-reg uart_cts1=0;
-always @(posedge clk) uart_cts1 <= UART_CTS;
-wire uart_cts_r = UART_CTS & ~uart_cts1;
-// keep system in reset before idelayctrl is ready
-wire reset_system = uart_cts_r | ~idelayctrl_ready;
-
-// ----------------------------------
-// PicoRV Subsystem
-// ---------------------------------
-// 22 bit local bus address width
-// 4 bit msb multiplexing
-// 18 bit peripheral address width
-system #(
-    .LB_READ_DELAY(LB_READ_DELAY),
-    .LB_ADW(22),
-    .SYSTEM_HEX_PATH("system32.dat")
-) system_inst (
-    .clk            (clk),
-    .cpu_reset      (reset_system),
-    .gpio_z         (gpio_z),
-    .uart_tx        (UART_TX),
-    .uart_rx        (UART_RX),
-    .trap           (trap ),
-    .lb_write       (m_lb_write),
-    .lb_read        (m_lb_read),
-    .lb_addr        (m_lb_addr[21:0]),
-    .lb_wdata       (m_lb_wdata),
-    .lb_rdata       (m_lb_rdata),
-    .lb_rvalid      (m_lb_rvalid),
-    .lb_merge_write (lb_write),
-    .lb_merge_read  (lb_read),
-    .lb_merge_addr  (lb_addr),
-    .lb_merge_wdata (lb_wdata),
-    .lb_merge_rdata (lb_rdata),
-    .lb_merge_rvalid(lb_rvalid),
-    .rst            (rst),
-    .mem_packed_fwd (mem_packed_fwd),
-    .mem_packed_ret (mem_packed_ret)
+wire gtx_refclk;
+IBUFDS_GTE2 refclk(
+    .I(GTXREFCLK_P), .IB(GTXREFCLK_N), .CEB(1'b0), .O(gtx_refclk)
 );
 
-// Localbus multiplixer
-//     0 to 3ffff: lb_base_0
-// 40000 to 7ffff: lb_base_1
-// 80000 to bffff: lb_base_2
-// c0000 to fffff: lb_base_3
-// ...
-wire [3:0] lb_addr_mux = lb_addr[18+:4];
-wire lb_base_0 = (lb_addr_mux == 4'h0);
-wire lb_base_1 = (lb_addr_mux == 4'h1);
-wire lb_base_2 = (lb_addr_mux == 4'h2);
-wire lb_base_3 = (lb_addr_mux == 4'h3);
-wire lb_write_0 = lb_write & lb_base_0;
-wire lb_write_1 = lb_write & lb_base_1;
-wire lb_write_2 = lb_write & lb_base_2;
-wire lb_write_3 = lb_write & lb_base_3;
-wire lb_read_0  = lb_read & lb_base_0;
-wire lb_read_1  = lb_read & lb_base_1;
-wire lb_read_2  = lb_read & lb_base_2;
-wire lb_read_3  = lb_read & lb_base_3;
-wire [31:0] lb_rdata_0, lb_rdata_1, lb_rdata_2, lb_rdata_3;
-reg [31:0] lb_rdata_r=0;
+wire in_use;  // ignored in synthesis
 
-`ifndef GIT_32BIT_ID
-`define GIT_32BIT_ID 32'hdeadf00d
-`endif
-wire [31:0] git_rev_id = `GIT_32BIT_ID;
-
-wire [15:0] config_rom_out;
-config_romx config_romx(
-    .clk    (lb_clk),
-    .address(lb_addr[10:0]),
-    .data   (config_rom_out)
-);
-
-// marble_zest_top.json:
-// 11-bit ROM address: 0x4000 to 0x47ff
-wire json_rom_sel = (lb_addr[21:11] == 11'b00_0000_0100_0);
-wire git_rev_id_sel = (lb_addr == 22'h0);
-
-always @(*) begin
-    case(lb_addr_mux)
-    4'h0: lb_rdata_r = lb_rdata_0;
-    4'h1: lb_rdata_r = lb_rdata_1;
-    default: lb_rdata_r = 32'hdeaddead;
-    endcase
-end
-assign lb_rdata = git_rev_id_sel ? git_rev_id :
-                    json_rom_sel ? config_rom_out : lb_rdata_r;
-
-// ----------------------------------
-// LLRF Subsystem, @ lb_base_0
-// ---------------------------------
-wire        dsp_clk;
-wire [1:0]  clk_div_out;
-wire [16*8-1:0] adc_out_data;
-wire [7:0]  adc_out_clk;
-wire [15:0] dac_a_out;
-wire [15:0] dac_b_out;
-
-llrf_shell llrf_inst (
-    .lb_clk         (lb_clk),
-    .lb_addr        (lb_addr[17:0]),
-    .lb_write       (lb_write_0),
-    .lb_read        (lb_read_0),
-    .lb_wdata       (lb_wdata),
-    .lb_rdata       (lb_rdata_0),
-    .lb_rvalid      (lb_rvalid),
-    .lb_prefill     (lb_prefill),
-
-    .dsp_clk        (dsp_clk),
-    .adc_data_in    (adc_out_data),
-    .dac_data_a_out (dac_a_out),
-    .dac_data_b_out (dac_b_out),
-
-    .drive_permit_in (1'b1),
-    .slow_permit_in  (1'b1)
-);
-
-// ----------------------------------
-// Marble Board Support (MMC, Badger, GTX, etc.), @ lb_base_1
-// ---------------------------------
-marble_bsp #(
-    .IP(IP), .MAC(MAC), .LB_READ_DELAY(LB_READ_DELAY)
-) marble_inst (
-    .RGMII_TXD      (RGMII_TXD    ),
-    .RGMII_TX_CTRL  (RGMII_TX_CTRL),
-    .RGMII_TX_CLK   (RGMII_TX_CLK ),
-    .RGMII_RXD      (RGMII_RXD    ),
-    .RGMII_RX_CTRL  (RGMII_RX_CTRL),
-    .RGMII_RX_CLK   (RGMII_RX_CLK ),
-    .PHY_RSTN       (PHY_RSTN     ),
-
-    .FPGA_SCK       (FPGA_SCK     ),
-    .FPGA_CSB       (FPGA_CSB     ),
-    .FPGA_PICO      (FPGA_PICO    ),
-    .FPGA_POCI      (FPGA_POCI    ),
-
-    .clk_locked     (clk_locked   ),
-    .gmii_tx_clk    (gmii_tx_clk  ),
+// Don't let the name of this module fool you - it involves chip- and
+// vendor-specific DDR I/O cells.  It's not portable, and simulating it
+// is typically less than helpful.
+wire [7:0] gmii_txd, gmii_rxd;
+wire gmii_tx_en, gmii_tx_er, gmii_rx_dv, gmii_rx_er;
+gmii_to_rgmii #( .in_phase_tx_clk(1)) gmii_to_rgmii_i (
+    .rgmii_txd      (RGMII_TXD),
+    .rgmii_tx_ctl   (RGMII_TX_CTRL),
+    .rgmii_tx_clk   (RGMII_TX_CLK),
+    .rgmii_rxd      (RGMII_RXD),
+    .rgmii_rx_ctl   (RGMII_RX_CTRL),
+    .rgmii_rx_clk   (RGMII_RX_CLK),
+    .gmii_tx_clk    (gmii_tx_clk),
     .gmii_tx_clk90  (gmii_tx_clk90),
-    .gmii_rx_clk    (gmii_rx_clk  ),
-
-    .m_lb_clk       (m_lb_clk     ),
-    .m_lb_addr      (m_lb_addr     ),
-    .m_lb_write     (m_lb_write    ),
-    .m_lb_read      (m_lb_read     ),
-    .m_lb_wdata     (m_lb_wdata    ),
-    .m_lb_rdata     (m_lb_rdata    ),
-    .m_lb_rvalid    (m_lb_rvalid   ),
-    .m_lb_prefill   (m_lb_prefill  ),
-
-    .lb_clk         (lb_clk        ),
-    .lb_addr        (lb_addr[17:0] ),
-    .lb_write       (lb_write_1    ),
-    .lb_read        (lb_read_1     ),
-    .lb_wdata       (lb_wdata      ),
-    .lb_rdata       (lb_rdata_1    ),
-    .lb_rvalid      (lb_rvalid     ),
-    .mac_status     (mac_status    )
+    .gmii_txd       (gmii_txd),
+    .gmii_tx_en     (gmii_tx_en),
+    .gmii_tx_er     (gmii_tx_er),
+    .gmii_rxd       (gmii_rxd),
+    .gmii_rx_clk    (gmii_rx_clk),
+    .gmii_rx_dv     (gmii_rx_dv),
+    .gmii_rx_er     (gmii_rx_er),
+    .clk_div        (1'b0),
+    .idelay_ce      (1'b0),
+    .idelay_value_in(5'b0)
 );
+
+// ---------------------------------
+// Share code with simulation build
+// Includes instantiation of system, llrf_shell, and marble_bsp.
+`include "marble_zest_mid.vh"
+// ---------------------------------
 
 // ---------------------------------
 // Zest Digitizer Board Support
 // ---------------------------------
 `ifndef DSP_FREQ_MHZ
 `define DSP_FREQ_MHZ 115.0
-`endif
-
-`ifndef DAC_INTERP_COEFF_R
-`define DAC_INTERP_COEFF_R 1.0
 `endif
 
 zest #(

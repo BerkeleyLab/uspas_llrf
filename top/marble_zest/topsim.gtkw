@@ -1,0 +1,41 @@
+[timestart] 4
+[size] 1436 855
+[pos] 2036 100
+*-16.823769 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP.
+[treeopen] TOP.marble_zest_frame.
+[treeopen] TOP.marble_zest_frame.marble_inst.
+[treeopen] TOP.marble_zest_frame.system_inst.
+[treeopen] TOP.marble_zest_frame.system_inst.cpu_inst.
+[treeopen] TOP.marble_zest_frame.system_inst.uart_inst0.
+[treeopen] TOP.marble_zest_frame.system_inst.uart_inst0.stream.
+[sst_width] 273
+[signals_width] 249
+[sst_expanded] 1
+[sst_vpaned_height] 363
+@28
+TOP.marble_zest_frame.m_lb_clk
+TOP.marble_zest_frame.m_lb_read
+TOP.marble_zest_frame.m_lb_write
+@22
+TOP.marble_zest_frame.m_lb_addr[23:0]
+TOP.marble_zest_frame.m_lb_wdata[31:0]
+TOP.marble_zest_frame.marble_inst.ether_gmii_i.idata[7:0]
+@28
+TOP.marble_zest_frame.lb_write_0
+TOP.marble_zest_frame.llrf_inst.mirror_write_0
+@22
+TOP.marble_zest_frame.llrf_inst.mirror_out_0[31:0]
+@28
+TOP.marble_zest_frame.system_inst.reset
+TOP.marble_zest_frame.system_inst.trap
+TOP.marble_zest_frame.UART_TX
+TOP.marble_zest_frame.system_inst.uart_inst0.stream.uart_tx_inst.busy
+TOP.marble_zest_frame.system_inst.uart_inst0.stream.uart_tx_inst.output_axis_tready
+TOP.marble_zest_frame.system_inst.uart_inst0.stream.uart_tx_inst.rst
+@22
+TOP.marble_zest_frame.system_inst.uart_inst0.stream.uart_tx_inst.bit_cnt[5:0]
+@28
+TOP.marble_zest_frame.system_inst.cpu_reset
+[pattern_trace] 1
+[pattern_trace] 0

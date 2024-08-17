@@ -1,4 +1,4 @@
-`timescale 1ns / 1ps
+`timescale 1ns / 1ns
 module ntw_analyzer #(
     parameter KW = 18  // signal width
 ) (

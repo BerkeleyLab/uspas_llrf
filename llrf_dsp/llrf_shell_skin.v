@@ -38,6 +38,13 @@ module llrf_skin #(
     output [2:0]         arc_test_out,
     output               arc_reset_out,
 
+    // ---------------------
+    // to EVR interface
+    // ---------------------
+    input                gtx_rx_bufg_outclk,
+    input [15:0]         gtx_rxdata_good,
+    input [1:0]          gtx_rxcharisk_good,
+
     output               trig_out
 );
 
@@ -64,6 +71,14 @@ assign lb_rdata = lb_rdata_r;
 (* magic_cdc *) reg [DW*N_ADC-1:0] adc_data_in_r=0;
 always @(posedge dsp_clk) adc_data_in_r <= adc_data_in;
 
+// EVR
+(* magic_cdc *) reg [15:0] gtx_rxdata_good_r=0;
+(* magic_cdc *) reg [1:0] gtx_rxcharisk_good_r=0;
+always @(posedge gtx_rx_bufg_outclk) begin
+    gtx_rxdata_good_r <= gtx_rxdata_good;
+	gtx_rxcharisk_good_r <= gtx_rxcharisk_good;
+end
+
 (* magic_cdc *) reg drive_permit_in_r=0;
 (* magic_cdc *) reg slow_permit_in_r=0;
 (* magic_cdc *) reg [2:0] arc_permit_in_r=0;
@@ -74,30 +89,34 @@ always @(posedge dsp_clk) begin
 end
 
 llrf_shell #(.CBUF_AW(11)) dsp (
-    .lb_clk         (lb_clk),
-    .lb_addr        (lb_addr_r),
-    .lb_write       (lb_write_r),
-    .lb_read        (lb_read_r),
-    .lb_rvalid      (lb_rvalid_r),
-    .lb_wdata       (lb_wdata_r),
-    .lb_rdata       (lb_rdata_x),
-    .lb_prefill     (lb_prefill_r),
+    .lb_clk             (lb_clk),
+    .lb_addr            (lb_addr_r),
+    .lb_write           (lb_write_r),
+    .lb_read            (lb_read_r),
+    .lb_rvalid          (lb_rvalid_r),
+    .lb_wdata           (lb_wdata_r),
+    .lb_rdata           (lb_rdata_x),
+    .lb_prefill         (lb_prefill_r),
 
-    .dsp_clk        (dsp_clk),
-    .adc_data_in    (adc_data_in_r),
-    .dac_data_a_out (dac_data_a_out),
-    .dac_data_b_out (dac_data_b_out),
+    .dsp_clk            (dsp_clk),
+    .adc_data_in        (adc_data_in_r),
+    .dac_data_a_out     (dac_data_a_out),
+    .dac_data_b_out     (dac_data_b_out),
 
-    .drive_permit_in (drive_permit_in_r),
-    .slow_permit_in  (slow_permit_in_r),
-    .fast_permit_out (fast_permit_out),
-    .hpa_permit_out  (hpa_permit_out),
+    .drive_permit_in    (drive_permit_in_r),
+    .slow_permit_in     (slow_permit_in_r),
+    .fast_permit_out    (fast_permit_out),
+    .hpa_permit_out     (hpa_permit_out),
 
-    .arc_permit_in  (arc_permit_in_r),
-    .arc_test_out   (arc_test_out),
-    .arc_reset_out  (arc_reset_out),
+    .arc_permit_in      (arc_permit_in_r),
+    .arc_test_out       (arc_test_out),
+    .arc_reset_out      (arc_reset_out),
 
-    .trig_out       (trig_out)
+    .gtx_rx_bufg_outclk (gtx_rx_bufg_outclk),
+    .gtx_rxdata_good    (gtx_rxdata_good_r),
+    .gtx_rxcharisk_good (gtx_rxcharisk_good_r),
+
+    .trig_out           (trig_out)
 );
 
 endmodule

@@ -1,15 +1,7 @@
-[*]
-[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Sun Aug 11 22:46:03 2024
-[*]
-[dumpfile] "marble_bsp.vcd"
-[dumpfile_mtime] "Sun Aug 11 22:45:52 2024"
-[dumpfile_size] 254409
-[savefile] "marble_bsp.gtkw"
-[timestart] 538
-[size] 1296 600
+[timestart] 6062
+[size] 1298 644
 [pos] -1 -1
-*-10.408035 3508 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+*-6.474361 6345 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 [markername] AA
 [markername] BB
 [markername] CC
@@ -37,10 +29,10 @@
 [markername] YY
 [markername] ZZ
 [treeopen] marble_bsp_tb.
-[sst_width] 253
-[signals_width] 152
+[sst_width] 256
+[signals_width] 305
 [sst_expanded] 1
-[sst_vpaned_height] 159
+[sst_vpaned_height] 175
 @28
 marble_bsp_tb.clk
 @800200
@@ -76,7 +68,8 @@ marble_bsp_tb.lb_prefill
 -localbus
 @22
 marble_bsp_tb.rdata[31:0]
-@29
+marble_bsp_tb.dut.gtx_refclk_frequency[27:0]
+@28
 marble_bsp_tb.fail
 [pattern_trace] 1
 [pattern_trace] 0

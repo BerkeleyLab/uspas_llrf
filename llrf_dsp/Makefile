@@ -7,7 +7,7 @@ TEST_BENCH  = llrf_shell_tb
 CHECKS      = llrf_shell_check
 
 vpath %.v $(DSP_DIR)
-VFLAGS_DEP += -y$(DSP_DIR) -y$(CORDIC_DIR) -y.
+VFLAGS_DEP += -y$(DSP_DIR) -y$(CORDIC_DIR) -y$(SERIAL_IO_DIR)/EVG_EVR -y.
 VFLAGS_DEP += -I$(AUTOGEN_DIR) -y$(AUTOGEN_DIR)
 VFLAGS_DEP += -I$(BEDROCK_DIR)/localbus -y$(BEDROCK_DIR)/localbus
 VFLAGS += $(VFLAGS_DEP)

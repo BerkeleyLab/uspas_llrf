@@ -1,4 +1,4 @@
-`timescale 1 ns / 1 ps
+`timescale 1ns / 1ns
 
 module system #(
     parameter SYSTEM_HEX_PATH="system32.hex",
@@ -169,6 +169,7 @@ wire [15:0] vaux_n = ~vaux_p;
 // --------------------------------------------------------------
 //  xadc_pack module
 // --------------------------------------------------------------
+`ifndef SKIP_XILINX
 xadc_pack #(
     .SIM_MONITOR_FILE("xadc_sim_data.txt"),
     .BASE_ADDR     (BASE_XADC)
@@ -186,6 +187,9 @@ xadc_pack #(
     .mem_packed_fwd( packed_cpu_fwd ),
     .mem_packed_ret( packed_xadc_ret)
 );
+`else
+assign packed_xadc_ret = 0;
+`endif
 
 // --------------------------------------------------------------
 //  LBL local bus cross bar

@@ -1,16 +1,20 @@
+`define LB_DECODE_marble_bsp
+`include "marble_bsp_auto.vh"
 module marble_bsp #(
     parameter IP ={8'd192, 8'd168, 8'd19, 8'd122},
     parameter MAC = 48'h00105ad155b2,
     parameter LB_READ_DELAY = 3,
     parameter DEFAULT_ENABLE_RX = 1
 ) (
-    // RGMII
-    output [3:0]    RGMII_TXD,
-    output          RGMII_TX_CTRL,
-    output          RGMII_TX_CLK,
-    input [3:0]     RGMII_RXD,
-    input           RGMII_RX_CTRL,
-    input           RGMII_RX_CLK,
+    // GMII (ready for simulation with infrastructure demoed in badger/tests)
+    input           gmii_tx_clk,
+    output [7:0]    gmii_txd,
+    output          gmii_tx_en,
+    output          gmii_tx_er,
+    input           gmii_rx_clk,
+    input [7:0]     gmii_rxd,
+    input           gmii_rx_dv,
+    input           gmii_rx_er,
     output          PHY_RSTN,
 
     // Mailbox SPI
@@ -21,9 +25,8 @@ module marble_bsp #(
 
     // Clocks
     input           clk_locked,
-    input           gmii_tx_clk,
-    input           gmii_tx_clk90,
-    output          gmii_rx_clk,
+    input           gtx_refclk,
+    output          gtx_rx_bufg_outclk,
 
     // lb controller
     output          m_lb_clk,
@@ -44,8 +47,89 @@ module marble_bsp #(
     input [31:0]    lb_wdata,
     output [31:0]   lb_rdata,
 
+    // GTX related
+    input           QSFP2_RXN,
+    input           QSFP2_RXP,
+    output [15:0]   gtx_rxdata_good,
+    output [1:0]    gtx_rxcharisk_good,
+
     // diagnostics
+    output          in_use,
     output [7:0]    mac_status
+);
+
+wire [31:0] lb_data = lb_wdata; // for newad.py
+// GTX reset registers are all async
+// newad-force lb domain
+// reg [0:0] gt_rxreset; top-level
+// reg [0:0] gtx_cpll_reset; top-level
+// reg [0:0] gtx_soft_reset; top-level
+// reg [0:0] gtx_rx_pmareset; top-level
+
+`AUTOMATIC_decode
+
+// this status register is async
+reg [0:0] gtx_cpll_locked=0;
+
+// in gtx_rx_bufg_outclk domain
+reg [0:0] gtx_rx_resetdone=0;
+reg [0:0] gtx_rx_aligned=0;
+reg [1:0] gtx_rx_notintable=0;
+
+wire [27:0] gtx_rx_clk_frequency;
+wire [27:0] gtx_refclk_frequency;
+wire [31:0] us_since_boot;
+// ----------------------------------
+// GTX instance
+// ---------------------------------
+wire rx_resetdone, cpll_locked, rx_aligned;
+wire [1:0] rx_notintable;
+gtx_wrapper #(
+    .QSFP_WI(16),
+    .DEBUG("false")
+) gtx_wrapper_i(
+    .sys_clk        (m_lb_clk),
+    .gtx_refclk     (gtx_refclk),
+    .QSFP2_RXN      (QSFP2_RXN),
+    .QSFP2_RXP      (QSFP2_RXP),
+    .gt_rxreset     (gt_rxreset),
+    .cpll_reset     (gtx_cpll_reset),
+    .soft_reset     (gtx_soft_reset),
+    .rx_pmareset    (gtx_rx_pmareset),
+
+    .rx_bufg_outclk (gtx_rx_bufg_outclk),
+    .rxdata_good    (gtx_rxdata_good),
+    .rxcharisk_good (gtx_rxcharisk_good),
+
+    .rx_resetdone   (rx_resetdone),
+    .rx_aligned     (rx_aligned),
+    .rx_notintable  (rx_notintable),
+    .cpll_locked    (cpll_locked),
+    .us_since_boot  (us_since_boot)
+);
+
+// CDC GTX related
+always @(posedge lb_clk) gtx_rx_resetdone <= rx_resetdone;
+always @(posedge lb_clk) gtx_rx_aligned <= rx_aligned;
+always @(posedge lb_clk) gtx_cpll_locked <= cpll_locked;
+always @(posedge lb_clk) gtx_rx_notintable <= rx_notintable;
+
+// Total miscellaneous
+// See below for mac_status assignment
+reg [7:0] mac_status_r=0;  always @(posedge lb_clk) mac_status_r <= mac_status;
+
+// ---------------------
+// Measure and report GTX RX recovered clock
+// ---------------------
+freq_count #(.refcnt_width (24), .freq_width (28)) fcnt_gtx_rx_clk (
+    .sysclk     (lb_clk),
+    .f_in       (gtx_rx_bufg_outclk),
+    .frequency  (gtx_rx_clk_frequency)
+);
+freq_count #(.refcnt_width (24), .freq_width (28)) fcnt_gtx_refclk (
+    .sysclk     (lb_clk),
+    .f_in       (gtx_refclk),
+    .frequency  (gtx_refclk_frequency)
 );
 
 wire enable_rx;
@@ -78,16 +162,40 @@ mmc_mailbox #(
     .spi_pins_debug     () // {MISO, din, sclk_d1, csb_d1};
 );
 
+// ---------------------
+// Read-only address space decoding
+// ---------------------
+localparam integer LB_ADW = 18;
 reg [31:0] lb_rdata_r=0;
-wire [3:0] lb_addr_mux = lb_addr[12+:4];
+reg [LB_ADW-1:0] lb_addr_d1=0;
+reg [31:0] reg_bank_0=0;
 
-always @(*) begin
-    case(lb_addr_mux)
-    4'h0: lb_rdata_r = {24'h0, mbox_out};
-    4'h1: lb_rdata_r = {24'h0, mac_status};
-    default: lb_rdata_r = 32'hdeaddead;
+// reverse_json_offset: 270336
+always @(posedge lb_clk) if(lb_read) begin
+    case (lb_addr[3:0])
+        4'h1: reg_bank_0 <= mac_status_r;  // alias mac_status
+        4'h2: reg_bank_0 <= gtx_rx_clk_frequency;
+        4'h3: reg_bank_0 <= gtx_refclk_frequency;
+        4'h4: reg_bank_0 <= gtx_rx_resetdone;
+        4'h5: reg_bank_0 <= gtx_rx_aligned;
+        4'h6: reg_bank_0 <= gtx_cpll_locked;
+        4'h7: reg_bank_0 <= gtx_rx_notintable;
+        4'h8: reg_bank_0 <= us_since_boot;
+        default: reg_bank_0 <= 32'hdeadface;
     endcase
 end
+
+// lb_read: Match READ_DELAY=3 in system.v, check timing in simulation
+always @(posedge lb_clk) if (lb_read) begin
+    lb_addr_d1 <= lb_addr;
+    casez (lb_addr_d1)
+        18'h00???: lb_rdata_r <= mirror_out_0;  // automatic address map
+        18'h01???: lb_rdata_r <= mbox_out;
+        18'h0200?: lb_rdata_r <= reg_bank_0;
+        default:   lb_rdata_r <= 32'hfaceface;
+    endcase
+end
+
 assign lb_rdata = lb_rdata_r;
 
 // Keep the PHY's reset pin low for the first 33 ms
@@ -100,29 +208,6 @@ always @(posedge gmii_tx_clk) begin
     if (~clk_locked) phy_rb <= 0;
 end
 assign PHY_RSTN = phy_rb;
-
-wire [7:0] gmii_txd, gmii_rxd;
-wire gmii_tx_en, gmii_tx_er, gmii_rx_dv, gmii_rx_er;
-gmii_to_rgmii #( .in_phase_tx_clk(1)) gmii_to_rgmii_i (
-    .rgmii_txd      (RGMII_TXD),
-    .rgmii_tx_ctl   (RGMII_TX_CTRL),
-    .rgmii_tx_clk   (RGMII_TX_CLK),
-    .rgmii_rxd      (RGMII_RXD),
-    .rgmii_rx_ctl   (RGMII_RX_CTRL),
-    .rgmii_rx_clk   (RGMII_RX_CLK),
-    .gmii_tx_clk    (gmii_tx_clk),
-    .gmii_tx_clk90  (gmii_tx_clk90),
-    .gmii_txd       (gmii_txd),
-    .gmii_tx_en     (gmii_tx_en),
-    .gmii_tx_er     (gmii_tx_er),
-    .gmii_rxd       (gmii_rxd),
-    .gmii_rx_clk    (gmii_rx_clk),
-    .gmii_rx_dv     (gmii_rx_dv),
-    .gmii_rx_er     (gmii_rx_er),
-    .clk_div        (1'b0),
-    .idelay_ce      (1'b0),
-    .idelay_value_in(5'b0)
-);
 
 // localbus master
 wire rx_mon;
@@ -165,7 +250,14 @@ rtefi_blob #(
     .p3_lb_rdata    (m_lb_rdata),
     .p3_lb_prefill  (m_lb_prefill),
     .rx_mon         (rx_mon),
-    .tx_mon         (tx_mon)
+    .tx_mon         (tx_mon),
+
+    .in_use         (in_use)
 );
+
+// Not in a single clock domain, but keep it that way for
+// all-else-fails level debugging, e.g., sending to LEDs on a Pmod.
+// See above for code that captures it for localbus monitoring.
 assign mac_status = {4'h0, tx_heartbeat[26], rx_heartbeat[26], tx_mon, rx_mon};
+
 endmodule

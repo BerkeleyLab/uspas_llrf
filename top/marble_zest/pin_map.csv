@@ -61,8 +61,12 @@ FPGA_MISO  FPGA_POCI
 # Truly special:
 #   125 MHz from U20 CDCM61004 routed through GBX_MUX to any one of four MGT_CLK_* pairs
 #   This configuration is for MGT_CLK_0 (bank 116 MGTREFCLK0)
-set_property -dict {PACKAGE_PIN D6} [get_ports GTPREFCLK_P]
-set_property -dict {PACKAGE_PIN D5} [get_ports GTPREFCLK_N]
+set_property -dict {PACKAGE_PIN D6} [get_ports SYSCLK_P]
+set_property -dict {PACKAGE_PIN D5} [get_ports SYSCLK_N]
+
+# from SI570, (schematic MGT_CLK_2), U2 output 4
+set_property -dict {PACKAGE_PIN F6} [get_ports GTXREFCLK_P]
+set_property -dict {PACKAGE_PIN F5} [get_ports GTXREFCLK_N]
 
 # Special pin properties for RGMII
 # Invalid to flag RGMII_RX_CLK as IOB TRUE

@@ -1,11 +1,16 @@
 include ../dir_list.mk
 include $(BUILD_DIR)/top_rules.mk
+include $(BUILD_DIR)/newad_top_rules.mk
 
 IP_NAME     = marble_bsp
+LB_AW       = 17    # should be LB_HI
+NEWAD_ARGS += -m    # mirror
+NEWAD_ARGS_marble_bsp = -b262144
 TEST_BENCH  = $(IP_NAME)_tb
 CHECKS      = $(IP_NAME)_check
 
 vpath %.v $(DSP_DIR)
+VFLAGS_DEP += -DSKIP_XILINX
 VFLAGS_DEP += -I$(BADGER_DIR) -y$(BADGER_DIR)
 VFLAGS_DEP += -I$(SERIAL_IO_DIR) -y$(SERIAL_IO_DIR) -y$(DSP_DIR) -y.
 VFLAGS_DEP += -y$(FPGA_FAMILY_DIR)/xilinx
@@ -22,6 +27,7 @@ all: $(TEST_BENCH) $(CHECKS)
 
 ##### build.mk
 TEST_BENCH_D      = $(TEST_BENCH:%_tb=$(DEPDIR)/%_tb.d)
+VERILOG_AUTOGEN  += $(AUTOGEN_DIR)/$(IP_NAME)_auto.vh $(AUTOGEN_DIR)/addr_map_$(IP_NAME).vh
 VERILOG_AUTOGEN  += $(AUTOGEN_DIR)/regmap_$(IP_NAME).vh
 RTEFI_CLIENT_LIST = hello.v speed_test.v lb_gateway.v
 include $(BADGER_DIR)/rules.mk
@@ -29,18 +35,29 @@ VERILOG_AUTOGEN  += $(RTEFI_V)
 
 $(DEPDIR)/$(IP_NAME)_tb.d:  $(VERILOG_AUTOGEN)
 
+$(DEPDIR)/$(IP_NAME).d: $(IP_NAME).v $(VERILOG_AUTOGEN)
+	set -e; mkdir -p $(DEPDIR); \
+	$(MAKEDEP) && (printf "$(IP_NAME)_expand.v $@: "; \
+	sort -ur $@.$$$$ | tr '\n' ' '; printf "\n" ) > $@ && rm -f $@.$$$$
+
+$(AUTOGEN_DIR)/%_expand.v: %.v $(AUTOGEN_DIR)/%_auto.vh $(AUTOGEN_DIR)/addr_map_%.vh
+	$(VERILOG) $(VFLAGS_DEP) -E -o$@ $^
+	sed -i '/^$$/d' $@
+
 $(AUTOGEN_DIR)/regmap_%.vh: %.json
 	mkdir -p $(AUTOGEN_DIR); \
 	$(PYTHON) $(BEDROCK_DIR)/localbus/gen_regmap.py -i $< -o $@
 
-$(DEPDIR)/$(IP_NAME).d: $(IP_NAME).v $(VERILOG_AUTOGEN)
-	@set -e; mkdir -p $(DEPDIR); \
-	$(MAKEDEP) && (printf "$(IP_NAME)_expand.v $@: "; \
-	sort -ur $@.$$$$ | tr '\n' ' '; printf "\n" ) > $@ && rm -f $@.$$$$
+$(AUTOGEN_DIR)/scalar_%_regmap.json: $(IP_NAME).v
+	mkdir -p $(AUTOGEN_DIR); \
+	$(PYTHON) $(BUILD_DIR)/reverse_json.py $< > $@
+
+$(IP_NAME).json: $(AUTOGEN_DIR)/regmap_$(IP_NAME).json $(AUTOGEN_DIR)/scalar_$(IP_NAME)_regmap.json static_$(IP_NAME).json
+	$(PYTHON) $(BUILD_DIR)/merge_json.py -o $@ -i $^
 
 # this is to avoid vivado critical warnings about duplicated / redefination of module since they are already in DSP
 EXCLUDE  = $(wildcard $(FPGA_FAMILY_DIR)/xilinx/*.v)
-EXCLUDE += $(addprefix $(DSP_DIR)/, reg_delay.v dpram.v reg_tech_cdc.v)
+EXCLUDE += $(addprefix $(DSP_DIR)/, reg_delay.v dpram.v reg_tech_cdc.v flag_xdomain.v data_xdomain.v freq_gcount.v freq_count.v)
 $(IP_NAME)_expand.v: $(IP_NAME).v #$(DEPDIR)/$(IP_NAME).d
 	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(filter-out $(EXCLUDE),$(filter %.v, $^))
 
@@ -65,4 +82,8 @@ endif
 CLEAN += $(TEST_BENCH)
 CLEAN += $(IP_NAME)_expand.v
 CLEAN += $(RTEFI_CLEAN)
+CLEAN += $(IP_NAME).json
+CLEAN += gtx_config/*.v gtx_config/*.xdc gtx_config/*.vhdl gtx_config/*.xml gtx_config/*.dcp gtx_config/*.xml gtx_config/*.veo
+CLEAN_DIRS += gtx_config/tcl gtx_config/gtx_init gtx_config/doc $(AUTOGEN_DIR)
+
 include $(BUILD_DIR)/bottom_rules.mk
