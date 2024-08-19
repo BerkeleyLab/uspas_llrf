@@ -1,4 +1,5 @@
 include ../dir_list.mk
+include $(TOP)settings.mk
 include $(BUILD_DIR)/top_rules.mk
 include $(BUILD_DIR)/newad_top_rules.mk
 
@@ -26,11 +27,15 @@ all: $(TEST_BENCH) $(CHECKS)
 
 ##### build.mk
 TEST_BENCH_D      = $(TEST_BENCH:%_tb=$(DEPDIR)/%_tb.d)
+VERILOG_AUTOGEN  += settings.vams
 VERILOG_AUTOGEN  += $(AUTOGEN_DIR)/$(IP_NAME)_auto.vh $(AUTOGEN_DIR)/addr_map_$(IP_NAME).vh
 VERILOG_AUTOGEN  += $(AUTOGEN_DIR)/regmap_$(IP_NAME).vh
 RTEFI_CLIENT_LIST = hello.v speed_test.v lb_gateway.v
 include $(BADGER_DIR)/rules.mk
 VERILOG_AUTOGEN  += $(RTEFI_V)
+
+settings.vams: $(APP_DSP_DIR)/settings.json
+	python3 $(APP_DSP_DIR)/scripts/gen_settings.py -f $< -c $(FSET) -o $@
 
 $(DEPDIR)/$(IP_NAME)_tb.d:  $(VERILOG_AUTOGEN)
 
@@ -82,6 +87,7 @@ CLEAN += $(TEST_BENCH)
 CLEAN += $(IP_NAME)_expand.v
 CLEAN += $(RTEFI_CLEAN)
 CLEAN += $(IP_NAME).json
+CLEAN += settings.vams
 CLEAN += gtx_config/*.v gtx_config/*.xdc gtx_config/*.vhdl gtx_config/*.xml gtx_config/*.dcp gtx_config/*.xml gtx_config/*.veo
 CLEAN_DIRS += gtx_config/tcl gtx_config/gtx_init gtx_config/doc $(AUTOGEN_DIR)
 

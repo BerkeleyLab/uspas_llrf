@@ -1,30 +1,28 @@
-`timescale  1ns / 1ns
+`timescale  1ns / 1ps
 
 module marble_bsp_tb;
+`include "settings.vams"
+`include "regmap_marble_bsp.vh"
 
 localparam LB_ADW     = 18;
 localparam LB_READ_DELAY = 3;
-
-localparam CLK_PERIOD = 8;
-localparam GTX_REF_PERIOD = 7.9936;
 
 // clock generation
 reg clk;
 initial begin
     clk = 0;
-    forever #(CLK_PERIOD/2) clk = ~clk;
+    forever #(`DSP_CLK_CYCLE/2) clk = ~clk;
 end
 // GTX clock generation
 reg gtx_clk;
 initial begin
     gtx_clk = 0;
-    forever #(GTX_REF_PERIOD/2) gtx_clk = ~gtx_clk;
+    forever #(`GTX_REF_CLK_CYCLE/2) gtx_clk = ~gtx_clk;
 end
 
 wire lb_clk = clk;
 
     `include "localbus.vh"
-    `include "regmap_marble_bsp.vh"
 
     reg spi_wdata_val=0;
     reg [31:0] spi_wdata=0;
@@ -83,8 +81,12 @@ wire lb_clk = clk;
     // DUT
     // ---------------------
 
+    localparam refcnt_w = 8;
+    localparam freq_thres = 2**refcnt_w * `DSP_CLK_CYCLE/ `GTX_REF_CLK_CYCLE;
+    // Tweak refcnt_w so simulations don't have to run for 16 million cycles to get an answer
     marble_bsp #(
-        .LB_READ_DELAY(LB_READ_DELAY)
+        .LB_READ_DELAY(LB_READ_DELAY),
+        .refcnt_w(refcnt_w)
     ) dut (
         // Ignore Ethernet / Packet Badger for now
         .gmii_tx_clk    (1'b0),
@@ -156,15 +158,14 @@ wire lb_clk = clk;
             $time, GTX_CPLL_RESET, rdata, fault ? "BAD":" OK");
         fail |= fault;
 
-        // TODO: Fix me!
         // read only register through localbus
         // this is the frequency counter for GTX reference frequency
-        # (GTX_REF_PERIOD * 100);
+        # (`GTX_REF_CLK_CYCLE * 100);
         lb_read_task(GTX_REFCLK_FREQUENCY, rdata);
-        fault = rdata > 32'h01005000 || rdata < 32'h01000000;
-        $display("Time: %g ns:    LB read addr: 0x%x, data: 0x%08x, %s",
-            $time, GTX_REFCLK_FREQUENCY, rdata, fault ? "---":" OK");
-        // fail |= fault;
+        fault = rdata > freq_thres + 1 || rdata < freq_thres - 1;
+        $display("Time: %g ns:    LB read addr: 0x%x, data: 0x%08x, %d, %s",
+            $time, GTX_REFCLK_FREQUENCY, rdata, freq_thres, fault ? "BAD":" OK");
+        fail |= fault;
 
         @(posedge lb_clk);  // just for ease of waveform viewing
         if (!fail) begin $display("PASS"); $finish(); end
@@ -176,7 +177,7 @@ wire lb_clk = clk;
             $dumpfile("marble_bsp.vcd");
             $dumpvars(5, marble_bsp_tb);
         end
-        #(400_000 / CLK_PERIOD);
+        #(400_000 / `DSP_CLK_CYCLE);
         $display("Simulation timed-out");
         $display("FAIL");
         $stop();

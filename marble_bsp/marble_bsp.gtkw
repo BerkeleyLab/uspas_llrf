@@ -1,7 +1,7 @@
-[timestart] 6062
+[timestart] 5950000
 [size] 1298 644
 [pos] -1 -1
-*-6.474361 6345 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+*-17.556005 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 [markername] AA
 [markername] BB
 [markername] CC
@@ -68,6 +68,7 @@ marble_bsp_tb.lb_prefill
 -localbus
 @22
 marble_bsp_tb.rdata[31:0]
+@24
 marble_bsp_tb.dut.gtx_refclk_frequency[27:0]
 @28
 marble_bsp_tb.fail

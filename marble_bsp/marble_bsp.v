@@ -1,10 +1,12 @@
 `define LB_DECODE_marble_bsp
+`include "settings.vams"
 `include "marble_bsp_auto.vh"
 module marble_bsp #(
     parameter IP ={8'd192, 8'd168, 8'd19, 8'd122},
     parameter MAC = 48'h00105ad155b2,
     parameter LB_READ_DELAY = 3,
-    parameter DEFAULT_ENABLE_RX = 1
+    parameter DEFAULT_ENABLE_RX = 1,
+    parameter refcnt_w = 24
 ) (
     // GMII (ready for simulation with infrastructure demoed in badger/tests)
     input           gmii_tx_clk,
@@ -121,12 +123,12 @@ reg [7:0] mac_status_r=0;  always @(posedge lb_clk) mac_status_r <= mac_status;
 // ---------------------
 // Measure and report GTX RX recovered clock
 // ---------------------
-freq_count #(.refcnt_width (24), .freq_width (28)) fcnt_gtx_rx_clk (
+freq_count #(.refcnt_width (refcnt_w), .freq_width (28)) fcnt_gtx_rx_clk (
     .sysclk     (lb_clk),
     .f_in       (gtx_rx_bufg_outclk),
     .frequency  (gtx_rx_clk_frequency)
 );
-freq_count #(.refcnt_width (24), .freq_width (28)) fcnt_gtx_refclk (
+freq_count #(.refcnt_width (refcnt_w), .freq_width (28)) fcnt_gtx_refclk (
     .sysclk     (lb_clk),
     .f_in       (gtx_refclk),
     .frequency  (gtx_refclk_frequency)
