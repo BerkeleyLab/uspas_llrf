@@ -95,14 +95,11 @@ module timing_core #(
         .usr_secs(dsp_live_ts[63:32]), .usr_tcks(dsp_live_ts[31:0])
     );
 
-    reg dsp_pps_marker_x = 0;
-    always @(posedge dsp_clk) dsp_pps_marker_x <= evr_pps_marker;
-    assign dsp_pps_marker = dsp_pps_marker_x;
+    flag_xdomain i_pps (.clk1(evr_clk), .flagin_clk1(evr_pps_marker),
+                        .clk2(dsp_clk), .flagout_clk2(dsp_pps_marker));
 
     localparam EVCODE_HEARTBEAT_MARKER = 8'h7A;
-    wire evr_hb_marker_xx = evr_evstrobe[EVCODE_HEARTBEAT_MARKER];
-    reg [31:0] evr_hb_marker_x=0;
-    always @(posedge dsp_clk) evr_hb_marker_x <= evr_hb_marker_xx;
-    assign dsp_hb_marker = evr_hb_marker_x;
+    flag_xdomain i_hb (.clk1(evr_clk), .flagin_clk1(evr_evstrobe[EVCODE_HEARTBEAT_MARKER]),
+                        .clk2(dsp_clk), .flagout_clk2(dsp_hb_marker));
 
 endmodule
