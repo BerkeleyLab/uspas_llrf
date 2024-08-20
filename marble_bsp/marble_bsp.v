@@ -25,6 +25,11 @@ module marble_bsp #(
     input           FPGA_PICO,
     output          FPGA_POCI,
 
+    // SPI boot flash programming port
+    output          BOOT_CS_B,
+    input           BOOT_MISO,
+    output          BOOT_MOSI,
+
     // Clocks
     input           clk_locked,
     input           gtx_refclk,
@@ -211,10 +216,15 @@ always @(posedge gmii_tx_clk) begin
 end
 assign PHY_RSTN = phy_rb;
 
+wire BOOT_CCLK;
+`ifndef SIMULATE
+STARTUPE2 set_cclk(.USRCCLKO(BOOT_CCLK), .USRCCLKTS(1'b0));
+`endif
+
 // localbus master
 wire rx_mon;
 wire tx_mon;
-
+wire blob_in_use, boot_busy;
 rtefi_blob #(
     .ip(IP), .mac(MAC), .p3_read_pipe_len(LB_READ_DELAY)
 ) ether_gmii_i (
@@ -254,8 +264,15 @@ rtefi_blob #(
     .rx_mon         (rx_mon),
     .tx_mon         (tx_mon),
 
-    .in_use         (in_use)
+    .p4_spi_clk     (BOOT_CCLK),
+    .p4_spi_cs      (BOOT_CS_B),
+    .p4_spi_mosi    (BOOT_MOSI),
+    .p4_spi_miso    (BOOT_MISO),
+    .p4_busy        (boot_busy),
+    .in_use         (blob_in_use)
 );
+
+assign in_use = blob_in_use | boot_busy;
 
 // Not in a single clock domain, but keep it that way for
 // all-else-fails level debugging, e.g., sending to LEDs on a Pmod.

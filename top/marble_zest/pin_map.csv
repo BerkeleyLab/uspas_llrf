@@ -17,6 +17,11 @@ RGMII_TXD1    {RGMII_TXD[1]}
 RGMII_TXD2    {RGMII_TXD[2]}
 RGMII_TXD3    {RGMII_TXD[3]}
 
+# QSPI Boot Flash# CCLK doesn't show up as a constrained pin; access via STARTUPE2 primitive instead.
+CFG_FCS    BOOT_CS_B
+CFG_MOSI   BOOT_MOSI
+CFG_DIN    BOOT_MISO
+
 # I2C, shared access with microcontroller
 I2C_FPGA_SDA     I2C_SDA
 I2C_FPGA_SCL     I2C_SCL

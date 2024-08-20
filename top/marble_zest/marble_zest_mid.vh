@@ -191,6 +191,10 @@ marble_bsp #(
     .FPGA_PICO      (FPGA_PICO    ),
     .FPGA_POCI      (FPGA_POCI    ),
 
+    .BOOT_CS_B      (BOOT_CS_B    ),
+    .BOOT_MISO      (BOOT_MISO    ),
+    .BOOT_MOSI      (BOOT_MOSI    ),
+
     .clk_locked     (clk_locked   ),
     .gtx_refclk     (gtx_refclk   ),
     .gtx_rx_bufg_outclk (gtx_rx_bufg_outclk),

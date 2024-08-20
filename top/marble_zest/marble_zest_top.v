@@ -40,6 +40,11 @@ module marble_zest_top #(
     input           FPGA_PICO,
     output          FPGA_POCI,
 
+    // SPI boot flash programming port
+    output          BOOT_CS_B,
+    input           BOOT_MISO,
+    output          BOOT_MOSI,
+
     // Zest
     output          ZEST_ADC_PDWN,
     output          ZEST_ADC_CSB_0,

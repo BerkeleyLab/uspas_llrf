@@ -30,7 +30,7 @@ TEST_BENCH_D      = $(TEST_BENCH:%_tb=$(DEPDIR)/%_tb.d)
 VERILOG_AUTOGEN  += settings.vams
 VERILOG_AUTOGEN  += $(AUTOGEN_DIR)/$(IP_NAME)_auto.vh $(AUTOGEN_DIR)/addr_map_$(IP_NAME).vh
 VERILOG_AUTOGEN  += $(AUTOGEN_DIR)/regmap_$(IP_NAME).vh
-RTEFI_CLIENT_LIST = hello.v speed_test.v lb_gateway.v
+RTEFI_CLIENT_LIST = hello.v speed_test.v lb_gateway.v spi_flash.v
 include $(BADGER_DIR)/rules.mk
 VERILOG_AUTOGEN  += $(RTEFI_V)
 
