@@ -41,7 +41,8 @@ void handle_ui( void ) {
             printf("a    zest ad9653 ADC readings\n");
             printf("f    frequency and phase readings\n");
             printf("w    adc wfm test\n");
-            printf("d    dac alignment\n");
+            printf("d    mailbox test\n");
+            printf("m    print marble\n");
             printf("l    llrf test\n");
             break;
 
@@ -85,7 +86,7 @@ void handle_ui( void ) {
             break;
 
         case 'd':
-            // init_zest_dbg(BASE_ZEST, &zest_init_data);
+            // init_zest_dbg(BASE_ZEST);
             for (ix=6*16; ix<6*16+10; ix++) {  // read page 4
                 // write_lb_reg(LB_MARBLE_SPI_MBOX + ix, 0x1234);
                 dval32 = read_lb_reg(LB_MARBLE_SPI_MBOX + ix);
@@ -99,6 +100,10 @@ void handle_ui( void ) {
             dval32 = read_lb_reg(DDS_MODULO);
             printf("DDS_MODULO = %u\n", dval32);
             dbg_read_slowbuf();
+            break;
+
+        case 'm':
+            print_marble_status();
             break;
 
         // any other key is echoed back
