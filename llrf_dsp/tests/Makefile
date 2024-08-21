@@ -13,7 +13,9 @@ ifeq ($(SIM), verilator)
 	EXTRA_ARGS += -Wno-width
 # to avoid warning on unconnected output pins
 	EXTRA_ARGS += -Wno-pinmissing
-	EXTRA_ARGS += --trace-fst --trace-structs
+# use VCD instead of FST due to:
+# https://github.com/cocotb/cocotb/issues/4074
+	EXTRA_ARGS += --trace --trace-structs
 endif
 
 TOPLEVEL = dsp_core
