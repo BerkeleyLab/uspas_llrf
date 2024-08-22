@@ -6,7 +6,7 @@ make VIVADO_CMD=false || true  # need dependencies for bitfile, not the bitfile 
 DEF_CONFG="-DSIMULATE -DBLOCK_RAM_SIZE=$BLOCK_RAM_SIZE"
 INC_PATHS="-I../../llrf_dsp -I../../marble_bsp/_autogen -I../../llrf_dsp/_autogen"
 SRC_PATHS="-y ../../llrf_dsp -y ../../marble_bsp -y ../../submodules/bedrock/badger -y ../../submodules/bedrock/dsp -y ../../submodules/bedrock/soc/picorv32/gateware -y ../../submodules/bedrock/cordic -y ../../submodules/bedrock/serial_io/EVG_EVR -y ../../submodules/bedrock/localbus -y ../../submodules/bedrock/homeless"
-SRC_V="marble_zest_frame.v config_romx.v ../../soc/marble_zest/common/system.v ../../submodules/bedrock/projects/test_marble_family/mmc_mailbox.v ../../submodules/bedrock/badger/tests/spi_gate.v"
+SRC_V="marble_zest_frame.v config_romx.v ../../soc/marble_zest/common/system.v ../../submodules/bedrock/projects/test_marble_family/mmc_mailbox.v ../../submodules/bedrock/badger/tests/spi_gate.v ../../submodules/bedrock/serial_io/simpleuart.v"
 iverilog -Wall -Wno-timescale -g 2005-sv $DEF_CONFG $INC_PATHS $SRC_PATHS -o /dev/null -Mtopsim.d $SRC_V
 
 TOP_V=$(uniq < topsim.d | grep "\.v$")

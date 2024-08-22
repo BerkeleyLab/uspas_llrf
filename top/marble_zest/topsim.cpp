@@ -41,8 +41,8 @@ int main(int argc, char** argv, char** env) {
 	top->FPGA_SCK = 0;
 	top->FPGA_CSB = 0;
 	top->FPGA_PICO = 0;
-	top->UART_CTS = 0;
-	top->UART_RX = 0;
+	// top->UART_CTS = 0;
+	// top->UART_RX = 0;
 
 	while (/* main_time < 1100 && */ !Verilated::gotFinish()) {
 		main_time += 4;  // Time passes in ticks of 8ns
