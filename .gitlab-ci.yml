@@ -13,6 +13,11 @@ variables:
 
 image: $CONTAINER_IMAGE:master
 
+flake8:
+  stage: test
+  script:
+   - flake8 python/*.py llrf_dsp/regmap/*.py llrf_dsp/scripts/*.py llrf_dsp/tests/*.py
+
 llrf_dsp_test_alsu:
   before_script:
     - cd llrf_dsp
