@@ -85,7 +85,8 @@ system_config:
 system_test:
 	ping -v -c 4 -w 20 $(IP_ADDRESS)
 	cd $(TOP)python && \
-	$(PYTHON) test.py leep://$(IP_ADDRESS):803 reg system_bist_pass | awk ' $$2!=00000001 { exit 1 }'
+       $(PYTHON) test.py leep://$(IP_ADDRESS):803 reg system_bist_pass | awk ' $$2!=00000001 { exit 1 }' && \
+	$(PYTHON) test_evr.py -a $(IP_ADDRESS)
 
 CLEAN += system_top.xdc top.xdc *.bin *.bit $(IP_BIT_D)
 CLEAN += config_romx.v $(TARGET).json topsim.d Vmarble_zest_frame
