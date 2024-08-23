@@ -25,9 +25,9 @@ module llrf_shell #(
     localparam integer DW = 16,
     localparam integer DWLO = 18,
     localparam integer DAVR = 3, // Guard bits to keep in output of mixer
+    localparam integer N_CH = 10,  // N_ADC + N_DAC
     localparam integer N_ADC = 8,
-    localparam integer N_DAC = 2,
-    localparam integer N_CH = 10 // N_ADC + N_DAC
+    localparam integer N_DAC = 2
 ) (
     // ---------------------
     // Localbus interface
