@@ -41,6 +41,7 @@ int main(int argc, char** argv, char** env) {
 	top->FPGA_SCK = 0;
 	top->FPGA_CSB = 0;
 	top->FPGA_PICO = 0;
+	top->BOOT_MISO = 0;
 	// top->UART_CTS = 0;
 	// top->UART_RX = 0;
 
@@ -76,7 +77,7 @@ int main(int argc, char** argv, char** env) {
 	top->final();
 	if (tfp) { tfp->close(); tfp = NULL; }
 
-    //  Coverage analysis (since test passed)
+	// Coverage analysis (since test passed)
 #if VM_COVERAGE
 	Verilated::mkdir("logs");
 	VerilatedCov::write("logs/coverage.dat");

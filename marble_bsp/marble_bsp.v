@@ -27,6 +27,7 @@ module marble_bsp #(
 
     // SPI boot flash programming port
     output          BOOT_CS_B,
+    output          BOOT_CCLK,
     input           BOOT_MISO,
     output          BOOT_MOSI,
 
@@ -241,13 +242,6 @@ always @(posedge gmii_tx_clk) begin
     if (~clk_locked) phy_rb <= 0;
 end
 assign PHY_RSTN = phy_rb;
-
-wire BOOT_CCLK;
-`ifndef SIMULATE
-`ifndef YOSYS
-STARTUPE2 set_cclk(.USRCCLKO(BOOT_CCLK), .USRCCLKTS(1'b0));
-`endif
-`endif
 
 // localbus master
 wire rx_mon;

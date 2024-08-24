@@ -24,6 +24,11 @@ module marble_zest_frame #(
     input           FPGA_CSB,
     input           FPGA_PICO,
     output          FPGA_POCI,
+    // SPI boot flash programming port
+    output          BOOT_CS_B,
+    output          BOOT_CCLK,
+    input           BOOT_MISO,
+    output          BOOT_MOSI,
     // Zest ADC
     input           dsp_clk_p,
     input [127:0]   adc_out_data_p,
@@ -40,8 +45,6 @@ wire clk = gmii_tx_clk;
 wire QSFP2_RXN=0, QSFP2_RXP=0;
 // UART below
 wire UART_CTS, UART_RX, UART_TX;
-// Boot memory
-wire BOOT_CS_B, BOOT_MISO, BOOT_MOSI;
 
 `include "marble_zest_mid.vh"
 

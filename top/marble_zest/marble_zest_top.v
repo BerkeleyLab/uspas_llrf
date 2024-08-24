@@ -157,6 +157,9 @@ IBUFDS_GTE2 refclk(
     .I(GTXREFCLK_P), .IB(GTXREFCLK_N), .CEB(1'b0), .O(gtx_refclk)
 );
 
+wire BOOT_CCLK;
+STARTUPE2 set_cclk(.USRCCLKO(BOOT_CCLK), .USRCCLKTS(1'b0));
+
 wire in_use;  // ignored in synthesis
 
 // Don't let the name of this module fool you - it involves chip- and

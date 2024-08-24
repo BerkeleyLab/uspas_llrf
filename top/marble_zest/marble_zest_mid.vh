@@ -192,6 +192,7 @@ marble_bsp #(
     .FPGA_POCI      (FPGA_POCI    ),
 
     .BOOT_CS_B      (BOOT_CS_B    ),
+    .BOOT_CCLK      (BOOT_CCLK    ),
     .BOOT_MISO      (BOOT_MISO    ),
     .BOOT_MOSI      (BOOT_MOSI    ),
 
