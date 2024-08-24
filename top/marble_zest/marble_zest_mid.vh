@@ -195,6 +195,8 @@ marble_bsp #(
     .BOOT_MISO      (BOOT_MISO    ),
     .BOOT_MOSI      (BOOT_MOSI    ),
 
+    .dsp_clk        (dsp_clk      ),
+    .clk_200        (clk_200      ),
     .clk_locked     (clk_locked   ),
     .gtx_refclk     (gtx_refclk   ),
     .gtx_rx_bufg_outclk (gtx_rx_bufg_outclk),

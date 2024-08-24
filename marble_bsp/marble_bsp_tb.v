@@ -6,21 +6,34 @@ module marble_bsp_tb;
 
 localparam LB_ADW     = 18;
 localparam LB_READ_DELAY = 3;
+`define LB_CLK_CYCLE 8.0
 
-// clock generation
-reg clk;
+// DSP clock generation
+reg dsp_clk;
 initial begin
-    clk = 0;
-    forever #(`DSP_CLK_CYCLE/2) clk = ~clk;
+    dsp_clk = 0;
+    forever #(`DSP_CLK_CYCLE/2) dsp_clk = ~dsp_clk;
 end
 // GTX clock generation
 reg gtx_clk;
 initial begin
     gtx_clk = 0;
+    #(1.1);  // phase shift that might be discovered by phase_diff_evr?
     forever #(`GTX_REF_CLK_CYCLE/2) gtx_clk = ~gtx_clk;
 end
+// 200 MHz clock generation
+reg clk_200;
+initial begin
+    clk_200 = 0;
+    forever #(2.500) clk_200 = ~clk_200;
+end
+// Localbus clock generation
+reg lb_clk;
+initial begin
+    lb_clk = 0;
+    forever #(`LB_CLK_CYCLE/2) lb_clk = ~lb_clk;
+end
 
-wire lb_clk = clk;
 
     `include "localbus.vh"
 
@@ -44,10 +57,10 @@ wire lb_clk = clk;
     );
         begin
             wait (~spi_busy);
-            @ (negedge clk);
+            @ (negedge lb_clk);
             spi_wdata_val = 1'b1;
             spi_wdata = {16'h0, mode, addr, data};
-            @ (negedge clk);
+            @ (negedge lb_clk);
             spi_wdata_val = 1'b0;
             wait (~spi_busy);
         end
@@ -59,7 +72,7 @@ wire lb_clk = clk;
     // ---------------------
 
     spi_engine spi_engine_i (
-        .clk                (clk),
+        .clk                (lb_clk),
         .reset              (1'b0),
         .wdata_val          (spi_wdata_val),
         .wdata              (spi_wdata),
@@ -82,7 +95,7 @@ wire lb_clk = clk;
     // ---------------------
 
     localparam refcnt_w = 8;
-    localparam freq_thres = 2**refcnt_w * `DSP_CLK_CYCLE/ `GTX_REF_CLK_CYCLE;
+    localparam freq_thres = 2**refcnt_w * `LB_CLK_CYCLE / `GTX_REF_CLK_CYCLE;
     // Tweak refcnt_w so simulations don't have to run for 16 million cycles to get an answer
     marble_bsp #(
         .LB_READ_DELAY(LB_READ_DELAY),
@@ -100,8 +113,12 @@ wire lb_clk = clk;
         .FPGA_PICO      (FPGA_PICO),
         .FPGA_POCI      (FPGA_POCI),
 
+        .BOOT_MISO      (1'b0),
+
         .clk_locked     (1'b1),
         .m_lb_rdata     (32'h0),
+        .dsp_clk        (dsp_clk),
+        .clk_200        (clk_200),
 
         .lb_clk         (lb_clk),
         .lb_addr        (lb_addr),
@@ -129,7 +146,7 @@ wire lb_clk = clk;
     reg [3:0] test_addr = 8'h2;
     reg [7:0] test_byte = 8'h15;
     initial begin
-        repeat (100) @ (posedge clk);
+        repeat (100) @ (posedge lb_clk);
         // write through SPI
         mmc_spi_write_task(MBOX_CONFIG_S, 4'h7, 8'h1);
         mmc_spi_write_task(MBOX_CONFIG_W, test_addr, test_byte);
@@ -166,6 +183,8 @@ wire lb_clk = clk;
         $display("Time: %g ns:    LB read addr: 0x%x, data: 0x%08x, %d, %s",
             $time, GTX_REFCLK_FREQUENCY, rdata, freq_thres, fault ? "BAD":" OK");
         fail |= fault;
+
+        # (16000);
 
         @(posedge lb_clk);  // just for ease of waveform viewing
         if (!fail) begin $display("PASS"); $finish(); end

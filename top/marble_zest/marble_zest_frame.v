@@ -29,6 +29,7 @@ module marble_zest_frame #(
     input [127:0]   adc_out_data_p,
     //
     input   gtx_refclk,
+    input   clk_200,
     output  in_use
 );
 

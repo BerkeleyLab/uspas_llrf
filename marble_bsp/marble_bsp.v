@@ -32,6 +32,8 @@ module marble_bsp #(
 
     // Clocks
     input           clk_locked,
+    input           clk_200,
+    input           dsp_clk,
     input           gtx_refclk,
     output          gtx_rx_bufg_outclk,
 
@@ -72,6 +74,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [0:0] gtx_cpll_reset; top-level
 // reg [0:0] gtx_soft_reset; top-level
 // reg [0:0] gtx_rx_pmareset; top-level
+// reg [0:0] gtx_rx_slide_req; top-level
 
 `AUTOMATIC_decode
 
@@ -103,6 +106,7 @@ gtx_wrapper #(
     .cpll_reset     (gtx_cpll_reset),
     .soft_reset     (gtx_soft_reset),
     .rx_pmareset    (gtx_rx_pmareset),
+    .rx_slide_req   (gtx_rx_slide_req),
 
     .rx_bufg_outclk (gtx_rx_bufg_outclk),
     .rxdata_good    (gtx_rxdata_good),
@@ -137,6 +141,27 @@ freq_count #(.refcnt_width (refcnt_w), .freq_width (28)) fcnt_gtx_refclk (
     .sysclk     (lb_clk),
     .f_in       (gtx_refclk),
     .frequency  (gtx_refclk_frequency)
+);
+
+// Measure the phase difference between dsp_clk and evr_clk.
+// Do nothing about it yet, just let people read it through localbus.
+// In the LEMP system, theory says this will be quasi-static,
+// just representing divider state and cable drift.
+localparam PH_DIFF_DW = 13;
+localparam integer  PH_DIFF_ADV = $rtoi((1/`DSP_CLK_CYCLE) / 0.200 * (2**PH_DIFF_DW));
+wire signed [PH_DIFF_DW-1:0] evr_dsp_phsdiff;
+phase_diff #(
+    .adv            (PH_DIFF_ADV),
+    .dw             (PH_DIFF_DW+1)
+) phase_diff_evr (
+    .uclk1          (gtx_rx_bufg_outclk),
+    .ext_div1       (1'b0),
+    .uclk2          (dsp_clk),
+    .ext_div2       (1'b0),
+    .sclk           (clk_200),
+    .rclk           (lb_clk),
+    .dval           (),
+    .phdiff_out     (evr_dsp_phsdiff)
 );
 
 wire enable_rx;
@@ -188,6 +213,7 @@ always @(posedge lb_clk) if(lb_read) begin
         4'h6: reg_bank_0 <= gtx_cpll_locked;
         4'h7: reg_bank_0 <= gtx_rx_notintable;
         4'h8: reg_bank_0 <= us_since_boot;
+        4'h9: reg_bank_0 <= evr_dsp_phsdiff;
         default: reg_bank_0 <= 32'hdeadface;
     endcase
 end
@@ -218,7 +244,9 @@ assign PHY_RSTN = phy_rb;
 
 wire BOOT_CCLK;
 `ifndef SIMULATE
+`ifndef YOSYS
 STARTUPE2 set_cclk(.USRCCLKO(BOOT_CCLK), .USRCCLKTS(1'b0));
+`endif
 `endif
 
 // localbus master
