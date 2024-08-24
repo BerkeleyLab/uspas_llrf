@@ -1,7 +1,7 @@
-[timestart] 5950000
-[size] 1298 644
+[timestart] 13740000
+[size] 1297 743
 [pos] -1 -1
-*-17.556005 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+*-21.389660 18660000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 [markername] AA
 [markername] BB
 [markername] CC
@@ -29,12 +29,12 @@
 [markername] YY
 [markername] ZZ
 [treeopen] marble_bsp_tb.
+[treeopen] marble_bsp_tb.dut.
+[treeopen] marble_bsp_tb.dut.phase_diff_evr.
 [sst_width] 256
 [signals_width] 305
 [sst_expanded] 1
-[sst_vpaned_height] 175
-@28
-marble_bsp_tb.clk
+[sst_vpaned_height] 260
 @800200
 -mmc_spi
 @28
@@ -72,5 +72,23 @@ marble_bsp_tb.rdata[31:0]
 marble_bsp_tb.dut.gtx_refclk_frequency[27:0]
 @28
 marble_bsp_tb.fail
+@24
+marble_bsp_tb.dut.phase_diff_evr.cnt[10:0]
+@420
+marble_bsp_tb.dut.evr_dsp_phsdiff[12:0]
+@28
+marble_bsp_tb.dut.phase_diff_evr.fault
+@200
+-track1
+@28
+marble_bsp_tb.dut.phase_diff_evr.track1.div
+@8024
+marble_bsp_tb.dut.phase_diff_evr.track1.phase[13:0]
+@200
+-track2
+@28
+marble_bsp_tb.dut.phase_diff_evr.track2.div
+@8024
+marble_bsp_tb.dut.phase_diff_evr.track2.phase[13:0]
 [pattern_trace] 1
 [pattern_trace] 0

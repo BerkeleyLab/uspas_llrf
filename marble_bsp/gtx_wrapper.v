@@ -12,6 +12,7 @@ module gtx_wrapper #(
     (*mark_debug=DEBUG*) input cpll_reset,
     (*mark_debug=DEBUG*) input soft_reset,
     (*mark_debug=DEBUG*) input rx_pmareset,
+    (*mark_debug=DEBUG*) input rx_slide_req,
 
     output                   rx_bufg_outclk,
     (*mark_debug=DEBUG*) output rx_resetdone,
@@ -55,6 +56,16 @@ end
 
 assign rx_aligned = rx_isaligned;
 assign rx_notintable = rxnotintable_out;
+
+(*ASYNC_REG="true"*) reg rx_slide_x = 0;
+reg rx_slide_xx = 0, rx_slide_xxx = 0;
+(*mark_debug=DEBUG*) reg rx_slide = 0;
+always @(posedge rx_usrclk) begin
+    rx_slide_x  <= rx_slide_req;
+    rx_slide_xx <= rx_slide_x;
+    rx_slide_xxx <= rx_slide_xx;
+    rx_slide <= rx_slide_xx && !rx_slide_xxx;
+end
 
 // Pass event codes out, only when we are aligned
 wire goodcode = (rx_isaligned && !data_err);
@@ -124,7 +135,7 @@ gtx_config gtx_config_i (
     .gt0_gtrxreset_in        (gt_rxreset), // input wire gt0_gtrxreset_in
     .gt0_rxpmareset_in       (rx_pmareset), // input wire gt0_rxpmareset_in
     //-------------------- Receive Ports - RX gearbox ports --------------------
-    .gt0_rxslide_in          (1'b0), // input wire gt0_rxslide_in
+    .gt0_rxslide_in          (rx_slide), // input wire gt0_rxslide_in
     //------------ Receive Ports -RX Initialization and Reset Ports ------------
     .gt0_rxresetdone_out     (rx_resetdone), // output wire gt0_rxresetdone_out
     //------------------- TX Initialization and Reset Ports --------------------

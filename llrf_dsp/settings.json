@@ -28,7 +28,7 @@
         "DSP_EV1":           5
     },
     "LEMP": {
-        "DSP_CLK_CYCLE":     8.4,
+        "DSP_CLK_CYCLE":     8.404,
         "LO_AMP":            74840,
         "NUM_DDS":           3,
         "DEN_DDS":           14,
@@ -38,7 +38,7 @@
         "AMP_RX_GAIN":       6.2280254,
         "RX_LO_PHS":         115720,
         "TX_LO_PHS":         187245,
-        "GTX_REF_CLK_CYCLE": 8.4033,
+        "GTX_REF_CLK_CYCLE": 8.404,
         "DSP_EV1":           5
     }
 }

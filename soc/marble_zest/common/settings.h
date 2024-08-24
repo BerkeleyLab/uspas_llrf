@@ -27,7 +27,8 @@
 #define GT_RXRESET             0x40000
 #define GTX_CPLL_RESET         0x40001
 #define GTX_RX_PMARESET        0x40002
-#define GTX_SOFT_RESET         0x40003
+#define GTX_RX_SLIDE_REQ       0x40003
+#define GTX_SOFT_RESET         0x40004
 #define LB_MARBLE_SPI_MBOX     0x41000
 #define GTX_RX_CLK_FREQUENCY   0x42002
 #define GTX_REFCLK_FREQUENCY   0x42003
