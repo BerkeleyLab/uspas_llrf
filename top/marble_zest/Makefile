@@ -91,6 +91,7 @@ system_test:
 CLEAN += system_top.xdc top.xdc *.bin *.bit $(IP_BIT_D)
 CLEAN += config_romx.v $(TARGET).json topsim.d Vmarble_zest_frame
 CLEAN += $(TARGET)_top.prm bit_stamp_mod $(TARGET)_top.d *.log *.jou
+CLEAN += topsim_cdc.txt topsim_yosys.json
 CLEAN_DIRS += .Xil _xilinx obj_dir
 
 include $(BUILD_DIR)/bottom_rules.mk

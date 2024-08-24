@@ -150,6 +150,12 @@ gtx_config gtx_config_i (
    // In a yosys-compatible way?
    assign rx_bufg_outclk = gtx_refclk;
    assign rx_usrclk = gtx_refclk;
+   // This test pattern doesn't _do_ anything useful.  Rather, it repesents
+   // signals in the same clock domain as the actual Xilinx hard-silicon,
+   // for the benefit of cdc_snitch.
+   reg [21:0] fake_testpat=1;  // one rotating bit
+   always @(posedge gtx_refclk) fake_testpat <= {fake_testpat[20:0], fake_testpat[0]};
+   assign {rx_notintable, rxcharisk_out, rxdata_out} = fake_testpat;
 `endif
 `else
    assign rx_bufg_outclk = gtx_refclk;
