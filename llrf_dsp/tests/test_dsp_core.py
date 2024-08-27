@@ -94,7 +94,7 @@ class TestLLRF:
         self.log_banner('Close Loop Test')
 
         amp_exp, phs_exp = await self.init_test()
-        amp_exp *= 0.95  # to allow loop headroom
+        amp_exp *= 0.90  # to allow loop headroom
         amp_setp, phs_setp = self.llrf.calc_close_loop_setp(amp_exp, phs_exp)
         self.dut.amp_setpoint.value = amp_setp
         self.dut.phs_setpoint.value = phs_setp

@@ -46,7 +46,7 @@ cocotb_dsp_test:
     - cd llrf_dsp/tests
   stage: test
   script:
-    - make
+    - make RANDOM_SEED=1724518460
 
 llrf_cdc_test:
   before_script:
