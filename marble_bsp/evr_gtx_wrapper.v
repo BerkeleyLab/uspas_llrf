@@ -1,4 +1,4 @@
-module gtx_wrapper #(
+module evr_gtx_wrapper #(
     parameter QSFP_WI = 16,
     parameter DEBUG  = "true"
 ) (
@@ -8,10 +8,7 @@ module gtx_wrapper #(
     input                    QSFP2_RXN,
     input                    QSFP2_RXP,
 
-    (*mark_debug=DEBUG*) input gt_rxreset,
-    (*mark_debug=DEBUG*) input cpll_reset,
     (*mark_debug=DEBUG*) input soft_reset,
-    (*mark_debug=DEBUG*) input rx_pmareset,
     (*mark_debug=DEBUG*) input rx_slide_req,
 
     output                   rx_bufg_outclk,
@@ -20,18 +17,12 @@ module gtx_wrapper #(
     (*mark_debug=DEBUG*) output reg [QSFP_WI-1:0]     rxdata_good = 0,
     (*mark_debug=DEBUG*) output reg [(QSFP_WI/8)-1:0] rxcharisk_good = 0,
     output                   cpll_locked,
-    output  [1:0]            rx_notintable,
-    output  [31:0]           us_since_boot
+    output  [1:0]            rx_notintable
 );
 
-// Timekeeping, used to reset until RX is aligned
-clk_interval_counters #(.CLK_RATE(125000000))
-  clk_icount (
-    .clk(sys_clk),
-    .microseconds_sinceboot(us_since_boot),
-    .seconds_sinceboot(),
-    .PPS()
-);
+// unused ports,GTX IP core uses RX_STARTUP_FSM module to reset
+// see MR #29 for more info
+wire gt_rxreset = 0, cpll_reset = 0, rx_pmareset = 0;
 
 // Receiver alignment detection
 wire rx_fsm_reset_done, cpll_fbclklost;
@@ -44,7 +35,13 @@ localparam COMMA_COUNTER_WIDTH = $clog2(COMMA_COUNTER_RELOAD+1) + 1;
                                                            COMMA_COUNTER_RELOAD;
 wire rx_outclk, rx_usrclk;
 wire rx_isaligned = comma_counter[COMMA_COUNTER_WIDTH-1];
-wire data_err = (rxnotintable_out != 0) || rxcharisk_out[1] || (rxdisperr_out != 0);
+// error when the rxcharisk_out MSB bit is set and rxdata_out[15:8] == 8'hBC
+// Allow commas (SOF, EOP - special ones) in the MSB,
+// since MRF can support the "data protocol" on the dbus
+// see page 18 of the EVG MRF document
+// TODO: maybe can get away with only ((rxnotintable_out != 0) ||
+// (rxdisperr_out != 0)), but needs to be tested
+wire data_err = (rxnotintable_out != 0) || (rxdisperr_out != 0) || ((rxdata_out[15:8] == 8'hBC) && rxcharisk_out[1]);
 always @(posedge rx_usrclk) begin
     if (data_err) begin
         comma_counter <= COMMA_COUNTER_RELOAD;
@@ -79,7 +76,7 @@ end
 BUFG rx_bufg (.I(rx_outclk), .O(rx_usrclk));
 assign rx_bufg_outclk = rx_usrclk;
 
-gtx_config gtx_config_i (
+evr_gtx evr_gtx_i (
     .sysclk_in(sys_clk), // input wire sysclk_in
     .soft_reset_rx_in(soft_reset), // input wire soft_reset_rx_in
     .dont_reset_on_data_error_in(1'b1), // input wire dont_reset_on_data_error_in

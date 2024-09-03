@@ -18,6 +18,7 @@ VFLAGS_DEP += -I$(AUTOGEN_DIR) -y$(AUTOGEN_DIR)
 VFLAGS_DEP += -y$(PICORV_DIR)/gateware  # for spi_engine.v
 VFLAGS_DEP += -I$(BEDROCK_DIR)/localbus -y$(BEDROCK_DIR)/localbus
 VFLAGS_DEP += -y$(PROJECTS_DIR)/test_marble_family -y$(BADGER_DIR)/tests -y$(HOMELESS_DIR)
+VFLAGS_DEP += $(SYNTH_OPT)
 VFLAGS += $(VFLAGS_DEP)
 VFLAGS += -g2012
 
@@ -61,7 +62,7 @@ $(IP_NAME).json: $(AUTOGEN_DIR)/regmap_$(IP_NAME).json $(AUTOGEN_DIR)/scalar_$(I
 
 # this is to avoid vivado critical warnings about duplicated / redefination of module since they are already in DSP
 EXCLUDE  = $(wildcard $(FPGA_FAMILY_DIR)/xilinx/*.v)
-EXCLUDE += $(addprefix $(DSP_DIR)/, reg_delay.v dpram.v reg_tech_cdc.v flag_xdomain.v data_xdomain.v freq_gcount.v freq_count.v)
+EXCLUDE += $(addprefix $(DSP_DIR)/, reg_delay.v dpram.v reg_tech_cdc.v flag_xdomain.v data_xdomain.v freq_gcount.v freq_count.v phase_diff.v phaset.v)
 $(IP_NAME)_expand.v: $(IP_NAME).v #$(DEPDIR)/$(IP_NAME).d
 	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(filter-out $(EXCLUDE),$(filter %.v, $^))
 
@@ -88,7 +89,7 @@ CLEAN += $(IP_NAME)_expand.v
 CLEAN += $(RTEFI_CLEAN)
 CLEAN += $(IP_NAME).json
 CLEAN += settings.vams
-CLEAN += gtx_config/*.v gtx_config/*.xdc gtx_config/*.vhdl gtx_config/*.xml gtx_config/*.dcp gtx_config/*.xml gtx_config/*.veo
-CLEAN_DIRS += gtx_config/tcl gtx_config/gtx_init gtx_config/doc $(AUTOGEN_DIR)
+CLEAN += evr_gtx/*.v evr_gtx/*.xdc evr_gtx/*.vhdl evr_gtx/*.xml evr_gtx/*.dcp evr_gtx/*.xml evr_gtx/*.veo
+CLEAN_DIRS += evr_gtx/tcl evr_gtx/gtx_init evr_gtx/doc $(AUTOGEN_DIR)
 
 include $(BUILD_DIR)/bottom_rules.mk

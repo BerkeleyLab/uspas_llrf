@@ -185,16 +185,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
      .clk_out(lb1_clk), .gate_out(lb1_write), .data_out({lb1_addr,lb1_data})
  );
 
- // Transfer local bus to evr clk domain:
- wire lb2_clk = gtx_rx_bufg_outclk;
- wire [LB_DW-1:0] lb2_data;
- wire [LB_ADW-1:0] lb2_addr;
- wire lb2_write;
 `AUTOMATIC_decode
- data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_2x(
-     .clk_in(lb_clk), .gate_in(lb_write), .data_in({lb_addr,lb_data}),
-     .clk_out(lb2_clk), .gate_out(lb2_write), .data_out({lb2_addr,lb2_data})
- );
 
     wire signed [DWLO-1:0] cosd, sind;
     wire [18:0] dds_phase_acc;
@@ -558,7 +549,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [0:0]  evr_timestamp_valid;
     wire [0:0]  evr_live_pps_marker;
     wire [0:0]  evr_live_hb_marker;
-    timing_core #(.DSP_EV1(`DSP_EV1)) timing // auto lb2
+    wire [0:0]  dsp_event1, dsp_event2;
+    timing_core #(.DSP_EV1(`DSP_EV1), .DSP_EV2(`DSP_EV2)) timing
     (
         .lb_clk              (lb_clk),
         .evr_clk             (gtx_rx_bufg_outclk),
@@ -573,9 +565,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .dsp_hb_marker       (evr_live_hb_marker),
         // unused
         .evr_event1          (),
-        .dsp_event1          (),
-        .dsp_event2          (),
-        `AUTOMATIC_timing
+        .dsp_event1          (dsp_event1),
+        .dsp_event2          (dsp_event2)
     );
 
     // ---------------------
@@ -696,6 +687,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             18'h1c???: lb_rdata_r <= dac_buf_out[0];
             18'h1d???: lb_rdata_r <= dac_buf_out[1];
             18'h2????: lb_rdata_r <= cbuf_out;
+            18'h008??: lb_rdata_r <= 32'h0;  // LEEP old config ROM compatibility
             18'h???0?: lb_rdata_r <= reg_bank_0;
             18'h???1?: lb_rdata_r <= lb_reg_bank_1;
             default:   lb_rdata_r <= 32'hfaceface;

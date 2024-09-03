@@ -11,7 +11,7 @@
 #include "zest.h"
 #include "xadc.h"
 #include "llrf.h"
-#include "mgt.h"
+#include "evr_gtx_wrapper.h"
 #ifdef SIMULATION
 #include "llrf_regs_addr.h"
 #endif
@@ -74,12 +74,15 @@ int main(void) {
     printf("==== ZEST Init         ==== : %s.\n", pass?"PASS":"FAIL");
     pass &= init_llrf(&llrf_init_data);
     printf("==== LLRF Init         ==== : %s.\n", pass?"PASS":"FAIL");
+    pass &= init_evr_gtx();
+    printf("==== EVR Init          ==== : %s.\n", pass?"PASS":"FAIL");
+
     set_llrf_dac_permit(pass);
     set_llrf_bist_pass(pass);
-    reset_mgt();
+
     while(1) {
         handle_ui();
-        check_mgt_align();
+        check_gtx_align();
     }
 
 #endif
