@@ -71,10 +71,7 @@ module marble_bsp #(
 wire [31:0] lb_data = lb_wdata; // for newad.py
 // GTX reset registers are all async
 // newad-force lb domain
-// reg [0:0] gt_rxreset; top-level
-// reg [0:0] gtx_cpll_reset; top-level
 // reg [0:0] gtx_soft_reset; top-level
-// reg [0:0] gtx_rx_pmareset; top-level
 // reg [0:0] gtx_rx_slide_req; top-level
 
 `AUTOMATIC_decode
@@ -89,24 +86,20 @@ reg [1:0] gtx_rx_notintable=0;
 
 wire [27:0] gtx_rx_clk_frequency;
 wire [27:0] gtx_refclk_frequency;
-wire [31:0] us_since_boot;
 // ----------------------------------
 // GTX instance
 // ---------------------------------
 wire rx_resetdone, cpll_locked, rx_aligned;
 wire [1:0] rx_notintable;
-gtx_wrapper #(
+evr_gtx_wrapper #(
     .QSFP_WI(16),
     .DEBUG("false")
-) gtx_wrapper_i(
-    .sys_clk        (m_lb_clk),
+) evr_gtx_wrapper_i(
+    .sys_clk        (lb_clk),
     .gtx_refclk     (gtx_refclk),
     .QSFP2_RXN      (QSFP2_RXN),
     .QSFP2_RXP      (QSFP2_RXP),
-    .gt_rxreset     (gt_rxreset),
-    .cpll_reset     (gtx_cpll_reset),
     .soft_reset     (gtx_soft_reset),
-    .rx_pmareset    (gtx_rx_pmareset),
     .rx_slide_req   (gtx_rx_slide_req),
 
     .rx_bufg_outclk (gtx_rx_bufg_outclk),
@@ -116,8 +109,7 @@ gtx_wrapper #(
     .rx_resetdone   (rx_resetdone),
     .rx_aligned     (rx_aligned),
     .rx_notintable  (rx_notintable),
-    .cpll_locked    (cpll_locked),
-    .us_since_boot  (us_since_boot)
+    .cpll_locked    (cpll_locked)
 );
 
 // CDC GTX related
@@ -213,8 +205,7 @@ always @(posedge lb_clk) if(lb_read) begin
         4'h5: reg_bank_0 <= gtx_rx_aligned;
         4'h6: reg_bank_0 <= gtx_cpll_locked;
         4'h7: reg_bank_0 <= gtx_rx_notintable;
-        4'h8: reg_bank_0 <= us_since_boot;
-        4'h9: reg_bank_0 <= evr_dsp_phsdiff;
+        4'h8: reg_bank_0 <= evr_dsp_phsdiff;
         default: reg_bank_0 <= 32'hdeadface;
     endcase
 end

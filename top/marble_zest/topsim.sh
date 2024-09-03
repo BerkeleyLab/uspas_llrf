@@ -1,6 +1,6 @@
 # substitute for a real build system integration
 set -e
-BLOCK_RAM_SIZE=24576  # match soc/marble_zest/common/common.mk
+BLOCK_RAM_SIZE=32768  # match soc/marble_zest/common/common.mk
 make VIVADO_CMD=false || true  # need dependencies for bitfile, not the bitfile itself
 SYSTEM32=../../soc/marble_zest/synth/system32.dat
 test -r $SYSTEM32 && cp $SYSTEM32 .

@@ -1,8 +1,7 @@
 module timing_core #(
-    parameter LB_CLK_FREQ = 125000000,
-    parameter HARMONIC_N = 304, // Must be divisible by 4
-    parameter DSP_EV1 = 1, // Configurable event code to route to dsp_clk.
-    parameter DSP_EV2 = 2  // N.B: 0 is not a valid event code
+    parameter EVR_EVSTROBE_CNT = 254,  // Max of tinyEVR
+    parameter DSP_EV1 = 1,  // Configurable event code to route to dsp_clk.
+    parameter DSP_EV2 = 2
 ) (
     input             lb_clk,
     // Fiber interface
@@ -11,25 +10,25 @@ module timing_core #(
     input [1:0]       evr_rxk,
 
     // EVR Control interface (@lb_clk)
-    input [31:0]      evr_evmask, // external; Just lower 32 event codes for now
-    output [15:0]     evr_evcnt,
+    output [15:0]     evr_evcnt,  // DSP_EV1
     output            evr_timestamp_valid,
 
     input             dsp_clk,
     output [63:0]     dsp_live_ts,
-    // needs to be stretched????
+
+    // single-cycle in evr_clk domain
+    output            evr_event1,  // DSP_EV1
+
+    // single-cycle in dsp_clk domain
     output            dsp_pps_marker,
     output            dsp_hb_marker,
-
-    output            evr_event1,
-    output            dsp_event1, // DSP_EV1
-    output            dsp_event2  // DSP_EV2
+    output            dsp_event1,  // DSP_EV1
+    output            dsp_event2   // DSP_EV2
 );
 
     // ---------------------
     // Timing Event Receiver (EVR)
     // ---------------------
-    localparam EVR_EVSTROBE_CNT = 126; // As large as the highest event code of interest
     localparam EVR_TSTAMP_WI = 64;
     wire evr_pps_marker, evr_ts_valid_x;
     wire [EVR_TSTAMP_WI-1:0] evr_timestamp_x;
@@ -46,12 +45,12 @@ module timing_core #(
     );
 
     reg evr_ts_valid=0;
-    always @(posedge lb_clk) evr_ts_valid <= evr_ts_valid_x; // Quasi-static
+    always @(posedge lb_clk) evr_ts_valid <= evr_ts_valid_x;  // Quasi-static single-bit
     assign evr_timestamp_valid = evr_ts_valid;
 
     // Event masking and counting in evr_clk domain
     reg [15:0] evr_evcnt_x=0;
-    wire [31:0] evr_evstb_masked = evr_evstrobe[31:0] & ~evr_evmask;
+    wire [EVR_EVSTROBE_CNT-1:0] evr_evstb_masked = evr_evstrobe[EVR_EVSTROBE_CNT-1:0] & (1 << (DSP_EV1-1));
 
     // Start latching events only after timestamp has been recovered successfully to avoid registering
     // partially-decoded events

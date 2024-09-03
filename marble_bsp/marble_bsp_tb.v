@@ -4,9 +4,10 @@ module marble_bsp_tb;
 `include "settings.vams"
 `include "regmap_marble_bsp.vh"
 
-localparam LB_ADW     = 18;
-localparam LB_READ_DELAY = 3;
-`define LB_CLK_CYCLE 8.0
+localparam LB_ADW           = 18;
+localparam LB_READ_DELAY    = 3;
+parameter real LB_CLK_CYCLE      = 8.0;   // ns
+parameter real GTX_REF_CLK_CYCLE = 1000.0 / `EVR_GTX_REF_FREQ_MHZ;  // ns
 
 // DSP clock generation
 reg dsp_clk;
@@ -14,12 +15,14 @@ initial begin
     dsp_clk = 0;
     forever #(`DSP_CLK_CYCLE/2) dsp_clk = ~dsp_clk;
 end
+
+
 // GTX clock generation
 reg gtx_clk;
 initial begin
     gtx_clk = 0;
     #(1.1);  // phase shift that might be discovered by phase_diff_evr?
-    forever #(`GTX_REF_CLK_CYCLE/2) gtx_clk = ~gtx_clk;
+    forever #(GTX_REF_CLK_CYCLE/2) gtx_clk = ~gtx_clk;
 end
 // 200 MHz clock generation
 reg clk_200;
@@ -31,7 +34,7 @@ end
 reg lb_clk;
 initial begin
     lb_clk = 0;
-    forever #(`LB_CLK_CYCLE/2) lb_clk = ~lb_clk;
+    forever #(LB_CLK_CYCLE/2) lb_clk = ~lb_clk;
 end
 
 
@@ -95,7 +98,7 @@ end
     // ---------------------
 
     localparam refcnt_w = 8;
-    localparam freq_thres = 2**refcnt_w * `LB_CLK_CYCLE / `GTX_REF_CLK_CYCLE;
+    localparam freq_thres = 2**refcnt_w * LB_CLK_CYCLE / GTX_REF_CLK_CYCLE;
     // Tweak refcnt_w so simulations don't have to run for 16 million cycles to get an answer
     marble_bsp #(
         .LB_READ_DELAY(LB_READ_DELAY),
@@ -167,17 +170,17 @@ end
             $time, SPI_MBOX_BASE + test_addr, rdata, fault ? "BAD":" OK");
         fail |= fault;
 
-        // write/read through localbus to GTX_CPLL_RESET
-        lb_write_task(GTX_CPLL_RESET, 4'h1);
-        lb_read_task(GTX_CPLL_RESET, rdata);
+        // write/read through localbus to GTX_SOFT_RESET
+        lb_write_task(GTX_SOFT_RESET, 4'h1);
+        lb_read_task(GTX_SOFT_RESET, rdata);
         fault = rdata != 4'h1;
         $display("Time: %g ns:    LB read addr: 0x%x, data: 0x%04x, %s",
-            $time, GTX_CPLL_RESET, rdata, fault ? "BAD":" OK");
+            $time, GTX_SOFT_RESET, rdata, fault ? "BAD":" OK");
         fail |= fault;
 
         // read only register through localbus
         // this is the frequency counter for GTX reference frequency
-        # (`GTX_REF_CLK_CYCLE * 100);
+        # (GTX_REF_CLK_CYCLE * 100);
         lb_read_task(GTX_REFCLK_FREQUENCY, rdata);
         fault = rdata > freq_thres + 1 || rdata < freq_thres - 1;
         $display("Time: %g ns:    LB read addr: 0x%x, data: 0x%08x, %d, %s",

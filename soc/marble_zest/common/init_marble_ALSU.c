@@ -88,8 +88,8 @@ t_reg8 si570_regmap[] = {
     {1, 0xc2},
     {2, 0xbc},
     {3, 0x58},
-    {4, 0x14},
-    {5, 0xbc},
+    {4, 0x19},
+    {5, 0x5f},
 };
 
 const marble_init_t marble_init_data = {
