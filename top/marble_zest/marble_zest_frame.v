@@ -9,9 +9,9 @@ module marble_zest_frame #(
 ) (
     // GMII Input (Rx)
     input gmii_rx_clk,
-    input [7:0] gmii_rxd,
-    input gmii_rx_dv,
-    input gmii_rx_er,
+    input [7:0] gmii_rxd_p,
+    input gmii_rx_dv_p,
+    input gmii_rx_er_p,
     // GMII Output (Tx)
     input gmii_tx_clk,
     output [7:0] gmii_txd,
@@ -32,11 +32,33 @@ module marble_zest_frame #(
     // Zest ADC
     input           dsp_clk_p,
     input [127:0]   adc_out_data_p,
+    // UART Rx results
+    output          b_dv,
+    output [7:0]    b_do,
+    // UART Tx control
+    input           b_we,
+    input [7:0]     b_di,
     //
     input   gtx_refclk,
     input   clk_200,
     output  in_use
 );
+
+// Define RGMII input as being in gmii_rx_clk domain
+(* magic_cdc *) reg [7:0] gmii_rxd=0;
+(* magic_cdc *) reg gmii_rx_dv=0, gmii_rx_er=0;
+always @(posedge gmii_rx_clk) begin
+    gmii_rxd <= gmii_rxd_p;
+    gmii_rx_dv <= gmii_rx_dv_p;
+    gmii_rx_er <= gmii_rx_er_p;
+end
+// UART Tx control uses gmii_tx_clk
+(* magic_cdc *) reg [7:0] b_di_r;
+(* magic_cdc *) reg b_we_r;
+always @(posedge gmii_tx_clk) begin
+    b_di_r <= b_di;
+    b_we_r <= b_we;
+end
 
 wire idelayctrl_ready=1;
 wire clk_locked=1;
@@ -57,18 +79,14 @@ assign adc_out_data = adc_out_data_r;
 assign mem_packed_ret = 0;  // officially in lb_clk (picorv32) domain
 
 // Only hook up the (simulated) FPGA Tx to the debugging Rx device
-wire b_dv;
-wire [7:0] b_do;
 reg uart_resetn=0;
 always @(posedge gmii_tx_clk) uart_resetn <= 1;
 simpleuart uart(.clk(gmii_tx_clk), .resetn(uart_resetn),
-    .ser_rx(UART_TX),
+    .ser_rx(UART_TX), .ser_tx(UART_RX),
     .cfg_divider(20'd1085),  // 115200 baud
     .b_do(b_do), .b_dv(b_dv), .b_re(1'b1),   // results
-    .b_we(1'b0), .b_di(8'b0)
+    .b_we(b_we_r), .b_di(b_di_r)  // we can send, too
 );
 assign UART_CTS = 0;
-assign UART_RX = 0;
-// For now, just use gtkwave to look at b_dv and b_do.
 
 endmodule
