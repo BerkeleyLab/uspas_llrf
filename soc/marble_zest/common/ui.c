@@ -76,9 +76,6 @@ void handle_ui( void ) {
                 pass = check_zest_freq(ix, fcnt_exp[ix]);
                 printf("Freq %d Check: %s", ix, pass ? "PASS\n" : "FAIL\n");
             }
-            // for (ix=0; ix<2; ix++) {
-            //     align_adc_clk_phase(ix, phs_center[ix]);
-            // }
             check_div_clk_phase(2, 0);
             printf("GTX_CPLL_LOCKED:  %s\n", CHECK_BIT(read_lb_reg(GTX_CPLL_LOCKED), 0) ? "OK": "FAIL");
             printf("GTX_RX_RESETDONE: %s\n", CHECK_BIT(read_lb_reg(GTX_RX_RESETDONE), 0) ? "OK": "FAIL");

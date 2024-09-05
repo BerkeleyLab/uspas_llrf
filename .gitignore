@@ -46,3 +46,4 @@ soc/marble_zest/*/system32.dat
 soc/marble_zest/synth/zest_fmc_dp.xdc
 soc/marble_zest/synth/zest_pinmap.txt
 marble_bsp/marble_bsp.json
+marble_bsp/settings.vams
