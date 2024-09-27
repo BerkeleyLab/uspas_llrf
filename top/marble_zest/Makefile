@@ -17,7 +17,7 @@ GTX_TCL = $(BSP_DIR)/gtx_evr_config.tcl
 
 vpath %.c $(BUILD_DIR)
 
-.PHONY: all system_config system_test clean
+.PHONY: all system_config system_test evr_test clean
 all: $(TARGET)_top.bit
 
 IP_EXPAND = $(BSP_DIR)/marble_bsp_expand.v
@@ -36,9 +36,6 @@ $(APP_DSP_DIR)/llrf_shell_expand.v:
 IP_JSON  = $(APP_DSP_DIR)/llrf_shell.json
 IP_JSON += $(BSP_DIR)/marble_bsp.json
 IP_JSON += marble_zest_top.json
-
-$(APP_DSP_DIR)/llrf_shell.json:
-	$(MAKE) -C $(dir $@) $(notdir $@)
 
 $(BSP_DIR)/marble_bsp.json:
 	$(MAKE) -C $(dir $@) $(notdir $@)
@@ -85,14 +82,18 @@ system_config:
 system_test:
 	ping -v -c 4 -w 20 $(IP_ADDRESS)
 	cd $(TOP)python && \
-       $(PYTHON) test.py leep://$(IP_ADDRESS):803 reg system_bist_pass | awk ' $$2!=00000001 { exit 1 }' && \
+       $(PYTHON) test.py leep://$(IP_ADDRESS):803 reg system_bist_pass | awk ' $$2!=00000001 { exit 1 }'
+
+evr_test:
+	cd $(TOP)python && \
 	$(PYTHON) test_evr.py -a $(IP_ADDRESS)
 
 CLEAN += system_top.xdc top.xdc *.bin *.bit $(IP_BIT_D)
 CLEAN += config_romx.v $(TARGET).json topsim.d Vmarble_zest_frame
 CLEAN += $(TARGET)_top.prm bit_stamp_mod $(TARGET)_top.d *.log *.jou
 CLEAN += topsim_cdc.txt topsim_yosys.json
-CLEAN_DIRS += .Xil _xilinx obj_dir
+CLEAN += $(APP_SOC_DIR)/*/*.o
+CLEAN_DIRS += .Xil _xilinx obj_dir bit_stamp_mod.dSYM
 
 include $(BUILD_DIR)/bottom_rules.mk
 clean::

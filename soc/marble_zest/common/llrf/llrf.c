@@ -23,14 +23,14 @@ void wait_cbuf_ready(void) {
 #endif
 }
 
-void write_llrf_regs(const t_lbreg32 *regmap, size_t len) {
+void write_llrf_regs(const lbreg32_t *regmap, size_t len) {
     while ( len-- > 0 ){
         write_lb_reg(regmap->addr, regmap->val);
         regmap++;
     }
 }
 
-bool check_llrf_regs(const t_lbreg32 *regmap, size_t len) {
+bool check_llrf_regs(const lbreg32_t *regmap, size_t len) {
     bool pass = true;
     int32_t temp;
 
@@ -85,7 +85,7 @@ void dbg_read_slowbuf(void) {
     }
 }
 
-bool init_llrf(t_init_llrf_data *init_data) {
+bool init_llrf(init_llrf_data_t *init_data) {
     bool pass;
     write_llrf_regs(init_data->regmap, init_data->len);
     pass = check_llrf_regs(init_data->regmap, init_data->len);

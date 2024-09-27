@@ -17,7 +17,7 @@ def write_init(init_dict, ifname, ofname):
     dsp_name = var_name.split('_')[0]
     cf = '#include "' + dsp_name + '.h"\n'
     cf += '#include "' + dsp_name + '_regs_addr.h"\n'
-    cf += 't_lbreg32 ' + var_name + '[] = {\n'
+    cf += 'lbreg32_t ' + var_name + '[] = {\n'
 
     for k in sorted(init_dict.keys()):
         cf += "   {{{0:36s} {1:8d}}},\n".format(
@@ -26,7 +26,7 @@ def write_init(init_dict, ifname, ofname):
                 # np.bitwise_and(init_dict[k], 0xffffffff)
                 )
     cf += '};\n'
-    cf += 'const t_init_llrf_data llrf_init_data = {'
+    cf += 'const init_llrf_data_t llrf_init_data = {'
 
     cf += '''
     sizeof({}) / sizeof({}[0]),

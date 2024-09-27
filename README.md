@@ -34,12 +34,25 @@ Details see [Digital LLRF for ALS-U](https://arxiv.org/abs/2210.05095).
 |:----------------:|:--------------:|:---------:|:---:|
 |        MO        |                | 2856      | MHz |
 |        IF        |    MO / 112    | 25.5      | MHz |
-|        LO        | MO / 122 * 111 | 2830.5    | MHz |
+|        LO        | MO / 112 * 111 | 2830.5    | MHz |
 |      dsp_clk     |     MO / 24    | 119       | MHz |
 | IF_adc / dsp_clk |     3 / 14     |           |     |
 |      dac_clk     |     MO / 12    | 238       | MHz |
 | IF_dac           | MO / 336 * 11  | 93.5      | MHz |
 | IF_dac / dac_clk |     11 / 28    |           |     |
+
+
+## ANL AWA LLRF settings:
+|    **Signal**    |    **Ratio**   | **Value** |     |
+|:----------------:|:--------------:|:---------:|:---:|
+|        MO        |                | 1300      | MHz |
+|        IF_adc    |    MO / 65     | 20.0      | MHz |
+|        LO        | MO / 65 * 66   | 1320      | MHz |
+|      dsp_clk     |     LO / 14    | 94.28     | MHz |
+| IF_adc / dsp_clk |     7 / 33     |           |     |
+|      dac_clk     |     LO / 7     | 188.6     | MHz |
+| IF_dac           | LO / 264 * 29  | 145.0     | MHz |
+| IF_dac / dac_clk |    203 / 264   |           |     |
 
 
 # LLRF DSP verification

@@ -20,7 +20,7 @@ endif
 
 TOPLEVEL = dsp_core
 MODULE   = test_dsp_core
-TESTCASE = test_alsu,test_uspas,test_lemp
+TESTCASE = test_alsu,test_uspas,test_lemp,test_awa
 
 VERILOG_SOURCES += $(DSP_DIR)/dpram.v $(DSP_DIR)/fiq_interp.v \
 					$(DSP_DIR)/flevel_set.v \

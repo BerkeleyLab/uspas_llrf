@@ -18,7 +18,7 @@
 
 extern marble_init_t marble_init_data;
 extern zest_init_t zest_init_data;
-extern t_init_llrf_data llrf_init_data;
+extern init_llrf_data_t llrf_init_data;
 
 void _putchar( char c ){
     UART_PUTC( BASE_UART0, c );
@@ -74,15 +74,19 @@ int main(void) {
     printf("==== ZEST Init         ==== : %s.\n", pass?"PASS":"FAIL");
     pass &= init_llrf(&llrf_init_data);
     printf("==== LLRF Init         ==== : %s.\n", pass?"PASS":"FAIL");
-    pass &= init_evr_gtx();
-    printf("==== EVR Init          ==== : %s.\n", pass?"PASS":"FAIL");
+    if (marble_init_data.enable_evr_gtx) {
+        pass &= init_evr_gtx();
+        printf("==== EVR Init          ==== : %s.\n", pass?"PASS":"FAIL");
+    }
 
     set_llrf_dac_permit(pass);
     set_llrf_bist_pass(pass);
 
     while(1) {
         handle_ui();
-        check_gtx_align();
+        if (marble_init_data.enable_evr_gtx) {
+            check_gtx_align();
+        }
     }
 
 #endif

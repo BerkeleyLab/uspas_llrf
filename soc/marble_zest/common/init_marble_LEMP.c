@@ -105,5 +105,6 @@ const marble_init_t marble_init_data = {
         .len = ARRAY_SIZE(pca9555_u39_regmap),
         .regmap = pca9555_u39_regmap
     },
-    .si570_freq_hz = 119000000
+    .si570_freq_hz = 119000000,
+    .enable_evr_gtx = true
 };
