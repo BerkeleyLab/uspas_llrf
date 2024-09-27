@@ -9,17 +9,17 @@
 typedef struct {
     uint32_t addr;
     int32_t val;
-} t_lbreg32;
+} lbreg32_t;
 
 typedef struct {
     size_t len;
-    t_lbreg32 *regmap;
-} t_init_llrf_data;
+    lbreg32_t *regmap;
+} init_llrf_data_t;
 
 /***************************************************************************//**
  * @brief Write and check llrf init registers.
 *******************************************************************************/
-bool init_llrf(t_init_llrf_data *init_data);
+bool init_llrf(init_llrf_data_t *init_data);
 
 /***************************************************************************//**
  * @brief Wait for cbuf beinng filled before reading waveform or slow buf.
@@ -31,14 +31,14 @@ void wait_cbuf_ready(void);
  * @param regmap  -  points to known {addr, val} list.
  * @param len     -  length to compare.
 *******************************************************************************/
-bool check_llrf_regs(const t_lbreg32 *regmap, size_t len);
+bool check_llrf_regs(const lbreg32_t *regmap, size_t len);
 
 /***************************************************************************//**
  * @brief Write registers and validate against known value.
  * @param regmap  -  points to known {addr, val} list.
  * @param len     -  length to compare.
 *******************************************************************************/
-void write_llrf_regs(const t_lbreg32 *regmap, size_t len);
+void write_llrf_regs(const lbreg32_t *regmap, size_t len);
 
 /***************************************************************************//**
  * @brief Read lb reg 8 times and return average.

@@ -443,7 +443,7 @@ end
         lb_write_task(INLK_AMP_HI_0, 1.01 * amp_expect * inlk_gain);
         lb_write_task(INLK_AMP_LO_3, 0.99 * AMP_SETP_ADC * inlk_gain);
         lb_write_task(INLK_AMP_HI_3, 1.01 * AMP_SETP_ADC * inlk_gain);
-        #(`DSP_CLK_CYCLE * 20); // wait for settings pass clock domains using cycling wave_cnt
+        #(`DSP_CLK_CYCLE * 30); // wait for settings pass clock domains using cycling wave_cnt
         lb_write_task(INLK_PERMIT_MASK, 10'b00_0000_1001); // look at stimulus and loopback channels
         lb_write_task(INLK_RESET_INLK, 1'b1);
         $display("Inlk: %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s",

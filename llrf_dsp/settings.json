@@ -40,5 +40,19 @@
         "TX_LO_PHS":         187245,
         "DSP_EV1":           151,
         "DSP_EV2":           152
+    },
+    "AWA": {
+        "DSP_CLK_CYCLE":     10.606,
+        "LO_AMP":            74762,
+        "NUM_DDS":           7,
+        "DEN_DDS":           33,
+        "CIC_BASE_PERIOD":   33,
+        "SHIFT_BASE":        4,
+        "SHIFT_INLK":        13,
+        "AMP_RX_GAIN":       6.2015038,
+        "RX_LO_PHS":         114633,
+        "TX_LO_PHS":         190650,
+        "DSP_EV1":           151,
+        "DSP_EV2":           152
     }
 }

@@ -196,3 +196,11 @@ async def test_lemp(dut):
     await tester.test_rx()
     await tester.test_open_loop()
     await tester.test_close_loop()
+
+
+@cocotb.test(timeout_time=30, timeout_unit='us')
+async def test_awa(dut):
+    tester = TestLLRF(dut, f_config='AWA')
+    await tester.test_rx()
+    await tester.test_open_loop()
+    await tester.test_close_loop()

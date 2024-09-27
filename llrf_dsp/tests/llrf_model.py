@@ -9,7 +9,7 @@ class LLRFModel(LLRFModule):
 
         Args:
             conf (str): Application configuration key (aka FSET),
-              in ['LEMP', 'ALSU', 'USPAS']
+              in ['LEMP', 'ALSU', 'USPAS', 'AWA']
             settings_fname (str): configuration json file path
         """
         with open(settings_fname) as f:
