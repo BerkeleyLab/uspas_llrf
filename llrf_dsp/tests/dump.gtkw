@@ -1,15 +1,7 @@
-[*]
-[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Sat Mar 30 03:02:26 2024
-[*]
-[dumpfile] "dump.fst"
-[dumpfile_mtime] "Sat Mar 30 02:59:56 2024"
-[dumpfile_size] 6473232
-[savefile] "dump.gtkw"
 [timestart] 0
-[size] 1296 520
-[pos] 106 -272
-*-24.031155 3680000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+[size] 1258 559
+[pos] -1 -1
+*-24.583441 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 [markername] AA
 [markername] BB
 [markername] CC
@@ -36,18 +28,20 @@
 [markername] XX
 [markername] YY
 [markername] ZZ
-[treeopen] .
-[sst_width] 253
-[signals_width] 242
+[sst_width] 297
+[signals_width] 198
 [sst_expanded] 1
-[sst_vpaned_height] 127
+[sst_vpaned_height] 140
 @8022
 sina[17:0]
 cosa[17:0]
 @8420
 cav_field[15:0]
-@420
-dsp_core.dac_out[15:0]
+@28
+amp_loop_enable
+amp_loop_reset
+phs_loop_enable
+phs_loop_reset
 @8420
 dsp_core.amp_measured[17:0]
 @20000
@@ -56,8 +50,6 @@ dsp_core.amp_measured[17:0]
 dsp_core.phs_measured[17:0]
 @20000
 -
-@22
-dsp_core.field_iq[16:0]
 @8420
 dsp_core.field_i[17:0]
 @20000
@@ -66,11 +58,16 @@ dsp_core.field_i[17:0]
 dsp_core.field_q[17:0]
 @20000
 -
-@28
-amp_loop_enable
-amp_loop_reset
 @420
 dsp_core.rx_phase_offset[18:0]
 dsp_core.tx_phase_offset[18:0]
+@8420
+dsp_core.drive_i[17:0]
+@20000
+-
+@8420
+dsp_core.drive_q[17:0]
+@20000
+-
 [pattern_trace] 1
 [pattern_trace] 0

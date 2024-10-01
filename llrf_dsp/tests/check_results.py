@@ -12,3 +12,4 @@ if __name__ == "__main__":
         for testcase in testsuite.iter("testcase"):
             for failure in testcase.iter("failure"):
                 raise Exception(f'{testcase.get("name")}: Test Failed.')
+    print("PASS")

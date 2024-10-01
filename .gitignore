@@ -3,7 +3,7 @@
 *.fst
 *results.xml
 *sim_build/
-*csr.csv
+*.ipynb_checkpoints/
 .vscode/
 *_tb
 *__pycache__
