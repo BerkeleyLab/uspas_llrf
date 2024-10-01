@@ -13,9 +13,7 @@ ifeq ($(SIM), verilator)
 	EXTRA_ARGS += -Wno-width
 # to avoid warning on unconnected output pins
 	EXTRA_ARGS += -Wno-pinmissing
-# use VCD instead of FST due to:
-# https://github.com/cocotb/cocotb/issues/4074
-	EXTRA_ARGS += --trace --trace-structs
+	EXTRA_ARGS += --trace --trace-fst --trace-structs
 endif
 
 TOPLEVEL = dsp_core
@@ -44,6 +42,10 @@ include $(shell cocotb-config --makefiles)/Makefile.sim
 
 $(APP_DSP_DIR)/cordicg_b22.v: $(CORDIC_DIR)/cordicgx.py
 	python3 $< 22 $@
+
+# Just running "make" should run all the cocotb tests, finally printing "PASS".
+# It should also leave produce the file dump.fst.  Take a look with
+#   gtkwave dump.fst dump.gtkw
 
 clean::
 	rm -f results.xml

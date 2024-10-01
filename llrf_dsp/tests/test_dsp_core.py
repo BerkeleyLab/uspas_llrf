@@ -4,7 +4,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, ClockCycles, Timer
 from cocotb.handle import SimHandleBase
 from llrf_model import LLRFModel
-from plant import PlantSimple
+from plant import Plant
 import itertools
 import random
 import logging
@@ -13,10 +13,11 @@ import logging
 class TestLLRF:
     def __init__(self, dut: SimHandleBase,
                  f_config='USPAS', settings_fname='../settings.json'):
+        dut._log.setLevel(logging.INFO)
         self.dut = dut
         self.llrf = LLRFModel(conf=f_config, settings_fname=settings_fname)
-        self.plant = PlantSimple()
-        dut._log.setLevel(logging.INFO)
+        self.plant = Plant(
+            conf=f_config, settings_fname='cavity.json', llrf=self.llrf)
         self.log_banner(f'Simulating: {f_config}')
         rx_phase_off_reg = self.encode_phase(self.llrf.rx.phase_off_deg)
         tx_phase_off_reg = self.encode_phase(self.llrf.tx.phase_off_deg)
@@ -28,7 +29,7 @@ class TestLLRF:
         self.dut._log.info(
             f'RX phase off: {rx_phase_off_reg:8d} cnt; '
             f'TX phase off: {tx_phase_off_reg:8d} cnt')
-        # validate settings.json against calculcated values
+        # validate settings.json against calculated values
         assert rx_phase_off_reg == self.llrf.RX_LO_PHS, "Unexpected RX_LO_PHS."
         assert tx_phase_off_reg == self.llrf.TX_LO_PHS, "Unexpected TX_LO_PHS."
         clock = Clock(self.dut.clk, self.llrf.DSP_CLK_CYCLE, units="ns")
@@ -69,7 +70,7 @@ class TestLLRF:
     async def test_rx(self, wait=130) -> None:
         self.log_banner('RX Test')
         self.dut._log.info(f'LLRFModel RX:\n{self.llrf.rx}')
-        # validate settings.json against calculcated values
+        # validate settings.json against calculated values
         assert -0.0001 < self.llrf.AMP_RX_GAIN - np.abs(self.llrf.rx.gain) \
             < 0.0001, "Unexpected AMP_RX_GAIN."
 
@@ -92,6 +93,7 @@ class TestLLRF:
 
     async def test_close_loop(self, wait=2020) -> None:
         self.log_banner('Close Loop Test')
+        self.dut._log.info(f'Cavity Model:\n{self.plant.cav}')
 
         amp_exp, phs_exp = await self.init_test()
         amp_exp *= 0.90  # to allow loop headroom
@@ -115,10 +117,10 @@ class TestLLRF:
         await RisingEdge(self.dut.clk)
         self.dut.amp_loop_reset.value = 1
         self.dut.phs_loop_reset.value = 1
-        self.dut.Kp_amp.value = 8000
-        self.dut.Kp_phs.value = 20000
-        self.dut.Ki_amp.value = 300
-        self.dut.Ki_phs.value = 400
+        self.dut.Kp_amp.value = 80
+        self.dut.Kp_phs.value = 80
+        self.dut.Ki_amp.value = 200
+        self.dut.Ki_phs.value = 500
         await RisingEdge(self.dut.clk)
         self.dut.amp_loop_enable.value = 1
         self.dut.phs_loop_enable.value = 1
@@ -142,14 +144,16 @@ class TestLLRF:
 
     async def loopback(self) -> None:
         while True:
-            await Timer(0, 'ns')  # zero delay cable
-            self.dut.cav_field.value = self.dut.dac_out.value.signed_integer
+            await RisingEdge(self.dut.clk)
+            self.dut.cav_field.setimmediatevalue(
+                self.dut.dac_out.value.signed_integer)
 
     async def feedback(self) -> None:
         while True:
             await self.plant.i_queue.put(self.dut.dac_out.value.signed_integer)
             await Timer(2, 'ns')  # delay by cable
-            self.dut.cav_field.value = int(await self.plant.o_queue.get())
+            y = int(await self.plant.o_queue.get())
+            self.dut.cav_field.value = min(max(y, -32678), 32767)
 
     async def check_sig(self, amp_exp, phs_exp) -> None:
         self.dut._log.info(

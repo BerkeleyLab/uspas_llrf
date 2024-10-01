@@ -49,7 +49,7 @@ llrf_dsp_test_awa:
 cocotb_dsp_test:
   before_script:
     - apt-get install verilator
-    - pip install numpy scipy cocotb pytest
+    - pip install numpy scipy cocotb==1.9.1 pytest
     - cd llrf_dsp/tests
   stage: test
   script:
