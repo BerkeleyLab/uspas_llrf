@@ -30,7 +30,7 @@ SRCS  +=  $(MARBLE_DIR)/firmware/marble.c
 SRCS  +=  $(ZEST_DIR)/firmware/zest.c
 SRCS  +=  init_zest_$(FSET).c
 SRCS  +=  init_marble_$(FSET).c
-OBJS  =  $(subst .c,.o,$(filter %.c, $(SRCS))) startup.o
+OBJS  =  $(subst .c,.o,$(filter %.c, $(SRCS))) startup_irq.o
 
 #size of the blockRam [bytes]
 BLOCK_RAM_SIZE  = 32768

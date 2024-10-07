@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "settings.h"
+#include "irqs.h"
 #include "printf.h"
 #include "uart.h"
 #include "i2c_soft.h"
@@ -20,12 +21,26 @@ extern marble_init_t marble_init_data;
 extern zest_init_t zest_init_data;
 extern init_llrf_data_t llrf_init_data;
 
-void _putchar( char c ){
+void _putchar(char c){
     UART_PUTC( BASE_UART0, c );
+}
+
+volatile char last_char=0;
+uint32_t *irq(uint32_t *regs, uint32_t irqs)
+{
+    if (irqs & (1 << IRQ_UART0_RX)) {
+        // Ctrl + T = reset
+        last_char = UART_GETC(BASE_UART0);
+        if (last_char == 0x14) {
+            _picorv32_irq_reset();
+        }
+    }
+    return regs;
 }
 
 void init(void) {
     UART_INIT( BASE_UART0, BOOTLOADER_BAUDRATE );       // Debug print (USB serial)
+    _picorv32_irq_enable(1 << IRQ_UART0_RX);
     // GPIO pin config
     SET_GPIO1( BASE_GPIO, GPIO_OE_REG, PIN_PCA9548_RST, 1 );// Drive PCA9548 RESET pin
     SET_GPIO8( BASE_GPIO, GPIO_OE_REG, 3, 0xFF );       // Drive LEDs
@@ -83,10 +98,15 @@ int main(void) {
     set_llrf_bist_pass(pass);
 
     while(1) {
-        handle_ui();
+        if (last_char)
+            console(last_char);
+        last_char = 0;
+
         if (marble_init_data.enable_evr_gtx) {
             check_gtx_align();
         }
+        // 20 Hz cycle time
+        DELAY_US(50000);
     }
 
 #endif

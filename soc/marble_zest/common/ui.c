@@ -17,25 +17,15 @@
 extern zest_init_t zest_init_data;
 extern marble_dev_t marble;
 
-void handle_ui( void ) {
+void console(char c) {
     uint32_t *fcnt_exp = zest_init_data.fcnt_exp;
     // int8_t *phs_center = zest_init_data.phs_center;
-    uint16_t tempC = UART_GETC( BASE_UART0 );
     int16_t dval;
     int32_t dval32;
     bool pass;
     size_t ix;
 
-    if ( !UART_IS_DATA_OK( tempC ) ){
-        return;
-    }
-
-    switch( tempC ){
-        case 0x14:   // Ctrl+T
-            printf("Rebooting...\n");
-            __asm__ volatile ("J 0");
-            break;
-
+    switch(c){
         case '?':
             printf("?    Help\n");
             printf("r    marble ina219, xadc, qsfp\n");
@@ -105,7 +95,7 @@ void handle_ui( void ) {
 
         // any other key is echoed back
         default:
-            _putchar(tempC);
+            _putchar(c);
             return;
     }
 }
