@@ -47,3 +47,6 @@ soc/marble_zest/synth/zest_fmc_dp.xdc
 soc/marble_zest/synth/zest_pinmap.txt
 marble_bsp/marble_bsp.json
 marble_bsp/settings.vams
+top/marble_zest/config_romx.v
+top/marble_zest/marble_zest_top.d
+top/marble_zest/marble_zest.json

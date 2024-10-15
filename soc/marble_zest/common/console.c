@@ -16,10 +16,10 @@
 
 extern zest_init_t zest_init_data;
 extern marble_dev_t marble;
+extern zest_status_t zest;
 
 void console(char c) {
     uint32_t *fcnt_exp = zest_init_data.fcnt_exp;
-    // int8_t *phs_center = zest_init_data.phs_center;
     int16_t dval;
     int32_t dval32;
     bool pass;
@@ -33,7 +33,7 @@ void console(char c) {
             printf("a    zest ad9653 ADC readings\n");
             printf("f    frequency and phase readings\n");
             printf("w    adc wfm test\n");
-            printf("d    mailbox test\n");
+            printf("d    mailbox and marble info test\n");
             printf("l    llrf test\n");
             break;
 
@@ -43,14 +43,8 @@ void console(char c) {
             break;
 
         case 't':
-            printf("---- Test Data: ----\n");
-            // sync_zest_clocks();
-            for (ix=0; ix<3; ix++) {
-                pass = check_zest_freq(ix, fcnt_exp[ix]);
-                printf("Freq %d Check: %s", ix, pass ? "PASS\n" : "FAIL\n");
-            }
-            read_amc7823_adcs();
-            read_ad7794_adcs();
+            get_zest_status(&zest);
+            print_zest_status();
             break;
 
         case 'a':
@@ -82,6 +76,10 @@ void console(char c) {
             for (ix=6*16; ix<6*16+10; ix++) {  // read page 4
                 dval32 = read_lb_reg(LB_MARBLE_SPI_MBOX + ix);
                 printf("mbox[%u]: %x\n", ix, dval32);
+            }
+            for (ix=0; ix<10; ix++) {   // sizeof(marble) = 372 bytes
+                dval32 = read_lb_reg(LB_BSP_INFO_BUF + ix);
+                printf("info[%u]: %d\n", ix, dval32);
             }
             break;
 

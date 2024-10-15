@@ -138,5 +138,6 @@ const zest_init_t zest_init_data = {
     },
     .fcnt_exp = fcnt_exp,
     .phs_center = phs_center,
-    .ad9781_smp = ad9781_smp
+    .ad9781_smp = ad9781_smp,
+    .enable_poll_status = true
 };

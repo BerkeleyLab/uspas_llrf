@@ -1,5 +1,5 @@
-#ifndef SETTINGS_H
-#define SETTINGS_H
+#ifndef _SETTINGS_H_
+#define _SETTINGS_H_
 /* ----------------------------- */
 /*  Global settings file */
 /* ----------------------------- */
@@ -36,6 +36,7 @@
 #define GTX_CPLL_LOCKED        0x42006
 #define GTX_RX_NOTINTABLE      0x42007
 #define EVR_DSP_PHSDIFF        0x42008
+#define LB_BSP_INFO_BUF         0x43000
 // marble_zest_top.json:
 #define LB_GIT_REV_ID          0x0
 
