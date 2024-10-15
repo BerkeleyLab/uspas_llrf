@@ -23,7 +23,7 @@ SRC_V += $(DSP_DIR)/flag_xdomain.v $(DSP_DIR)/freq_gcount.v $(DSP_DIR)/freq_coun
 SRC_V += $(DSP_DIR)/data_xdomain.v $(DSP_DIR)/reg_tech_cdc.v
 SRC_V += $(DSP_DIR)/phaset.v $(DSP_DIR)/phase_diff.v
 
-SRCS   =  system.c print.c i2c_soft.c timer.c ui.c evr_gtx_wrapper.c
+SRCS   =  system.c print.c i2c_soft.c timer.c console.c evr_gtx_wrapper.c
 SRCS  +=  printf.c iserdes.c
 SRCS  +=  settings.h
 SRCS  +=  $(MARBLE_DIR)/firmware/marble.c

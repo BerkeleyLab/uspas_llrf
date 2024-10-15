@@ -1,4 +1,5 @@
 from leep.raw import LEEPDevice
+from llrf_app.bsp import MarbleDevInfo
 import numpy as np
 import json
 import time
@@ -28,6 +29,7 @@ class LLRFApp(LEEPDevice):
         self.adc_names = [f'ADC {i}' for i in range(8)]
         self.dac_names = ['DAC 0', 'DAC 1']
         self.chan_names = self.adc_names + self.dac_names
+        self.marble_info = MarbleDevInfo()
         self.init_demo()
 
     def init_demo(self):
@@ -49,6 +51,10 @@ class LLRFApp(LEEPDevice):
     def write_reg(self, name, val):
         ''' read single register by given name '''
         return self.reg_write([(name, val)])
+
+    def get_bsp_info(self):
+        self.marble_info.decode_data(self.read_reg('bsp_info_buf'))
+        return self.marble_info
 
     def read_adc_bufs(self):
         return np.array(self.reg_read([

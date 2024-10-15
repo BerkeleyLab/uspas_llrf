@@ -20,6 +20,8 @@
 extern marble_init_t marble_init_data;
 extern zest_init_t zest_init_data;
 extern init_llrf_data_t llrf_init_data;
+extern marble_dev_t marble;
+extern zest_status_t zest;
 
 void _putchar(char c){
     UART_PUTC( BASE_UART0, c );
@@ -36,6 +38,12 @@ uint32_t *irq(uint32_t *regs, uint32_t irqs)
         }
     }
     return regs;
+}
+
+void memcpy_lb_dma(uint32_t base, unsigned char *buffer, size_t len) {
+    for (size_t ix=0; ix<len; ix++) {
+        write_lb_reg(base + ix, *buffer++);
+    }
 }
 
 void init(void) {
@@ -97,9 +105,11 @@ int main(void) {
     set_llrf_dac_permit(pass);
     set_llrf_bist_pass(pass);
 
+    unsigned cnt=0;
     while(1) {
-        if (last_char)
+        if (last_char) {
             console(last_char);
+        }
         last_char = 0;
 
         if (marble_init_data.enable_evr_gtx) {
@@ -107,6 +117,17 @@ int main(void) {
         }
         // 20 Hz cycle time
         DELAY_US(50000);
+        cnt++;
+        if (cnt % 20 == 0) {    // update rate 1 Hz
+            if (marble_init_data.enable_poll_status) {
+                get_marble_info(&marble);
+                memcpy_lb_dma(LB_BSP_INFO_BUF, (unsigned char *)&marble, sizeof(marble));
+            }
+            if (zest_init_data.enable_poll_status) {
+                get_zest_status(&zest);
+                memcpy_lb_dma(LB_BSP_INFO_BUF+sizeof(marble), (unsigned char *)&zest, sizeof(zest));
+            }
+        }
     }
 
 #endif

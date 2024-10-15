@@ -48,7 +48,7 @@ module marble_bsp #(
     output          m_lb_rvalid,
     output          m_lb_prefill,
 
-    // lb peripheral
+    // lb peripheral, 0 - 0x3ffff
     input           lb_clk,
     input [17:0]    lb_addr,
     input           lb_write,
@@ -188,6 +188,24 @@ mmc_mailbox #(
 );
 
 // ---------------------
+// read / write buffer, reserved for housekeeping info
+// ---------------------
+wire [7:0] lb_rdata_buf;
+wire lb_buf_wen = lb_write & (lb_addr[12+:4]==3);     // 0x3000 - 0x3fff, 4k bytes
+dpram #(
+    .dw(8),
+    .aw(12)
+) dpram_buf (
+    .clka   (lb_clk),
+    .addra  (lb_addr[11:0]),
+    .dina   (lb_wdata),
+    .wena   (lb_buf_wen),
+    .clkb   (lb_clk),
+    .addrb  (lb_addr[11:0]),
+    .doutb  (lb_rdata_buf)
+);
+
+// ---------------------
 // Read-only address space decoding
 // ---------------------
 localparam integer LB_ADW = 18;
@@ -217,6 +235,7 @@ always @(posedge lb_clk) if (lb_read) begin
         18'h00???: lb_rdata_r <= mirror_out_0;  // automatic address map
         18'h01???: lb_rdata_r <= mbox_out;
         18'h0200?: lb_rdata_r <= reg_bank_0;
+        18'h03???: lb_rdata_r <= lb_rdata_buf;
         default:   lb_rdata_r <= 32'hfaceface;
     endcase
 end

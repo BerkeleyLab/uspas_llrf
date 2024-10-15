@@ -1,7 +1,14 @@
 {
-    "spi_mbox": {
+    "marble_mbox_buf": {
         "base_addr": "0x41000",
         "addr_width": 11,
+        "access": "r",
+        "data_width": 8,
+        "sign": "unsigned"
+    },
+    "bsp_info_buf": {
+        "base_addr": "0x43000",
+        "addr_width": 12,
         "access": "r",
         "data_width": 8,
         "sign": "unsigned"
