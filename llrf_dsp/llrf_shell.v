@@ -16,6 +16,8 @@ module llrf_shell #(
     parameter integer CIC_BASE_PERIOD = `CIC_BASE_PERIOD,
     parameter integer SHIFT_BASE = `SHIFT_BASE,
     parameter integer SHIFT_INLK = `SHIFT_INLK,
+    parameter integer MO_ADC = `MO_ADC,
+    parameter integer FDBK_ADC = `FDBK_ADC,
     parameter integer CBUF_DW = 24,
     parameter integer CBUF_AW = 16,
     parameter integer ADC_BUF_AW = 12,
@@ -84,7 +86,7 @@ assign adc_phy_dat[5] = adc_data_in[DW*5 +:DW];
 assign adc_phy_dat[6] = adc_data_in[DW*6 +:DW];
 assign adc_phy_dat[7] = adc_data_in[DW*7 +:DW];
 
-wire signed [15:0] cav_cel = adc_phy_dat[3];        // for feedback
+wire signed [15:0] cav_cel = adc_phy_dat[FDBK_ADC];        // for feedback
 wire wave_trig;
 
 wire [N_ADC-1:0] lb_read_adc;
@@ -650,8 +652,10 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             4'h8: reg_bank_0 <= arc_permit_sum_lb;    // alias: arc_permit_sum
             4'h9: reg_bank_0 <= err_out_amp_lb;       // alias: loop_amp_err
             4'ha: reg_bank_0 <= err_out_phs_lb;       // alias: loop_phs_err
-            4'hb: reg_bank_0 <= evr_evcnt;
-            4'hc: reg_bank_0 <= evr_timestamp_valid;
+            4'hb: reg_bank_0 <= evr_evcnt;            // alias: evr_evcnt
+            4'hc: reg_bank_0 <= evr_timestamp_valid;  // alias: evr_timestamp_valid
+            4'hd: reg_bank_0 <= MO_ADC;               // alias: mo_adc_chan
+            4'he: reg_bank_0 <= FDBK_ADC;             // alias: fdbk_adc_chan
             default: reg_bank_0 <= 32'hfaceface;
         endcase
     end

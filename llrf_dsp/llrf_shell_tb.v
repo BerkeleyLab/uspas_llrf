@@ -124,15 +124,18 @@ end
     parameter real PHSI = 0;        // deg
     parameter AMP_SETP_ADC = 10000;  // full scale: 2^15
     parameter PHS_SETP_DEG = PHSI;   // deg
+    parameter integer MO_ADC = 0;
+    parameter integer LOOPBACK_ADC = 1;
+    parameter integer FDBK_ADC = 2;
 
     real theta;
     integer adc_cc=0;
-    reg signed [15:0] adc=16'hxxxx;
+    reg signed [15:0] mo_sig=16'hxxxx;
     integer adc_cc_start = `CIC_BASE_PERIOD % 20;    // truly important but empirical
     always @(posedge dsp_clk) begin
         adc_cc <= dut.dds_reset ? adc_cc_start : adc_cc + 1'b1; // synchronize with dds LO phase
         theta <= adc_cc * `M_TWO_PI * `NUM_DDS / `DEN_DDS - PHSI * `M_PI / 180;
-        adc <= $floor(AMPI * $cos(theta));
+        mo_sig <= $floor(AMPI * $cos(theta));
     end
 
     // ---------------------
@@ -148,6 +151,8 @@ end
     llrf_shell #(
         .CIC_BASE_PERIOD(`CIC_BASE_PERIOD),
         .SHIFT_BASE     (`SHIFT_BASE),
+        .MO_ADC         (MO_ADC),
+        .FDBK_ADC       (FDBK_ADC),
         .ADC_BUF_AW     (ADC_BUF_AW),
         .CBUF_AW        (CBUF_AW),
         .CBUF_DW        (CBUF_DW)
@@ -175,10 +180,9 @@ end
         .gtx_rxcharisk_good (gtx_rxcharisk_good)
     );
 
-    assign adc_in_flat = {
-        {((N_ADC-3)*DW){1'b0}},
-        dac_b_out, {DW{1'b0}},
-        dac_a_out, adc};
+    assign adc_in_flat[DW*MO_ADC +:DW] = mo_sig;
+    assign adc_in_flat[DW*LOOPBACK_ADC +:DW] = dac_a_out;
+    assign adc_in_flat[DW*FDBK_ADC +:DW] = dac_b_out;
 
     // ---------------------
     // Main sequence
@@ -345,7 +349,7 @@ end
         lb_write_task(CIRCLE_BUF_FLIP, 1);
 
         $display("---- Check waveforms ----");
-        read_waveform_task(0, wfm_amp, wfm_phs);
+        read_waveform_task(MO_ADC, wfm_amp, wfm_phs);
         amp_err = wfm_amp / mon_gain - amp_expect;
         fail |= $abs(amp_err / amp_expect) > 0.001;
         $display("Time: %g ns, Cbuf Readout: adc0: amp = %8.1f cnt, expect = %8.1f, %s",
@@ -355,7 +359,7 @@ end
             $time, wfm_phs, phs_expect, fail ? "FAIL":"OK");
 
         // loopback gain check
-        read_waveform_task(1, wfm_amp, wfm_phs);
+        read_waveform_task(LOOPBACK_ADC, wfm_amp, wfm_phs);
         amp_err = wfm_amp / mon_gain - AMP_SETP_ADC;
         fail |= $abs(amp_err / amp_expect) > 0.001;
         $display("Time: %g ns, Cbuf Readout: adc1: amp = %8.1f cnt, expect = %8.1f, %s",
@@ -370,8 +374,8 @@ end
         // record adc values for checking against adc0_buf readout
         for (jx=0; jx<2**ADC_BUF_AW; jx=jx+1) begin
             @(negedge dut.dsp_clk);
-            rxbuf[jx] = adc;
-            // $display("%g ns, [%2d]: %4d", $time, jx, adc);
+            rxbuf[jx] = mo_sig;
+            // $display("%g ns, [%2d]: %4d", $time, jx, mo_sig);
         end
         // readout and validate
         for (jx=0; jx<2**ADC_BUF_AW; jx=jx+1) begin
@@ -384,26 +388,26 @@ end
         $display("---- Check Min/Max ----");
         // wait for slow_ready
         while (!rdata[1]) lb_read_task(LLRF_CIRCLE_READY, rdata);
-        lb_read_task(DSP_SLOW_ADC_MIN_0, rdata);
+        lb_read_task(DSP_SLOW_ADC_MIN_0 + MO_ADC, rdata);
         amp_err = amp_expect + $signed(rdata[15:0]);
         fail |= amp_err < 0 || (amp_err / amp_expect) > 0.05;
         $display("Time: %g ns, Slow Readout: adc_min_0 = %8d cnt, expect = %8.1f, %s",
             $time, $signed(rdata[15:0]), -amp_expect, fail ? "FAIL":"OK");
 
-        lb_read_task(DSP_SLOW_ADC_MAX_0, rdata);
+        lb_read_task(DSP_SLOW_ADC_MAX_0 + MO_ADC, rdata);
         amp_err = amp_expect - $signed(rdata[15:0]);
         fail |= amp_err < 0 || (amp_err / amp_expect) > 0.05;
         $display("Time: %g ns, Slow Readout: adc_max_0 = %8d cnt, expect = %8.1f, %s",
             $time, $signed(rdata[15:0]), amp_expect, fail ? "FAIL":"OK");
-        lb_read_task(DSP_SLOW_ADC_MIN_1, rdata);
+        lb_read_task(DSP_SLOW_ADC_MIN_0 + LOOPBACK_ADC, rdata);
         $display("Time: %g ns, Slow Readout: adc_min_1 = %8d cnt, expect = %8.1f",
             $time, $signed(rdata[15:0]), -AMP_SETP_ADC);
-        lb_read_task(DSP_SLOW_ADC_MAX_1, rdata);
+        lb_read_task(DSP_SLOW_ADC_MAX_0 + LOOPBACK_ADC, rdata);
         $display("Time: %g ns, Slow Readout: adc_max_1 = %8d cnt, expect = %8.1f",
             $time, $signed(rdata[15:0]), AMP_SETP_ADC);
 
         $display("---- Check Inlk ----");
-        read_inlk_task(0, wfm_amp, wfm_phs);
+        read_inlk_task(MO_ADC, wfm_amp, wfm_phs);
         amp_err = wfm_amp / inlk_gain - amp_expect;
         fail |= $abs(amp_err / amp_expect) > 0.001;
         $display("Time: %g ns, Inlk Readout: adc_amp_0 = %8.1f cnt, expect = %8.1f, %s",
@@ -412,7 +416,7 @@ end
         $display("Time: %g ns, Inlk Readout: adc_phs_0 = %8.2f deg, expect = %8.1f, %s",
             $time, wfm_phs, phs_expect, fail ? "FAIL":"OK");
 
-        read_inlk_task(1, wfm_amp, wfm_phs);
+        read_inlk_task(LOOPBACK_ADC, wfm_amp, wfm_phs);
         amp_err = wfm_amp / inlk_gain - AMP_SETP_ADC;
         fail |= $abs(amp_err / amp_setpoint) > 0.001;
         $display("Time: %g ns, Inlk Readout: adc_amp_1 = %8.1f cnt, expect = %8.1f, %s",
@@ -427,7 +431,7 @@ end
         lb_write_task(PHS_SETPOINT, phs_setpoint_close);
         close_loops_task();
         #(3000 * `DSP_CLK_CYCLE);  //wait for loop actions
-        read_inlk_task(1, wfm_amp, wfm_phs);
+        read_inlk_task(FDBK_ADC, wfm_amp, wfm_phs);
         amp_err = wfm_amp / inlk_gain - AMP_SETP_ADC;
         fail |= $abs(amp_err / amp_setpoint) > 0.001;
         $display("Time: %g ns, Loop Readout: adc_amp_1 = %8.1f cnt, expect = %8d, %s",
@@ -437,14 +441,14 @@ end
             $time, wfm_phs, phs_expect, fail ? "FAIL":"OK");
 
         $display("---- Check Fast Interlock ----");
-        lb_write_task(INLK_INLK_MODE_0, 2'b10);
-        lb_write_task(INLK_INLK_MODE_3, 2'b10);
-        lb_write_task(INLK_AMP_LO_0, 0.99 * amp_expect * inlk_gain);
-        lb_write_task(INLK_AMP_HI_0, 1.01 * amp_expect * inlk_gain);
-        lb_write_task(INLK_AMP_LO_3, 0.99 * AMP_SETP_ADC * inlk_gain);
-        lb_write_task(INLK_AMP_HI_3, 1.01 * AMP_SETP_ADC * inlk_gain);
+        lb_write_task(INLK_INLK_MODE_0 + MO_ADC, 2'b10);
+        lb_write_task(INLK_INLK_MODE_0 + FDBK_ADC, 2'b10);
+        lb_write_task(INLK_AMP_LO_0 + MO_ADC, 0.99 * amp_expect * inlk_gain);
+        lb_write_task(INLK_AMP_HI_0 + MO_ADC, 1.01 * amp_expect * inlk_gain);
+        lb_write_task(INLK_AMP_LO_0 + FDBK_ADC, 0.99 * AMP_SETP_ADC * inlk_gain);
+        lb_write_task(INLK_AMP_HI_0 + FDBK_ADC, 1.01 * AMP_SETP_ADC * inlk_gain);
         #(`DSP_CLK_CYCLE * 30); // wait for settings pass clock domains using cycling wave_cnt
-        lb_write_task(INLK_PERMIT_MASK, 10'b00_0000_1001); // look at stimulus and loopback channels
+        lb_write_task(INLK_PERMIT_MASK, (1<<MO_ADC) | (1<<FDBK_ADC)); // look at stimulus and loopback channels
         lb_write_task(INLK_RESET_INLK, 1'b1);
         $display("Inlk: %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s",
             "chan", "mon_amp", "amp_lo", "amp_hi", ">=lo", ">=hi", "mode", "OK", "Permit", "amp", "phs");

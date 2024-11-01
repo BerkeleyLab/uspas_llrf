@@ -48,9 +48,8 @@ uint32_t read_avg_reg(uint32_t addr);
 
 /***************************************************************************//**
  * @brief Measure MO phase and rotate internal DDS phase shift to zero out MO phase
- * @return valid if MO phase after rotation is less than 1 deg.
 *******************************************************************************/
-bool align_mo_phase(void);
+void align_mo_phase(void);
 
 /***************************************************************************//**
  * @brief  Reset interlock permit
