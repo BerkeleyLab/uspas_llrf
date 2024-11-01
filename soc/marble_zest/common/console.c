@@ -27,6 +27,7 @@ void console(char c) {
 
     switch(c){
         case '?':
+            printf("GIT_REV_ID: %x\n", (uint32_t)read_lb_reg(LB_GIT_REV_ID));
             printf("?    Help\n");
             printf("r    marble ina219, xadc, qsfp\n");
             printf("t    zest ad7823, ad7794\n");
@@ -84,11 +85,10 @@ void console(char c) {
             break;
 
         case 'l':
-            dval32 = read_lb_reg(DDS_PHASE_STEP);
-            printf("DDS_PHASE_STEP = %u\n", dval32);
-            dval32 = read_lb_reg(DDS_MODULO);
-            printf("DDS_MODULO = %u\n", dval32);
-            dbg_read_slowbuf();
+            // printf("DDS_PHASE_STEP = %u\n", read_lb_reg(DDS_PHASE_STEP));
+            // printf("DDS_MODULO = %u\n", read_lb_reg(DDS_MODULO));
+            // dbg_read_slowbuf();
+            align_mo_phase();
             break;
 
         // any other key is echoed back

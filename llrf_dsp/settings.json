@@ -10,6 +10,8 @@
         "AMP_RX_GAIN":       4.8312645,
         "RX_LO_PHS":         191879,
         "TX_LO_PHS":         -47662,
+        "MO_ADC":            0,
+        "FDBK_ADC":          3,
         "DSP_EV1":           5,
         "DSP_EV2":           6
     },
@@ -24,6 +26,8 @@
         "AMP_RX_GAIN":       5.6686486,
         "RX_LO_PHS":         95602,
         "TX_LO_PHS":         250746,
+        "MO_ADC":            0,
+        "FDBK_ADC":          3,
         "DSP_EV1":           5,
         "DSP_EV2":           6
     },
@@ -38,6 +42,8 @@
         "AMP_RX_GAIN":       6.2280254,
         "RX_LO_PHS":         115720,
         "TX_LO_PHS":         187245,
+        "MO_ADC":            3,
+        "FDBK_ADC":          0,
         "DSP_EV1":           151,
         "DSP_EV2":           152
     },
@@ -52,6 +58,8 @@
         "AMP_RX_GAIN":       6.2015038,
         "RX_LO_PHS":         114633,
         "TX_LO_PHS":         190650,
+        "MO_ADC":            0,
+        "FDBK_ADC":          3,
         "DSP_EV1":           151,
         "DSP_EV2":           152
     }
