@@ -18,7 +18,7 @@ GTX_TCL = $(BSP_DIR)/gtx_evr_config.tcl
 vpath %.c $(BUILD_DIR)
 
 .PHONY: all system_config system_test evr_test clean
-all: $(TARGET)_top.bit
+all: $(TARGET)_top_$(FSET).bit
 
 IP_EXPAND = $(BSP_DIR)/marble_bsp_expand.v
 IP_EXPAND += $(APP_SOC_SYN_DIR)/system_expand.v
@@ -66,7 +66,7 @@ $(TARGET)_top.d: $(TARGET)_top.v config_romx.v $(BEDROCK_DIR)/serial_io/gmii_to_
 	echo $^ | tr ' ' '\n' > $@
 
 #: Build bitstream
-$(TARGET)_top.bit: $(TARGET)_top.tcl $(GTX_TCL) $(GITID_TCL) $(TARGET)_top.d bit_stamp_mod
+$(TARGET)_top_$(FSET).bit: $(TARGET)_top.tcl $(GTX_TCL) $(GITID_TCL) $(TARGET)_top.d bit_stamp_mod
 	$(VIVADO_CMD) -source $< -tclargs $(TARGET)_top.d $(FSET) $(HARDWARE) "$(SYNTH_OPT)" $(GITID_TCL) $(GTX_TCL)
 
 IP_ADDRESS = 192.168.19.$(MARBLE_SERIAL)
@@ -76,12 +76,13 @@ system_config:
 	openocd \
 	-c "adapter serial $(MARBLE_SN);" \
 	-f marble.cfg \
-	-c "init; xc7_program xc7.tap; pld load 0 $(TARGET)_top.$(GIT_32BIT_ID).bit; exit"
+	-c "init; xc7_program xc7.tap; pld load 0 $(TARGET)_top_$(FSET).$(GIT_32BIT_ID).bit; exit"
 
 # check Ethernet and system selftest status
 system_test:
 	ping -v -c 4 -w 20 $(IP_ADDRESS)
 	cd $(TOP)python && \
+       $(PYTHON) test.py leep://$(IP_ADDRESS):803 reg git_rev_id | awk ' $$2!="$(GIT_32BIT_ID)" { exit 1 }' && \
        $(PYTHON) test.py leep://$(IP_ADDRESS):803 reg system_bist_pass | awk ' $$2!=00000001 { exit 1 }'
 
 evr_test:

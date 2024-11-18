@@ -100,4 +100,4 @@ marble_awa_run:
       matrix:
         - PLATFORM: AWA
   script:
-    - make system_config MARBLE_SERIAL=39 && sleep 4 && make system_test MARBLE_SERIAL=39
+    - make system_config MARBLE_SERIAL=39 FSET=AWA && sleep 4 && make system_test MARBLE_SERIAL=39
