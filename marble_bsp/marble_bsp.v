@@ -148,12 +148,10 @@ phase_diff #(
     .dw             (PH_DIFF_DW+1)
 ) phase_diff_evr (
     .uclk1          (gtx_rx_bufg_outclk),
-    .ext_div1       (1'b0),
     .uclk2          (dsp_clk),
-    .ext_div2       (1'b0),
+    .uclk2g         (1'b1),
     .sclk           (clk_200),
     .rclk           (lb_clk),
-    .dval           (),
     .phdiff_out     (evr_dsp_phsdiff)
 );
 
@@ -198,7 +196,7 @@ dpram #(
 ) dpram_buf (
     .clka   (lb_clk),
     .addra  (lb_addr[11:0]),
-    .dina   (lb_wdata),
+    .dina   (lb_wdata[7:0]),
     .wena   (lb_buf_wen),
     .clkb   (lb_clk),
     .addrb  (lb_addr[11:0]),
