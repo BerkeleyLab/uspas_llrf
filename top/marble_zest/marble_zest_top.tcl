@@ -126,6 +126,7 @@ project_rpt $dest_dir
 
 # See bedrock for explanation
 swap_gitid $old_commit $new_commit 16 0
+swap_gitid $old_commit $new_commit 8 0
 
 write_bitstream -force -bin_file marble_zest_top_$fset.$gitid_for_filename.bit
 write_bitstream -force marble_zest_top_$fset.$gitid_for_filename.x.bit

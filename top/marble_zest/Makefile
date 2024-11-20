@@ -44,7 +44,7 @@ $(TARGET).json: $(IP_JSON)
 	$(PYTHON) $(BUILD_DIR)/merge_json.py -o $@ -i $^
 
 config_romx.v: $(TARGET).json
-	$(PYTHON) $(BUILD_DIR)/build_rom.py -v $@ -j $<
+	$(PYTHON) $(BUILD_DIR)/build_rom.py -v $@ --placeholder_rev -j $< -d "$(FSET)"
 
 GIT_32BIT_ID = $(shell git rev-parse --short=8 --verify HEAD)
 SYNTH_OPT += -DGIT_32BIT_ID=32'h$(GIT_32BIT_ID)
