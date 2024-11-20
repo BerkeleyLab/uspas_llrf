@@ -46,6 +46,8 @@ $(TARGET).json: $(IP_JSON)
 config_romx.v: $(TARGET).json
 	$(PYTHON) $(BUILD_DIR)/build_rom.py -v $@ --placeholder_rev -j $< -d "$(FSET)"
 
+# Used mostly to verify gitid reported by the LEEP Ethernet
+GIT_ID = $(shell git rev-parse --verify HEAD)
 GIT_32BIT_ID = $(shell git rev-parse --short=8 --verify HEAD)
 SYNTH_OPT += -DGIT_32BIT_ID=32'h$(GIT_32BIT_ID)
 
@@ -82,7 +84,7 @@ system_config:
 system_test:
 	ping -v -c 4 -w 20 $(IP_ADDRESS)
 	cd $(TOP)python && \
-       $(PYTHON) test.py leep://$(IP_ADDRESS):803 reg git_rev_id | awk ' $$2!="$(GIT_32BIT_ID)" { exit 1 }' && \
+       test "$$($(PYTHON) test.py leep://$(IP_ADDRESS):803 gitid)" = "$(GIT_ID)" && echo "gitid OK" && \
        $(PYTHON) test.py leep://$(IP_ADDRESS):803 reg system_bist_pass | awk ' $$2!=00000001 { exit 1 }'
 
 evr_test:
