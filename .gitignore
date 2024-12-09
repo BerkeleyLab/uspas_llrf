@@ -50,3 +50,4 @@ marble_bsp/settings.vams
 top/marble_zest/config_romx.v
 top/marble_zest/marble_zest_top.d
 top/marble_zest/marble_zest.json
+top/marble_zest/bit_stamp_mod

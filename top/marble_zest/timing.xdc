@@ -24,6 +24,3 @@ set_clock_groups -asynchronous \
 -group [get_clocks -include_generated_clocks gtxrefclk] \
 -group [get_clocks -include_generated_clocks -of [get_pins {marble_inst/evr_gtx_wrapper_i/evr_gtx_i/inst/evr_gtx_i/gt0_evr_gtx_i/gtxe2_i/RXOUTCLK}]]
 
-# QSFP2-2/11, Bank 115 MGT 2, X0Y2 channel 3
-set_property PACKAGE_PIN L3 [get_ports {QSFP2_RXN}]
-set_property PACKAGE_PIN L4 [get_ports {QSFP2_RXP}]

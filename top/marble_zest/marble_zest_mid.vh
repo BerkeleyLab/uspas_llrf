@@ -140,9 +140,9 @@ wire [16*8-1:0] adc_out_data;
 wire [7:0]  adc_out_clk;
 wire [15:0] dac_a_out;
 wire [15:0] dac_b_out;
-wire gtx_rx_bufg_outclk;
-wire [1:0] gtx_rxcharisk_good;
-wire [15:0] gtx_rxdata_good;
+wire gtx_rxclk;
+wire [1:0] gtx_rxcharisk;
+wire [15:0] gtx_rxdata;
 wire [2:0] arc_permit_in=0;  // XXX hook me up!
 llrf_shell llrf_inst (
     .lb_clk         (lb_clk),
@@ -163,9 +163,9 @@ llrf_shell llrf_inst (
     .slow_permit_in  (1'b1),
     .arc_permit_in   (arc_permit_in),
     // to EVR
-    .gtx_rx_bufg_outclk (gtx_rx_bufg_outclk),
-    .gtx_rxdata_good    (gtx_rxdata_good),
-    .gtx_rxcharisk_good (gtx_rxcharisk_good)
+    .gtx_rxclk       (gtx_rxclk),
+    .gtx_rxdata      (gtx_rxdata),
+    .gtx_rxcharisk   (gtx_rxcharisk)
 );
 
 // ----------------------------------
@@ -200,7 +200,7 @@ marble_bsp #(
     .clk_200        (clk_200      ),
     .clk_locked     (clk_locked   ),
     .gtx_refclk     (gtx_refclk   ),
-    .gtx_rx_bufg_outclk (gtx_rx_bufg_outclk),
+    .gtx_rxclk      (gtx_rxclk    ),
 
     .m_lb_clk       (m_lb_clk     ),
     .m_lb_addr      (m_lb_addr     ),
@@ -219,10 +219,10 @@ marble_bsp #(
     .lb_rdata       (lb_rdata_1    ),
     .lb_rvalid      (lb_rvalid     ),
 
-    .QSFP2_RXN      (QSFP2_RXN     ),
-    .QSFP2_RXP      (QSFP2_RXP     ),
-    .gtx_rxdata_good(gtx_rxdata_good),
-    .gtx_rxcharisk_good(gtx_rxcharisk_good),
+    .evr_gtx_rxn    (MGT_RX_6_N    ),
+    .evr_gtx_rxp    (MGT_RX_6_P    ),
+    .gtx_rxdata     (gtx_rxdata    ),
+    .gtx_rxcharisk  (gtx_rxcharisk ),
 
     .in_use         (in_use        ),
     .mac_status     (mac_status    )

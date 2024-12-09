@@ -97,12 +97,12 @@ end
     // DUT
     // ---------------------
 
-    localparam refcnt_w = 8;
-    localparam freq_thres = 2**refcnt_w * LB_CLK_CYCLE / GTX_REF_CLK_CYCLE;
-    // Tweak refcnt_w so simulations don't have to run for 16 million cycles to get an answer
+    localparam FCNT_WIDTH = 8;
     marble_bsp #(
-        .LB_READ_DELAY(LB_READ_DELAY),
-        .refcnt_w(refcnt_w)
+        .LB_READ_DELAY      (LB_READ_DELAY),
+        .FCNT_WIDTH         (FCNT_WIDTH),
+        .EVR_COMMAS_NEEDED  (20),
+        .EVR_CHECK_TIMEOUT  (30)
     ) dut (
         // Ignore Ethernet / Packet Badger for now
         .gmii_tx_clk    (1'b0),
@@ -132,8 +132,8 @@ end
         .lb_rdata       (lb_rdata),
 
         .gtx_refclk     (gtx_clk),
-        .QSFP2_RXN      (1'b0),
-        .QSFP2_RXP      (1'b0)
+        .evr_gtx_rxp    (1'b0),
+        .evr_gtx_rxn    (1'b0)
     );
 
     localparam [24:0] SPI_MBOX_BASE=24'h41_000;
@@ -144,52 +144,63 @@ end
         MBOX_CONFIG_W = 4'h5;
 
     // Main procedure
-    reg [31:0] rdata = 0;
+    reg [31:0] rdata=0;
     reg fault, fail=0;
     reg [3:0] test_addr = 8'h2;
     reg [7:0] test_byte = 8'h15;
+    // #define GTX_FCNT_EXP (EVR_GTX_REF_FREQ_MHZ) * (1<<GTX_FCNT_WIDTH) / 125
+    reg [31:0] freq_cnt_expect = 2**FCNT_WIDTH * LB_CLK_CYCLE / GTX_REF_CLK_CYCLE;
+
     initial begin
         repeat (100) @ (posedge lb_clk);
+        $display("---- Check MBOX SPI write / localbus read ----");
         // write through SPI
         mmc_spi_write_task(MBOX_CONFIG_S, 4'h7, 8'h1);
         mmc_spi_write_task(MBOX_CONFIG_W, test_addr, test_byte);
-        $display("Time: %g ns: MBOX write addr: 0x%x, data: 0x%08x.",
-            $time, test_addr, test_byte);
         // read through localbus
         lb_read_task(SPI_MBOX_BASE + test_addr, rdata);
         fault = rdata != test_byte;
-        $display("Time: %g ns:    LB read addr: 0x%x, data: 0x%08x, %s",
-            $time, test_addr, rdata, fault ? "BAD":" OK");
+        $display("Time: %g ns: rdata = %5d, expect = %5d, %s",
+            $time, rdata, test_byte, fault ? "FAIL":" OK");
         fail |= fault;
 
+        test_byte = 8'h30;
         // write/read through localbus to mailbox
-        lb_write_task(SPI_MBOX_BASE + test_addr, 8'h30);
+        $display("---- Check MBOX localbus write/read ----");
+        lb_write_task(SPI_MBOX_BASE + test_addr, test_byte);
         lb_read_task(SPI_MBOX_BASE + test_addr, rdata);
-        fault = rdata != 8'h30;
-        $display("Time: %g ns:    LB read addr: 0x%x, data: 0x%08x, %s",
-            $time, SPI_MBOX_BASE + test_addr, rdata, fault ? "BAD":" OK");
-        fail |= fault;
-
-        // write/read through localbus to GTX_SOFT_RESET
-        lb_write_task(GTX_SOFT_RESET, 4'h1);
-        lb_read_task(GTX_SOFT_RESET, rdata);
-        fault = rdata != 4'h1;
-        $display("Time: %g ns:    LB read addr: 0x%x, data: 0x%04x, %s",
-            $time, GTX_SOFT_RESET, rdata, fault ? "BAD":" OK");
+        fault = rdata != test_byte;
+        $display("Time: %g ns: rdata = %5d, expect = %5d, %s",
+            $time, rdata, test_byte, fault ? "FAIL":" OK");
         fail |= fault;
 
         // read only register through localbus
         // this is the frequency counter for GTX reference frequency
-        # (GTX_REF_CLK_CYCLE * 100);
+        $display("---- Check GTX_REFCLK Frequency ----");
+        #(LB_CLK_CYCLE * (1 << FCNT_WIDTH));
         lb_read_task(GTX_REFCLK_FREQUENCY, rdata);
-        fault = rdata > freq_thres + 1 || rdata < freq_thres - 1;
-        $display("Time: %g ns:    LB read addr: 0x%x, data: 0x%08x, %d, %s",
-            $time, GTX_REFCLK_FREQUENCY, rdata, freq_thres, fault ? "BAD":" OK");
+        fault = rdata > freq_cnt_expect + 1 || rdata < freq_cnt_expect - 1;
+        $display("Time: %g ns: rdata = %5d, expect = %5d, %s",
+            $time, rdata, freq_cnt_expect, fault ? "FAIL":" OK");
         fail |= fault;
 
-        # (16000);
+        repeat (100) @ (posedge lb_clk);
+        $display("---- Check EVR soft reset logic ----");
+        lb_write_task(GTX_SOFT_RESET, 1);
+        lb_write_task(GTX_SOFT_RESET, 0);
+        lb_read_task(GTX_RX_ALIGNED, rdata);
+        while (!lb_rdata[0]) begin
+            lb_read_task(GTX_RX_ALIGNED, rdata);
+        end
+        $display("Time: %g ns: evr_gtx clock aligned.", $time);
 
-        @(posedge lb_clk);  // just for ease of waveform viewing
+        $display("---- Check EVR fsm logic ----");
+        // inject data error, take 3 gt_soft_resets until clock is aligned
+        dut.evr_gtx_wrapper_i.rxnotintable_out_reg = 2'b1;
+        repeat (3) @(posedge dut.evr_gtx_wrapper_i.rx_fsm_reset_done);
+        dut.evr_gtx_wrapper_i.rxnotintable_out_reg = 2'b0;
+        @(posedge dut.evr_gtx_wrapper_i.rx_aligned_sys);
+        $display("Time: %g ns: evr_gtx clock aligned.", $time);
         if (!fail) begin $display("PASS"); $finish(); end
         else $stop();
     end
@@ -199,8 +210,9 @@ end
             $dumpfile("marble_bsp.vcd");
             $dumpvars(5, marble_bsp_tb);
         end
-        #(400_000 / `DSP_CLK_CYCLE);
-        $display("Simulation timed-out");
+        #(10_000 * LB_CLK_CYCLE);
+        #(LB_CLK_CYCLE * (1 << FCNT_WIDTH));
+        $display("Time: %g ns: Simulation timed-out.", $time);
         $display("FAIL");
         $stop();
    end

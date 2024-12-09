@@ -6,7 +6,9 @@ module marble_bsp #(
     parameter MAC = 48'h00105ad155b2,
     parameter LB_READ_DELAY = 3,
     parameter DEFAULT_ENABLE_RX = 1,
-    parameter refcnt_w = 24
+    parameter integer EVR_COMMAS_NEEDED = 60,
+    parameter integer EVR_CHECK_TIMEOUT = 125000,  // 125e6 Hz * 1ms
+    parameter FCNT_WIDTH = 16  // freq_count update rate: 125M / 2**16 = 1.9kHz.
 ) (
     // GMII (ready for simulation with infrastructure demoed in badger/tests)
     input           gmii_tx_clk,
@@ -36,7 +38,7 @@ module marble_bsp #(
     input           clk_200,
     input           dsp_clk,
     input           gtx_refclk,
-    output          gtx_rx_bufg_outclk,
+    output          gtx_rxclk,
 
     // lb controller
     output          m_lb_clk,
@@ -58,10 +60,10 @@ module marble_bsp #(
     output [31:0]   lb_rdata,
 
     // GTX related
-    input           QSFP2_RXN,
-    input           QSFP2_RXP,
-    output [15:0]   gtx_rxdata_good,
-    output [1:0]    gtx_rxcharisk_good,
+    input           evr_gtx_rxn,
+    input           evr_gtx_rxp,
+    output [15:0]   gtx_rxdata,
+    output [1:0]    gtx_rxcharisk,
 
     // diagnostics
     output          in_use,
@@ -76,47 +78,34 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 
 `AUTOMATIC_decode
 
-// this status register is async
-reg [0:0] gtx_cpll_locked=0;
-
-// in gtx_rx_bufg_outclk domain
-reg [0:0] gtx_rx_resetdone=0;
-reg [0:0] gtx_rx_aligned=0;
-reg [1:0] gtx_rx_notintable=0;
+// in lb_clk domain
+wire gtx_rx_fsm_resetdone, gtx_rx_aligned;
+wire [31:0] gtx_rx_reset_cnt;
 
 wire [27:0] gtx_rx_clk_frequency;
 wire [27:0] gtx_refclk_frequency;
 // ----------------------------------
 // GTX instance
 // ---------------------------------
-wire rx_resetdone, cpll_locked, rx_aligned;
-wire [1:0] rx_notintable;
 evr_gtx_wrapper #(
-    .QSFP_WI(16),
-    .DEBUG("false")
+    .COMMAS_NEEDED  (EVR_COMMAS_NEEDED),
+    .CHECK_TIMEOUT  (EVR_CHECK_TIMEOUT)
 ) evr_gtx_wrapper_i(
-    .sys_clk        (lb_clk),
-    .gtx_refclk     (gtx_refclk),
-    .QSFP2_RXN      (QSFP2_RXN),
-    .QSFP2_RXP      (QSFP2_RXP),
-    .soft_reset     (gtx_soft_reset),
-    .rx_slide_req   (gtx_rx_slide_req),
+    .sys_clk            (lb_clk),
+    .gtx_refclk         (gtx_refclk),
+    .evr_gtx_rxn        (evr_gtx_rxn),
+    .evr_gtx_rxp        (evr_gtx_rxp),
 
-    .rx_bufg_outclk (gtx_rx_bufg_outclk),
-    .rxdata_good    (gtx_rxdata_good),
-    .rxcharisk_good (gtx_rxcharisk_good),
+    .soft_reset         (gtx_soft_reset),
+    .rx_fsm_reset_done  (gtx_rx_fsm_resetdone),
+    .rx_aligned_sys     (gtx_rx_aligned),
+    .rx_reset_cnt       (gtx_rx_reset_cnt),
+    .rx_slide_req       (gtx_rx_slide_req),
 
-    .rx_resetdone   (rx_resetdone),
-    .rx_aligned     (rx_aligned),
-    .rx_notintable  (rx_notintable),
-    .cpll_locked    (cpll_locked)
+    .rx_usrclk          (gtx_rxclk),
+    .rxdata             (gtx_rxdata),
+    .rxcharisk          (gtx_rxcharisk)
 );
-
-// CDC GTX related
-always @(posedge lb_clk) gtx_rx_resetdone <= rx_resetdone;
-always @(posedge lb_clk) gtx_rx_aligned <= rx_aligned;
-always @(posedge lb_clk) gtx_cpll_locked <= cpll_locked;
-always @(posedge lb_clk) gtx_rx_notintable <= rx_notintable;
 
 // Total miscellaneous
 // See below for mac_status assignment
@@ -125,12 +114,12 @@ reg [7:0] mac_status_r=0;  always @(posedge lb_clk) mac_status_r <= mac_status;
 // ---------------------
 // Measure and report GTX RX recovered clock
 // ---------------------
-freq_count #(.refcnt_width (refcnt_w), .freq_width (28)) fcnt_gtx_rx_clk (
+freq_count #(.refcnt_width (FCNT_WIDTH)) fcnt_gtx_rx_clk (
     .sysclk     (lb_clk),
-    .f_in       (gtx_rx_bufg_outclk),
+    .f_in       (gtx_rxclk),
     .frequency  (gtx_rx_clk_frequency)
 );
-freq_count #(.refcnt_width (refcnt_w), .freq_width (28)) fcnt_gtx_refclk (
+freq_count #(.refcnt_width (FCNT_WIDTH)) fcnt_gtx_refclk (
     .sysclk     (lb_clk),
     .f_in       (gtx_refclk),
     .frequency  (gtx_refclk_frequency)
@@ -147,7 +136,7 @@ phase_diff #(
     .adv            (PH_DIFF_ADV),
     .dw             (PH_DIFF_DW+1)
 ) phase_diff_evr (
-    .uclk1          (gtx_rx_bufg_outclk),
+    .uclk1          (gtx_rxclk),
     .uclk2          (dsp_clk),
     .uclk2g         (1'b1),
     .sclk           (clk_200),
@@ -217,11 +206,10 @@ always @(posedge lb_clk) if(lb_read) begin
         4'h1: reg_bank_0 <= mac_status_r;  // alias mac_status
         4'h2: reg_bank_0 <= gtx_rx_clk_frequency;
         4'h3: reg_bank_0 <= gtx_refclk_frequency;
-        4'h4: reg_bank_0 <= gtx_rx_resetdone;
+        4'h4: reg_bank_0 <= gtx_rx_fsm_resetdone;
         4'h5: reg_bank_0 <= gtx_rx_aligned;
-        4'h6: reg_bank_0 <= gtx_cpll_locked;
-        4'h7: reg_bank_0 <= gtx_rx_notintable;
-        4'h8: reg_bank_0 <= evr_dsp_phsdiff;
+        4'h6: reg_bank_0 <= evr_dsp_phsdiff;
+        4'h7: reg_bank_0 <= gtx_rx_reset_cnt;
         default: reg_bank_0 <= 32'hdeadface;
     endcase
 end
