@@ -6,7 +6,7 @@
 #include "common.h"
 #include "settings.h"
 
-#define GTX_FCNT_WIDTH      24
+#define GTX_FCNT_WIDTH           16
 
 #ifndef EVR_GTX_REF_FREQ_MHZ
     #define EVR_GTX_REF_FREQ_MHZ 119.0

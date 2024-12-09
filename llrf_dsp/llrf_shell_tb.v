@@ -145,8 +145,8 @@ end
     wire [DW-1:0] dac_a_out;
     wire [DW-1:0] dac_b_out;
 
-    wire [15:0] gtx_rxdata_good;
-    wire [1:0] gtx_rxcharisk_good;
+    wire [15:0] gtx_rxdata;
+    wire [1:0] gtx_rxcharisk;
 
     llrf_shell #(
         .CIC_BASE_PERIOD(`CIC_BASE_PERIOD),
@@ -175,9 +175,9 @@ end
         .slow_permit_in (1'b1),
         .arc_permit_in  (3'b111),
 
-        .gtx_rx_bufg_outclk (gtx_rx_clk),
-        .gtx_rxdata_good    (gtx_rxdata_good),
-        .gtx_rxcharisk_good (gtx_rxcharisk_good)
+        .gtx_rxclk (gtx_rx_clk),
+        .gtx_rxdata    (gtx_rxdata),
+        .gtx_rxcharisk (gtx_rxcharisk)
     );
 
     assign adc_in_flat[DW*MO_ADC +:DW] = mo_sig;

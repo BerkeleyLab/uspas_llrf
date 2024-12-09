@@ -64,7 +64,7 @@ wire idelayctrl_ready=1;
 wire clk_locked=1;
 wire clk = gmii_tx_clk;
 // Won't simulate this feature anytime soon
-wire QSFP2_RXN=0, QSFP2_RXP=0;
+wire MGT_RX_6_N=0, MGT_RX_6_P=0;
 // UART below
 wire UART_CTS, UART_RX, UART_TX;
 

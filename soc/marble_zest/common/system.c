@@ -112,9 +112,6 @@ int main(void) {
         }
         last_char = 0;
 
-        if (marble_init_data.enable_evr_gtx) {
-            check_gtx_align();
-        }
         // 20 Hz cycle time
         DELAY_US(50000);
         cnt++;

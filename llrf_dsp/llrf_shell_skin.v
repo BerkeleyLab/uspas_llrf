@@ -41,9 +41,9 @@ module llrf_skin #(
     // ---------------------
     // to EVR interface
     // ---------------------
-    input                gtx_rx_bufg_outclk,
-    input [15:0]         gtx_rxdata_good,
-    input [1:0]          gtx_rxcharisk_good,
+    input                gtx_rxclk,
+    input [15:0]         gtx_rxdata,
+    input [1:0]          gtx_rxcharisk,
 
     output               trig_out
 );
@@ -74,9 +74,9 @@ always @(posedge dsp_clk) adc_data_in_r <= adc_data_in;
 // EVR
 (* magic_cdc *) reg [15:0] gtx_rxdata_good_r=0;
 (* magic_cdc *) reg [1:0] gtx_rxcharisk_good_r=0;
-always @(posedge gtx_rx_bufg_outclk) begin
-    gtx_rxdata_good_r <= gtx_rxdata_good;
-	gtx_rxcharisk_good_r <= gtx_rxcharisk_good;
+always @(posedge gtx_rxclk) begin
+    gtx_rxdata_good_r <= gtx_rxdata;
+	gtx_rxcharisk_good_r <= gtx_rxcharisk;
 end
 
 (* magic_cdc *) reg drive_permit_in_r=0;
@@ -112,9 +112,9 @@ llrf_shell #(.CBUF_AW(11)) dsp (
     .arc_test_out       (arc_test_out),
     .arc_reset_out      (arc_reset_out),
 
-    .gtx_rx_bufg_outclk (gtx_rx_bufg_outclk),
-    .gtx_rxdata_good    (gtx_rxdata_good_r),
-    .gtx_rxcharisk_good (gtx_rxcharisk_good_r),
+    .gtx_rxclk (gtx_rxclk),
+    .gtx_rxdata    (gtx_rxdata_good_r),
+    .gtx_rxcharisk (gtx_rxcharisk_good_r),
 
     .trig_out           (trig_out)
 );

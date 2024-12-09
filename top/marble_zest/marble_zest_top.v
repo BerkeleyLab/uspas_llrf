@@ -9,10 +9,10 @@ module marble_zest_top #(
 
     input           GTXREFCLK_P,
     input           GTXREFCLK_N,
-    // QSFP2 channel 3
+    // QSFP2 channel 1 [second channel]
     // XXX option to change this?
-    input           QSFP2_RXN,
-    input           QSFP2_RXP,
+    input           MGT_RX_6_N,
+    input           MGT_RX_6_P,
 
     output [3:0]    RGMII_TXD,
     output          RGMII_TX_CTRL,
@@ -199,6 +199,10 @@ gmii_to_rgmii #( .in_phase_tx_clk(1)) gmii_to_rgmii_i (
 // ---------------------------------
 `ifndef DSP_FREQ_MHZ
 `define DSP_FREQ_MHZ 115.0
+`endif
+
+`ifndef DAC_INTERP_COEFF_R
+`define DAC_INTERP_COEFF_R 1.0
 `endif
 
 zest #(

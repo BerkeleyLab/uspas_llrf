@@ -70,9 +70,9 @@ module llrf_shell #(
     // ---------------------
     // GTX transceiver interface
     // ---------------------
-    input                gtx_rx_bufg_outclk,
-    input [15:0]         gtx_rxdata_good,
-    input [1:0]          gtx_rxcharisk_good
+    input                gtx_rxclk,
+    input [15:0]         gtx_rxdata,
+    input [1:0]          gtx_rxcharisk
 );
 
 
@@ -555,9 +555,9 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     timing_core #(.DSP_EV1(`DSP_EV1), .DSP_EV2(`DSP_EV2)) timing
     (
         .lb_clk              (lb_clk),
-        .evr_clk             (gtx_rx_bufg_outclk),
-        .evr_rxd             (gtx_rxdata_good),
-        .evr_rxk             (gtx_rxcharisk_good),
+        .evr_clk             (gtx_rxclk),
+        .evr_rxd             (gtx_rxdata),
+        .evr_rxk             (gtx_rxcharisk),
         .evr_evcnt           (evr_evcnt),
         .evr_timestamp_valid (evr_timestamp_valid),
         .dsp_clk             (dsp_clk),

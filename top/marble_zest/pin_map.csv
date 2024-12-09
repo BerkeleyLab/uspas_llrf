@@ -86,3 +86,8 @@ set_property CONFIG_VOLTAGE 2.5 [current_design]
 
 set_property -dict {DRIVE 4 SLEW FAST PULLTYPE PULLDOWN} [get_ports {PMOD1*}]
 set_property -dict {DRIVE 4 SLEW FAST PULLTYPE PULLDOWN} [get_ports {PMOD2*}]
+
+# QSFP2-2/11, Bank 115 MGT 2, X0Y2 channel 3
+# MGT_RX_6 is connected to QSFP2_RX_2 via MGT MUX by MMC
+set_property PACKAGE_PIN L3 [get_ports {MGT_RX_6_N}]
+set_property PACKAGE_PIN L4 [get_ports {MGT_RX_6_P}]
