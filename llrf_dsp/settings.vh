@@ -26,18 +26,14 @@ task calc_cic_gain_task (
     real cic_R;
     real cic_bit_growth;
     real cic_snr_bit_growth;
-    real total_bit_growth;
-    real lo_dds_gain;
     real full_shift;
     begin
         cic_R = wave_samp_per * `CIC_BASE_PERIOD;
         cic_bit_growth = 2 * $ln(cic_R) / $ln(2);
         cic_snr_bit_growth = $ln(cic_R/2) / $ln(2) / 2;
-        lo_dds_gain = (`LO_AMP * `CORDIC_GAIN) / (1<<17);  // <1
-        total_bit_growth = $ln(lo_dds_gain) / $ln(2) + cic_bit_growth;
-        full_shift = $floor(total_bit_growth - cic_snr_bit_growth);
+        full_shift = $floor(cic_bit_growth - cic_snr_bit_growth);
         shift = $max((full_shift - shift_base)/2, 0);
-        mon_gain = 2**(total_bit_growth - shift_base + 2 - 2*shift);
+        mon_gain = 2**(cic_bit_growth - shift_base + 2 - 2*shift);
     end
 endtask
 

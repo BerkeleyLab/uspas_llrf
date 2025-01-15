@@ -16,8 +16,8 @@ ifeq ($(SIM), verilator)
 	EXTRA_ARGS += --trace --trace-fst --trace-structs
 endif
 
-TOPLEVEL = dsp_core
-MODULE   = test_dsp_core
+TOPLEVEL = llrf_dsp
+MODULE   = test_llrf_dsp
 TESTCASE = test_alsu,test_uspas,test_lemp,test_awa
 
 VERILOG_SOURCES += $(DSP_DIR)/dpram.v $(DSP_DIR)/fiq_interp.v \
@@ -26,6 +26,8 @@ VERILOG_SOURCES += $(DSP_DIR)/dpram.v $(DSP_DIR)/fiq_interp.v \
 					$(DSP_DIR)/ph_acc.v \
 					$(CORDIC_DIR)/addsubg.v $(CORDIC_DIR)/cstageg.v \
 					$(APP_DSP_DIR)/cordicg_b22.v \
+					$(APP_DSP_DIR)/llrf_dsp.v \
+					$(APP_DSP_DIR)/ddc.v \
 					$(APP_DSP_DIR)/dsp_core.v \
 					$(APP_DSP_DIR)/noniq_ddc.v \
 					$(APP_DSP_DIR)/pi_scalar.v

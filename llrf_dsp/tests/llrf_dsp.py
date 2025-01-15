@@ -90,7 +90,7 @@ class DDS(LLRFModule):
 class DDC(LLRFModule):
     def __init__(self, num: int = 4,  den: int = 11) -> None:
         """Non-IQ Digital Down-Conversion.
-            Gateware: noniq_ddc.v: gain=sin(2 * pi * theta) * 2,
+            Gateware: noniq_ddc.v: gain=sin(2 * pi * theta),
                      fiq_interp.v: gain=2.
 
         Args:
@@ -98,7 +98,7 @@ class DDC(LLRFModule):
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        self.gain = np.sin(self.omega) * 4 * self.z**(-self.den+2)
+        self.gain = np.sin(self.omega) * 2 * self.z**(-self.den+2)
 
     def gen_ddc_data(self, adc_data):
         """Calculate I,Q values from 2 consecutive ADC samples using
@@ -162,8 +162,7 @@ class CORDIC(LLRFModule):
         Args:
             num (int): numerator of IF / Fs. Defaults to 4.
             den (int): denominator of IF / Fs. Defaults to 11.
-            phase_off_deg (float): Phase offset in degrees,
-              corresponds to RX_LO_PHS or TX_LO_PHS, 19-bit.
+            phase_off_deg (float): Phase offset in degrees.
         """
         super().__init__(num, den)
         self.gain = self.CORDIC_GAIN * np.exp(1j * np.deg2rad(phase_off_deg))
@@ -171,7 +170,6 @@ class CORDIC(LLRFModule):
 
 class CICWaveRecorder(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
-                 lo_amp: int = 74840,
                  cic_base_period: int = 22,
                  shift_base: int = 7,
                  wave_samp_per: int = 1) -> None:
@@ -193,14 +191,12 @@ class CICWaveRecorder(LLRFModule):
         """
         super().__init__(num, den)
         self.shift_base = shift_base
-        self.wave_samp_per = wave_samp_per
         self.cic_base_period = cic_base_period
         assert self.cic_base_period % self.den == 0, \
             "CIC base period must be multiple of DEN."
-        self.dds = DDS(amp=lo_amp, num=num, den=den)
-        self.gain = self.calc_cic_gain() * np.exp(1j)
+        self.gain = self.calc_cic_gain(wave_samp_per)
 
-    def calc_cic_gain(self):
+    def calc_cic_gain(self, wave_samp_per):
         """calculate CIC filter gain in waveforms
             wave_shift register is calculated based on wave_sample_per.
             It is the number of bits needs to be shifted to avoid saturation.
@@ -208,14 +204,13 @@ class CICWaveRecorder(LLRFModule):
         Returns:
             mon_gain (float): total gain after CIC after shifting.
         """
-        cic_R = self.wave_sample_per * self.cic_base_period
+        cic_R = wave_samp_per * self.cic_base_period
         cic_bit_growth = 2 * np.log2(cic_R)
         cic_snr_bit_growth = np.log2(cic_R) / 2
-        total_bit_growth = np.log2(self.dds.gain) + cic_bit_growth
-        full_shift = np.floor(total_bit_growth - cic_snr_bit_growth)
-        self.wave_shift = max((full_shift - self.shift_base), 0)
+        full_shift = np.floor(cic_bit_growth - cic_snr_bit_growth)
+        self.wave_shift = max((full_shift - self.shift_base)/2, 0)
         mon_gain = 2**(
-            total_bit_growth - self.shift_base + 2 - 2 * self.wave_shift)
+            cic_bit_growth - self.shift_base + 2 - 2 * self.wave_shift)
         return mon_gain
 
 

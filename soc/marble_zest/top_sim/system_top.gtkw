@@ -63,7 +63,7 @@ system_top_tb.dut.zest_inst.spi_master.spi_dio_bridge_i.bit_dat[5:0]
 system_top_tb.dut.zest_inst.spi_master.spi_dio_bridge_i.cfg_nbits[5:0]
 system_top_tb.dut.zest_inst.spi_master.spi_dio_bridge_i.cnt[5:0]
 @28
-system_top_tb.dut.zest_inst.wfm_i.adc_trigger
+system_top_tb.dut.zest_inst.wfm_i.trigger
 @22
 system_top_tb.dut.zest_inst.wfm_i.adc_wfm_len[4:0]
 [pattern_trace] 1

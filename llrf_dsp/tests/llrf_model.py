@@ -1,5 +1,5 @@
 import numpy as np
-from llrf_dsp import LLRFModule, DDS, DSPCoreRX, DSPCoreTX
+from llrf_dsp import LLRFModule, DDS, DSPCoreRX, DSPCoreTX, CICWaveRecorder
 import json
 
 
@@ -21,10 +21,20 @@ class LLRFModel(LLRFModule):
         dds = DDS(amp=self.LO_AMP, num=self.num, den=self.den)
         self.rx = DSPCoreRX(num=self.num, den=self.den, dds=dds)
         self.tx = DSPCoreTX(num=self.num, den=self.den, dds=dds)
+        self.cic_inlk = CICWaveRecorder(
+            num=self.num, den=self.den,
+            cic_base_period=self.CIC_BASE_PERIOD, shift_base=self.SHIFT_INLK)
+        self.cic_mon = CICWaveRecorder(
+            num=self.num, den=self.den,
+            cic_base_period=self.CIC_BASE_PERIOD,
+            shift_base=self.SHIFT_BASE, wave_samp_per=1)
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
         # absolute max signal level
-        self.max_adc_amp = (1 << 15) / np.abs(self.rx.gain) * 3.9
+        self.max_adc_amp = (1 << 15) / np.abs(self.rx.gain) * 1.95
+        self.inlk_gain = self.cic_inlk.gain * np.abs(self.rx.gain) / 4
+        self.mon_gain = self.cic_mon.gain * \
+            np.abs(self.rx.gain) / self.CORDIC_GAIN / 4
 
     def calc_open_loop_setp(self, amp_setpoint_adc, phs_setpoint_deg):
         """calculate open loop setpoint register values

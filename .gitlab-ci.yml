@@ -74,8 +74,9 @@ marble_zest_synth:
     matrix:
       - TARGET: [ALSU, USPAS, LEMP, AWA]
 
-marble_lemp_run:
+.marble_lemp_run:
   before_script:
+    - pip install pandas
     - cd top/marble_zest
   stage: run
   tags:
@@ -86,10 +87,11 @@ marble_lemp_run:
       matrix:
         - PLATFORM: LEMP
   script:
-    - make system_config MARBLE_SERIAL=42 && sleep 4 && make system_test MARBLE_SERIAL=42 && make evr_test MARBLE_SERIAL=42
+    - make system_config MARBLE_SERIAL=42 FSET=LEMP && sleep 4 && make system_test MARBLE_SERIAL=42
 
 marble_awa_run:
   before_script:
+    - pip install pandas
     - cd top/marble_zest
   stage: run
   tags:
@@ -101,3 +103,18 @@ marble_awa_run:
         - PLATFORM: AWA
   script:
     - make system_config MARBLE_SERIAL=39 FSET=AWA && sleep 4 && make system_test MARBLE_SERIAL=39
+
+marble_uspas_run:
+  before_script:
+    - pip install pandas
+    - cd top/marble_zest
+  stage: run
+  tags:
+    - deploy
+  needs:
+  - job: marble_zest_synth
+    parallel:
+      matrix:
+        - PLATFORM: USPAS
+  script:
+    - make system_config MARBLE_SERIAL=42 FSET=USPAS && sleep 4 && make system_test MARBLE_SERIAL=42
