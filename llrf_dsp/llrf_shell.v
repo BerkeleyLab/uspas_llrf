@@ -7,10 +7,28 @@
 //      0 to 0fff   LLRF controller
 // read:
 //      0 to 0fff   LLRF controller
-// 12011 to 120ff   Slow readout, see slow_bridge.v
-// 13000 to 13007   amp out
-// 13010 to 13017   phs out
+// 10800            llrf_circle_ready
+// 10801            sig_buf_ready
+// 10911 to 109ff   Slow readout, see slow_bridge.v
+// 10a00 to 10a07   amp out
+// 10a10 to 10a17   phs out
+// 11000 to 117ff   mirror (`define MIRROR_WIDTH 7)
+// 12000 to 12fff   adc0_buf
+// ...
+// 19000 to 19fff   adc7_buf
+// 1a000 to 1afff   dac0_buf
+// 1b000 to 1bfff   dac1_buf
+// 1c000 to 1cfff   dac0_i_buf
+// 1d000 to 1dfff   dac0_i_buf
+// 1e000 to 1efff   dac0_q_buf
+// 1f000 to 1ffff   dac0_q_buf
 // 20000 to 2ffff   Circular buffer
+// 30000 to 30fff   adc0_i_buf
+// ...
+// 37000 to 37fff   adc7_i_buf
+// 38000 to 38fff   adc0_q_buf
+// ...
+// 3f000 to 3ffff   adc7_q_buf
 
 module llrf_shell #(
     parameter integer CIC_BASE_PERIOD = `CIC_BASE_PERIOD,
@@ -20,16 +38,18 @@ module llrf_shell #(
     parameter integer FDBK_ADC = `FDBK_ADC,
     parameter integer CBUF_DW = 24,
     parameter integer CBUF_AW = 16,
-    parameter integer ADC_BUF_AW = 12,
+    parameter integer SIG_BUF_AW = 12,
     localparam integer MON_RW = 44, // must <= 44, see ccfilt.v:51
     localparam integer LB_DW = 32,
     localparam integer LB_ADW = 18,
     localparam integer DW = 16,
     localparam integer DWLO = 18,
-    localparam integer DAVR = 3, // Guard bits to keep in output of mixer
+    localparam integer DWBB = 18, // base band DW
     localparam integer N_CH = 10,  // N_ADC + N_DAC
     localparam integer N_ADC = 8,
-    localparam integer N_DAC = 2
+    localparam integer N_DAC = 2,
+    localparam signed [DWLO:0] DDC_RX_PHS_OFF = `RX_LO_PHS_DEG * 2**(DWLO+1) / 360,
+    localparam signed [DWLO:0] DDC_TX_PHS_OFF = `TX_LO_PHS_DEG * 2**(DWLO+1) / 360
 ) (
     // ---------------------
     // Localbus interface
@@ -75,79 +95,10 @@ module llrf_shell #(
     input [1:0]          gtx_rxcharisk
 );
 
-
-wire [DW-1:0] adc_phy_dat [0:N_ADC-1];
-assign adc_phy_dat[0] = adc_data_in[DW*0 +:DW];
-assign adc_phy_dat[1] = adc_data_in[DW*1 +:DW];
-assign adc_phy_dat[2] = adc_data_in[DW*2 +:DW];
-assign adc_phy_dat[3] = adc_data_in[DW*3 +:DW];
-assign adc_phy_dat[4] = adc_data_in[DW*4 +:DW];
-assign adc_phy_dat[5] = adc_data_in[DW*5 +:DW];
-assign adc_phy_dat[6] = adc_data_in[DW*6 +:DW];
-assign adc_phy_dat[7] = adc_data_in[DW*7 +:DW];
-
-wire signed [15:0] cav_cel = adc_phy_dat[FDBK_ADC];        // for feedback
-wire wave_trig;
-
-wire [N_ADC-1:0] lb_read_adc;
-wire [N_ADC-1:0] lb_read_dac;
-wire [15:0] adc_buf_out [0:N_ADC-1];
-assign lb_read_adc[0] = lb_read & (lb_addr[12+:6] == 6'h14);
-assign lb_read_adc[1] = lb_read & (lb_addr[12+:6] == 6'h15);
-assign lb_read_adc[2] = lb_read & (lb_addr[12+:6] == 6'h16);
-assign lb_read_adc[3] = lb_read & (lb_addr[12+:6] == 6'h17);
-assign lb_read_adc[4] = lb_read & (lb_addr[12+:6] == 6'h18);
-assign lb_read_adc[5] = lb_read & (lb_addr[12+:6] == 6'h19);
-assign lb_read_adc[6] = lb_read & (lb_addr[12+:6] == 6'h1a);
-assign lb_read_adc[7] = lb_read & (lb_addr[12+:6] == 6'h1b);
-assign lb_read_dac[0] = lb_read & (lb_addr[12+:6] == 6'h1c);
-assign lb_read_dac[1] = lb_read & (lb_addr[12+:6] == 6'h1d);
-
-genvar i;
-generate for (i=0; i<N_ADC; i=i+1)
-    begin: gen_buf_adc
-    adc_buf #(.AW(ADC_BUF_AW), .DW(DW)) adc_buf_i (
-        .adc_trigger    (wave_trig      ),
-        .adc_phy_clk    (dsp_clk        ),
-        .adc_phy_dat    (adc_phy_dat[i] ),
-        .adc_phy_val    (1'b1),
-        .lb_clk         (lb_clk         ),
-        .lb_read        (lb_read_adc[i] ),
-        .lb_rvalid      (lb_rvalid      ),
-        .lb_addr        (lb_addr[ADC_BUF_AW-1:0]),
-        .lb_rdata       (adc_buf_out[i] )
-    );
-    end
-endgenerate
-
-wire [DW-1:0] dac_phy_dat [0:N_DAC-1];
-assign dac_phy_dat[0] = dac_data_a_out;
-assign dac_phy_dat[1] = dac_data_b_out;
-wire [15:0] dac_buf_out [0:N_DAC-1];
-
-genvar j;
-generate for (j=0; j<N_DAC; j=j+1)
-    begin: gen_buf_dac
-    adc_buf #(.AW(ADC_BUF_AW), .DW(DW)) dac_buf_i (
-        .adc_trigger    (wave_trig      ),
-        .adc_phy_clk    (dsp_clk        ),
-        .adc_phy_dat    (dac_phy_dat[j] ),
-        .adc_phy_val    (1'b1),
-        .lb_clk         (lb_clk         ),
-        .lb_read        (lb_read_dac[j] ),
-        .lb_rvalid      (lb_rvalid      ),
-        .lb_addr        (lb_addr[ADC_BUF_AW-1:0]),
-        .lb_rdata       (dac_buf_out[j] )
-    );
-    end
-endgenerate
-
-wire [DW*N_CH-1:0] dac_adc_flat = {dac_data_b_out, dac_data_a_out, adc_data_in};
-wire inlk_permit_in = drive_permit_in & slow_permit_in;
-
 wire [31:0] lb_data = lb_wdata; // for newad.py
 
 // reg [0:0] circle_buf_flip; top-level single-cycle
+// reg [0:0] sig_buf_flip; top-level single-cycle
 // newad-force lb1 domain
 // reg [7:0] dsp_tag; top-level
 // reg [15:0] cbuf_post_delay; top-level
@@ -201,48 +152,101 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .modulo         (dds_modulo)
     );
 
-    // LO for RX (feedback)
-    cordicg_b22 #(.nstg(20), .width(18)) dds_cordicg_i(
+    // LO for RX
+    // pre-compensate for DDC RX phase gain
+    wire signed [DWLO:0] dds_phase = dds_phase_acc + dds_phase_shift + DDC_RX_PHS_OFF;
+    cordicg_b22 #(.nstg(20), .width(18)) dds (
         .clk            (dsp_clk),
         .opin           (2'b00),
         .xin            (18'd`LO_AMP),
         .yin            (18'd0),
-        .phasein        (dds_phase_acc + dds_phase_shift),
+        .phasein        (dds_phase),
         .xout           (cosd),
         .yout           (sind)
     );
 
-    // LO for waveform
-    wire signed [DWLO-1:0] cosdd, sindd;
-    // rotate -90 deg to compensate CIC phase gain
-    wire [DWLO:0] dds_wf_phase = dds_phase_acc  + dds_phase_shift - 19'd131072;
-    cordicg_b22 #(.nstg(20), .width(18)) dds_cordicg_wf(
-        .clk            (dsp_clk),
-        .opin           (2'b00),
-        .xin            (18'd`LO_AMP),
-        .yin            (18'd0),
-        .phasein        (dds_wf_phase),
-        .xout           (cosdd),
-        .yout           (sindd)
-    );
+    wire wave_trig;
+    wire [DW*N_CH-1:0] dac_adc_flat = {dac_data_b_out, dac_data_a_out, adc_data_in};
+    wire signed [DW-1:0] sig_buf_out [0:N_CH-1];
+    wire signed [31:0] sig_buf_counts [0:N_CH-1];
+    wire [N_CH-1:0] sig_buf_ready;
+    wire signed [DWBB-1:0] sig_i_buf_out [0:N_CH-1];
+    wire signed [DWBB-1:0] sig_q_buf_out [0:N_CH-1];
 
-    wire [2*N_CH*(DW+DAVR)-1:0] iq_in_flat;
+    wire [2*N_CH*DWBB-1:0] sig_iq_flat;             // for cic_wave_recorder
+    wire signed [DW-1:0] sig_raw_data [0:N_CH-1];
+    wire signed [DWBB-1:0] sig_i_data [0:N_CH-1];
+    wire signed [DWBB-1:0] sig_q_data [0:N_CH-1];
+    wire signed [DW-1:0] cav_cel = sig_raw_data[FDBK_ADC]; // for feedback in dsp_core
 
-    genvar ix;
-    generate for (ix=0; ix<N_CH; ix=ix+1) begin: gen_mixer
-        // digital down conversion uses LO = exp(-jwt) = cos(jwt) - sin(jwt)
-        mixer #(.dwi(DW),.davr(DAVR),.dwlo(DWLO)) mixi(
-            .clk    (dsp_clk),
-            .adcf   (dac_adc_flat[(DW*ix)+:DW]),
-            .mult   (cosdd),
-            .mixout (iq_in_flat[(DW+DAVR)*(2*ix+1) +:(DW+DAVR)]));   // real
-        mixer #(.dwi(DW),.davr(DAVR),.dwlo(DWLO)) mixq(
-            .clk    (dsp_clk),
-            .adcf   (dac_adc_flat[(DW*ix)+:DW]),
-            .mult   (-sindd),
-            .mixout (iq_in_flat[(DW+DAVR)*(2*ix+0) +:(DW+DAVR)]));   // imag
-        end
-    endgenerate
+    // synchronize I/Q divider state for multiple DDC channels
+    reg i_sel = 0;
+    always @(posedge dsp_clk) i_sel <= ~i_sel;
+
+    // create data stream strobes for sig_buf with 4096 samples
+    // applies to all raw, i, q waveforms
+    wire sig_buf_trig = wave_trig;
+    reg [SIG_BUF_AW-1:0] sig_buf_cnt=0;
+    reg sig_buf_dval=0;
+    wire sig_buf_last = &sig_buf_cnt;
+    always @(posedge dsp_clk) begin
+        if (sig_buf_last) sig_buf_dval <= 0;
+        else if (sig_buf_trig) sig_buf_dval <= 1'b1;
+        sig_buf_cnt <= sig_buf_dval ? sig_buf_cnt + 1'b1 : 0;
+    end
+
+    genvar ch;
+    generate for (ch=0; ch<N_CH; ch=ch+1) begin: gen_sig
+        assign sig_raw_data[ch] = dac_adc_flat[(DW*ch)+:DW];
+
+        ddc #(.DWI(DW), .DWO(DWBB), .DWLO(DWLO)) ddc (
+            .clk            (dsp_clk),
+            .reset          (dsp_reset),
+            .adc            (sig_raw_data[ch]),
+            .cosa           (cosd),
+            .sina           (sind),
+            .i_sel          (i_sel),
+            .i_out          (sig_i_data[ch]),
+            .q_out          (sig_q_data[ch])
+        );
+        assign sig_iq_flat[DWBB*(2*ch+0) +:DWBB] = sig_i_data[ch];
+        assign sig_iq_flat[DWBB*(2*ch+1) +:DWBB] = sig_q_data[ch];
+
+        sig_buf #(.AW(SIG_BUF_AW), .DW(DW)) sig_buf_raw (
+            .sig_clk        (dsp_clk        ),
+            .sig_dat        (sig_raw_data[ch]),
+            .sig_val        (sig_buf_dval   ),
+            .sig_last       (sig_buf_last   ),
+            .lb_clk         (lb_clk         ),
+            .lb_flip_buf    (sig_buf_flip   ),
+            .lb_addr        (lb_addr[SIG_BUF_AW-1:0]),
+            .lb_rdata       (sig_buf_out[ch] ),
+            .buf_ready      (sig_buf_ready[ch]),
+            .buf_count      (sig_buf_counts[ch])
+        );
+
+        sig_buf #(.AW(SIG_BUF_AW), .DW(DWBB)) sig_i_buf (
+            .sig_clk        (dsp_clk        ),
+            .sig_dat        (sig_i_data[ch] ),
+            .sig_val        (sig_buf_dval   ),
+            .sig_last       (sig_buf_last   ),
+            .lb_clk         (lb_clk         ),
+            .lb_flip_buf    (sig_buf_flip   ),
+            .lb_addr        (lb_addr[SIG_BUF_AW-1:0]),
+            .lb_rdata       (sig_i_buf_out[ch] )
+        );
+
+        sig_buf #(.AW(SIG_BUF_AW), .DW(DWBB)) sig_q_buf (
+            .sig_clk        (dsp_clk        ),
+            .sig_dat        (sig_q_data[ch] ),
+            .sig_val        (sig_buf_dval   ),
+            .sig_last       (sig_buf_last   ),
+            .lb_clk         (lb_clk         ),
+            .lb_flip_buf    (sig_buf_flip   ),
+            .lb_addr        (lb_addr[SIG_BUF_AW-1:0]),
+            .lb_rdata       (sig_q_buf_out[ch] )
+        );
+    end endgenerate
 
     // ---------------------
     // Instantiate Sampler
@@ -262,7 +266,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // Instantiate CBUF
     // ---------------------
     wire [CBUF_DW-1:0] cbuf_out;
-    wire llrf_circle_ready;
+    wire cbuf_ready;
     wire cbuf_transferred;
     wire cbuf_sync;
     wire [15:0] cbuf_count;
@@ -284,6 +288,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             if (!cbuf_write || cbuf_sync) cbuf_start <= 1'b1;
         end
     end
+
+    wire inlk_permit_in = drive_permit_in & slow_permit_in;
 
     // -- Waveform freeze logic
     reg [16:0] delay_cnt=0;
@@ -307,7 +313,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [CBUF_AW-1:0] cbuf_addr = lb_addr[CBUF_AW-1:0];
     cic_wave_recorder #(
         .n_chan        (2*N_CH),
-        .di_dwi        (DW+DAVR),  // data width
+        .di_dwi        (DWBB),  // data width
         .di_rwi        (MON_RW),  // result width
                         // Difference between above two widths should be N*log2 of the maximum number
                         // of samples per CIC sample, where N=2 is the order of the CIC filter.
@@ -319,11 +325,11 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .buf_aw        (CBUF_AW),
         .lsb_mask      (1),             // LSB of channel mask is CH0
         .buf_auto_flip (0)
-    ) cic_wave_recorder_i (
+    ) cic_wave_recorder (
         .iclk         (dsp_clk),
         .reset        (dsp_reset),
         .stb_in       (1'b1),
-        .d_in         (iq_in_flat),   // Flattened array of unprocessed IQ streams. CH0 in LSBs
+        .d_in         (sig_iq_flat),   // Flattened array of unprocessed IQ streams. CH0 in LSBs
         .cic_sample   (cic_sample),
 
         // Post-integrator conveyor belt tap
@@ -350,7 +356,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 
         // Circular Buffer data readout
         .buf_stb      (circle_buf_flip),
-        .buf_enable   (llrf_circle_ready),
+        .buf_enable   (cbuf_ready),
         .buf_read_addr(cbuf_addr),
         .buf_d_out    (cbuf_out)
     );
@@ -447,11 +453,10 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     //     and snap for validation of a waveform if register changed in between
     // ---------------------
     wire slow_ready;
-    // wire lb_slow_read = lb_read && (lb_addr[17:8] == 'b1_0010_0000);  // 0x12000 to 0x120ff
     wire [15:0] lb_slow_rdata;
     wire [15:0] cbuf_stat2_pad = cbuf_stat2;
     wire [63:0] evr_live_ts;
-    slow_bridge_shell #(.AW(7), .DW(DW), .N_CH(N_ADC)) slow_bridge_i (
+    slow_bridge_shell #(.AW(7), .DW(DW), .N_CH(N_ADC)) slow_bridge (
         .lb_clk         (lb_clk),
         .lb_addr        (lb_addr[6:0]),
         .lb_read        (lb_read),
@@ -464,7 +469,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .buf_stat1      (cbuf_stat1),
         .buf_stat2      (cbuf_stat2_pad),
         .buf_count      (cbuf_count),
-        .buf_ready      (llrf_circle_ready),
+        .buf_ready      (cbuf_ready),
         .data_in        (adc_data_in),
         .evr_timestamp  (evr_live_ts),
 
@@ -472,8 +477,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .slow_ready     (slow_ready)
     );
 
-    reg [1:0] slow_cbuf_ready=0;
-    always @(posedge lb_clk) slow_cbuf_ready <= {slow_ready, llrf_circle_ready};
+    reg [1:0] llrf_circle_ready=0;
+    always @(posedge lb_clk) llrf_circle_ready <= {slow_ready, cbuf_ready};
 
     wire signed [17:0] amp_setpoint_ntw;
     wire signed [17:0] phs_setpoint_ntw;
@@ -483,17 +488,20 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire signed [17:0] amp_setpoint_i =  (ntw_amp_enable && amp_loop_enable) ? amp_setpoint_ntw : amp_setpoint;
 
     // ---------------------
-    // Instantiate dsp_core
+    // Instantiate llrf_dsp
     // ---------------------
+
     wire signed [15:0] dac_out;
-    wire [18:0] rx_phase_offset = `RX_LO_PHS;
-    wire [18:0] tx_phase_offset = `TX_LO_PHS;
-    dsp_core #(.KW(18), .EW(15)) dsp (
+    wire signed [DWLO:0] rx_phase_offset = 0;
+    wire signed [DWLO:0] tx_phase_offset = DDC_TX_PHS_OFF + DDC_RX_PHS_OFF;
+    llrf_dsp #(.KW(DWBB), .EW(15), .BASEBAND_INPUT(1)) dsp (
         .clk              (dsp_clk),
         .reset            (dsp_reset),
-        .cav_field        (cav_cel),
+        .adc_in           (cav_cel),
         .cosa             (cosd),
         .sina             (sind),
+        .i_data_in        (sig_i_data[FDBK_ADC]),
+        .q_data_in        (sig_q_data[FDBK_ADC]),
         .rx_phase_offset  (rx_phase_offset),
         .tx_phase_offset  (tx_phase_offset),
         .dac_out          (dac_out),
@@ -518,7 +526,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 
     wire signed [17:0] ntw_cos_debug;
     wire signed [18:0] ntw_phase_debug;
-    ntw_analyzer #(.KW(18)) ntw // auto lb1
+    ntw_analyzer #(.KW(DWBB)) ntw // auto lb1
     (
         .clk              (dsp_clk),
         .trig             (ntw_trig_i),
@@ -534,7 +542,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     );
 
     wire pulse_val;
-    pulse_gen #(.AW(32)) pulse(
+    pulse_gen #(.AW(32)) pulse_gen (
         .clk        (dsp_clk),
         .trigger    (cbuf_sync),        // sync with waveform
         .strobe     (cic_sample),       // CIC_BASE_PERIOD cycles per strobe
@@ -552,7 +560,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [0:0]  evr_live_pps_marker;
     wire [0:0]  evr_live_hb_marker;
     wire [0:0]  dsp_event1, dsp_event2;
-    timing_core #(.DSP_EV1(`DSP_EV1), .DSP_EV2(`DSP_EV2)) timing
+    timing_core #(.DSP_EV1(`DSP_EV1), .DSP_EV2(`DSP_EV2)) timing_evr
     (
         .lb_clk              (lb_clk),
         .evr_clk             (gtx_rxclk),
@@ -638,6 +646,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [31:0] evr_live_ts_lo = evr_live_ts[31:0];
     reg  [31:0] evr_live_ts_hi = 0;
     always @(posedge xfer_clk) if (xfer_snap) evr_live_ts_hi = evr_live_ts[63:32];
+    wire [31:0] sig_buf_count = sig_buf_counts[0];
 
     // lb_read: Match READ_DELAY=3 in system.v, check timing in simulation
     always @(posedge lb_clk) if (lb_read) begin
@@ -667,29 +676,51 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             4'h1: reg_bank_1 <= evr_live_ts_hi;
             4'h2: reg_bank_1 <= amp_setpoint_ntw;
             4'h3: reg_bank_1 <= phs_setpoint_ntw;
-            4'h4: reg_bank_1 <= ntw_cos_debug;
-            4'h5: reg_bank_1 <= ntw_phase_debug;
+            4'h4: reg_bank_1 <= sig_buf_count;
+            4'h5: reg_bank_1 <= ntw_cos_debug;
+            4'h6: reg_bank_1 <= ntw_phase_debug;
             default: reg_bank_1 <= 32'hfaceface;
         endcase
     end
     always @(posedge lb_clk) if (lb_read) begin
         lb_addr_d1 <= lb_addr;
         casez (lb_addr_d1)
-            18'h3????: lb_rdata_r <= mirror_out_0;
-            18'h10800: lb_rdata_r <= slow_cbuf_ready;
-            18'h120??: lb_rdata_r <= lb_slow_rdata;
-            18'h1300?: lb_rdata_r <= mon_amp_lb;
-            18'h1301?: lb_rdata_r <= mon_phs_lb;
-            18'h14???: lb_rdata_r <= adc_buf_out[0];
-            18'h15???: lb_rdata_r <= adc_buf_out[1];
-            18'h16???: lb_rdata_r <= adc_buf_out[2];
-            18'h17???: lb_rdata_r <= adc_buf_out[3];
-            18'h18???: lb_rdata_r <= adc_buf_out[4];
-            18'h19???: lb_rdata_r <= adc_buf_out[5];
-            18'h1a???: lb_rdata_r <= adc_buf_out[6];
-            18'h1b???: lb_rdata_r <= adc_buf_out[7];
-            18'h1c???: lb_rdata_r <= dac_buf_out[0];
-            18'h1d???: lb_rdata_r <= dac_buf_out[1];
+            18'h10800: lb_rdata_r <= llrf_circle_ready;
+            18'h10801: lb_rdata_r <= sig_buf_ready;
+            18'h109??: lb_rdata_r <= lb_slow_rdata;
+            18'h10a0?: lb_rdata_r <= mon_amp_lb;
+            18'h10a1?: lb_rdata_r <= mon_phs_lb;
+            18'h11???: lb_rdata_r <= mirror_out_0;
+            18'h12???: lb_rdata_r <= sig_buf_out[0];
+            18'h13???: lb_rdata_r <= sig_buf_out[1];
+            18'h14???: lb_rdata_r <= sig_buf_out[2];
+            18'h15???: lb_rdata_r <= sig_buf_out[3];
+            18'h16???: lb_rdata_r <= sig_buf_out[4];
+            18'h17???: lb_rdata_r <= sig_buf_out[5];
+            18'h18???: lb_rdata_r <= sig_buf_out[6];
+            18'h19???: lb_rdata_r <= sig_buf_out[7];
+            18'h1a???: lb_rdata_r <= sig_buf_out[8];
+            18'h1b???: lb_rdata_r <= sig_buf_out[9];
+            18'h1c???: lb_rdata_r <= sig_i_buf_out[8];
+            18'h1d???: lb_rdata_r <= sig_i_buf_out[9];
+            18'h1e???: lb_rdata_r <= sig_q_buf_out[8];
+            18'h1f???: lb_rdata_r <= sig_q_buf_out[9];
+            18'h30???: lb_rdata_r <= sig_i_buf_out[0];
+            18'h31???: lb_rdata_r <= sig_i_buf_out[1];
+            18'h32???: lb_rdata_r <= sig_i_buf_out[2];
+            18'h33???: lb_rdata_r <= sig_i_buf_out[3];
+            18'h34???: lb_rdata_r <= sig_i_buf_out[4];
+            18'h35???: lb_rdata_r <= sig_i_buf_out[5];
+            18'h36???: lb_rdata_r <= sig_i_buf_out[6];
+            18'h37???: lb_rdata_r <= sig_i_buf_out[7];
+            18'h38???: lb_rdata_r <= sig_q_buf_out[0];
+            18'h39???: lb_rdata_r <= sig_q_buf_out[1];
+            18'h3a???: lb_rdata_r <= sig_q_buf_out[2];
+            18'h3b???: lb_rdata_r <= sig_q_buf_out[3];
+            18'h3c???: lb_rdata_r <= sig_q_buf_out[4];
+            18'h3d???: lb_rdata_r <= sig_q_buf_out[5];
+            18'h3e???: lb_rdata_r <= sig_q_buf_out[6];
+            18'h3f???: lb_rdata_r <= sig_q_buf_out[7];
             18'h2????: lb_rdata_r <= cbuf_out;
             18'h008??: lb_rdata_r <= 32'h0;  // LEEP old config ROM compatibility
             18'h???0?: lb_rdata_r <= reg_bank_0;

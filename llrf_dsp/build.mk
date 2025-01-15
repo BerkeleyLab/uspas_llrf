@@ -2,7 +2,7 @@ APP_NAME    = llrf_shell
 JSON_DIR    = ./regmap
 LB_AW       = 17    # should be LB_HI
 NEWAD_ARGS += -m    # mirror
-NEWAD_ARGS_llrf_shell = -b196608
+NEWAD_ARGS_llrf_shell = -b69632  # 0x11000
 
 TEST_BENCH_D= $(TEST_BENCH:%_tb=$(DEPDIR)/%_tb.d)
 VERILOG_AUTOGEN += settings.vams

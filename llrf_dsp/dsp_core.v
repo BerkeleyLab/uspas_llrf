@@ -1,22 +1,22 @@
+// base band feedback dsp core
 module dsp_core #(
     parameter KW = 18,
     parameter EW = 15
 ) (
-    //DSP clock
     input clk,
     input reset,
 
-    //RF ADC inputs, after downconverted to IF
-    input signed [15:0] cav_field,
+    input signed [KW-1:0] field_i,
+    input signed [KW-1:0] field_q,
 
-    //LO signals from DDS
-    input signed [17:0] cosa,
-    input signed [17:0] sina,
+    output signed [KW-1:0] drive_i,
+    output signed [KW-1:0] drive_q,
+
     input [18:0] rx_phase_offset,
     input [18:0] tx_phase_offset,
 
-    //DAC upconverted signal
-    output signed [15:0] dac_out,
+    output signed [KW-1:0] amp_measured,
+    output signed [KW-1:0] phs_measured,
 
     input signed [17:0] amp_setpoint,
     input signed [17:0] phs_setpoint,
@@ -31,49 +31,6 @@ module dsp_core #(
     input phs_loop_reset,
     output signed [EW-1:0] err_out_amp,
     output signed [EW-1:0] err_out_phs
-);
-
-// Washout filter, remove the DC component
-// gain: (z-1) / (z*(z-(N-1)/N)), N=64
-// delay: 2 cycles
-// settling: ~70 cycles
-wire signed [15:0] cav_field_filtered;
-fwashout wash_filter (
-    .clk    (clk),
-    .rst    (reset),
-    .track  (1'b1),
-    .a_data (cav_field),
-    .a_gate (1'b1),
-    .a_trig (1'b0),
-    .o_data (cav_field_filtered)
-);
-
-// Digital Downconverter
-// Downconvert the IF field signal to get interleaved IQ signal
-// gain: sin(2 * pi * theta) * 2
-// delay: 8 cycles
-wire i_sel;
-wire signed [KW-2:0] field_iq;
-noniq_ddc #(.ODW(KW-1)) noniq_ddc (
-    .clk    (clk),
-    .cosd   (cosa),
-    .sind   (sina),
-    .a_data (cav_field_filtered),
-    .i_sel  (i_sel),
-    .o_data (field_iq)
-);
-
-// Interpolate downconverted field signals to get separate I&Q signals
-// gain: 2
-// delay: 3 cycles
-wire signed [KW-1:0] field_i, field_q;
-fiq_interp #(.a_dw(KW-1), .i_dw(KW), .q_dw(KW)) interp(
-    .clk    (clk),
-    .a_data (field_iq),
-    .a_gate (1'b1),
-    .a_trig (i_sel),
-    .i_data (field_i),
-    .q_data (field_q)
 );
 
 // gain: 1.64676
@@ -92,8 +49,8 @@ cordicg_b22 #(.nstg(20), .width(KW)) rx_cordic (
 
 // Amp/Phs PI loop
 // delay: 4 cycles
-wire signed [KW-1:0] amp_measured = amp_measured_raw;
-wire signed [KW-1:0] phs_measured = phs_measured_raw[KW:1];
+assign amp_measured = amp_measured_raw;
+assign phs_measured = phs_measured_raw[KW:1];
 
 wire signed [KW-1:0] drive_amp;
 pi_scalar #(.KW(KW), .EW(EW), .WRAP(0)) pi_amp (
@@ -121,9 +78,6 @@ pi_scalar #(.KW(KW), .EW(EW), .WRAP(1)) pi_phs (
     .drive      (drive_phs)
 );
 
-wire signed [KW-1:0] drive_i;
-wire signed [KW-1:0] drive_q;
-
 // compensate measured lo shift
 // delay: 20 cycles
 cordicg_b22 #(.nstg(20), .width(KW)) tx_cordic (
@@ -134,25 +88,6 @@ cordicg_b22 #(.nstg(20), .width(KW)) tx_cordic (
     .phasein    ({drive_phs, 1'b0} + tx_phase_offset),
     .xout       (drive_i),
     .yout       (drive_q)
-);
-
-// Digital Up-converter - Double side-band modulator
-// check out pg. 268 from https://cds.cern.ch/record/1100538/files/p249.pdf
-// Digital quadrature modulation followed by analog up-conversion mixer
-// rf_out = I*cos(wt) + Q*sin(wt)
-// Gain = `LO_AMP * `CORDIC_GAIN / 2**18 / 2 = 0.235068
-// delay: 3 cycles
-flevel_set upconvert (
-    .clk    (clk),
-    .cosd   (cosa),
-    .sind   (sina),
-    .i_data (drive_i[KW-1:KW-17]),
-    .i_gate (1'b1),
-    .i_trig (1'b1),
-    .q_data (drive_q[KW-1:KW-17]),
-    .q_gate (1'b1),
-    .q_trig (1'b1),
-    .o_data (dac_out)
 );
 
 endmodule

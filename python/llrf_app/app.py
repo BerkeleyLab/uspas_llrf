@@ -1,10 +1,13 @@
 from leep.raw import LEEPDevice
 from llrf_app.bsp import MarbleDevInfo
 import numpy as np
+import pandas as pd
 import json
 import time
 import logging
 logger = logging.getLogger(__name__)
+
+CORDIC_GAIN = 1.646760258
 
 
 class LLRFApp(LEEPDevice):
@@ -13,26 +16,27 @@ class LLRFApp(LEEPDevice):
                  chan_keep=0x3ff, wfm_len=4096,
                  timeout=0.1, **kwargs):
         self.init_rom_addr = 0x04000
-        super(LLRFApp, self).__init__(addr, timeout, **kwargs)
+        super().__init__(addr, timeout, **kwargs)
 
         with open(settings_fname) as f:
             configs = json.load(f)
         for k, v in configs[conf].items():
-            setattr(self, k.lower(), v)
+            setattr(self, k, v)
         self.wave_samp_per = 1
         self.wfm_len = wfm_len
         assert self.wfm_len <= 2**15  # cbuf size / 2
-        self.ts = self.dsp_clk_cycle * self.cic_base_period
-        self.ts *= self.wave_samp_per
+        self.cic_ts = self.DSP_CLK_CYCLE * self.CIC_BASE_PERIOD
+        self.cic_ts *= self.wave_samp_per
         self.chan_keep = chan_keep & 0x03ff  # 2 dacs, 8 adcs
-        self.n_chan = bin(self.chan_keep).count('1')
-        self.adc_names = [f'ADC {i}' for i in range(8)]
-        self.dac_names = ['DAC 0', 'DAC 1']
-        self.chan_names = self.adc_names + self.dac_names
+        self.circ_n_chan = bin(self.chan_keep).count('1')
+        self.signals = [f'adc{n}' for n in range(8)] + \
+            [f'dac{n}' for n in range(2)]
         self.marble_info = MarbleDevInfo()
         self.init_demo()
 
     def init_demo(self):
+        self.system_bist_pass = self.read_reg('system_bist_pass')
+        assert self.system_bist_pass, "System Boot Self-Test Failed!"
         self.reg_write([
             ('amp_setpoint', 30000),
             ('dac_permit', 1),
@@ -40,52 +44,103 @@ class LLRFApp(LEEPDevice):
             ('chan_keep', self.chan_keep)
         ])
         logger.debug(f'chan_keep: {self.chan_keep:#018b}')
-        self.chans = np.where(
+        self.cic_chans = np.where(
             np.array([int(x) for x in f'{self.chan_keep:b}'[::-1]]) == 1)[0]
-        logger.debug(f'chans selected: {self.chans}')
+        logger.debug(f'chans selected: {self.cic_chans}')
 
     def read_reg(self, name):
-        ''' read single register by given name '''
+        """ read single register by given name """
         return self.reg_read([name])[0]
 
     def write_reg(self, name, val):
-        ''' read single register by given name '''
+        """ read single register by given name """
         return self.reg_write([(name, val)])
 
     def get_bsp_info(self):
         self.marble_info.decode_data(self.read_reg('bsp_info_buf'))
         return self.marble_info
 
-    def read_adc_bufs(self):
-        return np.array(self.reg_read([
-            'adc' + str(chan) + '_buf' for chan in range(8)
-            ]), dtype=np.int16)
+    def get_rfmon(self):
+        """ Read a snapshot of RF amp/phs measurements """
+        cols = ['mon_amp', 'mon_phs']
+        df = pd.DataFrame(
+            data=np.array(self.reg_read(cols)).T[:len(self.signals)],
+            index=self.signals, columns=cols)
+        df['Amp [cnt]'] = df['mon_amp'] / self.INLK_GAIN
+        df['Phs [deg]'] = df['mon_phs'] * 360 / (1 << 17)
+        return df
 
-    def read_dac_bufs(self):
-        return np.array(self.reg_read([
-            'dac' + str(chan) + '_buf' for chan in range(2)
-            ]), dtype=np.int16)
+    def read_raw_bufs(self):
+        self.write_reg('sig_buf_flip', 1)
+        while (self.read_reg('sig_buf_ready') != 0x3ff):
+            time.sleep(0.001)
+        return np.array(self.reg_read(
+            [f'{ch}_buf' for ch in self.signals]), dtype=np.int16)
+
+    def get_raw_bufs_df(self):
+        """Returns a DataFrame of raw waveforms for 8 adc and 2 dac channels"""
+        sig_wfms = self.read_raw_bufs()
+        df = pd.DataFrame(sig_wfms.T, columns=self.signals)
+        df['Time [ns]'] = np.arange(sig_wfms.shape[-1]) * self.DSP_CLK_CYCLE
+        df.set_index('Time [ns]', inplace=True)
+        return df
+
+    def read_iq_wfms(self):
+        """ Read I, Q waveforms of all waveforms in ADC count unit.
+            Returns a 2D array of shape (n_chan, wfm_len)
+        """
+        self.write_reg('sig_buf_flip', 1)
+        while (self.read_reg('sig_buf_ready') != 0x3ff):
+            time.sleep(0.001)
+        gain = self.AMP_RX_GAIN / CORDIC_GAIN
+        iq_wfms = np.array(self.reg_read(
+            [f'{ch}_i_buf' for ch in self.signals] +
+            [f'{ch}_q_buf' for ch in self.signals])) / gain
+        return iq_wfms[:len(self.signals)] + 1j * iq_wfms[len(self.signals):]
+
+    def get_iq_wfms_df(self):
+        """returns a DataFrame of all IQ waveforms, in ADC count unit"""
+        iq_wfms = self.read_iq_wfms()
+        df = pd.DataFrame(iq_wfms.T, columns=self.signals)
+        df['Time [ns]'] = np.arange(iq_wfms.shape[-1]) * self.DSP_CLK_CYCLE
+        df.set_index('Time [ns]', inplace=True)
+        for ch in self.signals:
+            df[f'{ch}_amp'] = np.abs(df[ch])
+            df[f'{ch}_phs'] = np.angle(df[ch], deg=True)
+        return df
 
     def read_cbuf_data(self):
         self.write_reg('circle_buf_flip', 1)
         while (self.read_reg('llrf_circle_ready') != 3):
             time.sleep(0.01)
         d = np.array(self.read_reg('circle_data'))
-        return d[:self.wfm_len * 2 * self.n_chan]
+        return d[:self.wfm_len * 2 * self.circ_n_chan]
 
-    def get_mp_wfm(self):
+    def get_cic_iq_wfms(self):
         darray = self.read_cbuf_data()
-        iq_traces = self.calc_iq_arrays(darray)
-        return self.calc_mp_traces(iq_traces)
+        return self.decode_interleaved_iq_wfm(darray)
+        # return self.calc_mp_traces(iq_traces)
 
-    def calc_iq_arrays(self, varray):
-        darray = varray.reshape(-1, 2*self.n_chan).T
+    def decode_interleaved_iq_wfm(self, varray):
+        darray = varray.reshape(-1, 2*self.circ_n_chan).T
         iq_arrays = np.array([
             (darray[ix*2] + 1j * darray[ix*2+1])
-            for ix in range(self.n_chan)]) / self.amp_rx_gain
+            for ix in range(self.circ_n_chan)]) / self.MON_GAIN
         return iq_arrays
 
     def calc_mp_traces(self, iq_arrays):
         mag_trace = np.abs(iq_arrays)
         phs_trace = np.angle(iq_arrays, deg=True)
         return np.vstack((mag_trace, phs_trace))
+
+    def get_cic_wfm_df(self):
+        """Returns a DataFrame of circle buffer data"""
+        cic_iq_wfms = self.get_cic_iq_wfms()
+        chans = [self.signals[ch] for ch in self.cic_chans]
+        df = pd.DataFrame(cic_iq_wfms.T, columns=chans)
+        df['Time [ns]'] = np.arange(cic_iq_wfms.shape[-1]) * self.cic_ts
+        df.set_index('Time [ns]', inplace=True)
+        for ch in chans:
+            df[f'{ch}_amp'] = np.abs(df[ch])
+            df[f'{ch}_phs'] = np.angle(df[ch], deg=True)
+        return df

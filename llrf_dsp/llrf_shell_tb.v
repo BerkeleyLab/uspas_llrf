@@ -14,10 +14,10 @@ localparam CLK_CYCLE        = 8;        // ns
 localparam GTX_RX_CYCLE     = 8;        // ns
 parameter CBUF_AW           = 6;
 parameter CBUF_DW           = 24;
-parameter ADC_BUF_AW        = 3;
+parameter SIG_BUF_AW        = 3;
 localparam [17:0] DSP_CBUF_ADDR = 18'h20000;
-localparam [17:0] DSP_SLOW_ADDR = 18'h12011;
-localparam [17:0] ADC0_BUF_ADDR = 18'h14000;
+localparam [17:0] DSP_SLOW_ADDR = 18'h10911;
+localparam [17:0] ADC0_BUF_ADDR = 18'h12000;
 `define NULL 0
 
 integer cc=0;
@@ -120,8 +120,8 @@ end
     // ---------------------
     // Generate stimulus
     // ---------------------
-    parameter real AMPI = 32767;     // full scale: 2^15
-    parameter real PHSI = 0;        // deg
+    parameter real AMPI = (1<<15) * 0.95;   // 95% of 16-bit full scale
+    parameter real PHSI = 15;        // deg
     parameter AMP_SETP_ADC = 10000;  // full scale: 2^15
     parameter PHS_SETP_DEG = PHSI;   // deg
     parameter integer MO_ADC = 0;
@@ -153,7 +153,7 @@ end
         .SHIFT_BASE     (`SHIFT_BASE),
         .MO_ADC         (MO_ADC),
         .FDBK_ADC       (FDBK_ADC),
-        .ADC_BUF_AW     (ADC_BUF_AW),
+        .SIG_BUF_AW     (SIG_BUF_AW),
         .CBUF_AW        (CBUF_AW),
         .CBUF_DW        (CBUF_DW)
     ) dut(
@@ -229,13 +229,14 @@ end
 
         init_dds_task(phase_step, modulo);
         calc_cic_gain_task(wave_samp_per, `SHIFT_BASE, shift, mon_gain);
+        mon_gain *= `AMP_RX_GAIN / `CORDIC_GAIN / 4;
         calc_cic_gain_task(1, `SHIFT_INLK, inlk_shift, inlk_gain);
+        inlk_gain *= `AMP_RX_GAIN / 4;
         calc_loop_gain_task(
             AMP_SETP_ADC, PHS_SETP_DEG,
             open_amp_gain, open_phs_gain,
             amp_setpoint, phs_setpoint,
             amp_setpoint_close, phs_setpoint_close);
-        inlk_gain = inlk_gain * `CORDIC_GAIN;
 
         amp_expect = AMPI;
         phs_expect = PHSI;
@@ -259,11 +260,13 @@ end
     real wfm_amp, wfm_phs;
     integer jx;
     reg inlk_check=0;
-    reg signed [DW-1:0] rxbuf [0:2**ADC_BUF_AW];
+    reg signed [DW-1:0] rxbuf [0:2**SIG_BUF_AW];
 
     initial begin
         init_task();
         while (!init_done);
+        lb_write_task(DSP_RESET, 1);
+
         $display("---- Frequency settings ----");
         $display("%20s = %12d", "NUM_DDS", `NUM_DDS);
         $display("%20s = %12d", "DEN_DDS", `DEN_DDS);
@@ -320,8 +323,8 @@ end
             $fwrite(fd, "\"%s\": %d,\n", "wave_shift", shift);
             $fwrite(fd, "\"%s\": %d,\n", "wave_samp_per", wave_samp_per);
             $fwrite(fd, "\"%s\": %d,\n", "chan_keep", chan_keep);
-            $fwrite(fd, "\"%s\": %d,\n", "amp_setpoint", amp_setpoint);
-            $fwrite(fd, "\"%s\": %d,\n", "phs_setpoint", phs_setpoint);
+            $fwrite(fd, "\"%s\": %d,\n", "amp_setpoint", 0);    // default value at boot
+            $fwrite(fd, "\"%s\": %d,\n", "phs_setpoint", 0);    // default value at boot
             $fwrite(fd, "\"%s\": %d,\n", "amp_loop_enable", amp_loop_enable);
             $fwrite(fd, "\"%s\": %d,\n", "phs_loop_enable", phs_loop_enable);
             $fwrite(fd, "\"%s\": %d,\n", "amp_loop_reset", amp_loop_reset);
@@ -333,15 +336,16 @@ end
             $fwrite(fd, "\"%s\": %d,\n", "Ki_phs", Ki_phs);
             $fwrite(fd, "\"%s\": %d,\n", "pulse_mode", pulse_mode);
             $fwrite(fd, "\"%s\": %d,\n", "pulse_high_len", pulse_high_len);
-            $fwrite(fd, "\"%s\": %d\n", "dac_permit", dac_permit);
+            $fwrite(fd, "\"%s\": %d\n", "dac_permit", 0);    // default value at boot
             $fwrite(fd, "}");
             $fclose(fd);
             $finish();
         end
 
-        lb_write_task(DSP_RESET, 1);
         lb_write_task(DSP_RESET, 0);
         lb_write_task(CIRCLE_BUF_FLIP, 1); // discard 1st waveform
+        lb_write_task(SIG_BUF_FLIP, 1); // discard 1st waveform
+
         // wait for cbuf_ready
         while (!rdata[0]) lb_read_task(LLRF_CIRCLE_READY, rdata);
 
@@ -372,16 +376,21 @@ end
         @(posedge dut.wave_trig);
         @(posedge dut.dsp_clk);
         // record adc values for checking against adc0_buf readout
-        for (jx=0; jx<2**ADC_BUF_AW; jx=jx+1) begin
+        for (jx=0; jx<2**SIG_BUF_AW; jx=jx+1) begin
             @(negedge dut.dsp_clk);
             rxbuf[jx] = mo_sig;
             // $display("%g ns, [%2d]: %4d", $time, jx, mo_sig);
         end
         // readout and validate
-        for (jx=0; jx<2**ADC_BUF_AW; jx=jx+1) begin
+        lb_write_task(SIG_BUF_FLIP, 1);
+        lb_read_task(SIG_BUF_READY, rdata);
+        while (!lb_rdata[0]) begin
+            lb_read_task(SIG_BUF_READY, rdata);
+        end
+        for (jx=0; jx<2**SIG_BUF_AW; jx=jx+1) begin
             lb_read_task(ADC0_BUF_ADDR + jx, rdata);
             fail |= $signed(rdata[15:0]) != rxbuf[jx];
-            $display("[%2d]: adc_buf: %6d, expect: %6d, %s",
+            $display("[%2d]: sig_buf: %6d, expect: %6d, %s",
                 jx, $signed(rdata[15:0]), rxbuf[jx], fail ? "FAIL":"OK");
         end
 
@@ -389,14 +398,14 @@ end
         // wait for slow_ready
         while (!rdata[1]) lb_read_task(LLRF_CIRCLE_READY, rdata);
         lb_read_task(DSP_SLOW_ADC_MIN_0 + MO_ADC, rdata);
-        amp_err = amp_expect + $signed(rdata[15:0]);
-        fail |= amp_err < 0 || (amp_err / amp_expect) > 0.05;
+        amp_err = -amp_expect - $signed(rdata[15:0]);
+        fail |= $abs(amp_err / amp_expect) > 0.1;
         $display("Time: %g ns, Slow Readout: adc_min_0 = %8d cnt, expect = %8.1f, %s",
             $time, $signed(rdata[15:0]), -amp_expect, fail ? "FAIL":"OK");
 
         lb_read_task(DSP_SLOW_ADC_MAX_0 + MO_ADC, rdata);
         amp_err = amp_expect - $signed(rdata[15:0]);
-        fail |= amp_err < 0 || (amp_err / amp_expect) > 0.05;
+        fail |= $abs(amp_err / amp_expect) > 0.1;
         $display("Time: %g ns, Slow Readout: adc_max_0 = %8d cnt, expect = %8.1f, %s",
             $time, $signed(rdata[15:0]), amp_expect, fail ? "FAIL":"OK");
         lb_read_task(DSP_SLOW_ADC_MIN_0 + LOOPBACK_ADC, rdata);

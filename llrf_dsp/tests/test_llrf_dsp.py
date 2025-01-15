@@ -15,24 +15,32 @@ class TestLLRF:
                  f_config='USPAS', settings_fname='../settings.json'):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
-        self.llrf = LLRFModel(conf=f_config, settings_fname=settings_fname)
+        self.llrf = llrf = LLRFModel(f_config, settings_fname)
         self.plant = Plant(
-            conf=f_config, settings_fname='cavity.json', llrf=self.llrf)
+            conf=f_config, settings_fname='cavity.json', llrf=llrf)
         self.log_banner(f'Simulating: {f_config}')
-        rx_phase_off_reg = self.encode_phase(self.llrf.rx.phase_off_deg)
-        tx_phase_off_reg = self.encode_phase(self.llrf.tx.phase_off_deg)
+        rx_phase_off_reg = self.encode_phase(llrf.rx.phase_off_deg)
+        tx_phase_off_reg = self.encode_phase(llrf.tx.phase_off_deg)
         self.dut.rx_phase_offset.value = rx_phase_off_reg
         self.dut.tx_phase_offset.value = tx_phase_off_reg
         self.dut._log.info(
-            f'RX phase off: {self.llrf.rx.phase_off_deg:8.2f} deg; '
-            f'TX phase off: {self.llrf.tx.phase_off_deg:8.2f} deg')
+            f'RX phase off: {llrf.rx.phase_off_deg:8.2f} deg; '
+            f'TX phase off: {llrf.tx.phase_off_deg:8.2f} deg')
         self.dut._log.info(
             f'RX phase off: {rx_phase_off_reg:8d} cnt; '
             f'TX phase off: {tx_phase_off_reg:8d} cnt')
+        self.dut._log.info(f'inlk_gain: {llrf.inlk_gain:10.6f}')
+        self.dut._log.info(f'mon_gain:  {llrf.mon_gain:10.6f}')
         # validate settings.json against calculated values
-        assert rx_phase_off_reg == self.llrf.RX_LO_PHS, "Unexpected RX_LO_PHS."
-        assert tx_phase_off_reg == self.llrf.TX_LO_PHS, "Unexpected TX_LO_PHS."
-        clock = Clock(self.dut.clk, self.llrf.DSP_CLK_CYCLE, units="ns")
+        assert np.abs(llrf.rx.phase_off_deg - llrf.RX_LO_PHS_DEG) < 1e-4, \
+            "Unexpected RX_LO_PHS_DEG."
+        assert np.abs(llrf.tx.phase_off_deg - llrf.TX_LO_PHS_DEG) < 1e-4, \
+            "Unexpected TX_LO_PHS_DEG."
+        assert np.abs(llrf.inlk_gain - llrf.INLK_GAIN) / llrf.inlk_gain \
+            < 1e-4, "Unexpected INLK_GAIN."
+        assert np.abs(llrf.mon_gain - llrf.MON_GAIN) / llrf.inlk_gain \
+            < 1e-4, "Unexpected MON_GAIN."
+        clock = Clock(self.dut.clk, llrf.DSP_CLK_CYCLE, units="ns")
         cocotb.start_soon(clock.start())
 
     def log_banner(self, str):
@@ -140,12 +148,12 @@ class TestLLRF:
         for t in itertools.count():
             sig = amp * np.exp(1j * (self.llrf.omega * t - np.deg2rad(phs)))
             await RisingEdge(self.dut.clk)
-            self.dut.cav_field.value = int(sig.real)
+            self.dut.adc_in.value = int(sig.real)
 
     async def loopback(self) -> None:
         while True:
             await RisingEdge(self.dut.clk)
-            self.dut.cav_field.setimmediatevalue(
+            self.dut.adc_in.setimmediatevalue(
                 self.dut.dac_out.value.signed_integer)
 
     async def feedback(self) -> None:
@@ -153,7 +161,7 @@ class TestLLRF:
             await self.plant.i_queue.put(self.dut.dac_out.value.signed_integer)
             await Timer(2, 'ns')  # delay by cable
             y = int(await self.plant.o_queue.get())
-            self.dut.cav_field.value = min(max(y, -32678), 32767)
+            self.dut.adc_in.value = min(max(y, -32678), 32767)
 
     async def check_sig(self, amp_exp, phs_exp) -> None:
         self.dut._log.info(

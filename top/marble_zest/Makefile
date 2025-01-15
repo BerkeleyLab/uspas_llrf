@@ -87,10 +87,6 @@ system_test:
        test "$$($(PYTHON) test.py leep://$(IP_ADDRESS):803 gitid)" = "$(GIT_ID)" && echo "gitid OK" && \
        $(PYTHON) test.py leep://$(IP_ADDRESS):803 reg system_bist_pass | awk ' $$2!=00000001 { exit 1 }'
 
-evr_test:
-	cd $(TOP)python && \
-	$(PYTHON) test_evr.py -a $(IP_ADDRESS)
-
 CLEAN += system_top.xdc top.xdc *.bin *.bit $(IP_BIT_D)
 CLEAN += config_romx.v $(TARGET).json topsim.d Vmarble_zest_frame
 CLEAN += $(TARGET)_top.prm bit_stamp_mod $(TARGET)_top.d *.log *.jou
