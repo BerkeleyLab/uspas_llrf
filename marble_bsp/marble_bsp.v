@@ -148,6 +148,8 @@ wire enable_rx;
 wire config_s, config_p;
 wire [7:0] config_a, config_d;
 wire [7:0] mbox_out;
+wire addrhit_mbox = lb_addr[17:12] == 6'h01; // 0x01000-0x01fff
+wire lb_mbox_write = lb_write & addrhit_mbox;
 
 mmc_mailbox #(
     .DEFAULT_ENABLE_RX(DEFAULT_ENABLE_RX)
@@ -157,8 +159,8 @@ mmc_mailbox #(
     .lb_addr            (lb_addr[10:0]), // input [10:0]
     .lb_din             (lb_wdata[7:0]), // input [7:0]
     .lb_dout            (mbox_out),      // output [7:0]
-    .lb_write           (lb_write), // input
-    .lb_control_strobe  (lb_read),  // input
+    .lb_write           (lb_mbox_write), // input
+    .lb_control_strobe  (lb_read),       // input
     // SPI PHY
     .sck                (FPGA_SCK),     // input
     .ncs                (FPGA_CSB),     // input
@@ -178,7 +180,7 @@ mmc_mailbox #(
 // read / write buffer, reserved for housekeeping info
 // ---------------------
 wire [7:0] lb_rdata_buf;
-wire lb_buf_wen = lb_write & (lb_addr[12+:4]==3);     // 0x3000 - 0x3fff, 4k bytes
+wire lb_buf_wen = lb_write & (lb_addr[17:12]==3);     // 0x3000 - 0x3fff, 4k bytes
 dpram #(
     .dw(8),
     .aw(12)
@@ -214,19 +216,19 @@ always @(posedge lb_clk) if(lb_read) begin
     endcase
 end
 
-// lb_read: Match READ_DELAY=3 in system.v, check timing in simulation
 always @(posedge lb_clk) if (lb_read) begin
     lb_addr_d1 <= lb_addr;
     casez (lb_addr_d1)
         18'h00???: lb_rdata_r <= mirror_out_0;  // automatic address map
-        18'h01???: lb_rdata_r <= mbox_out;
+        // 18'h001??? reserved for mailbox. See 'addrhit_mbox' below.
         18'h0200?: lb_rdata_r <= reg_bank_0;
         18'h03???: lb_rdata_r <= lb_rdata_buf;
         default:   lb_rdata_r <= 32'hfaceface;
     endcase
 end
 
-assign lb_rdata = lb_rdata_r;
+// The mailbox readout from fake_dpram can't be registered again
+assign lb_rdata = addrhit_mbox ? {24'h000000, mbox_out} : lb_rdata_r;
 
 // Keep the PHY's reset pin low for the first 33 ms
 reg [26:0] rx_heartbeat=0, tx_heartbeat=0;

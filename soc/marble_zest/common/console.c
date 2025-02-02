@@ -75,7 +75,7 @@ void console(char c) {
             break;
 
         case 'd':
-            for (ix=6*16; ix<6*16+10; ix++) {  // read page 4
+            for (ix=4*16; ix<4*16+10; ix++) {  // read page 4
                 dval32 = read_lb_reg(LB_MARBLE_SPI_MBOX + ix);
                 printf("mbox[%u]: %x\n", ix, dval32);
             }
