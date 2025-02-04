@@ -18,8 +18,8 @@ module dsp_core #(
     output signed [KW-1:0] amp_measured,
     output signed [KW-1:0] phs_measured,
 
-    input signed [17:0] amp_setpoint,
-    input signed [17:0] phs_setpoint,
+    input signed [KW-1:0] amp_setpoint,
+    input signed [KW-1:0] phs_setpoint,
 
     input signed [KW-1:0] Kp_amp,
     input signed [KW-1:0] Kp_phs,
