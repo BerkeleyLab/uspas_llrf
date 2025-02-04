@@ -17,44 +17,46 @@
    Typical verification results:
 
 ```
-     0.00ns INFO     cocotb                             Seeding Python random module with 1727736018
-     0.00ns INFO     cocotb.regression                  Found test test_dsp_core.test_alsu
-     0.00ns INFO     cocotb.regression                  Found test test_dsp_core.test_uspas
-     0.00ns INFO     cocotb.regression                  Found test test_dsp_core.test_lemp
-     0.00ns INFO     cocotb.regression                  Found test test_dsp_core.test_awa
+     0.00ns INFO     cocotb                             Seeding Python random module with 1738686879
+     0.00ns INFO     cocotb.regression                  Found test test_llrf_dsp.test_alsu
+     0.00ns INFO     cocotb.regression                  Found test test_llrf_dsp.test_uspas
+     0.00ns INFO     cocotb.regression                  Found test test_llrf_dsp.test_lemp
+     0.00ns INFO     cocotb.regression                  Found test test_llrf_dsp.test_awa
      0.00ns INFO     cocotb.regression                  running test_alsu (1/4)
-     0.00ns INFO     cocotb.dsp_core                    ********************  Simulating: ALSU  ********************
-     0.00ns INFO     cocotb.dsp_core                    RX phase off:   131.75 deg; TX phase off:   -32.73 deg
-     0.00ns INFO     cocotb.dsp_core                    RX phase off:   191879 cnt; TX phase off:   -47662 cnt
-     0.00ns INFO     cocotb.dsp_core                    ********************      RX Test       ********************
-     0.00ns INFO     cocotb.dsp_core                    LLRFModel RX:
-                                                        < DSPCoreRX   :   Amp gain= 4.831,   Phs gain=    0.00 deg >
+     0.00ns INFO     cocotb.llrf_dsp                    ********************  Simulating: ALSU  ********************
+     0.00ns INFO     cocotb.llrf_dsp                    RX phase off:   131.75 deg; TX phase off:   -32.73 deg
+     0.00ns INFO     cocotb.llrf_dsp                    RX phase off:   191879 cnt; TX phase off:   -47662 cnt
+     0.00ns INFO     cocotb.llrf_dsp                    inlk_gain:   0.570886
+     0.00ns INFO     cocotb.llrf_dsp                    mon_gain:    5.546751
+     0.00ns INFO     cocotb.llrf_dsp                    ********************      RX Test       ********************
+     0.00ns INFO     cocotb.llrf_dsp                    LLRFModel RX:
+                                                        < DSPCoreRX   :   Amp gain= 2.416,   Phs gain=    0.00 deg >
                                                         WashoutFilter :   Amp gain= 1.032,   Phs gain= -130.07 deg;
                                                         DDS           :   Amp gain= 0.940,   Phs gain=    0.00 deg;
-                                                        DDC           :   Amp gain= 3.023,   Phs gain=  -98.18 deg;
+                                                        DDC           :   Amp gain= 1.511,   Phs gain=  -98.18 deg;
                                                         CORDIC        :   Amp gain= 1.647,   Phs gain= -131.75 deg;
 
-  1226.70ns INFO     cocotb.dsp_core                    expected mag: 26451.53 cnt,  phs: 87.839 deg
-  1235.40ns INFO     cocotb.dsp_core                    measured mag: 26450.46 cnt,  phs: 87.834 deg
-  1244.10ns INFO     cocotb.dsp_core                    measured mag: 26450.67 cnt,  phs: 87.833 deg
-  1252.80ns INFO     cocotb.dsp_core                    measured mag: 26450.87 cnt,  phs: 87.832 deg
-  1261.50ns INFO     cocotb.dsp_core                    measured mag: 26450.87 cnt,  phs: 87.838 deg
-  1270.20ns INFO     cocotb.dsp_core                    measured mag: 26450.87 cnt,  phs: 87.845 deg
-  1270.20ns INFO     cocotb.dsp_core                    ********************   Open Loop Test   ********************
-  1270.20ns INFO     cocotb.dsp_core                    LLRFModel TX:
+  1809.60ns INFO     cocotb.llrf_dsp                    expected mag: 26451.53 cnt,  phs: -123.434 deg
+  1818.30ns INFO     cocotb.llrf_dsp                    measured mag: 26450.87 cnt,  phs: -123.437 deg
+  1827.00ns INFO     cocotb.llrf_dsp                    measured mag: 26450.87 cnt,  phs: -123.437 deg
+  1835.70ns INFO     cocotb.llrf_dsp                    measured mag: 26450.87 cnt,  phs: -123.437 deg
+  1844.40ns INFO     cocotb.llrf_dsp                    measured mag: 26450.46 cnt,  phs: -123.434 deg
+  1853.10ns INFO     cocotb.llrf_dsp                    measured mag: 26450.46 cnt,  phs: -123.431 deg
+  1853.10ns INFO     cocotb.llrf_dsp                    ********************   Open Loop Test   ********************
+  1853.10ns INFO     cocotb.llrf_dsp                    LLRFModel TX:
                                                         < DSPCoreTX   :   Amp gain= 0.387,   Phs gain=   -0.00 deg >
                                                         DDS           :   Amp gain= 0.940,   Phs gain=    0.00 deg;
                                                         DUC           :   Amp gain= 0.250,   Phs gain=  -32.73 deg;
                                                         CORDIC        :   Amp gain= 1.647,   Phs gain=   32.73 deg;
 
-  4176.00ns INFO     cocotb.dsp_core                    expected mag: 26451.53 cnt,  phs: -19.939 deg
-  4184.70ns INFO     cocotb.dsp_core                    measured mag: 26451.91 cnt,  phs: -19.937 deg
-  4193.40ns INFO     cocotb.dsp_core                    measured mag: 26449.84 cnt,  phs: -19.937 deg
-  4202.10ns INFO     cocotb.dsp_core                    measured mag: 26450.25 cnt,  phs: -19.939 deg
-  4210.80ns INFO     cocotb.dsp_core                    measured mag: 26450.46 cnt,  phs: -19.939 deg
-  4219.50ns INFO     cocotb.dsp_core                    measured mag: 26452.11 cnt,  phs: -19.937 deg
-  4219.50ns INFO     cocotb.dsp_core                    ********************  Close Loop Test   ********************
-  4219.50ns INFO     cocotb.dsp_core                    Cavity Model:
+  4793.70ns INFO     cocotb.llrf_dsp                    expected mag: 26451.53 cnt,  phs: -18.437 deg
+  4802.40ns INFO     cocotb.llrf_dsp                    measured mag: 26452.11 cnt,  phs: -18.436 deg
+  4811.10ns INFO     cocotb.llrf_dsp                    measured mag: 26448.80 cnt,  phs: -18.436 deg
+  4819.80ns INFO     cocotb.llrf_dsp                    measured mag: 26449.22 cnt,  phs: -18.438 deg
+  4828.50ns INFO     cocotb.llrf_dsp                    measured mag: 26449.63 cnt,  phs: -18.441 deg
+  4837.20ns INFO     cocotb.llrf_dsp                    measured mag: 26451.70 cnt,  phs: -18.438 deg
+  4837.20ns INFO     cocotb.llrf_dsp                    ********************  Close Loop Test   ********************
+  4837.20ns INFO     cocotb.llrf_dsp                    Cavity Model:
                                                         Config:            ALSU
                                                         Q_L:             7183.0
                                                         Center freq:      500.4 MHz
@@ -66,46 +68,48 @@
                                                         array([1.        , 1.30723246, 0.99619918]),
                                                         dt: 8.699999999999998e-09
                                                         )
- 21897.90ns INFO     cocotb.dsp_core                    expected mag: 23806.38 cnt,  phs: 117.825 deg
- 21906.60ns INFO     cocotb.dsp_core                    measured mag: 23807.48 cnt,  phs: 117.828 deg
- 21915.30ns INFO     cocotb.dsp_core                    measured mag: 23807.28 cnt,  phs: 117.826 deg
- 21924.00ns INFO     cocotb.dsp_core                    measured mag: 23807.07 cnt,  phs: 117.824 deg
- 21932.70ns INFO     cocotb.dsp_core                    measured mag: 23805.21 cnt,  phs: 117.822 deg
- 21941.40ns INFO     cocotb.dsp_core                    measured mag: 23803.55 cnt,  phs: 117.819 deg
- 21941.40ns INFO     cocotb.regression                  test_alsu passed
- 21941.40ns INFO     cocotb.regression                  running test_uspas (2/4)
- 21941.40ns INFO     cocotb.dsp_core                    ******************** Simulating: USPAS  ********************
- 21941.40ns INFO     cocotb.dsp_core                    RX phase off:    65.65 deg; TX phase off:   172.17 deg
- 21941.40ns INFO     cocotb.dsp_core                    RX phase off:    95602 cnt; TX phase off:   250746 cnt
- 21941.40ns INFO     cocotb.dsp_core                    ********************      RX Test       ********************
- 21941.40ns INFO     cocotb.dsp_core                    LLRFModel RX:
-                                                        < DSPCoreRX   :   Amp gain= 5.669,   Phs gain=    0.00 deg >
+ 22454.70ns INFO     cocotb.llrf_dsp                    expected mag: 23806.38 cnt,  phs: -63.843 deg
+ 22463.40ns INFO     cocotb.llrf_dsp                    measured mag: 23807.28 cnt,  phs: -63.839 deg
+ 22472.10ns INFO     cocotb.llrf_dsp                    measured mag: 23807.28 cnt,  phs: -63.839 deg
+ 22480.80ns INFO     cocotb.llrf_dsp                    measured mag: 23806.03 cnt,  phs: -63.840 deg
+ 22489.50ns INFO     cocotb.llrf_dsp                    measured mag: 23805.21 cnt,  phs: -63.843 deg
+ 22498.20ns INFO     cocotb.llrf_dsp                    measured mag: 23805.21 cnt,  phs: -63.847 deg
+ 22498.20ns INFO     cocotb.regression                  test_alsu passed
+ 22498.20ns INFO     cocotb.regression                  running test_uspas (2/4)
+ 22498.20ns INFO     cocotb.llrf_dsp                    ******************** Simulating: USPAS  ********************
+ 22498.20ns INFO     cocotb.llrf_dsp                    RX phase off:    65.65 deg; TX phase off:   172.17 deg
+ 22498.20ns INFO     cocotb.llrf_dsp                    RX phase off:    95602 cnt; TX phase off:   250746 cnt
+ 22498.20ns INFO     cocotb.llrf_dsp                    inlk_gain:   0.732108
+ 22498.20ns INFO     cocotb.llrf_dsp                    mon_gain:    7.113198
+ 22498.20ns INFO     cocotb.llrf_dsp                    ********************      RX Test       ********************
+ 22498.20ns INFO     cocotb.llrf_dsp                    LLRFModel RX:
+                                                        < DSPCoreRX   :   Amp gain= 2.834,   Phs gain=    0.00 deg >
                                                         WashoutFilter :   Amp gain= 1.031,   Phs gain=  -59.57 deg;
                                                         DDS           :   Amp gain= 0.940,   Phs gain=    0.00 deg;
-                                                        DDC           :   Amp gain= 3.552,   Phs gain=  125.22 deg;
+                                                        DDC           :   Amp gain= 1.776,   Phs gain=  125.22 deg;
                                                         CORDIC        :   Amp gain= 1.647,   Phs gain=  -65.65 deg;
 
- 23237.70ns INFO     cocotb.dsp_core                    expected mag: 22544.21 cnt,  phs: 145.428 deg
- 23246.40ns INFO     cocotb.dsp_core                    measured mag: 22535.35 cnt,  phs: 145.438 deg
- 23255.10ns INFO     cocotb.dsp_core                    measured mag: 22548.76 cnt,  phs: 145.452 deg
- 23263.80ns INFO     cocotb.dsp_core                    measured mag: 22562.17 cnt,  phs: 145.469 deg
- 23272.50ns INFO     cocotb.dsp_core                    measured mag: 22546.82 cnt,  phs: 145.423 deg
- 23281.20ns INFO     cocotb.dsp_core                    measured mag: 22531.30 cnt,  phs: 145.379 deg
- 23281.20ns INFO     cocotb.dsp_core                    ********************   Open Loop Test   ********************
- 23281.20ns INFO     cocotb.dsp_core                    LLRFModel TX:
-                                                        < DSPCoreTX   :   Amp gain= 0.387,   Phs gain=    0.00 deg >
+ 24299.10ns INFO     cocotb.llrf_dsp                    expected mag: 22544.21 cnt,  phs: 47.372 deg
+ 24307.80ns INFO     cocotb.llrf_dsp                    measured mag: 22544.00 cnt,  phs: 47.372 deg
+ 24316.50ns INFO     cocotb.llrf_dsp                    measured mag: 22544.00 cnt,  phs: 47.368 deg
+ 24325.20ns INFO     cocotb.llrf_dsp                    measured mag: 22542.94 cnt,  phs: 47.370 deg
+ 24333.90ns INFO     cocotb.llrf_dsp                    measured mag: 22542.23 cnt,  phs: 47.373 deg
+ 24342.60ns INFO     cocotb.llrf_dsp                    measured mag: 22542.94 cnt,  phs: 47.372 deg
+ 24342.60ns INFO     cocotb.llrf_dsp                    ********************   Open Loop Test   ********************
+ 24342.60ns INFO     cocotb.llrf_dsp                    LLRFModel TX:
+                                                        < DSPCoreTX   :   Amp gain= 0.387,   Phs gain=   -0.00 deg >
                                                         DDS           :   Amp gain= 0.940,   Phs gain=    0.00 deg;
                                                         DUC           :   Amp gain= 0.250,   Phs gain=  172.17 deg;
                                                         CORDIC        :   Amp gain= 1.647,   Phs gain= -172.17 deg;
 
- 26091.30ns INFO     cocotb.dsp_core                    expected mag: 22544.21 cnt,  phs: -149.561 deg
- 26100.00ns INFO     cocotb.dsp_core                    measured mag: 22542.76 cnt,  phs: -149.562 deg
- 26108.70ns INFO     cocotb.dsp_core                    measured mag: 22542.76 cnt,  phs: -149.562 deg
- 26117.40ns INFO     cocotb.dsp_core                    measured mag: 22542.76 cnt,  phs: -149.562 deg
- 26126.10ns INFO     cocotb.dsp_core                    measured mag: 22543.47 cnt,  phs: -149.562 deg
- 26134.80ns INFO     cocotb.dsp_core                    measured mag: 22544.35 cnt,  phs: -149.564 deg
- 26134.80ns INFO     cocotb.dsp_core                    ********************  Close Loop Test   ********************
- 26134.80ns INFO     cocotb.dsp_core                    Cavity Model:
+ 27239.70ns INFO     cocotb.llrf_dsp                    expected mag: 22544.21 cnt,  phs: 12.404 deg
+ 27248.40ns INFO     cocotb.llrf_dsp                    measured mag: 22544.00 cnt,  phs: 12.404 deg
+ 27257.10ns INFO     cocotb.llrf_dsp                    measured mag: 22545.06 cnt,  phs: 12.404 deg
+ 27265.80ns INFO     cocotb.llrf_dsp                    measured mag: 22544.00 cnt,  phs: 12.404 deg
+ 27274.50ns INFO     cocotb.llrf_dsp                    measured mag: 22542.59 cnt,  phs: 12.405 deg
+ 27283.20ns INFO     cocotb.llrf_dsp                    measured mag: 22544.00 cnt,  phs: 12.406 deg
+ 27283.20ns INFO     cocotb.llrf_dsp                    ********************  Close Loop Test   ********************
+ 27283.20ns INFO     cocotb.llrf_dsp                    Cavity Model:
                                                         Config:           USPAS
                                                         Q_L:             4181.2
                                                         Center freq:      499.7 MHz
@@ -117,46 +121,48 @@
                                                         array([ 1.        , -0.91713452,  0.99348884]),
                                                         dt: 8.699999999999998e-09
                                                         )
- 43926.30ns INFO     cocotb.dsp_core                    expected mag: 20289.79 cnt,  phs: 85.227 deg
- 43935.00ns INFO     cocotb.dsp_core                    measured mag: 20290.20 cnt,  phs: 85.224 deg
- 43943.70ns INFO     cocotb.dsp_core                    measured mag: 20289.67 cnt,  phs: 85.225 deg
- 43952.40ns INFO     cocotb.dsp_core                    measured mag: 20289.32 cnt,  phs: 85.226 deg
- 43961.10ns INFO     cocotb.dsp_core                    measured mag: 20288.61 cnt,  phs: 85.226 deg
- 43969.80ns INFO     cocotb.dsp_core                    measured mag: 20288.08 cnt,  phs: 85.228 deg
- 43969.80ns INFO     cocotb.regression                  test_uspas passed
- 43969.80ns INFO     cocotb.regression                  running test_lemp (3/4)
- 43969.80ns INFO     cocotb.dsp_core                    ********************  Simulating: LEMP  ********************
- 43969.80ns INFO     cocotb.dsp_core                    RX phase off:    79.46 deg; TX phase off:   128.57 deg
- 43969.80ns INFO     cocotb.dsp_core                    RX phase off:   115720 cnt; TX phase off:   187245 cnt
- 43969.80ns INFO     cocotb.dsp_core                    ********************      RX Test       ********************
- 43969.80ns INFO     cocotb.dsp_core                    LLRFModel RX:
-                                                        < DSPCoreRX   :   Amp gain= 6.228,   Phs gain=    0.00 deg >
+ 45057.30ns INFO     cocotb.llrf_dsp                    expected mag: 20289.79 cnt,  phs: 61.127 deg
+ 45066.00ns INFO     cocotb.llrf_dsp                    measured mag: 20290.20 cnt,  phs: 61.124 deg
+ 45074.70ns INFO     cocotb.llrf_dsp                    measured mag: 20290.20 cnt,  phs: 61.125 deg
+ 45083.40ns INFO     cocotb.llrf_dsp                    measured mag: 20289.49 cnt,  phs: 61.128 deg
+ 45092.10ns INFO     cocotb.llrf_dsp                    measured mag: 20288.79 cnt,  phs: 61.131 deg
+ 45100.80ns INFO     cocotb.llrf_dsp                    measured mag: 20290.20 cnt,  phs: 61.128 deg
+ 45100.80ns INFO     cocotb.regression                  test_uspas passed
+ 45100.80ns INFO     cocotb.regression                  running test_lemp (3/4)
+ 45100.80ns INFO     cocotb.llrf_dsp                    ********************  Simulating: LEMP  ********************
+ 45100.80ns INFO     cocotb.llrf_dsp                    RX phase off:    79.46 deg; TX phase off:   128.57 deg
+ 45100.80ns INFO     cocotb.llrf_dsp                    RX phase off:   115720 cnt; TX phase off:   187245 cnt
+ 45100.80ns INFO     cocotb.llrf_dsp                    inlk_gain:   0.596041
+ 45100.80ns INFO     cocotb.llrf_dsp                    mon_gain:   11.582334
+ 45100.80ns INFO     cocotb.llrf_dsp                    ********************      RX Test       ********************
+ 45100.80ns INFO     cocotb.llrf_dsp                    LLRFModel RX:
+                                                        < DSPCoreRX   :   Amp gain= 3.114,   Phs gain=   -0.00 deg >
                                                         WashoutFilter :   Amp gain= 1.031,   Phs gain=  -74.83 deg;
                                                         DDS           :   Amp gain= 0.940,   Phs gain=    0.00 deg;
-                                                        DDC           :   Amp gain= 3.900,   Phs gain=  154.29 deg;
+                                                        DDC           :   Amp gain= 1.950,   Phs gain=  154.29 deg;
                                                         CORDIC        :   Amp gain= 1.647,   Phs gain=  -79.46 deg;
 
- 45213.59ns INFO     cocotb.dsp_core                    expected mag: 20519.38 cnt,  phs: -23.559 deg
- 45222.00ns INFO     cocotb.dsp_core                    measured mag: 20514.53 cnt,  phs: -23.560 deg
- 45230.40ns INFO     cocotb.dsp_core                    measured mag: 20527.53 cnt,  phs: -23.497 deg
- 45238.81ns INFO     cocotb.dsp_core                    measured mag: 20523.36 cnt,  phs: -23.553 deg
- 45247.21ns INFO     cocotb.dsp_core                    measured mag: 20519.34 cnt,  phs: -23.610 deg
- 45255.61ns INFO     cocotb.dsp_core                    measured mag: 20515.01 cnt,  phs: -23.570 deg
- 45255.61ns INFO     cocotb.dsp_core                    ********************   Open Loop Test   ********************
- 45255.61ns INFO     cocotb.dsp_core                    LLRFModel TX:
+ 46798.41ns INFO     cocotb.llrf_dsp                    expected mag: 20519.38 cnt,  phs: 95.821 deg
+ 46806.81ns INFO     cocotb.llrf_dsp                    measured mag: 20520.47 cnt,  phs: 95.821 deg
+ 46815.22ns INFO     cocotb.llrf_dsp                    measured mag: 20519.18 cnt,  phs: 95.821 deg
+ 46823.62ns INFO     cocotb.llrf_dsp                    measured mag: 20518.22 cnt,  phs: 95.820 deg
+ 46832.03ns INFO     cocotb.llrf_dsp                    measured mag: 20518.22 cnt,  phs: 95.824 deg
+ 46840.43ns INFO     cocotb.llrf_dsp                    measured mag: 20518.54 cnt,  phs: 95.826 deg
+ 46840.43ns INFO     cocotb.llrf_dsp                    ********************   Open Loop Test   ********************
+ 46840.43ns INFO     cocotb.llrf_dsp                    LLRFModel TX:
                                                         < DSPCoreTX   :   Amp gain= 0.387,   Phs gain=   -0.00 deg >
                                                         DDS           :   Amp gain= 0.940,   Phs gain=    0.00 deg;
                                                         DUC           :   Amp gain= 0.250,   Phs gain=  128.57 deg;
                                                         CORDIC        :   Amp gain= 1.647,   Phs gain= -128.57 deg;
 
- 48129.78ns INFO     cocotb.dsp_core                    expected mag: 20519.38 cnt,  phs: -132.518 deg
- 48138.19ns INFO     cocotb.dsp_core                    measured mag: 20520.31 cnt,  phs: -132.517 deg
- 48146.59ns INFO     cocotb.dsp_core                    measured mag: 20518.70 cnt,  phs: -132.518 deg
- 48154.99ns INFO     cocotb.dsp_core                    measured mag: 20517.10 cnt,  phs: -132.520 deg
- 48163.40ns INFO     cocotb.dsp_core                    measured mag: 20517.90 cnt,  phs: -132.520 deg
- 48171.80ns INFO     cocotb.dsp_core                    measured mag: 20518.70 cnt,  phs: -132.518 deg
- 48171.80ns INFO     cocotb.dsp_core                    ********************  Close Loop Test   ********************
- 48171.80ns INFO     cocotb.dsp_core                    Cavity Model:
+ 49588.54ns INFO     cocotb.llrf_dsp                    expected mag: 20519.38 cnt,  phs: 51.640 deg
+ 49596.94ns INFO     cocotb.llrf_dsp                    measured mag: 20518.54 cnt,  phs: 51.638 deg
+ 49605.35ns INFO     cocotb.llrf_dsp                    measured mag: 20519.51 cnt,  phs: 51.638 deg
+ 49613.75ns INFO     cocotb.llrf_dsp                    measured mag: 20520.15 cnt,  phs: 51.637 deg
+ 49622.15ns INFO     cocotb.llrf_dsp                    measured mag: 20518.54 cnt,  phs: 51.638 deg
+ 49630.56ns INFO     cocotb.llrf_dsp                    measured mag: 20517.26 cnt,  phs: 51.640 deg
+ 49630.56ns INFO     cocotb.llrf_dsp                    ********************  Close Loop Test   ********************
+ 49630.56ns INFO     cocotb.llrf_dsp                    Cavity Model:
                                                         Config:            LEMP
                                                         Q_L:             1818.2
                                                         Center freq:     2856.0 MHz
@@ -168,46 +174,48 @@
                                                         array([ 1.        , -0.42731998,  0.92035855]),
                                                         dt: 8.404e-09
                                                         )
- 65282.35ns INFO     cocotb.dsp_core                    expected mag: 18467.44 cnt,  phs: 58.201 deg
- 65290.75ns INFO     cocotb.dsp_core                    measured mag: 18467.49 cnt,  phs: 58.200 deg
- 65299.15ns INFO     cocotb.dsp_core                    measured mag: 18467.81 cnt,  phs: 58.204 deg
- 65307.56ns INFO     cocotb.dsp_core                    measured mag: 18468.61 cnt,  phs: 58.200 deg
- 65315.96ns INFO     cocotb.dsp_core                    measured mag: 18469.26 cnt,  phs: 58.196 deg
- 65324.37ns INFO     cocotb.dsp_core                    measured mag: 18467.81 cnt,  phs: 58.199 deg
- 65324.37ns INFO     cocotb.regression                  test_lemp passed
- 65324.37ns INFO     cocotb.regression                  running test_awa (4/4)
- 65324.37ns INFO     cocotb.dsp_core                    ********************  Simulating: AWA   ********************
- 65324.37ns INFO     cocotb.dsp_core                    RX phase off:    78.71 deg; TX phase off:   130.91 deg
- 65324.37ns INFO     cocotb.dsp_core                    RX phase off:   114633 cnt; TX phase off:   190650 cnt
- 65324.37ns INFO     cocotb.dsp_core                    ********************      RX Test       ********************
- 65324.37ns INFO     cocotb.dsp_core                    LLRFModel RX:
-                                                        < DSPCoreRX   :   Amp gain= 6.202,   Phs gain=   -0.00 deg >
+ 66774.72ns INFO     cocotb.llrf_dsp                    expected mag: 18467.44 cnt,  phs: 74.590 deg
+ 66783.12ns INFO     cocotb.llrf_dsp                    measured mag: 18467.49 cnt,  phs: 74.590 deg
+ 66791.53ns INFO     cocotb.llrf_dsp                    measured mag: 18467.49 cnt,  phs: 74.593 deg
+ 66799.93ns INFO     cocotb.llrf_dsp                    measured mag: 18467.17 cnt,  phs: 74.588 deg
+ 66808.33ns INFO     cocotb.llrf_dsp                    measured mag: 18466.85 cnt,  phs: 74.583 deg
+ 66816.74ns INFO     cocotb.llrf_dsp                    measured mag: 18466.53 cnt,  phs: 74.588 deg
+ 66816.74ns INFO     cocotb.regression                  test_lemp passed
+ 66816.74ns INFO     cocotb.regression                  running test_awa (4/4)
+ 66816.74ns INFO     cocotb.llrf_dsp                    ********************  Simulating: AWA   ********************
+ 66816.74ns INFO     cocotb.llrf_dsp                    RX phase off:    78.71 deg; TX phase off:   130.91 deg
+ 66816.74ns INFO     cocotb.llrf_dsp                    RX phase off:   114633 cnt; TX phase off:   190650 cnt
+ 66816.74ns INFO     cocotb.llrf_dsp                    inlk_gain:   0.824394
+ 66816.74ns INFO     cocotb.llrf_dsp                    mon_gain:   16.019706
+ 66816.74ns INFO     cocotb.llrf_dsp                    ********************      RX Test       ********************
+ 66816.74ns INFO     cocotb.llrf_dsp                    LLRFModel RX:
+                                                        < DSPCoreRX   :   Amp gain= 3.101,   Phs gain=   -0.00 deg >
                                                         WashoutFilter :   Amp gain= 1.031,   Phs gain=  -74.01 deg;
                                                         DDS           :   Amp gain= 0.939,   Phs gain=    0.00 deg;
-                                                        DDC           :   Amp gain= 3.887,   Phs gain=  152.73 deg;
+                                                        DDC           :   Amp gain= 1.944,   Phs gain=  152.73 deg;
                                                         CORDIC        :   Amp gain= 1.647,   Phs gain=  -78.71 deg;
 
- 66936.48ns INFO     cocotb.dsp_core                    expected mag: 20607.13 cnt,  phs: -158.189 deg
- 66947.09ns INFO     cocotb.dsp_core                    measured mag: 20638.38 cnt,  phs: -158.180 deg
- 66957.69ns INFO     cocotb.dsp_core                    measured mag: 20610.48 cnt,  phs: -158.199 deg
- 66968.30ns INFO     cocotb.dsp_core                    measured mag: 20582.59 cnt,  phs: -158.217 deg
- 66978.90ns INFO     cocotb.dsp_core                    measured mag: 20600.49 cnt,  phs: -158.184 deg
- 66989.51ns INFO     cocotb.dsp_core                    measured mag: 20618.55 cnt,  phs: -158.151 deg
- 66989.51ns INFO     cocotb.dsp_core                    ********************   Open Loop Test   ********************
- 66989.51ns INFO     cocotb.dsp_core                    LLRFModel TX:
+ 69128.85ns INFO     cocotb.llrf_dsp                    expected mag: 20607.13 cnt,  phs: -97.379 deg
+ 69139.45ns INFO     cocotb.llrf_dsp                    measured mag: 20606.29 cnt,  phs: -97.381 deg
+ 69150.06ns INFO     cocotb.llrf_dsp                    measured mag: 20606.29 cnt,  phs: -97.381 deg
+ 69160.66ns INFO     cocotb.llrf_dsp                    measured mag: 20606.29 cnt,  phs: -97.381 deg
+ 69171.27ns INFO     cocotb.llrf_dsp                    measured mag: 20606.61 cnt,  phs: -97.379 deg
+ 69181.88ns INFO     cocotb.llrf_dsp                    measured mag: 20607.26 cnt,  phs: -97.377 deg
+ 69181.88ns INFO     cocotb.llrf_dsp                    ********************   Open Loop Test   ********************
+ 69181.88ns INFO     cocotb.llrf_dsp                    LLRFModel TX:
                                                         < DSPCoreTX   :   Amp gain= 0.387,   Phs gain=    0.00 deg >
                                                         DDS           :   Amp gain= 0.939,   Phs gain=    0.00 deg;
                                                         DUC           :   Amp gain= 0.250,   Phs gain=  130.91 deg;
                                                         CORDIC        :   Amp gain= 1.647,   Phs gain= -130.91 deg;
 
- 70436.46ns INFO     cocotb.dsp_core                    expected mag: 20607.13 cnt,  phs: 157.533 deg
- 70447.07ns INFO     cocotb.dsp_core                    measured mag: 20606.78 cnt,  phs: 157.526 deg
- 70457.67ns INFO     cocotb.dsp_core                    measured mag: 20606.29 cnt,  phs: 157.529 deg
- 70468.28ns INFO     cocotb.dsp_core                    measured mag: 20605.81 cnt,  phs: 157.532 deg
- 70478.88ns INFO     cocotb.dsp_core                    measured mag: 20606.61 cnt,  phs: 157.530 deg
- 70489.49ns INFO     cocotb.dsp_core                    measured mag: 20607.58 cnt,  phs: 157.530 deg
- 70489.49ns INFO     cocotb.dsp_core                    ********************  Close Loop Test   ********************
- 70489.49ns INFO     cocotb.dsp_core                    Cavity Model:
+ 72713.68ns INFO     cocotb.llrf_dsp                    expected mag: 20607.13 cnt,  phs: 39.045 deg
+ 72724.28ns INFO     cocotb.llrf_dsp                    measured mag: 20607.58 cnt,  phs: 39.047 deg
+ 72734.89ns INFO     cocotb.llrf_dsp                    measured mag: 20607.58 cnt,  phs: 39.044 deg
+ 72745.49ns INFO     cocotb.llrf_dsp                    measured mag: 20607.58 cnt,  phs: 39.043 deg
+ 72756.10ns INFO     cocotb.llrf_dsp                    measured mag: 20607.26 cnt,  phs: 39.044 deg
+ 72766.71ns INFO     cocotb.llrf_dsp                    measured mag: 20606.94 cnt,  phs: 39.044 deg
+ 72766.71ns INFO     cocotb.llrf_dsp                    ********************  Close Loop Test   ********************
+ 72766.71ns INFO     cocotb.llrf_dsp                    Cavity Model:
                                                         Config:             AWA
                                                         Q_L:            10666.7
                                                         Center freq:     1300.0 MHz
@@ -219,22 +227,22 @@
                                                         array([ 1.        , -0.46961086,  0.99191116]),
                                                         dt: 1.0606e-08
                                                         )
- 92083.30ns INFO     cocotb.dsp_core                    expected mag: 18546.42 cnt,  phs: 112.032 deg
- 92093.91ns INFO     cocotb.dsp_core                    measured mag: 18546.47 cnt,  phs: 112.030 deg
- 92104.52ns INFO     cocotb.dsp_core                    measured mag: 18545.99 cnt,  phs: 112.033 deg
- 92115.12ns INFO     cocotb.dsp_core                    measured mag: 18546.95 cnt,  phs: 112.033 deg
- 92125.73ns INFO     cocotb.dsp_core                    measured mag: 18547.92 cnt,  phs: 112.033 deg
- 92136.34ns INFO     cocotb.dsp_core                    measured mag: 18546.95 cnt,  phs: 112.032 deg
- 92136.34ns INFO     cocotb.regression                  test_awa passed
- 92136.34ns INFO     cocotb.regression                  **************************************************************************************
+ 94381.73ns INFO     cocotb.llrf_dsp                    expected mag: 18546.42 cnt,  phs: 12.014 deg
+ 94392.34ns INFO     cocotb.llrf_dsp                    measured mag: 18546.47 cnt,  phs: 12.011 deg
+ 94402.95ns INFO     cocotb.llrf_dsp                    measured mag: 18547.44 cnt,  phs: 12.008 deg
+ 94413.55ns INFO     cocotb.llrf_dsp                    measured mag: 18546.15 cnt,  phs: 12.012 deg
+ 94424.16ns INFO     cocotb.llrf_dsp                    measured mag: 18544.86 cnt,  phs: 12.016 deg
+ 94434.76ns INFO     cocotb.llrf_dsp                    measured mag: 18545.82 cnt,  phs: 12.015 deg
+ 94434.76ns INFO     cocotb.regression                  test_awa passed
+ 94434.76ns INFO     cocotb.regression                  **************************************************************************************
                                                         ** TEST                          STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
                                                         **************************************************************************************
-                                                        ** test_dsp_core.test_alsu        PASS       21941.40           0.82      26761.71  **
-                                                        ** test_dsp_core.test_uspas       PASS       22028.40           0.84      26321.46  **
-                                                        ** test_dsp_core.test_lemp        PASS       21354.56           1.05      20431.01  **
-                                                        ** test_dsp_core.test_awa         PASS       26811.97           0.92      29047.14  **
+                                                        ** test_llrf_dsp.test_alsu        PASS       22498.20           1.33      16925.86  **
+                                                        ** test_llrf_dsp.test_uspas       PASS       22602.60           1.33      16993.87  **
+                                                        ** test_llrf_dsp.test_lemp        PASS       21715.94           1.57      13855.98  **
+                                                        ** test_llrf_dsp.test_awa         PASS       27618.02           1.49      18596.45  **
                                                         **************************************************************************************
-                                                        ** TESTS=4 PASS=4 FAIL=0 SKIP=0              92136.34           4.33      21288.93  **
+                                                        ** TESTS=4 PASS=4 FAIL=0 SKIP=0              94434.76           6.54      14429.37  **
                                                         **************************************************************************************
 ```
 

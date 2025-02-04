@@ -75,7 +75,7 @@ class TestLLRF:
         cocotb.start_soon(self.drive_dds())
         return amp_exp, phs_exp
 
-    async def test_rx(self, wait=130) -> None:
+    async def test_rx(self, wait=200) -> None:
         self.log_banner('RX Test')
         self.dut._log.info(f'LLRFModel RX:\n{self.llrf.rx}')
         # validate settings.json against calculated values
@@ -180,7 +180,7 @@ class TestLLRF:
             self.dut._log.info(
                 f"measured mag: {amp_meas:8.2f} cnt,  "
                 f"phs: {phs_meas:6.3f} deg")
-            assert -0.1 < (amp_meas - amp_exp) / amp_exp < 0.01, \
+            assert -0.001 < (amp_meas - amp_exp) / amp_exp < 0.001, \
                 "RX amplitude out-of-bound of 0.1%"
             assert -0.1 < self.wrap_phase(phs_meas - phs_exp) < 0.1, \
                 "RX phase out-of-bound of 0.1 deg"
