@@ -133,12 +133,12 @@ localparam PH_DIFF_DW = 13;
 localparam integer  PH_DIFF_ADV = $rtoi((1/`DSP_CLK_CYCLE) / 0.200 * (2**PH_DIFF_DW));
 wire signed [PH_DIFF_DW-1:0] evr_dsp_phsdiff;
 phase_diff #(
-    .adv            (PH_DIFF_ADV),
     .dw             (PH_DIFF_DW+1)
 ) phase_diff_evr (
     .uclk1          (gtx_rxclk),
     .uclk2          (dsp_clk),
     .uclk2g         (1'b1),
+    .adv            (PH_DIFF_ADV),
     .sclk           (clk_200),
     .rclk           (lb_clk),
     .phdiff_out     (evr_dsp_phsdiff)
