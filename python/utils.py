@@ -24,7 +24,7 @@ def plot_ps(f, psd_dbfs, title='', annotate=False):
     fig, ax = plt.subplots()
     ax.set_xlabel('Freq [MHz]')
     ax.set_ylabel('Mag [dBFS]')
-    ax.set_ylim(-120, 0)
+    ax.set_ylim(-120, 10)
     ax.set_title(title)
     if len(psd_dbfs.shape) == 1:
         ax.plot(f, psd_dbfs)
