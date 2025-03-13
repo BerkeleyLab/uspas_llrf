@@ -6,11 +6,11 @@ module llrf_dsp #(
     localparam integer DWO = 16,
     localparam integer DWLO = 18
 ) (
-    //DSP clock
+    // DSP clock
     input clk,
     input reset,
 
-    //LO signals from DDS
+    // LO signals from DDS
     input signed [DWLO-1:0] cosa,
     input signed [DWLO-1:0] sina,
 

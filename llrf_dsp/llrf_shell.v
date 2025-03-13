@@ -48,8 +48,8 @@ module llrf_shell #(
     localparam integer N_CH = 10,  // N_ADC + N_DAC
     localparam integer N_ADC = 8,
     localparam integer N_DAC = 2,
-    localparam signed [DWLO:0] DDC_RX_PHS_OFF = `RX_LO_PHS_DEG * 2**(DWLO+1) / 360,
-    localparam signed [DWLO:0] DDC_TX_PHS_OFF = `TX_LO_PHS_DEG * 2**(DWLO+1) / 360
+    localparam signed [DWLO:0] DDC_RX_PHS_OFF = $rtoi(`RX_LO_PHS_DEG * 2**(DWLO+1) / 360.0),
+    localparam signed [DWLO:0] DDC_TX_PHS_OFF = $rtoi(`TX_LO_PHS_DEG * 2**(DWLO+1) / 360.0)
 ) (
     // ---------------------
     // Localbus interface
@@ -92,7 +92,14 @@ module llrf_shell #(
     // ---------------------
     input                gtx_rxclk,
     input [15:0]         gtx_rxdata,
-    input [1:0]          gtx_rxcharisk
+    input [1:0]          gtx_rxcharisk,
+
+    // ---------------------
+    // External trigger interface
+    // ---------------------
+    input [15:0]         etrig_pulse_cnt,
+    input                etrig_pulse,
+    input                etrig_pulse_delay
 );
 
 wire [31:0] lb_data = lb_wdata; // for newad.py
@@ -126,6 +133,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [0:0] ntw_amp_enable; top-level
 // reg [0:0] ntw_phs_enable; top-level
 // reg [0:0] system_bist_pass; top-level
+// reg [1:0] wave_trig_sel; top-level; 2-bits for future functionality
 // newad-force lb domain
 
 // Transfer local bus to dsp clk domain:
@@ -273,16 +281,30 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [15:0] cbuf_stat1;
     wire [CBUF_AW-1:0] cbuf_stat2;
 
+    // EVR trigger edge detection
+    (* ASYNC_REG="TRUE" *) reg [2:0] evr_trig_d = 0;
+    always @(posedge dsp_clk) begin
+        evr_trig_d <= {evr_trig_d[1:0], dsp_event1};
+    end
+    wire evr_trig = ~evr_trig_d[2] & evr_trig_d[1];
+
     // -- Waveform triggering logic
-    // internal trigger only, synchronized with waveform
-    assign wave_trig = cbuf_sync;
+    localparam WAVE_TRIG_ALWAYS = 0,  // internal trigger
+               WAVE_TRIG_EXT    = 1,
+               WAVE_TRIG_EXT_DLY= 2,
+               WAVE_TRIG_EVR    = 3;
+
+    assign wave_trig = wave_trig_sel==WAVE_TRIG_EXT     ? etrig_pulse :
+                       wave_trig_sel==WAVE_TRIG_EXT_DLY ? etrig_pulse_delay :
+                       wave_trig_sel==WAVE_TRIG_EVR     ? evr_trig :  // XXX untested
+                       cbuf_sync; // WAVE_TRIG_ALWAYS
     assign trig_out = wave_trig;
 
     reg cbuf_write=1;
     reg cbuf_start=0;
     always @(posedge dsp_clk) begin
         cbuf_start <= 1'b0;
-        if (cbuf_sync) cbuf_write <= 1'b0;
+        if (cbuf_sync && !wave_trig_sel) cbuf_write <= 1'b0;
         if (wave_trig) begin
             cbuf_write <= 1'b1;
             if (!cbuf_write || cbuf_sync) cbuf_start <= 1'b1;
@@ -679,6 +701,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             4'h4: reg_bank_1 <= sig_buf_count;
             4'h5: reg_bank_1 <= ntw_cos_debug;
             4'h6: reg_bank_1 <= ntw_phase_debug;
+            4'h7: reg_bank_1 <= etrig_pulse_cnt;
             default: reg_bank_1 <= 32'hfaceface;
         endcase
     end

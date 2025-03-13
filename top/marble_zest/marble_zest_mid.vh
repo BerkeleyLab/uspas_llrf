@@ -144,6 +144,10 @@ wire gtx_rxclk;
 wire [1:0] gtx_rxcharisk;
 wire [15:0] gtx_rxdata;
 wire [2:0] arc_permit_in=0;  // XXX hook me up!
+wire [15:0] etrig_pulse_cnt;
+wire       etrig_pulse;
+wire       etrig_pulse_delay;
+wire       trig_out;
 llrf_shell llrf_inst (
     .lb_clk         (lb_clk),
     .lb_addr        (lb_addr[17:0]),
@@ -165,7 +169,12 @@ llrf_shell llrf_inst (
     // to EVR
     .gtx_rxclk       (gtx_rxclk),
     .gtx_rxdata      (gtx_rxdata),
-    .gtx_rxcharisk   (gtx_rxcharisk)
+    .gtx_rxcharisk   (gtx_rxcharisk),
+    // to wave trigger
+    .trig_out         (trig_out),
+    .etrig_pulse_cnt  (etrig_pulse_cnt),
+    .etrig_pulse      (etrig_pulse),
+    .etrig_pulse_delay(etrig_pulse_delay)
 );
 
 // ----------------------------------
@@ -225,5 +234,12 @@ marble_bsp #(
     .gtx_rxcharisk  (gtx_rxcharisk ),
 
     .in_use         (in_use        ),
-    .mac_status     (mac_status    )
+    .mac_status     (mac_status    ),
+
+    .zest_pmod      (ZEST_PMOD2[3:0]),
+    .pmod_J12       (PMOD1[3:0]     ),
+    .pmod_J12_dir   (PMOD1[7:4]     ),
+    .etrig_pulse_cnt(etrig_pulse_cnt),
+    .etrig_pulse    (etrig_pulse   ),
+    .etrig_pulse_delay(etrig_pulse_delay)
 );
