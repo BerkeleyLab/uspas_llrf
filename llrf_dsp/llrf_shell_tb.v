@@ -37,7 +37,6 @@ initial begin
     $display("FAIL");
     $stop();
 end
-
     `include "settings.vh"
     `include "localbus.vh"
     `include "regmap_llrf_shell.vh"
@@ -52,6 +51,7 @@ end
     // --------------------------------------------------------------
 
     reg [31:0] rdata=0;
+    reg rinfo=0;
 
     task read_inlk_task(
         input [7:0] chan,
@@ -105,6 +105,29 @@ end
         end
     endtask
 
+    task get_adc_data;
+        @(posedge dut.wave_trig);
+        @(posedge dut.dsp_clk);
+        // record adc values for checking against adc0_buf readout
+        for (jx=0; jx<2**SIG_BUF_AW; jx=jx+1) begin
+            @(negedge dut.dsp_clk);
+            rxbuf[jx] = mo_sig;
+            // $display("%g ns, [%2d]: %4d", $time, jx, mo_sig);
+        end
+        // readout and validate
+        lb_write_task(SIG_BUF_FLIP, 1);
+        lb_read_task(SIG_BUF_READY, rdata);
+        while (!lb_rdata[0]) begin
+            lb_read_task(SIG_BUF_READY, rdata);
+        end
+        for (jx=0; jx<2**SIG_BUF_AW; jx=jx+1) begin
+            lb_read_task(ADC0_BUF_ADDR + jx, rdata);
+            fail |= $signed(rdata[15:0]) != rxbuf[jx];
+            $display("[%2d]: sig_buf: %6d, expect: %6d, %s",
+                jx, $signed(rdata[15:0]), rxbuf[jx], fail ? "FAIL":"OK");
+        end
+    endtask
+
     reg pass =1;
     integer time0=0;
     always @(negedge lb_clk) begin
@@ -147,6 +170,7 @@ end
 
     wire [15:0] gtx_rxdata;
     wire [1:0] gtx_rxcharisk;
+    wire etrig_pulse;
 
     llrf_shell #(
         .CIC_BASE_PERIOD(`CIC_BASE_PERIOD),
@@ -175,9 +199,23 @@ end
         .slow_permit_in (1'b1),
         .arc_permit_in  (3'b111),
 
-        .gtx_rxclk (gtx_rx_clk),
+        .gtx_rxclk     (gtx_rx_clk),
         .gtx_rxdata    (gtx_rxdata),
-        .gtx_rxcharisk (gtx_rxcharisk)
+        .gtx_rxcharisk (gtx_rxcharisk),
+
+        .etrig_pulse_cnt    (16'd0),
+        .etrig_pulse        (etrig_pulse),
+        .etrig_pulse_delay  (1'b0)
+    );
+
+    // to generate a trigger pulse
+    wire [31:0] pulse_high_len_trig = 1;
+    pulse_gen #(.AW(32)) pulse_trig(
+         .clk        (dsp_clk),
+         .trigger    (dut.cbuf_sync),
+         .strobe     (1'b1),
+         .high_len   (pulse_high_len_trig),
+         .pulse_out  (etrig_pulse)
     );
 
     assign adc_in_flat[DW*MO_ADC +:DW] = mo_sig;
@@ -373,26 +411,7 @@ end
             $time, wfm_phs, phs_expect, fail ? "FAIL":"OK");
 
         $display("---- Check ADC buffer ----");
-        @(posedge dut.wave_trig);
-        @(posedge dut.dsp_clk);
-        // record adc values for checking against adc0_buf readout
-        for (jx=0; jx<2**SIG_BUF_AW; jx=jx+1) begin
-            @(negedge dut.dsp_clk);
-            rxbuf[jx] = mo_sig;
-            // $display("%g ns, [%2d]: %4d", $time, jx, mo_sig);
-        end
-        // readout and validate
-        lb_write_task(SIG_BUF_FLIP, 1);
-        lb_read_task(SIG_BUF_READY, rdata);
-        while (!lb_rdata[0]) begin
-            lb_read_task(SIG_BUF_READY, rdata);
-        end
-        for (jx=0; jx<2**SIG_BUF_AW; jx=jx+1) begin
-            lb_read_task(ADC0_BUF_ADDR + jx, rdata);
-            fail |= $signed(rdata[15:0]) != rxbuf[jx];
-            $display("[%2d]: sig_buf: %6d, expect: %6d, %s",
-                jx, $signed(rdata[15:0]), rxbuf[jx], fail ? "FAIL":"OK");
-        end
+        get_adc_data();
 
         $display("---- Check Min/Max ----");
         // wait for slow_ready
@@ -468,6 +487,17 @@ end
         inlk_check = 1'b0;
 
         lb_read_task(18'h1e000, rdata);
+        $display("---- Check Internal trigger ----");
+        get_adc_data();
+        #(500 * `DSP_CLK_CYCLE);
+
+        $display("---- Check External trigger ----");
+        // enable external trigger
+        @(posedge dut.dsp_clk);
+        lb_write_task(WAVE_TRIG_SEL, 2'b01);
+        #(500 * `DSP_CLK_CYCLE);
+        get_adc_data();
+        #(500 * `DSP_CLK_CYCLE);
 
         $display("Time: %g ns, Validation: %s.", $time, !fail ? "PASS":"FAIL");
         $display("##################################################");

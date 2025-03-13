@@ -19,6 +19,8 @@ module marble_zest_frame #(
     output gmii_tx_er,
     //
     output          PHY_RSTN,
+    inout [7:0]     PMOD1,
+    inout [7:0]     ZEST_PMOD2,
     // Mailbox SPI
     input           FPGA_SCK,
     input           FPGA_CSB,

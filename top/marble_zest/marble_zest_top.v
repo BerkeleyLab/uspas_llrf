@@ -23,7 +23,7 @@ module marble_zest_top #(
 
     output          PHY_RSTN,
 
-    output [7:0]    PMOD1,
+    inout [7:0]     PMOD1,
     output [7:0]    PMOD2,
 
     inout           I2C_SCL,
@@ -277,7 +277,6 @@ assign I2C_SDA      = gpio_z[0];
 assign I2C_SCL      = gpio_z[1];
 assign I2C_RST      = gpio_z[2]; // to enable I2C mux, set high
 
-assign PMOD1 = {mac_status};
 assign PMOD2 = {trap, gpio_z[30:24]};
 
 endmodule

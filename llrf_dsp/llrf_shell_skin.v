@@ -45,6 +45,9 @@ module llrf_skin #(
     input [15:0]         gtx_rxdata,
     input [1:0]          gtx_rxcharisk,
 
+    input [15:0]         etrig_pulse_cnt,
+    input                etrig_pulse,
+    input                etrig_pulse_delay,
     output               trig_out
 );
 
@@ -88,6 +91,16 @@ always @(posedge dsp_clk) begin
 	arc_permit_in_r <= arc_permit_in;
 end
 
+// External Trigger
+(* magic_cdc *) reg [15:0] etrig_pulse_cnt_r=0;
+(* magic_cdc *) reg [0:0] etrig_pulse_r=0;
+(* magic_cdc *) reg [0:0] etrig_pulse_delay_r=0;
+always @(posedge dsp_clk) begin
+    etrig_pulse_cnt_r <= etrig_pulse_cnt;
+    etrig_pulse_r <= etrig_pulse;
+    etrig_pulse_delay_r <= etrig_pulse_delay;
+end
+
 llrf_shell #(.CBUF_AW(11)) dsp (
     .lb_clk             (lb_clk),
     .lb_addr            (lb_addr_r),
@@ -116,6 +129,9 @@ llrf_shell #(.CBUF_AW(11)) dsp (
     .gtx_rxdata    (gtx_rxdata_good_r),
     .gtx_rxcharisk (gtx_rxcharisk_good_r),
 
+    .etrig_pulse_cnt    (etrig_pulse_cnt_r),
+    .etrig_pulse        (etrig_pulse_r),
+    .etrig_pulse_delay  (etrig_pulse_delay_r),
     .trig_out           (trig_out)
 );
 

@@ -7,14 +7,16 @@ IP_NAME     = marble_bsp
 LB_AW       = 17    # should be LB_HI
 NEWAD_ARGS += -m    # mirror
 NEWAD_ARGS_marble_bsp = -b262144
+NEWAD_DIRS = .,$(DSP_DIR)/hosted
 TEST_BENCH  = $(IP_NAME)_tb
 CHECKS      = $(IP_NAME)_check
 
-vpath %.v $(DSP_DIR)
+vpath %.v $(DSP_DIR) $(DSP_DIR)/hosted
 VFLAGS_DEP += -I$(BADGER_DIR) -y$(BADGER_DIR)
 VFLAGS_DEP += -I$(SERIAL_IO_DIR) -y$(SERIAL_IO_DIR) -y$(DSP_DIR) -y.
+VFLAGS_DEP += -I$(DSP_DIR)/hosted -y$(DSP_DIR)/hosted
 VFLAGS_DEP += -y$(FPGA_FAMILY_DIR)/xilinx
-VFLAGS_DEP += -I$(AUTOGEN_DIR) -y$(AUTOGEN_DIR)
+VFLAGS_DEP += -y$(AUTOGEN_DIR) -I$(AUTOGEN_DIR)
 VFLAGS_DEP += -y$(PICORV_DIR)/gateware  # for spi_engine.v
 VFLAGS_DEP += -I$(BEDROCK_DIR)/localbus -y$(BEDROCK_DIR)/localbus
 VFLAGS_DEP += -y$(PROJECTS_DIR)/test_marble_family -y$(BADGER_DIR)/tests -y$(HOMELESS_DIR)
@@ -35,10 +37,11 @@ RTEFI_CLIENT_LIST = hello.v speed_test.v lb_gateway.v spi_flash.v
 include $(BADGER_DIR)/rules.mk
 VERILOG_AUTOGEN  += $(RTEFI_V)
 
+
 settings.vams: $(APP_DSP_DIR)/settings.json
 	python3 $(APP_DSP_DIR)/scripts/gen_settings.py -f $< -c $(FSET) -o $@
 
-$(DEPDIR)/$(IP_NAME)_tb.d:  $(VERILOG_AUTOGEN)
+$(DEPDIR)/$(IP_NAME)_tb.d: $(VERILOG_AUTOGEN)
 
 $(DEPDIR)/$(IP_NAME).d: $(IP_NAME).v $(VERILOG_AUTOGEN)
 	set -e; mkdir -p $(DEPDIR); \
