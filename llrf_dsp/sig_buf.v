@@ -14,13 +14,14 @@ module sig_buf #(
     input           lb_flip_buf,
     input [AW-1:0]  lb_addr,
     output [DW-1:0] lb_rdata,
-    output          buf_ready
+    output          buf_ready,
+    output          buf_transferred
 );
 
     // ------
     // Double-buffered circular buffer
     // ------
-    wire buf_sync, buf_transferred;
+    wire buf_sync;
     circle_buf #(
         .aw        (AW),
         .dw        (DW),

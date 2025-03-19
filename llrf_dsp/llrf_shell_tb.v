@@ -15,7 +15,7 @@ localparam GTX_RX_CYCLE     = 8;        // ns
 parameter CBUF_AW           = 6;
 parameter CBUF_DW           = 24;
 parameter SIG_BUF_AW        = 3;
-localparam [17:0] DSP_CBUF_ADDR = 18'h20000;
+localparam [17:0] DSP_CBUF_ADDR = 18'h30000;
 localparam [17:0] DSP_SLOW_ADDR = 18'h10911;
 localparam [17:0] ADC0_BUF_ADDR = 18'h12000;
 `define NULL 0
@@ -432,6 +432,12 @@ end
             $time, $signed(rdata[15:0]), -AMP_SETP_ADC);
         lb_read_task(DSP_SLOW_ADC_MAX_0 + LOOPBACK_ADC, rdata);
         $display("Time: %g ns, Slow Readout: adc_max_1 = %8d cnt, expect = %8.1f",
+            $time, $signed(rdata[15:0]), AMP_SETP_ADC);
+        lb_read_task(DSP_SLOW_DAC_MIN_0, rdata);
+        $display("Time: %g ns, Slow Readout: dac_min_0 = %8d cnt, expect = %8.1f",
+            $time, $signed(rdata[15:0]), -AMP_SETP_ADC);
+        lb_read_task(DSP_SLOW_DAC_MAX_0, rdata);
+        $display("Time: %g ns, Slow Readout: dac_max_0 = %8d cnt, expect = %8.1f",
             $time, $signed(rdata[15:0]), AMP_SETP_ADC);
 
         $display("---- Check Inlk ----");

@@ -9,6 +9,7 @@
 //      0 to 0fff   LLRF controller
 // 10800            llrf_circle_ready
 // 10801            sig_buf_ready
+// 10802            sig_iq_buf_ready
 // 10911 to 109ff   Slow readout, see slow_bridge.v
 // 10a00 to 10a07   amp out
 // 10a10 to 10a17   phs out
@@ -18,17 +19,17 @@
 // 19000 to 19fff   adc7_buf
 // 1a000 to 1afff   dac0_buf
 // 1b000 to 1bfff   dac1_buf
-// 1c000 to 1cfff   dac0_i_buf
-// 1d000 to 1dfff   dac0_i_buf
-// 1e000 to 1efff   dac0_q_buf
-// 1f000 to 1ffff   dac0_q_buf
-// 20000 to 2ffff   Circular buffer
-// 30000 to 30fff   adc0_i_buf
+// 1c000 to 1cfff   adc0_i_buf
 // ...
-// 37000 to 37fff   adc7_i_buf
-// 38000 to 38fff   adc0_q_buf
+// 23000 to 23fff   adc7_i_buf
+// 24000 to 24fff   dac0_i_buf
+// 25000 to 25fff   dac1_i_buf
+// 26000 to 26fff   adc0_q_buf
 // ...
-// 3f000 to 3ffff   adc7_q_buf
+// 2d000 to 2dfff   adc7_q_buf
+// 2e000 to 2efff   dac0_q_buf
+// 2f000 to 2ffff   dac0_q_buf
+// 30000 to 3ffff   Circular buffer
 
 module llrf_shell #(
     parameter integer CIC_BASE_PERIOD = `CIC_BASE_PERIOD,
@@ -177,7 +178,11 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [DW*N_CH-1:0] dac_adc_flat = {dac_data_b_out, dac_data_a_out, adc_data_in};
     wire signed [DW-1:0] sig_buf_out [0:N_CH-1];
     wire signed [31:0] sig_buf_counts [0:N_CH-1];
+    wire signed [31:0] sig_iq_buf_counts [0:2*N_CH-1];
     wire [N_CH-1:0] sig_buf_ready;
+    wire [2*N_CH-1:0] sig_iq_buf_ready;
+    wire [N_CH-1:0] sig_buf_transferred;
+    wire [2*N_CH-1:0] sig_buf_iq_transferred;
     wire signed [DWBB-1:0] sig_i_buf_out [0:N_CH-1];
     wire signed [DWBB-1:0] sig_q_buf_out [0:N_CH-1];
 
@@ -221,38 +226,45 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         assign sig_iq_flat[DWBB*(2*ch+1) +:DWBB] = sig_q_data[ch];
 
         sig_buf #(.AW(SIG_BUF_AW), .DW(DW)) sig_buf_raw (
-            .sig_clk        (dsp_clk        ),
-            .sig_dat        (sig_raw_data[ch]),
-            .sig_val        (sig_buf_dval   ),
-            .sig_last       (sig_buf_last   ),
-            .lb_clk         (lb_clk         ),
-            .lb_flip_buf    (sig_buf_flip   ),
+            .sig_clk        (dsp_clk                ),
+            .sig_dat        (sig_raw_data[ch]       ),
+            .sig_val        (sig_buf_dval           ),
+            .sig_last       (sig_buf_last           ),
+            .lb_clk         (lb_clk                 ),
+            .lb_flip_buf    (sig_buf_flip           ),
             .lb_addr        (lb_addr[SIG_BUF_AW-1:0]),
-            .lb_rdata       (sig_buf_out[ch] ),
-            .buf_ready      (sig_buf_ready[ch]),
-            .buf_count      (sig_buf_counts[ch])
+            .lb_rdata       (sig_buf_out[ch]        ),
+            .buf_ready      (sig_buf_ready[ch]      ),
+            .buf_count      (sig_buf_counts[ch]     ),
+            .buf_transferred(sig_buf_transferred[ch])
         );
 
         sig_buf #(.AW(SIG_BUF_AW), .DW(DWBB)) sig_i_buf (
-            .sig_clk        (dsp_clk        ),
-            .sig_dat        (sig_i_data[ch] ),
-            .sig_val        (sig_buf_dval   ),
-            .sig_last       (sig_buf_last   ),
-            .lb_clk         (lb_clk         ),
-            .lb_flip_buf    (sig_buf_flip   ),
+            .sig_clk        (dsp_clk                ),
+            .sig_dat        (sig_i_data[ch]         ),
+            .sig_val        (sig_buf_dval           ),
+            .sig_last       (sig_buf_last           ),
+            .lb_clk         (lb_clk                 ),
+            .lb_flip_buf    (sig_buf_flip           ),
             .lb_addr        (lb_addr[SIG_BUF_AW-1:0]),
-            .lb_rdata       (sig_i_buf_out[ch] )
+            .lb_rdata       (sig_i_buf_out[ch]      ),
+            .buf_ready      (sig_iq_buf_ready[ch]   ),
+            .buf_count      (sig_iq_buf_counts[ch]  ),
+            .buf_transferred(sig_buf_iq_transferred[ch])
         );
 
         sig_buf #(.AW(SIG_BUF_AW), .DW(DWBB)) sig_q_buf (
-            .sig_clk        (dsp_clk        ),
-            .sig_dat        (sig_q_data[ch] ),
-            .sig_val        (sig_buf_dval   ),
-            .sig_last       (sig_buf_last   ),
-            .lb_clk         (lb_clk         ),
-            .lb_flip_buf    (sig_buf_flip   ),
-            .lb_addr        (lb_addr[SIG_BUF_AW-1:0]),
-            .lb_rdata       (sig_q_buf_out[ch] )
+            .sig_clk        (dsp_clk                 ),
+            .sig_dat        (sig_q_data[ch]          ),
+            .sig_val        (sig_buf_dval            ),
+            .sig_last       (sig_buf_last            ),
+            .lb_clk         (lb_clk                  ),
+            .lb_flip_buf    (sig_buf_flip            ),
+            .lb_addr        (lb_addr[SIG_BUF_AW-1:0] ),
+            .lb_rdata       (sig_q_buf_out[ch]       ),
+            .buf_ready      (sig_iq_buf_ready[10+ch] ),
+            .buf_count      (sig_iq_buf_counts[10+ch]),
+            .buf_transferred(sig_buf_iq_transferred[10+ch])
         );
     end endgenerate
 
@@ -478,7 +490,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [15:0] lb_slow_rdata;
     wire [15:0] cbuf_stat2_pad = cbuf_stat2;
     wire [63:0] evr_live_ts;
-    slow_bridge_shell #(.AW(7), .DW(DW), .N_CH(N_ADC)) slow_bridge (
+    slow_bridge_shell #(.AW(7), .DW(DW), .N_CH(N_CH)) slow_bridge (
         .lb_clk         (lb_clk),
         .lb_addr        (lb_addr[6:0]),
         .lb_read        (lb_read),
@@ -492,7 +504,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .buf_stat2      (cbuf_stat2_pad),
         .buf_count      (cbuf_count),
         .buf_ready      (cbuf_ready),
-        .data_in        (adc_data_in),
+        .data_in        (dac_adc_flat),
         .evr_timestamp  (evr_live_ts),
 
         .slow_snap      (cbuf_transferred),
@@ -710,6 +722,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         casez (lb_addr_d1)
             18'h10800: lb_rdata_r <= llrf_circle_ready;
             18'h10801: lb_rdata_r <= sig_buf_ready;
+            18'h10802: lb_rdata_r <= sig_iq_buf_ready;
             18'h109??: lb_rdata_r <= lb_slow_rdata;
             18'h10a0?: lb_rdata_r <= mon_amp_lb;
             18'h10a1?: lb_rdata_r <= mon_phs_lb;
@@ -724,27 +737,27 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             18'h19???: lb_rdata_r <= sig_buf_out[7];
             18'h1a???: lb_rdata_r <= sig_buf_out[8];
             18'h1b???: lb_rdata_r <= sig_buf_out[9];
-            18'h1c???: lb_rdata_r <= sig_i_buf_out[8];
-            18'h1d???: lb_rdata_r <= sig_i_buf_out[9];
-            18'h1e???: lb_rdata_r <= sig_q_buf_out[8];
-            18'h1f???: lb_rdata_r <= sig_q_buf_out[9];
-            18'h30???: lb_rdata_r <= sig_i_buf_out[0];
-            18'h31???: lb_rdata_r <= sig_i_buf_out[1];
-            18'h32???: lb_rdata_r <= sig_i_buf_out[2];
-            18'h33???: lb_rdata_r <= sig_i_buf_out[3];
-            18'h34???: lb_rdata_r <= sig_i_buf_out[4];
-            18'h35???: lb_rdata_r <= sig_i_buf_out[5];
-            18'h36???: lb_rdata_r <= sig_i_buf_out[6];
-            18'h37???: lb_rdata_r <= sig_i_buf_out[7];
-            18'h38???: lb_rdata_r <= sig_q_buf_out[0];
-            18'h39???: lb_rdata_r <= sig_q_buf_out[1];
-            18'h3a???: lb_rdata_r <= sig_q_buf_out[2];
-            18'h3b???: lb_rdata_r <= sig_q_buf_out[3];
-            18'h3c???: lb_rdata_r <= sig_q_buf_out[4];
-            18'h3d???: lb_rdata_r <= sig_q_buf_out[5];
-            18'h3e???: lb_rdata_r <= sig_q_buf_out[6];
-            18'h3f???: lb_rdata_r <= sig_q_buf_out[7];
-            18'h2????: lb_rdata_r <= cbuf_out;
+            18'h1c???: lb_rdata_r <= sig_i_buf_out[0];
+            18'h1d???: lb_rdata_r <= sig_i_buf_out[1];
+            18'h1e???: lb_rdata_r <= sig_i_buf_out[2];
+            18'h1f???: lb_rdata_r <= sig_i_buf_out[3];
+            18'h20???: lb_rdata_r <= sig_i_buf_out[4];
+            18'h21???: lb_rdata_r <= sig_i_buf_out[5];
+            18'h22???: lb_rdata_r <= sig_i_buf_out[6];
+            18'h23???: lb_rdata_r <= sig_i_buf_out[7];
+            18'h24???: lb_rdata_r <= sig_i_buf_out[8];
+            18'h25???: lb_rdata_r <= sig_i_buf_out[9];
+            18'h26???: lb_rdata_r <= sig_q_buf_out[0];
+            18'h27???: lb_rdata_r <= sig_q_buf_out[1];
+            18'h28???: lb_rdata_r <= sig_q_buf_out[2];
+            18'h29???: lb_rdata_r <= sig_q_buf_out[3];
+            18'h2a???: lb_rdata_r <= sig_q_buf_out[4];
+            18'h2b???: lb_rdata_r <= sig_q_buf_out[5];
+            18'h2c???: lb_rdata_r <= sig_q_buf_out[6];
+            18'h2d???: lb_rdata_r <= sig_q_buf_out[7];
+            18'h2e???: lb_rdata_r <= sig_q_buf_out[8];
+            18'h2f???: lb_rdata_r <= sig_q_buf_out[9];
+            18'h3????: lb_rdata_r <= cbuf_out;
             18'h008??: lb_rdata_r <= 32'h0;  // LEEP old config ROM compatibility
             18'h???0?: lb_rdata_r <= reg_bank_0;
             18'h???1?: lb_rdata_r <= lb_reg_bank_1;
