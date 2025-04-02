@@ -70,12 +70,10 @@ module timing_core #(
     );
 
     // Make configurable events available to LLRF in dsp_clk domain
-    `ifdef SIMULATE
-        initial if ((DSP_EV1 == 0) || (DSP_EV2 == 0)) begin
-            $display("ERROR %m: Event code must be > 0");
-            $finish;
-        end
-    `endif
+    initial if ((DSP_EV1 == 0) || (DSP_EV2 == 0)) begin
+        $display("ERROR %m: Event code must be > 0");
+        $stop;
+    end
 
     assign evr_event1 = evr_evstrobe[DSP_EV1-1];
     // Note -1 to go from event code to array index
@@ -86,7 +84,7 @@ module timing_core #(
 
     // timestamp (seconds and ticks) CDC to dsp_clk
     wire [63:0] dsp_evr_timestamp;
-    evr_ts_cdc dut(
+    evr_ts_cdc i_evr_ts_cdc (
         .evr_clk(evr_clk),
         .ts_secs(evr_timestamp_x[63:32]), .ts_tcks(evr_timestamp_x[31:0]),
         .evr_pps(evr_pps_marker),
