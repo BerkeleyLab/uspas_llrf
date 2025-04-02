@@ -213,7 +213,6 @@ end
     pulse_gen #(.AW(32)) pulse_trig(
          .clk        (dsp_clk),
          .trigger    (dut.cbuf_sync),
-         .strobe     (1'b1),
          .high_len   (pulse_high_len_trig),
          .pulse_out  (etrig_pulse)
     );
