@@ -4,7 +4,6 @@ module pulse_gen #(
     input clk,
     input trigger,
     input [AW-1:0] high_len,
-    input strobe,
     output pulse_out
 );
 
@@ -16,7 +15,7 @@ always @(posedge clk) begin
     len <= high_len;
     if (last) counting <= 1'b0;
     else if (trigger) counting <= 1'b1;
-    pc <= counting ? pc + strobe : 0;
+    pc <= counting ? pc + 1 : 0;
 end
 
 assign pulse_out = counting & ~last;

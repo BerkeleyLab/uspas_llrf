@@ -578,9 +578,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire pulse_val;
     pulse_gen #(.AW(32)) pulse_gen (
         .clk        (dsp_clk),
-        .trigger    (cbuf_sync),        // sync with waveform
-        .strobe     (cic_sample),       // CIC_BASE_PERIOD cycles per strobe
-        .high_len   (pulse_high_len),   // unit: DSP_CLK_CYCLE * CIC_BASE_PERIOD
+        .trigger    (cbuf_sync),        // syncn with waveform
+        .high_len   (pulse_high_len),   // unit: DSP_CLK_CYCLE
         .pulse_out  (pulse_val)
     );
     wire drive_on2 = pulse_mode ? pulse_val : 1'b1;  // non-interruptible
