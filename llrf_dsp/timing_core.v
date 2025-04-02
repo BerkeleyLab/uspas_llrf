@@ -68,12 +68,13 @@ module timing_core #(
         .clk_out  (lb_clk), .gate_out (),
         .data_out (evr_evcnt)
     );
-
     // Make configurable events available to LLRF in dsp_clk domain
-    initial if ((DSP_EV1 == 0) || (DSP_EV2 == 0)) begin
-        $display("ERROR %m: Event code must be > 0");
-        $stop;
-    end
+    `ifdef SIMULATE
+        initial if ((DSP_EV1 == 0) || (DSP_EV2 == 0)) begin
+            $display("ERROR %m: Event code must be > 0");
+            $stop;
+        end
+    `endif
 
     assign evr_event1 = evr_evstrobe[DSP_EV1-1];
     // Note -1 to go from event code to array index
