@@ -135,6 +135,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [0:0] ntw_phs_enable; top-level
 // reg [0:0] system_bist_pass; top-level
 // reg [1:0] wave_trig_sel; top-level; 2-bits for future functionality
+// reg [0:0] slow_snap_sel; top-level
 // newad-force lb domain
 
 // Transfer local bus to dsp clk domain:
@@ -486,6 +487,13 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     //     for adc_min / adc_max, timestamp, waveform status,
     //     and snap for validation of a waveform if register changed in between
     // ---------------------
+    // -- slow_snap logic
+    localparam SLOW_SNAP_SIG_BUF = 1;
+    wire slow_snap;
+
+    assign slow_snap = slow_snap_sel==SLOW_SNAP_SIG_BUF ? sig_buf_iq_transferred[0] :
+                       cbuf_transferred;
+
     wire slow_ready;
     wire [15:0] lb_slow_rdata;
     wire [15:0] cbuf_stat2_pad = cbuf_stat2;
@@ -507,7 +515,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .data_in        (dac_adc_flat),
         .evr_timestamp  (evr_live_ts),
 
-        .slow_snap      (cbuf_transferred),
+        .slow_snap      (slow_snap),
         .slow_ready     (slow_ready)
     );
 
