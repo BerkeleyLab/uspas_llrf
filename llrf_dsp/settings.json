@@ -12,8 +12,8 @@
         "MON_GAIN":          5.546751,
         "RX_LO_PHS_DEG":     131.75310,
         "TX_LO_PHS_DEG":     -32.72727,
-        "MO_ADC":            0,
-        "FDBK_ADC":          3,
+        "MO_ADC":            7,
+        "FDBK_ADC":          6,
         "DSP_EV1":           5,
         "DSP_EV2":           6
     },
