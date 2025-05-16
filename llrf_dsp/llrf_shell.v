@@ -317,8 +317,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     reg cbuf_start=0;
     always @(posedge dsp_clk) begin
         cbuf_start <= 1'b0;
-        if (cbuf_sync && !wave_trig_sel) cbuf_write <= 1'b0;
-        if (wave_trig) begin
+        if (cbuf_sync) cbuf_write <= 1'b0;
+        if (wave_trig || ~wave_trig_sel) begin
             cbuf_write <= 1'b1;
             if (!cbuf_write || cbuf_sync) cbuf_start <= 1'b1;
         end
