@@ -115,7 +115,6 @@ end
             // $display("%g ns, [%2d]: %4d", $time, jx, mo_sig);
         end
         // readout and validate
-        lb_write_task(SIG_BUF_FLIP, 1);
         lb_read_task(SIG_BUF_READY, rdata);
         while (!lb_rdata[0]) begin
             lb_read_task(SIG_BUF_READY, rdata);
@@ -209,10 +208,18 @@ end
     );
 
     // to generate a trigger pulse
-    wire [31:0] pulse_high_len_trig = 1;
+    reg [31:0] trigger_cnt = 0;
+    wire etrig_trigger = (trigger_cnt == 0);
+    always @(posedge dsp_clk) begin
+        trigger_cnt <= trigger_cnt + 1;
+        if (trigger_cnt >= 2999) begin
+            trigger_cnt <= 0;
+        end
+    end
+    wire [31:0] pulse_high_len_trig = 32'd50;
     pulse_gen #(.AW(32)) pulse_trig(
          .clk        (dsp_clk),
-         .trigger    (dut.cbuf_sync),
+         .trigger    (etrig_trigger),
          .high_len   (pulse_high_len_trig),
          .pulse_out  (etrig_pulse)
     );
@@ -500,7 +507,14 @@ end
         // enable external trigger
         @(posedge dut.dsp_clk);
         lb_write_task(WAVE_TRIG_SEL, 2'b01);
+        #(100 * `DSP_CLK_CYCLE);
+        get_adc_data();
         #(500 * `DSP_CLK_CYCLE);
+
+        @(posedge dut.dsp_clk);
+        lb_write_task(WAVE_TRIG_SEL, 2'b00);
+        lb_read_task(18'h1e000, rdata);
+        $display("---- Switch back to Internal trigger ----");
         get_adc_data();
         #(500 * `DSP_CLK_CYCLE);
 

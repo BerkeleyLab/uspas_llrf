@@ -1,9 +1,8 @@
 [timestart] 0
-[size] 1920 1043
+[size] 1680 943
 [pos] -1 -1
-*-24.000000 15353700 37971240 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-23.954782 61550000 37971240 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] llrf_shell_tb.
-[treeopen] llrf_shell_tb.dut.
 [treeopen] llrf_shell_tb.dut.gen_sig[0].
 [treeopen] llrf_shell_tb.dut.gen_sig[0].sig_buf_raw.
 [sst_width] 233
@@ -119,13 +118,18 @@ llrf_shell_tb.dut.inlk.inlk_permit_out
 @28
 llrf_shell_tb.dut.dsp_clk
 llrf_shell_tb.dut.etrig_pulse
+llrf_shell_tb.dut.cbuf_sync
 llrf_shell_tb.dut.wave_trig_sel[1:0]
 llrf_shell_tb.dut.wave_trig
+llrf_shell_tb.dut.cbuf_write
 llrf_shell_tb.dut.sig_buf_trig
 llrf_shell_tb.dut.sig_buf_last
 llrf_shell_tb.dut.sig_buf_cnt[2:0]
 llrf_shell_tb.dut.sig_buf_dval
 llrf_shell_tb.dut.sig_buf_flip
+@25
+llrf_shell_tb.dut.sig_buf_ready[9:0]
+@28
 llrf_shell_tb.dut.gen_sig[0].sig_buf_raw.sig_clk
 llrf_shell_tb.dut.gen_sig[0].sig_buf_raw.sig_val
 @420
@@ -133,7 +137,6 @@ llrf_shell_tb.dut.gen_sig[0].sig_buf_raw.sig_dat[15:0]
 @28
 llrf_shell_tb.dut.gen_sig[0].sig_buf_raw.sig_last
 llrf_shell_tb.dut.gen_sig[0].sig_buf_raw.lb_clk
-@29
 llrf_shell_tb.dut.gen_sig[0].sig_buf_raw.buf_ready
 @420
 llrf_shell_tb.dut.gen_sig[0].sig_buf_raw.lb_rdata[15:0]
