@@ -119,6 +119,7 @@ end
         while (!lb_rdata[0]) begin
             lb_read_task(SIG_BUF_READY, rdata);
         end
+        lb_write_task(SIG_BUF_FLIP, 1);
         for (jx=0; jx<2**SIG_BUF_AW; jx=jx+1) begin
             lb_read_task(ADC0_BUF_ADDR + jx, rdata);
             fail |= $signed(rdata[15:0]) != rxbuf[jx];
@@ -216,7 +217,7 @@ end
             trigger_cnt <= 0;
         end
     end
-    wire [31:0] pulse_high_len_trig = 32'd50;
+    wire [31:0] pulse_high_len_trig = 32'd2;
     pulse_gen #(.AW(32)) pulse_trig(
          .clk        (dsp_clk),
          .trigger    (etrig_trigger),
