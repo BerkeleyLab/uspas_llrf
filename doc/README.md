@@ -1,5 +1,7 @@
 # USPAS LLRF firmware
 
+[[_TOC_]]
+
 ## Digital Down-Conversion (DDC)
 
 For high precision digitization, [Non-IQ direct digital down-conversion](https://accelconf.web.cern.ch/l06/papers/thp004.pdf) is used to avoid aliasing.
@@ -40,7 +42,7 @@ $$
 \end{align*}
 $$
 
-Or in matrix form, for DUC to first Nyquist zone:
+Or in matrix form:
 
 $$
 \begin{pmatrix}
@@ -55,8 +57,7 @@ $$
 \begin{pmatrix}
     \cos(n\omega_c) \\
     \sin(n\omega_c)
-\end{pmatrix},
-\qquad \omega_c \in (-\pi, \pi)
+\end{pmatrix}
 $$
 
 To avoid aliasing, condition $\omega_c \in (-\pi, \pi)$ is due to the [Nyquist–Shannon sampling theorem](https://en.wikipedia.org/wiki/Nyquist%E2%80%93Shannon_sampling_theorem).
@@ -65,7 +66,8 @@ When operating in the [under-sampling](https://en.wikipedia.org/wiki/Undersampli
 
 For example, the up conversion from base band to the 2nd Nyquist zone (i.e. $\frac{f_\text{S}}{2} < f_\text{IF\_DAC} < f_\text{S}$) is illustrated at Figure 32 (b) in [NCO Setting Examples](https://docs.amd.com/r/en-US/pg269-rf-data-converter/NCO-Frequency-Conversion), where the NCO frequency is set to be $-f_\text{IF\_DAC}$. This flip of sign is known as the spectral inversion due to frequency folding around the Nyquist frequency.
 
-Equation of DUC to the second Nyquist zone:
+Equation of DUC to the second Nyquist zone  where $\omega_2 \in (\pi, 2\pi)$:
+
 $$
 \begin{pmatrix}
     I_{y,n} \\
@@ -77,10 +79,9 @@ $$
     Q_n & -I_n
 \end{pmatrix}
 \begin{pmatrix}
-    \cos(n\omega_c) \\
-    \sin(n\omega_c)
-\end{pmatrix},
-\qquad \omega_c \in (\pi, 2\pi)
+    \cos(n\omega_2) \\
+    \sin(n\omega_2)
+\end{pmatrix}
 $$
 
 This approach is consistent with the NCO Modulator in many RF-DACs such as the [AD9174 (Figure 79)](https://www.analog.com/media/en/technical-documentation/data-sheets/AD9174.pdf), and the [AMD RFSoC](https://docs.amd.com/r/en-US/pg269-rf-data-converter/RF-DAC-Numerical-Controlled-Oscillator-and-Mixer), where a standalone NCO with configurable frequency and phase is instantiated, allowing 1st or 2nd Nyquist zone modulation.
