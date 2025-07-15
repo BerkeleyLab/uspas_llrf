@@ -1,8 +1,8 @@
 # USPAS LLRF firmware
 
-[[_TOC_]]
-
 ## Digital Down-Conversion (DDC)
+
+[[_TOC_]]
 
 For high precision digitization, [Non-IQ direct digital down-conversion](https://accelconf.web.cern.ch/l06/papers/thp004.pdf) is used to avoid aliasing.
 
@@ -42,7 +42,9 @@ $$
 \end{align*}
 $$
 
-Or in matrix form:
+### First Nyquist zone DUC
+
+Equation in matrix form:
 
 $$
 \begin{pmatrix}
@@ -61,6 +63,8 @@ $$
 $$
 
 To avoid aliasing, condition $\omega_c \in (-\pi, \pi)$ is due to the [Nyquist–Shannon sampling theorem](https://en.wikipedia.org/wiki/Nyquist%E2%80%93Shannon_sampling_theorem).
+
+### Second Nyquist zone DUC
 
 When operating in the [under-sampling](https://en.wikipedia.org/wiki/Undersampling) scheme, the signal location at the first Nyquist zone must be calculated to derive the effective NCO frequency value.
 
