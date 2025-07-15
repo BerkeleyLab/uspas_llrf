@@ -51,8 +51,7 @@ $$
     I_{y,n} \\
     Q_{y,n}
 \end{pmatrix}
-=
-\begin{pmatrix}
+=\begin{pmatrix}
     I_n & -Q_n \\
     Q_n & I_n
 \end{pmatrix}
@@ -77,8 +76,7 @@ $$
     I_{y,n} \\
     Q_{y,n}
 \end{pmatrix}
-=
-\begin{pmatrix}
+=\begin{pmatrix}
     I_n & Q_n \\
     Q_n & -I_n
 \end{pmatrix}
