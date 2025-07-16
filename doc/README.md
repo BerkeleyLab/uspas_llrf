@@ -1,8 +1,21 @@
 # USPAS LLRF firmware
 
-## Digital Down-Conversion (DDC)
-
 [[_TOC_]]
+
+## Clocking
+
+As shown in the following diagram of the digitizer (Zest) board support,
+the clock distribution chip (LMK01801) receives an external reference clock,
+and the outputs of two divider groups drives ADC (AD9563) and DAC (AD9781) respectively,
+where the DAC sampling clock is double of the ADC sampling clock, which is the same as the DSP clock.
+
+![zest_clk](./fig/zest_clk.drawio.svg)
+
+$$
+    f_\text{dac\_clk} = 2 f_\text{adc\_clk} = 2 f_\text{dsp\_clk}
+$$
+
+## Digital Down-Conversion (DDC)
 
 For high precision digitization, [Non-IQ direct digital down-conversion](https://accelconf.web.cern.ch/l06/papers/thp004.pdf) is used to avoid aliasing.
 
@@ -67,7 +80,7 @@ To avoid aliasing, condition $\omega_c \in (-\pi, \pi)$ is due to the [Nyquistâ€
 
 When operating in the [under-sampling](https://en.wikipedia.org/wiki/Undersampling) scheme, the signal location at the first Nyquist zone must be calculated to derive the effective NCO frequency value.
 
-For example, the up conversion from base band to the 2nd Nyquist zone (i.e. $\frac{f_\text{S}}{2} < f_\text{IF\_DAC} < f_\text{S}$) is illustrated at Figure 32 (b) in [NCO Setting Examples](https://docs.amd.com/r/en-US/pg269-rf-data-converter/NCO-Frequency-Conversion), where the NCO frequency is set to be $-f_\text{IF\_DAC}$. This flip of sign is known as the spectral inversion due to frequency folding around the Nyquist frequency.
+For example, the up conversion from base band to the 2nd Nyquist zone (i.e. $\frac{f_\text{S}}{2} < f_\text{IF\_DAC} < f_\text{S}$) is illustrated at Figure 32 (b) in [NCO Setting Examples](https://docs.amd.com/r/en-US/pg269-rf-data-converter/NCO-Frequency-Conversion), where the NCO frequency is set to be $-(f_\text{S} - f_\text{IF\_DAC})$ or $-f_\text{IF\_DAC}$. This flip of sign is known as the spectral inversion due to frequency folding around the Nyquist frequency.
 
 Equation of DUC to the second Nyquist zone  where $\omega_2 \in (\pi, 2\pi)$:
 
@@ -86,7 +99,7 @@ $$
 \end{pmatrix}
 $$
 
-This approach is consistent with the NCO Modulator in many RF-DACs such as the [AD9174 (Figure 79)](https://www.analog.com/media/en/technical-documentation/data-sheets/AD9174.pdf), and the [AMD RFSoC](https://docs.amd.com/r/en-US/pg269-rf-data-converter/RF-DAC-Numerical-Controlled-Oscillator-and-Mixer), where a standalone NCO with configurable frequency and phase is instantiated, allowing 1st or 2nd Nyquist zone modulation.
+This approach is consistent with the NCO Modulator in many RF-DACs such as the [AD9174 (Figure 79)](https://www.analog.com/media/en/technical-documentation/data-sheets/AD9174.pdf), and the [AMD RFSoC](https://docs.amd.com/r/en-US/pg269-rf-data-converter/RF-DAC-Numerical-Controlled-Oscillator-and-Mixer), where a standalone NCO with configurable frequency and phase is instantiated, allowing 1st or 2nd Nyquist zone modulation. For 2nd Nyquist zone operation, most DACs has a Mix-Mode available to increase the amplitude response.
 
 ## LLRF DSP
 

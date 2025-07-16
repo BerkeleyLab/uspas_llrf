@@ -16,6 +16,7 @@ Change [settings.mk](settings.mk) for the option of:
 |      dac_clk     |    LO / 2    | 229.06    | MHz |
 | IF_adc / dsp_clk |    4 / 11    |           |     |
 
+The Zest reference clock is LO.
 Details see [Digital LLRF for ALS-U](https://arxiv.org/abs/2210.05095).
 
 ## USPAS LLRF settings:
@@ -28,6 +29,7 @@ Details see [Digital LLRF for ALS-U](https://arxiv.org/abs/2210.05095).
 |      dac_clk     |    LO / 2    | 230       | MHz |
 | IF_adc / dsp_clk |    4 / 23    |           |     |
 
+The Zest reference clock is LO.
 
 ## SLAC LEMP LLRF settings:
 |    **Signal**    |    **Ratio**   | **Value** |     |
@@ -41,6 +43,7 @@ Details see [Digital LLRF for ALS-U](https://arxiv.org/abs/2210.05095).
 | IF_dac           | MO / 336 * 11  | 93.5      | MHz |
 | IF_dac / dac_clk |     11 / 28    |           |     |
 
+The Zest reference clock is MO.
 
 ## ANL AWA LLRF settings:
 |    **Signal**    |    **Ratio**   | **Value** |     |
@@ -54,6 +57,7 @@ Details see [Digital LLRF for ALS-U](https://arxiv.org/abs/2210.05095).
 | IF_dac           | LO / 264 * 29  | 145.0     | MHz |
 | IF_dac / dac_clk |    203 / 264   |           |     |
 
+The Zest reference clock is LO.
 
 # LLRF DSP verification
 
