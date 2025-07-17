@@ -49,8 +49,8 @@ module llrf_shell #(
     localparam integer N_CH = 10,  // N_ADC + N_DAC
     localparam integer N_ADC = 8,
     localparam integer N_DAC = 2,
-    localparam signed [DWLO:0] DDC_RX_PHS_OFF = $rtoi(`RX_LO_PHS_DEG * 2**(DWLO+1) / 360.0),
-    localparam signed [DWLO:0] DDC_TX_PHS_OFF = $rtoi(`TX_LO_PHS_DEG * 2**(DWLO+1) / 360.0)
+    localparam signed [DWLO:0] DDC_RX_PHS_OFF = -$rtoi(`RX_LO_PHS_DEG * 2**(DWLO+1) / 360.0),
+    localparam signed [DWLO:0] DDC_TX_PHS_OFF = -$rtoi(`TX_LO_PHS_DEG * 2**(DWLO+1) / 360.0)
 ) (
     // ---------------------
     // Localbus interface
@@ -164,7 +164,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 
     // LO for RX
     // pre-compensate for DDC RX phase gain
-    wire signed [DWLO:0] dds_phase = dds_phase_acc + dds_phase_shift + DDC_RX_PHS_OFF;
+    wire signed [DWLO:0] dds_phase = dds_phase_acc + dds_phase_shift - DDC_RX_PHS_OFF;
     cordicg_b22 #(.nstg(20), .width(18)) dds (
         .clk            (dsp_clk),
         .opin           (2'b00),
@@ -295,6 +295,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [CBUF_AW-1:0] cbuf_stat2;
 
     // EVR trigger edge detection
+    wire [0:0]  dsp_event1, dsp_event2;
     (* ASYNC_REG="TRUE" *) reg [2:0] evr_trig_d = 0;
     always @(posedge dsp_clk) begin
         evr_trig_d <= {evr_trig_d[1:0], dsp_event1};
@@ -600,7 +601,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [0:0]  evr_timestamp_valid;
     wire [0:0]  evr_live_pps_marker;
     wire [0:0]  evr_live_hb_marker;
-    wire [0:0]  dsp_event1, dsp_event2;
     timing_core #(.DSP_EV1(`DSP_EV1), .DSP_EV2(`DSP_EV2)) timing_evr
     (
         .lb_clk              (lb_clk),

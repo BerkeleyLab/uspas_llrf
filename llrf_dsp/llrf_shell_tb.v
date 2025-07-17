@@ -49,7 +49,17 @@ end
     // --------------------------------------------------------------
     //  LocalBus functions
     // --------------------------------------------------------------
-
+    integer fd;
+    reg [255:0] fname;
+    reg fail=0;
+    real amp_err, phs_err;
+    real wfm_amp, wfm_phs;
+    integer jx;
+    reg inlk_check=0;
+    reg signed [DW-1:0] rxbuf [0:2**SIG_BUF_AW];
+    real theta;
+    integer adc_cc=0;
+    reg signed [15:0] test_adc_sig=16'hxxxx;
     reg [31:0] rdata=0;
     reg rinfo=0;
 
@@ -105,14 +115,14 @@ end
         end
     endtask
 
-    task get_adc_data;
+    task check_sig_buf;
         @(posedge dut.wave_trig);
         @(posedge dut.dsp_clk);
         // record adc values for checking against adc0_buf readout
         for (jx=0; jx<2**SIG_BUF_AW; jx=jx+1) begin
             @(negedge dut.dsp_clk);
-            rxbuf[jx] = mo_sig;
-            // $display("%g ns, [%2d]: %4d", $time, jx, mo_sig);
+            rxbuf[jx] = test_adc_sig;
+            // $display("%g ns, [%2d]: %4d", $time, jx, test_adc_sig);
         end
         // readout and validate
         lb_read_task(SIG_BUF_READY, rdata);
@@ -151,14 +161,11 @@ end
     parameter integer LOOPBACK_ADC = 1;
     parameter integer FDBK_ADC = 2;
 
-    real theta;
-    integer adc_cc=0;
-    reg signed [15:0] mo_sig=16'hxxxx;
     integer adc_cc_start = `CIC_BASE_PERIOD % 20;    // truly important but empirical
     always @(posedge dsp_clk) begin
         adc_cc <= dut.dds_reset ? adc_cc_start : adc_cc + 1'b1; // synchronize with dds LO phase
-        theta <= adc_cc * `M_TWO_PI * `NUM_DDS / `DEN_DDS - PHSI * `M_PI / 180;
-        mo_sig <= $floor(AMPI * $cos(theta));
+        theta <= adc_cc * `M_TWO_PI * `NUM_DDS / `DEN_DDS + PHSI * `M_PI / 180;
+        test_adc_sig <= $floor(AMPI * $cos(theta));
     end
 
     // ---------------------
@@ -225,7 +232,7 @@ end
          .pulse_out  (etrig_pulse)
     );
 
-    assign adc_in_flat[DW*MO_ADC +:DW] = mo_sig;
+    assign adc_in_flat[DW*MO_ADC +:DW] = test_adc_sig;
     assign adc_in_flat[DW*LOOPBACK_ADC +:DW] = dac_a_out;
     assign adc_in_flat[DW*FDBK_ADC +:DW] = dac_b_out;
 
@@ -297,15 +304,6 @@ end
         init_done = 1'b1;
         end
     endtask
-
-    integer fd;
-    reg [255:0] fname;
-    reg fail=0;
-    real amp_err, phs_err;
-    real wfm_amp, wfm_phs;
-    integer jx;
-    reg inlk_check=0;
-    reg signed [DW-1:0] rxbuf [0:2**SIG_BUF_AW];
 
     initial begin
         init_task();
@@ -418,7 +416,7 @@ end
             $time, wfm_phs, phs_expect, fail ? "FAIL":"OK");
 
         $display("---- Check ADC buffer ----");
-        get_adc_data();
+        check_sig_buf();
 
         $display("---- Check Min/Max ----");
         // wait for slow_ready
@@ -501,7 +499,7 @@ end
 
         lb_read_task(18'h1e000, rdata);
         $display("---- Check Internal trigger ----");
-        get_adc_data();
+        check_sig_buf();
         #(500 * `DSP_CLK_CYCLE);
 
         $display("---- Check External trigger ----");
@@ -509,14 +507,14 @@ end
         @(posedge dut.dsp_clk);
         lb_write_task(WAVE_TRIG_SEL, 2'b01);
         #(100 * `DSP_CLK_CYCLE);
-        get_adc_data();
+        check_sig_buf();
         #(500 * `DSP_CLK_CYCLE);
 
         @(posedge dut.dsp_clk);
         lb_write_task(WAVE_TRIG_SEL, 2'b00);
         lb_read_task(18'h1e000, rdata);
         $display("---- Switch back to Internal trigger ----");
-        get_adc_data();
+        check_sig_buf();
         #(500 * `DSP_CLK_CYCLE);
 
         $display("Time: %g ns, Validation: %s.", $time, !fail ? "PASS":"FAIL");
