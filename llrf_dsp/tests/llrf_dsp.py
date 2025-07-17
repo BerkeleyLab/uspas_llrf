@@ -104,7 +104,7 @@ class DDC(LLRFModule):
         """Calculate I,Q values from 2 consecutive ADC samples using
             non-IQ down conversion:
         | I | = gain * | sin([n + 1] * omega) -sin(n * omega)| X |a_data[n]  |
-        | Q |          |-cos([n + 1] * omega)  cos(n * omega)|   |a_data[n+1]|
+        | Q |          | cos([n + 1] * omega) -cos(n * omega)|   |a_data[n+1]|
         where gain is 1 / sin(omega).
 
         Args:
@@ -116,7 +116,7 @@ class DDC(LLRFModule):
         def calc_coefficient_mat(n=0, omega=self.omega):
             return np.array([
                 [np.sin(omega * (n + 1)), -np.sin(omega * n)],
-                [-np.cos(omega * (n + 1)), np.cos(omega * n)]
+                [np.cos(omega * (n + 1)), -np.cos(omega * n)]
             ])
         gain = 1 / np.sin(self.omega)
         s_pre = adc_data[0]

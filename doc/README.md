@@ -15,21 +15,66 @@ $$
     f_\text{dac\_clk} = 2 f_\text{adc\_clk} = 2 f_\text{dsp\_clk}
 $$
 
+## IQ representation conventions
+
+There are two conventions for IQ decomposition of a RF signal $y$ at carrier frequency $\omega$:
+
+1. Positive carrier frequency:
+
+   As described in [Wikipedia](https://en.wikipedia.org/wiki/In-phase_and_quadrature_components#Narrowband_signal_model),
+
+   $$
+   \begin{align*}
+       y(t) &= (I + jQ) \cdot e^{j\omega t} \\
+       \Re(y(t)) &= I\cos(\omega t) - Q\sin(\omega t)
+   \end{align*}
+   $$
+
+   This convention is used in this repository.
+
+2. Negative carrier frequency:
+
+   $$
+   \begin{align*}
+       y(t) &= (I + jQ) \cdot e^{j-\omega t} \\
+       \Re(y(t)) &= I\cos(\omega t) + Q\sin(\omega t)
+   \end{align*}
+   $$
+
+   This convention is used in `bedrock/dsp` RTL modules.
+
 ## Digital Down-Conversion (DDC)
 
 For high precision digitization, [Non-IQ direct digital down-conversion](https://accelconf.web.cern.ch/l06/papers/thp004.pdf) is used to avoid aliasing.
 
-With the normalized ADC IF frequency $\omega_d = 2\pi\frac{f_\text{IF\_ADC}}{f_\text{S}}$, the DDC NCO provides LO data streams of $\cos(n\omega_d)$ and $\sin(n\omega_d)$:
+With the normalized ADC IF frequency $\omega_d = 2\pi\frac{f_\text{IF\_ADC}}{f_\text{S}}$, the DDC NCO provides LO data streams of $\cos(n\omega_d)$ and $\sin(n\omega_d)$. Two measured successive samples are:
 
 $$
 \begin{pmatrix}
-    I_n \\
-    Q_n
+    y_{n-1} \\
+    y_n
+\end{pmatrix}
+= \begin{pmatrix}
+    \cos((n-1)\omega_d) & -\sin((n-1)\omega_d) \\
+    \cos(n\omega_d)     & -\sin(n\omega_d)
+\end{pmatrix}
+\begin{pmatrix}
+    I \\
+    Q
+\end{pmatrix}
+$$
+
+Solve $I$ and $Q$ using inverse matrix:
+
+$$
+\begin{pmatrix}
+    I \\
+    Q
 \end{pmatrix}
 = \frac{1}{\sin\omega_d}
 \begin{pmatrix}
     \sin(n\omega_d)    & -\sin((n-1)\omega_d) \\
-    -\cos(n\omega_d)   & \cos((n-1)\omega_d)
+    \cos(n\omega_d)    & -\cos((n-1)\omega_d)
 \end{pmatrix}
 \begin{pmatrix}
     y_{n-1} \\

@@ -92,15 +92,14 @@ module llrf_dsp #(
     assign q_data_out = drive_q;
 
     // Digital Up-converter - Double side-band modulator
-    // check out pg. 268 from https://cds.cern.ch/record/1100538/files/p249.pdf
     // Digital quadrature modulation followed by analog up-conversion mixer
-    // rf_out = I*cos(wt) + Q*sin(wt)
+    // rf_out = I*cos(wt) - Q*sin(wt)
     // Gain = `LO_AMP * `CORDIC_GAIN / 2**18 / 2 = 0.235068
     // delay: 3 cycles
     flevel_set duc (
         .clk              (clk),
         .cosd             (cosa),
-        .sind             (sina),
+        .sind             (-sina),  // For positive carrier frequency convention
         .i_data           (drive_i[KW-1:KW-17]),
         .i_gate           (1'b1),
         .i_trig           (1'b1),

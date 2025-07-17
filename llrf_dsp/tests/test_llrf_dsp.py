@@ -19,8 +19,8 @@ class TestLLRF:
         self.plant = Plant(
             conf=f_config, settings_fname='cavity.json', llrf=llrf)
         self.log_banner(f'Simulating: {f_config}')
-        rx_phase_off_reg = self.encode_phase(llrf.rx.phase_off_deg)
-        tx_phase_off_reg = self.encode_phase(llrf.tx.phase_off_deg)
+        rx_phase_off_reg = self.encode_phase(-llrf.rx.phase_off_deg)
+        tx_phase_off_reg = self.encode_phase(-llrf.tx.phase_off_deg)
         self.dut.rx_phase_offset.value = rx_phase_off_reg
         self.dut.tx_phase_offset.value = tx_phase_off_reg
         self.dut._log.info(
@@ -146,7 +146,7 @@ class TestLLRF:
 
     async def drive_adc(self, amp, phs) -> None:
         for t in itertools.count():
-            sig = amp * np.exp(1j * (self.llrf.omega * t - np.deg2rad(phs)))
+            sig = amp * np.exp(1j * (self.llrf.omega * t + np.deg2rad(phs)))
             await RisingEdge(self.dut.clk)
             self.dut.adc_in.value = int(sig.real)
 
