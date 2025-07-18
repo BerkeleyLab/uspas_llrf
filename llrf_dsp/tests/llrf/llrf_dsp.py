@@ -223,7 +223,7 @@ class DSPCoreRX(LLRFModule):
         Args:
             num (int): numerator of IF / Fs. Defaults to 4.
             den (int): denominator of IF / Fs. Defaults to 11.
-            dds (DDS): external dds shared with tx.
+            dds (DDS): external dds.
         """
         super().__init__(num, den)
         if dds is None:
