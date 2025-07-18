@@ -4,7 +4,7 @@ import json
 
 
 class LLRFModel(LLRFModule):
-    def __init__(self, conf='LEMP', settings_fname='../settings.json') -> None:
+    def __init__(self, conf='LEMP', settings_fname='settings.json') -> None:
         """Math model that provides helper functions for simulation
 
         Args:

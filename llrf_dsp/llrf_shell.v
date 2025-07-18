@@ -150,8 +150,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 
 `AUTOMATIC_decode
 
+    // RX NCO LO
     wire signed [DWLO-1:0] cosd, sind;
-    wire [18:0] dds_phase_acc;
     dds #(
         .DWLO(DWLO), .LO_AMP(`LO_AMP), .PHS_OFF(DDC_RX_PHS_OFF)
     ) rx_dds (
@@ -186,7 +186,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     reg i_sel = 0;
     always @(posedge dsp_clk) i_sel <= ~i_sel;
 
-    // create data stream strobes for sig_buf with 4096 samples
+    // create data stream strobes for sig_buf
     // applies to all raw, i, q waveforms
     wire sig_buf_trig = wave_trig;
     reg [SIG_BUF_AW-1:0] sig_buf_cnt=0;

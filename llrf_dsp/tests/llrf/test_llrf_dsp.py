@@ -12,7 +12,7 @@ import logging
 
 class TestLLRF:
     def __init__(self, dut: SimHandleBase,
-                 f_config='USPAS', settings_fname='../settings.json'):
+                 f_config='USPAS', settings_fname='settings.json'):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
         self.llrf = llrf = LLRFModel(f_config, settings_fname)
