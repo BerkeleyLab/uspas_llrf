@@ -1,19 +1,17 @@
 `timescale  1ns / 1ns
-// Derived from bedrock/dsp/rot_dds.v
-// Parameterized signal width; add phase offset
 
 module dds #(
     parameter integer DWLO = 18,
     parameter [DWLO-1:0] LO_AMP = 74840,
     parameter [DWLO:0] PHS_OFF = 0
 ) (
-	input clk,
-	input reset,  // active high, synchronous with clk
-	output signed [DWLO-1:0] sina,
-	output signed [DWLO-1:0] cosa,
+    input clk,
+    input reset,
     input [DWLO:0] phase_shift,
     input [31:0] phase_step,    // {20'phase_step_h, 12'phase_step_l}
-	input [11:0] modulo
+    input [11:0] modulo,
+    output signed [DWLO-1:0] sin_out,
+    output signed [DWLO-1:0] cos_out
 );
 
     wire signed [DWLO-1:0] cosd, sind;
@@ -34,8 +32,8 @@ module dds #(
         .xin            (LO_AMP),
         .yin            (18'd0),
         .phasein        (dds_phase),
-        .xout           (cosa),
-        .yout           (sina)
+        .xout           (cos_out),
+        .yout           (sin_out)
     );
 
 endmodule

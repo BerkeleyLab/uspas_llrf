@@ -152,27 +152,16 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 
     wire signed [DWLO-1:0] cosd, sind;
     wire [18:0] dds_phase_acc;
-    ph_acc dds_lo (
-        .clk            (dsp_clk),
-        .reset          (dds_reset),
-        .en             (1'b1),
-        .phase_acc      (dds_phase_acc),
-        .phase_step_h   (dds_phase_step[31:12]),
-        .phase_step_l   (dds_phase_step[11: 0]),
-        .modulo         (dds_modulo)
-    );
-
-    // LO for RX
-    // pre-compensate for DDC RX phase gain
-    wire signed [DWLO:0] dds_phase = dds_phase_acc + dds_phase_shift - DDC_RX_PHS_OFF;
-    cordicg_b22 #(.nstg(20), .width(18)) dds (
-        .clk            (dsp_clk),
-        .opin           (2'b00),
-        .xin            (18'd`LO_AMP),
-        .yin            (18'd0),
-        .phasein        (dds_phase),
-        .xout           (cosd),
-        .yout           (sind)
+    dds #(
+        .DWLO(DWLO), .LO_AMP(`LO_AMP), .PHS_OFF(DDC_RX_PHS_OFF)
+    ) rx_dds (
+        .clk        (dsp_clk),
+        .reset      (dds_reset),
+        .phase_shift(dds_phase_shift),
+        .phase_step (dds_phase_step),
+        .modulo     (dds_modulo),
+        .cos_out    (cosd),
+        .sin_out    (sind)
     );
 
     wire wave_trig;
