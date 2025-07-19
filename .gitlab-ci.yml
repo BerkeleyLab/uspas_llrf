@@ -17,7 +17,6 @@ image: $CONTAINER_IMAGE:master
 prepare:
   stage: prepare
   script:
-    - apt-get install verilator
     - pip install numpy scipy cocotb==1.9.1 pytest pandas
 
 flake8:
@@ -30,7 +29,7 @@ llrf_dsp_test:
     - cd llrf_dsp
   stage: test
   script:
-    - make clean && make FSET=${TARGET}
+    - make FSET=${TARGET}
   parallel:
     matrix:
       - TARGET: [ALSU, USPAS, LEMP, AWA]
@@ -41,13 +40,14 @@ cocotb_dsp_test:
   stage: test
   script:
     - make RANDOM_SEED=1724518460
+  needs: ["prepare"]
 
 llrf_cdc_test:
   before_script:
     - cd llrf_dsp
   stage: test
   script:
-    - make clean && make llrf_shell_expand.v && make llrf_shell_cdc.txt
+    - make llrf_shell_expand.v && make llrf_shell_cdc.txt
   artifacts:
     when: always
     paths:
@@ -65,7 +65,7 @@ marble_zest_synth:
     - cd top/marble_zest
   stage: synthesis
   script:
-    - make clean && PATH=$XILINX_VIVADO/bin:$PATH make FSET=${TARGET}
+    - PATH=$XILINX_VIVADO/bin:$PATH make FSET=${TARGET}
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
     expire_in: 2 days
@@ -79,6 +79,7 @@ marble_zest_synth:
 
 .marble_lemp_run:
   before_script:
+    - pip install pandas
     - cd top/marble_zest
   stage: run
   tags:
@@ -93,6 +94,7 @@ marble_zest_synth:
 
 marble_awa_run:
   before_script:
+    - pip install pandas
     - cd top/marble_zest
   stage: run
   tags:
@@ -107,6 +109,7 @@ marble_awa_run:
 
 marble_uspas_run:
   before_script:
+    - pip install pandas
     - cd top/marble_zest
   stage: run
   tags:
