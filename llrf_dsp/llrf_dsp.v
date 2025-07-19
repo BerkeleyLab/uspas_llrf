@@ -14,14 +14,14 @@ module llrf_dsp #(
     input signed [DWLO-1:0] cosa,
     input signed [DWLO-1:0] sina,
 
-    input signed [DWI-1:0] adc_in,
-    output signed [DWO-1:0] dac_out,
+    input signed [DWI-1:0] adc_in,      // IF band input
+    output signed [DWO-1:0] dac_out,    // IF band output
 
-    input signed [KW-1:0] i_data_in, // baseband input
-    input signed [KW-1:0] q_data_in, // baseband input
+    input signed [KW-1:0] i_data_in,    // baseband input
+    input signed [KW-1:0] q_data_in,    // baseband input
 
-    output signed [KW-1:0] i_data_out, // baseband output
-    output signed [KW-1:0] q_data_out, // baseband output
+    output signed [KW-1:0] i_data_out,  // baseband output
+    output signed [KW-1:0] q_data_out,  // baseband output
 
     input signed [DWLO:0] rx_phase_offset,
     input signed [DWLO:0] tx_phase_offset,
@@ -94,19 +94,17 @@ module llrf_dsp #(
     // Digital Up-converter - Double side-band modulator
     // Digital quadrature modulation followed by analog up-conversion mixer
     // rf_out = I*cos(wt) - Q*sin(wt)
-    // Gain = `LO_AMP * `CORDIC_GAIN / 2**18 / 2 = 0.235068
     // delay: 3 cycles
-    flevel_set duc (
-        .clk              (clk),
-        .cosd             (cosa),
-        .sind             (-sina),  // For positive carrier frequency convention
-        .i_data           (drive_i[KW-1:KW-17]),
-        .i_gate           (1'b1),
-        .i_trig           (1'b1),
-        .q_data           (drive_q[KW-1:KW-17]),
-        .q_gate           (1'b1),
-        .q_trig           (1'b1),
-        .o_data           (dac_out)
+    // XXX: cpxmul_fullspeed requires KW==DWLO
+    cpxmul_fullspeed #(
+        .DWI(KW), .OUT_SHIFT(DWO+1), .OWI(DWO)
+    ) duc (
+        .clk    (clk),
+        .re_a   (drive_i),
+        .im_a   (drive_q),
+        .re_b   (cosa),
+        .im_b   (sina),
+        .re_out (dac_out)
     );
 
 endmodule

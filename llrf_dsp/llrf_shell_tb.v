@@ -260,10 +260,10 @@ end
     reg phs_loop_reset = 0;
     reg dsp_reset = 0;
 
-    reg signed [17:0] Kp_amp = 8000;
-    reg signed [17:0] Kp_phs = 20000;
-    reg signed [17:0] Ki_amp = 300;
-    reg signed [17:0] Ki_phs = 400;
+    reg signed [17:0] Kp_amp = 2000;
+    reg signed [17:0] Kp_phs = 5000;
+    reg signed [17:0] Ki_amp = 100;
+    reg signed [17:0] Ki_phs = 100;
 
     real mon_gain;
     real inlk_gain;

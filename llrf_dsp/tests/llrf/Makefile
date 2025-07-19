@@ -7,7 +7,7 @@ MODULE   = test_$(DUT)
 TESTCASE = test_alsu,test_uspas,test_lemp,test_awa
 
 VERILOG_SOURCES += $(DSP_DIR)/dpram.v $(DSP_DIR)/fiq_interp.v \
-                    $(DSP_DIR)/flevel_set.v \
+                    $(DSP_DIR)/cpxmul_fullspeed.v \
                     $(DSP_DIR)/fwashout.v \
                     $(CORDIC_DIR)/addsubg.v $(CORDIC_DIR)/cstageg.v
 

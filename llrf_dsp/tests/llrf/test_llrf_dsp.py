@@ -120,10 +120,10 @@ class TestLLRF:
         await RisingEdge(self.dut.clk)
         self.dut.amp_loop_reset.value = 1
         self.dut.phs_loop_reset.value = 1
-        self.dut.Kp_amp.value = 80
-        self.dut.Kp_phs.value = 80
-        self.dut.Ki_amp.value = 200
-        self.dut.Ki_phs.value = 500
+        self.dut.Kp_amp.value = 20
+        self.dut.Kp_phs.value = 20
+        self.dut.Ki_amp.value = 50
+        self.dut.Ki_phs.value = 200
         await RisingEdge(self.dut.clk)
         self.dut.amp_loop_enable.value = 1
         self.dut.phs_loop_enable.value = 1

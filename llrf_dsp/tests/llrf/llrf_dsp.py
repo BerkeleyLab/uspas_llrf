@@ -254,21 +254,21 @@ class DSPCoreRX(LLRFModule):
 class DUC(LLRFModule):
     def __init__(self, num: int = 4,  den: int = 11) -> None:
         """Non-IQ Digital Up-Conversion.
-            Gateware: flevel_set.v.
+            Gateware: cpxmul_fullspeed.v.
 
         Args:
             num (int): numerator of IF / Fs. Defaults to 4.
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        self.gain = 1/4 * self.z**(-3)
+        self.gain = self.z**(-3)
 
 
 class DSPCoreTX(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
                  dds: DDS = None) -> None:
         """Transmitter DSP chain in dsp_core.v.
-            Gateware: tx_cordic, flevel_set.v
+            Gateware: tx_cordic, cpxmul_fullspeed.v
 
         Args:
             num (int): numerator of IF / Fs. Defaults to 4.
