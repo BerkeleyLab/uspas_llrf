@@ -1,5 +1,4 @@
 stages:
-  - prepare
   - test
   - synthesis
   - run
@@ -13,11 +12,6 @@ variables:
   GIT_SUBMODULE_STRATEGY: normal
 
 image: $CONTAINER_IMAGE:master
-
-prepare:
-  stage: prepare
-  script:
-    - pip install numpy scipy cocotb==1.9.1 pytest pandas
 
 flake8:
   stage: test
@@ -36,11 +30,11 @@ llrf_dsp_test:
 
 cocotb_dsp_test:
   before_script:
+    - pip install numpy scipy cocotb==1.9.1 pytest
     - cd llrf_dsp/tests
   stage: test
   script:
     - make RANDOM_SEED=1724518460
-  needs: ["prepare"]
 
 llrf_cdc_test:
   before_script:
