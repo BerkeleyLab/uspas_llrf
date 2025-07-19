@@ -161,7 +161,7 @@ end
     parameter integer LOOPBACK_ADC = 1;
     parameter integer FDBK_ADC = 2;
 
-    integer adc_cc_start = `CIC_BASE_PERIOD % 20;    // truly important but empirical
+    integer adc_cc_start = `CIC_BASE_PERIOD % 21;    // truly important but empirical
     always @(posedge dsp_clk) begin
         adc_cc <= dut.dds_reset ? adc_cc_start : adc_cc + 1'b1; // synchronize with dds LO phase
         theta <= adc_cc * `M_TWO_PI * `NUM_DDS / `DEN_DDS + PHSI * `M_PI / 180;
