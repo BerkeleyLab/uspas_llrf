@@ -26,10 +26,14 @@ class TB:
             await RisingEdge(self.dut.clk)
 
     async def init_test(self) -> None:
-        await self.cycle_reset()
-        phase_step, modulo = self.model.calc_dds_config()
-        self.dut.phase_step.value = phase_step
+        phase_step_h, phase_step_l, modulo = self.model.calc_dds_config(
+            dwh=self.dut.DWH.value, dwl=self.dut.DWL.value)
+        self.dut.phase_step_h.value = phase_step_h
+        # test asynchronous program of phase_step_h, phase_step_l
+        await RisingEdge(self.dut.clk)
+        self.dut.phase_step_l.value = phase_step_l
         self.dut.modulo.value = modulo
+        await self.cycle_reset()
         phs_off = random.randint(-180, 180)
         self.dut.phase_shift.value = \
             int(phs_off / 360 * 2**(self.dut.DWLO.value + 1))
@@ -39,7 +43,8 @@ class TB:
     async def check_sig(self, amp_exp, phs_off) -> None:
         phs_step_exp = np.rad2deg(self.model.omega)
         self.dut._log.warning(
-            f"expected mag: {amp_exp:8.2f} cnt,  phs: {phs_off:8.2f} deg")
+            f"expected mag: {amp_exp:8.2f} cnt,  phs: {phs_off:8.2f} deg,  "
+            f"phs_step: {phs_step_exp:8.2f} deg")
         for ix in range(8):
             await RisingEdge(self.dut.clk)
             i_meas = self.dut.cos_out.value.signed_integer

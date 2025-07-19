@@ -2,12 +2,13 @@
 // Derived from bedrock/ph_acc.v
 
 module ph_acc_general #(
-   parameter DWL = 12,
-   parameter DWH = 20
+   parameter integer DWL = 12,
+   parameter integer DWH = 20,
+   parameter integer DWO = 19
 )(
-	input clk,  // Rising edge clock input; all logic is synchronous in this domain
-	input reset,  // Active high, synchronous with clk
-	output [18:0] phase_acc,  // Output phase word
+	input clk,
+	input reset,  // assert after changing phase steps
+	output [DWO-1:0] phase_acc,  // Output phase word
 	input [DWH-1:0] phase_step_h,  // High order (coarse, binary) phase step
 	input [DWL-1:0] phase_step_l,  // Low order (fine, possibly non-binary) phase step
 	input [DWL-1:0] modulo  // Encoding of non-binary modulus; 0 means binary
@@ -29,6 +30,6 @@ always @(posedge clk) begin
 	end
 	reset1 <= reset;
 end
-assign phase_acc = phase_h[DWH-1:DWH-1-18];
+assign phase_acc = phase_h[DWH-1:DWH-DWO];
 
 endmodule

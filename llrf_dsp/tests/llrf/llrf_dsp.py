@@ -87,16 +87,15 @@ class DDS(LLRFModule):
         self.gain = self.CORDIC_GAIN * self._amp / (1 << self.width)
         assert self.gain < 1.0, f"NCO saturates: gain={self.gain}."
 
-    def calc_dds_config(self):
+    def calc_dds_config(self, dwh: int = 20, dwl: int = 12) -> tuple:
         """calculate phase accumulator register values.
         """
-        m = int(4096 / self.den)
-        modulo = 4096 - m * self.den
-        r = (1 << 20) * self.num
-        phase_step_h = int(r / self.den) & 0xFFFFF
-        phase_step_l = int((r % self.den) * m) & 0xFFF
-        phase_step = (phase_step_h << 12) + phase_step_l
-        return phase_step, modulo
+        m = int((1 << dwl) / self.den)
+        modulo = (1 << dwl) % self.den
+        r = (1 << dwh) * self.num
+        phase_step_h = int(r / self.den) & (2**dwh - 1)
+        phase_step_l = int((r % self.den) * m) & (2**dwl - 1)
+        return phase_step_h, phase_step_l, modulo
 
 
 class DDC(LLRFModule):

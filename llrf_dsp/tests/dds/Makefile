@@ -14,6 +14,8 @@ VERILOG_SOURCES += cordicg_b22.v \
 export PARAM_DWLO       := 18
 export PARAM_LO_AMP     := 74840
 export PARAM_PHS_OFF    := 0
+export PARAM_DWH        := 20
+export PARAM_DWL        := 12
 
 include ../cocotb_inc.mk
 

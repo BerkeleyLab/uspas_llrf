@@ -155,13 +155,14 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     dds #(
         .DWLO(DWLO), .LO_AMP(`LO_AMP), .PHS_OFF(DDC_RX_PHS_OFF)
     ) rx_dds (
-        .clk        (dsp_clk),
-        .reset      (dds_reset),
-        .phase_shift(dds_phase_shift),
-        .phase_step (dds_phase_step),
-        .modulo     (dds_modulo),
-        .cos_out    (cosd),
-        .sin_out    (sind)
+        .clk          (dsp_clk),
+        .reset        (dds_reset),
+        .phase_shift  (dds_phase_shift),
+        .phase_step_h (dds_phase_step[31:12]),
+        .phase_step_l (dds_phase_step[11:0]),
+        .modulo       (dds_modulo),
+        .cos_out      (cosd),
+        .sin_out      (sind)
     );
 
     wire wave_trig;
