@@ -4,6 +4,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, ClockCycles, Timer
 from cocotb.handle import SimHandleBase
 from llrf_model import LLRFModel
+from llrf_dsp import wrap_phase
 from plant import Plant
 import itertools
 import random
@@ -46,12 +47,6 @@ class TestLLRF:
     def log_banner(self, str):
         self.dut._log.info('*'*20 + f"{str:^20s}" + '*'*20)
 
-    def wrap_phase(self, phs: float, deg=True):
-        """Wrap phase value to be within [-180, 180] or [-pi, pi].
-        """
-        scale = 180 if deg else np.pi
-        return (phs + scale) % (2 * scale) - scale
-
     def encode_phase(self, phs: float, deg=True, width=19):
         """Convert phase value to register
         """
@@ -64,14 +59,14 @@ class TestLLRF:
         scale = 360 if deg else (2 * np.pi)
         reg = signal.value.signed_integer
         width = len(signal)
-        return self.wrap_phase(reg / 2**width * scale)
+        return wrap_phase(reg / 2**width * scale)
 
     async def init_test(self) -> None:
         await self.reset_dut()
         # scramble internal init states of dut:
         await ClockCycles(self.dut.clk, random.randint(0, 20))
         amp_exp = self.llrf.max_adc_amp
-        phs_exp = self.wrap_phase(random.random() * 360)
+        phs_exp = wrap_phase(random.random() * 360)
         cocotb.start_soon(self.drive_dds())
         return amp_exp, phs_exp
 
@@ -182,7 +177,7 @@ class TestLLRF:
                 f"phs: {phs_meas:6.3f} deg")
             assert -0.001 < (amp_meas - amp_exp) / amp_exp < 0.001, \
                 "RX amplitude out-of-bound of 0.1%"
-            assert -0.1 < self.wrap_phase(phs_meas - phs_exp) < 0.1, \
+            assert -0.1 < wrap_phase(phs_meas - phs_exp) < 0.1, \
                 "RX phase out-of-bound of 0.1 deg"
 
 

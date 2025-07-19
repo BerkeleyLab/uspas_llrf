@@ -1,6 +1,17 @@
 import numpy as np
 
 
+def wrap_phase(phs: float, deg=True):
+    """Wrap phase value to be within [-180, 180] or [-pi, pi].
+    """
+    scale = 180 if deg else np.pi
+    return (phs + scale) % (2 * scale) - scale
+
+
+def clamp(value, min_value, max_value):
+    return max(min_value, min(value, max_value))
+
+
 class LLRFModule:
     CORDIC_GAIN = 1.646760258
 
@@ -79,12 +90,13 @@ class DDS(LLRFModule):
     def calc_dds_config(self):
         """calculate phase accumulator register values.
         """
-        m = 4096 / self.den
+        m = int(4096 / self.den)
         modulo = 4096 - m * self.den
         r = (1 << 20) * self.num
-        phase_step_h = int(r / self.den)
-        phase_step_l = int(r / self.den)
-        return phase_step_h, phase_step_l, modulo
+        phase_step_h = int(r / self.den) & 0xFFFFF
+        phase_step_l = int((r % self.den) * m) & 0xFFF
+        phase_step = (phase_step_h << 12) + phase_step_l
+        return phase_step, modulo
 
 
 class DDC(LLRFModule):

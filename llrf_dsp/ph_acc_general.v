@@ -17,11 +17,18 @@ reg carry=0, reset1=0;
 reg [DWH-1:0] phase_h=0, phase_step_hp=0;
 reg [DWL-1:0] phase_l=0;
 always @(posedge clk) begin
-	{carry, phase_l} <= reset ? {(DWL+1){1'b0}} : ((carry ? modulo : {(DWL+1){1'b0}}) + phase_l + phase_step_l);
-	phase_step_hp <= phase_step_h;
+	if (reset || reset1) begin
+		carry <= 1'b0;
+		phase_l <= {DWL{1'b0}};
+		phase_h <= {DWH{1'b0}};
+		phase_step_hp <= {DWH{1'b0}};
+	end else begin
+		{carry, phase_l} <= (carry ? modulo : {(DWL+1){1'b0}}) + phase_l + phase_step_l;
+		phase_step_hp <= phase_step_h;
+		phase_h <= phase_h + phase_step_hp + carry;
+	end
 	reset1 <= reset;
-	phase_h <= reset1 ? {DWH{1'b0}} : (phase_h + phase_step_hp + carry);
 end
-assign phase_acc=phase_h[DWH-1:DWH-1-18];
+assign phase_acc = phase_h[DWH-1:DWH-1-18];
 
 endmodule

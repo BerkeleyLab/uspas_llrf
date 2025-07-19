@@ -26,7 +26,7 @@ module dds #(
     );
 
     wire signed [DWLO:0] dds_phase = phase_acc + phase_shift - PHS_OFF;
-    cordicg_b22 #(.nstg(20), .width(18)) dds (
+    cordicg_b22 #(.nstg(20), .width(18)) cordic (
         .clk            (clk),
         .opin           (2'b00),
         .xin            (LO_AMP),
