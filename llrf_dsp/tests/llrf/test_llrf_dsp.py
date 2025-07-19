@@ -159,7 +159,7 @@ class TestLLRF:
             self.dut.adc_in.value = min(max(y, -32678), 32767)
 
     async def check_sig(self, amp_exp, phs_exp) -> None:
-        self.dut._log.info(
+        self.dut._log.warning(
             f"expected mag: {amp_exp:8.2f} cnt,  phs: {phs_exp:6.3f} deg")
         for _ in range(5):
             await RisingEdge(self.dut.clk)
@@ -172,7 +172,7 @@ class TestLLRF:
             self.dut._log.debug(
                 f"raw IQ   mag: {np.abs(iq_meas):8.2f} cnt,  "
                 f"phs: {np.angle(iq_meas, deg=True):6.3f} deg")
-            self.dut._log.info(
+            self.dut._log.warning(
                 f"measured mag: {amp_meas:8.2f} cnt,  "
                 f"phs: {phs_meas:6.3f} deg")
             assert -0.001 < (amp_meas - amp_exp) / amp_exp < 0.001, \

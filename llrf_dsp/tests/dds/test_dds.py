@@ -33,7 +33,7 @@ class TB:
         phs_off = random.randint(-180, 180)
         self.dut.phase_shift.value = \
             int(phs_off / 360 * 2**(self.dut.DWLO.value + 1))
-        amp_exp = self.model.amp * self.model.CORDIC_GAIN
+        amp_exp = int(self.model.amp) * self.model.CORDIC_GAIN
         return amp_exp, phs_off
 
     async def check_sig(self, amp_exp, phs_off) -> None:
