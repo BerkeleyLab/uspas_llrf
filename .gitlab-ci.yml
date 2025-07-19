@@ -1,4 +1,5 @@
 stages:
+  - prepare
   - test
   - synthesis
   - run
@@ -13,10 +14,16 @@ variables:
 
 image: $CONTAINER_IMAGE:master
 
+prepare:
+  stage: prepare
+  script:
+    - apt-get install verilator
+    - pip install numpy scipy cocotb==1.9.1 pytest pandas
+
 flake8:
   stage: test
   script:
-   - flake8 python/*.py llrf_dsp/regmap/*.py llrf_dsp/scripts/*.py llrf_dsp/tests/*.py
+   - flake8 python llrf_dsp
 
 llrf_dsp_test:
   before_script:
@@ -30,13 +37,9 @@ llrf_dsp_test:
 
 cocotb_dsp_test:
   before_script:
-    - apt-get install verilator
-    - pip install numpy scipy cocotb==1.9.1 pytest
     - cd llrf_dsp/tests
   stage: test
   script:
-    # See https://docs.cocotb.org/en/stable/building.html
-    # and our issue #15
     - make RANDOM_SEED=1724518460
 
 llrf_cdc_test:
@@ -76,7 +79,6 @@ marble_zest_synth:
 
 .marble_lemp_run:
   before_script:
-    - pip install pandas
     - cd top/marble_zest
   stage: run
   tags:
@@ -91,7 +93,6 @@ marble_zest_synth:
 
 marble_awa_run:
   before_script:
-    - pip install pandas
     - cd top/marble_zest
   stage: run
   tags:
@@ -106,7 +107,6 @@ marble_awa_run:
 
 marble_uspas_run:
   before_script:
-    - pip install pandas
     - cd top/marble_zest
   stage: run
   tags:
