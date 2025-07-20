@@ -254,7 +254,7 @@ class DSPCoreRX(LLRFModule):
 
 
 class DUC(LLRFModule):
-    def __init__(self, num: int = 4,  den: int = 11) -> None:
+    def __init__(self, num: int = 4,  den: int = 11, pipeline: int = 3):
         """Non-IQ Digital Up-Conversion.
             Gateware: cpxmul_fullspeed.v.
 
@@ -263,12 +263,13 @@ class DUC(LLRFModule):
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        self.gain = self.z**(-3)
+        self.gain = self.z**(-pipeline)
 
 
 class DSPCoreTX(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
                  has_cordic: bool = True,
+                 duc_pipeline: int = 3,
                  dds: DDS = None) -> None:
         """Transmitter DSP chain.
             Gateware: tx_cordic.v, cpxmul_fullspeed.v
@@ -285,7 +286,8 @@ class DSPCoreTX(LLRFModule):
 
         self.submodules += [
             dds,
-            DUC(num=num, den=den)]
+            DUC(num=num, den=den, pipeline=duc_pipeline)]
+        self.duc_pipeline = duc_pipeline
         self.phase_off_deg = np.angle(self.gain, deg=True)
         if has_cordic:  # in dsp_core.v
             self.tx_cordic = CORDIC(

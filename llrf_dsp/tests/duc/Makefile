@@ -7,8 +7,8 @@ MODULE   = test_$(DUT)
 
 VERILOG_SOURCES += $(DSP_DIR)/cpxmul_fullspeed.v \
                    $(DSP_DIR)/data_xdomain.v $(DSP_DIR)/reg_tech_cdc.v $(DSP_DIR)/flag_xdomain.v \
-                   $(ZEST_DIR)/zest_dac_interp.v
-VERILOG_SOURCES += test_$(DUT).sv
+                   $(DSP_DIR)/serializer_multichannel.v $(DSP_DIR)/serialize.v
+VERILOG_SOURCES += test_$(DUT).sv $(APP_DSP_DIR)/dac_interp.v $(APP_DSP_DIR)/interpolator.v
 
 # module parameters
 export PARAM_DWI  := 18
