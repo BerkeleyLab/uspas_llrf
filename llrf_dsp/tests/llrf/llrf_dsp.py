@@ -227,9 +227,10 @@ class CICWaveRecorder(LLRFModule):
 
 class DSPCoreRX(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
+                 has_cordic: bool = True,
                  dds: DDS = None) -> None:
         """Receiver DSP chain in dsp_core.v.
-            Gateware: fwashout.v, noniq_ddc.v, fiq_interp.v, rx_cordic
+            Gateware: ddc.v, rx_cordic.v
 
         Args:
             num (int): numerator of IF / Fs. Defaults to 4.
@@ -239,16 +240,17 @@ class DSPCoreRX(LLRFModule):
         super().__init__(num, den)
         if dds is None:
             dds = DDS(amp=74840, num=num, den=den)
-
+        self.dds = dds
         self.submodules += [
             WashoutFilter(num=num, den=den),
             dds,
             DDC(num=num, den=den)]
-        self.phase_off_deg = np.angle(self.gain, deg=True)
-        # compensate phase gain of upstream modules
-        self.rx_cordic = CORDIC(
-            num=num, den=den, phase_off_deg=-self.phase_off_deg)
-        self.submodules += [self.rx_cordic]
+        if has_cordic:  # in dsp_core.v
+            self.phase_off_deg = np.angle(self.gain, deg=True)
+            # compensate phase gain of upstream modules
+            self.rx_cordic = CORDIC(
+                num=num, den=den, phase_off_deg=-self.phase_off_deg)
+            self.submodules += [self.rx_cordic]
 
 
 class DUC(LLRFModule):
@@ -266,23 +268,26 @@ class DUC(LLRFModule):
 
 class DSPCoreTX(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
+                 has_cordic: bool = True,
                  dds: DDS = None) -> None:
-        """Transmitter DSP chain in dsp_core.v.
-            Gateware: tx_cordic, cpxmul_fullspeed.v
+        """Transmitter DSP chain.
+            Gateware: tx_cordic.v, cpxmul_fullspeed.v
 
         Args:
             num (int): numerator of IF / Fs. Defaults to 4.
             den (int): denominator of IF / Fs. Defaults to 11.
-            dds (DDS): external dds shared with rx.
+            dds (DDS): external DDS.
         """
         super().__init__(num, den)
         if dds is None:
             dds = DDS(amp=74840, num=num, den=den)
+        self.dds = dds
 
         self.submodules += [
             dds,
             DUC(num=num, den=den)]
         self.phase_off_deg = np.angle(self.gain, deg=True)
-        self.tx_cordic = CORDIC(
-            num=num, den=den, phase_off_deg=-self.phase_off_deg)
-        self.submodules += [self.tx_cordic]
+        if has_cordic:  # in dsp_core.v
+            self.tx_cordic = CORDIC(
+                num=num, den=den, phase_off_deg=-self.phase_off_deg)
+            self.submodules += [self.tx_cordic]

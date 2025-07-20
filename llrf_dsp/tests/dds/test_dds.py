@@ -9,7 +9,7 @@ import numpy as np
 
 class TB:
     def __init__(self, dut, num: int = 4, den: int = 11):
-        dut._log.setLevel(logging.WARNING)
+        dut._log.setLevel(logging.INFO)
         self.dut = dut
         self.model = DDS(num=num, den=den,
                          amp=dut.LO_AMP.value, width=dut.DWLO.value)
@@ -56,12 +56,13 @@ class TB:
             self.dut._log.warning(
                 f"measured mag: {amp_meas:8.2f} cnt,  "
                 f"phs: {phs_meas:8.2f} deg,  ")
-            assert abs(amp_meas - amp_exp) / amp_exp < 0.1, \
-                "amplitude out-of-bound of 0.1%"
-            assert abs(wrap_phase(phs_meas - phs_exp)) < 0.1, \
-                "phase out-of-bound of 0.1 deg"
+            amp_err = abs(amp_meas - amp_exp) / amp_exp
+            phs_err = abs(wrap_phase(phs_meas - phs_exp))
+            assert amp_err < 0.001, "amplitude out-of-bound of 0.1%"
+            assert phs_err < 0.1, "phase out-of-bound of 0.1 deg"
 
     async def test(self, wait=22):
+        self.dut._log.info(f'LLRF Model:\n{self.model}')
         amp_exp, phs_off = await self.init_test()
         await ClockCycles(self.dut.clk, wait)  # settling time of CORDIC
         await self.check_sig(amp_exp, phs_off)

@@ -2,35 +2,17 @@ import cocotb
 import random
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, ClockCycles
-from llrf_dsp import LLRFModule, DDS, DDC, WashoutFilter, wrap_phase, clamp
+from llrf_dsp import DSPCoreRX, wrap_phase, clamp
 import logging
 import numpy as np
 import itertools
 
 
-class DDCModel(LLRFModule):
-    def __init__(self, num: int = 4, den: int = 11, lo_amp: int = 74840):
-        """Numerical model for ddc.v.
-
-        Args:
-            num (int): numerator of IF / Fs. Defaults to 4.
-            den (int): denominator of IF / Fs. Defaults to 11.
-            lo_amp (int): dds LO amplitude in counts.
-        """
-        super().__init__(num, den)
-        self.dds = DDS(amp=lo_amp, num=num, den=den)
-
-        self.submodules += [
-            WashoutFilter(num=num, den=den),
-            self.dds,
-            DDC(num=num, den=den)]
-
-
 class TB:
     def __init__(self, dut, num: int = 4, den: int = 11):
-        dut._log.setLevel(logging.WARNING)
+        dut._log.setLevel(logging.INFO)
         self.dut = dut
-        self.model = DDCModel(num, den)
+        self.model = DSPCoreRX(num, den, has_cordic=False)
         cocotb.start_soon(Clock(dut.clk, 8, units="ns").start())
 
     def log_banner(self, str):
@@ -65,13 +47,15 @@ class TB:
             self.dut.adc.value = clamp(
                 int(sig.real + noise), -32768, 32767)
 
-    async def init_test(self) -> None:
+    async def init_test(self, noise_amp=3) -> None:
         await self.cycle_reset()
         amp_exp = (1 << (self.dut.DWI.value - 1)) * 0.95
         amp_exp /= np.abs(self.model.gain)
         phs_exp = random.randint(-180, 180)
         cocotb.start_soon(self.drive_dds())
         cocotb.start_soon(self.drive_i_sel())
+        cocotb.start_soon(self.drive_adc(amp_exp, phs_exp, noise_amp))
+        phs_exp = wrap_phase(phs_exp + np.angle(self.model.gain, deg=True))
         return amp_exp, phs_exp
 
     async def check_sig(self, amp_exp, phs_exp) -> None:
@@ -85,23 +69,21 @@ class TB:
             amp_meas = np.abs(iq_meas)
             amp_meas /= np.abs(self.model.gain)
             phs_meas = np.angle(iq_meas, deg=True)
-            phs_meas = wrap_phase(
-                phs_meas - np.angle(self.model.gain, deg=True))
             self.dut._log.debug(
                 f"raw IQ   mag: {np.abs(iq_meas):8.2f} cnt,  "
                 f"phs: {np.angle(iq_meas, deg=True):8.2f} deg")
             self.dut._log.warning(
                 f"measured mag: {amp_meas:8.2f} cnt,  "
                 f"phs: {phs_meas:8.2f} deg")
-            assert abs(amp_meas - amp_exp) / amp_exp < 0.1, \
-                "RX amplitude out-of-bound of 0.1%"
-            assert abs(wrap_phase(phs_meas - phs_exp)) < 0.1, \
-                "RX phase out-of-bound of 0.1 deg"
+            amp_err = abs(amp_meas - amp_exp) / amp_exp
+            phs_err = abs(wrap_phase(phs_meas - phs_exp))
+            assert amp_err < 0.001, "amplitude out-of-bound of 0.1%"
+            assert phs_err < 0.1, "phase out-of-bound of 0.1 deg"
 
-    async def test_rx(self, noise_amp=3, wait=200):
+    async def test_rx(self, wait=200):
         self.log_banner('RX Test')
+        self.dut._log.info(f'LLRF Model:\n{self.model}')
         amp_exp, phs_exp = await self.init_test()
-        cocotb.start_soon(self.drive_adc(amp_exp, phs_exp, noise_amp))
         await ClockCycles(self.dut.clk, wait)  # settling time of filters
         await self.check_sig(amp_exp, phs_exp)
 

@@ -175,10 +175,10 @@ class TestLLRF:
             self.dut._log.warning(
                 f"measured mag: {amp_meas:8.2f} cnt,  "
                 f"phs: {phs_meas:6.3f} deg")
-            assert -0.001 < (amp_meas - amp_exp) / amp_exp < 0.001, \
-                "RX amplitude out-of-bound of 0.1%"
-            assert -0.1 < wrap_phase(phs_meas - phs_exp) < 0.1, \
-                "RX phase out-of-bound of 0.1 deg"
+            amp_err = abs(amp_meas - amp_exp) / amp_exp
+            assert amp_err < 0.001, "amplitude out-of-bound of 0.1%"
+            phs_err = abs(wrap_phase(phs_meas - phs_exp))
+            assert phs_err < 0.1, "phase out-of-bound of 0.1 deg"
 
 
 @cocotb.test(timeout_time=30, timeout_unit='us')
