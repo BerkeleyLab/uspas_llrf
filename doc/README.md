@@ -146,6 +146,10 @@ $$
 
 This approach is consistent with the NCO Modulator in many RF-DACs such as the [AD9174 (Figure 79)](https://www.analog.com/media/en/technical-documentation/data-sheets/AD9174.pdf), and the [AMD RFSoC](https://docs.amd.com/r/en-US/pg269-rf-data-converter/RF-DAC-Numerical-Controlled-Oscillator-and-Mixer), where a standalone NCO with configurable frequency and phase is instantiated, allowing 1st or 2nd Nyquist zone modulation. For 2nd Nyquist zone operation, most DACs has a Mix-Mode available to increase the amplitude response.
 
+### Digital Up Conversion DSP implementation
+
+![digital up conversion](./fig/digital_up_conversion.drawio.svg)
+
 ## LLRF DSP
 
 ![zest_clk](./fig/llrf_dsp.drawio.svg)
