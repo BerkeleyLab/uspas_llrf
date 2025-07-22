@@ -52,7 +52,7 @@ With the normalized ADC IF frequency $\omega_d = 2\pi\frac{f_\text{IF\_ADC}}{f_\
 $$
 \begin{pmatrix}
     y_{n-1} \\
-    y_n
+    y
 \end{pmatrix}
 = \begin{pmatrix}
     \cos((n-1)\omega_d) & -\sin((n-1)\omega_d) \\
@@ -78,7 +78,7 @@ $$
 \end{pmatrix}
 \begin{pmatrix}
     y_{n-1} \\
-    y_n
+    y
 \end{pmatrix}
 $$
 
@@ -89,60 +89,44 @@ An interpolation module `fiq_interp.v` is used to convert to parallel I and Q sa
 
 A generic digital up-conversion scheme is implemented, in the `dac_clk` domain.
 
-With the normalized DAC IF frequency $\omega_c = 2\pi\frac{f_\text{IF\_DAC}}{f_\text{S}}$, given a complex base band signal $I_n + jQ_n$, the up-converted signal $y_n$ is:
+With the normalized DAC IF frequency $\omega = 2\pi\frac{f_\text{IF\_DAC}}{f_\text{S}}$ and phase offset $\theta$, given a complex base band signal $I + jQ_n$, the up-converted signal $y$ is:
 
 $$
 \begin{align*}
-    y_n &= (I_n + jQ_n) \cdot e^{jn\omega_c} \\
-    &= I_n\cos(n\omega_c) - Q_n\sin(n\omega_c) + j\left( Q_n\cos(n\omega_c) + I_n\sin(n\omega_c) \right) \\
-    \Re(y_n) &= I_n\cos(n\omega_c) - Q_n\sin(n\omega_c) \\
-    \Im(y_n) &= Q_n\cos(n\omega_c) + I_n\sin(n\omega_c)
+    y &= (I + jQ_n) \cdot e^{jn\omega} \\
+    &= I\cos(\omega n + \theta) - Q\sin(\omega n + \theta) + j\left( Q\cos(\omega n + \theta) + I\sin(\omega n + \theta) \right) \\
+    \Re(y) &= I\cos(\omega n + \theta) - Q\sin(\omega n + \theta) \\
+    \Im(y) &= Q\cos(\omega n + \theta) + I\sin(\omega n + \theta)
 \end{align*}
 $$
-
-### First Nyquist zone DUC
 
 Equation in matrix form:
 
 $$
 \begin{pmatrix}
-    I_{y,n} \\
-    Q_{y,n}
+    I_y \\
+    Q_y
 \end{pmatrix}
 =\begin{pmatrix}
-    I_n & -Q_n \\
-    Q_n & I_n
+    I & -Q \\
+    Q & I
 \end{pmatrix}
 \begin{pmatrix}
-    \cos(n\omega_c) \\
-    \sin(n\omega_c)
+    \cos(\omega n + \theta) \\
+    \sin(\omega n + \theta)
 \end{pmatrix}
 $$
 
-To avoid aliasing, condition $\omega_c \in (-\pi, \pi)$ is due to the [Nyquist–Shannon sampling theorem](https://en.wikipedia.org/wiki/Nyquist%E2%80%93Shannon_sampling_theorem).
+To avoid aliasing, condition $\omega \in (-\pi, \pi)$ is due to the [Nyquist–Shannon sampling theorem](https://en.wikipedia.org/wiki/Nyquist%E2%80%93Shannon_sampling_theorem).
 
-### Second Nyquist zone DUC
 
 When operating in the [under-sampling](https://en.wikipedia.org/wiki/Undersampling) scheme, the signal location at the first Nyquist zone must be calculated to derive the effective NCO frequency value.
 
+### Second Nyquist zone DUC
+
 For example, the up conversion from base band to the 2nd Nyquist zone (i.e. $\frac{f_\text{S}}{2} < f_\text{IF\_DAC} < f_\text{S}$) is illustrated at Figure 32 (b) in [NCO Setting Examples](https://docs.amd.com/r/en-US/pg269-rf-data-converter/NCO-Frequency-Conversion), where the NCO frequency is set to be $-(f_\text{S} - f_\text{IF\_DAC})$ or $-f_\text{IF\_DAC}$. This flip of sign is known as the spectral inversion due to frequency folding around the Nyquist frequency.
 
-Equation of DUC to the second Nyquist zone  where $\omega_2 \in (\pi, 2\pi)$:
-
-$$
-\begin{pmatrix}
-    I_{y,n} \\
-    Q_{y,n}
-\end{pmatrix}
-=\begin{pmatrix}
-    I_n & Q_n \\
-    Q_n & -I_n
-\end{pmatrix}
-\begin{pmatrix}
-    \cos(n\omega_2) \\
-    \sin(n\omega_2)
-\end{pmatrix}
-$$
+In practice, this spectral flip is implemented by simply flipping the sign of the $\sin(\omega n + \theta)$ for the LO to rotate in a counter clock wise direction.
 
 This approach is consistent with the NCO Modulator in many RF-DACs such as the [AD9174 (Figure 79)](https://www.analog.com/media/en/technical-documentation/data-sheets/AD9174.pdf), and the [AMD RFSoC](https://docs.amd.com/r/en-US/pg269-rf-data-converter/RF-DAC-Numerical-Controlled-Oscillator-and-Mixer), where a standalone NCO with configurable frequency and phase is instantiated, allowing 1st or 2nd Nyquist zone modulation. For 2nd Nyquist zone operation, most DACs has a Mix-Mode available to increase the amplitude response.
 
