@@ -43,6 +43,13 @@ There are two conventions for IQ decomposition of a RF signal $y$ at carrier fre
 
    This convention is used in `bedrock/dsp` RTL modules.
 
+## Digital Direct Synthesis (DDS)
+
+Also known as NCO, it is used to generate a pair of sinusoidal signals at a single frequency, with a known starting phase.
+The DSP implementation is shown in the following figure. It is consisted of an phase accumulator `ph_acc_general.v` and a CORDIC for conversion from Polar to Rectangular coordinate.
+
+![DDS](./fig/dds.drawio.svg)
+
 ## Digital Down-Conversion (DDC)
 
 For high precision digitization, [Non-IQ direct digital down-conversion](https://accelconf.web.cern.ch/l06/papers/thp004.pdf) is used to avoid aliasing.
@@ -51,8 +58,8 @@ With the normalized ADC IF frequency $\omega_d = 2\pi\frac{f_\text{IF\_ADC}}{f_\
 
 $$
 \begin{pmatrix}
-    y_{n-1} \\
-    y
+    x_{n-1} \\
+    x
 \end{pmatrix}
 = \begin{pmatrix}
     \cos((n-1)\omega_d) & -\sin((n-1)\omega_d) \\
@@ -77,13 +84,15 @@ $$
     \cos(n\omega_d)    & -\cos((n-1)\omega_d)
 \end{pmatrix}
 \begin{pmatrix}
-    y_{n-1} \\
-    y
+    x_{n-1} \\
+    x
 \end{pmatrix}
 $$
 
 RTL implementation is in [`noniq_ddc.v`](llrf_dsp/noniq_ddc.v), where a serialized stream of IQ data is generated.
 An interpolation module `fiq_interp.v` is used to convert to parallel I and Q sample streams. A DC-blocking module `fwashout.v` is inserted before the `noniq_ddc.v`. The full DDC is packaged in [`ddc.v`](llrf_dsp/ddc.v).
+
+![DDC](./fig/ddc.drawio.svg)
 
 ## Digital Up-Conversion (DUC)
 
@@ -125,15 +134,25 @@ The following figure illustrates two cases of modulation at carrier frequency $f
 ![frequency conversion](./fig/freq_conversion.drawio.svg)
 
 * First Nyquist zone: $0 < f_c < \frac{f_s}{2}$, see case (b).
-* Second Nyquist zone: $\frac{f_s}{2} < f_c < f_s$, see case (c). The DDS frequency is set to be $-(f_s - f_c)$ or $-f_c$. This flip of sign is known as the spectral inversion due to [frequency folding](https://en.wikipedia.org/wiki/Nyquist_frequency#Folding_frequency) around the Nyquist frequency.
+* Second Nyquist zone: $\frac{f_s}{2} < f_c < f_s$, see case (c). The NCO frequency is set to be $-(f_s - f_c)$ or $-f_c$. This flip of sign is known as the spectral inversion due to [frequency folding](https://en.wikipedia.org/wiki/Nyquist_frequency#Folding_frequency) around the Nyquist frequency.
 
 This approach is consistent with the NCO Modulator in many RF-DACs such as the [AD9174 (Figure 79)](https://www.analog.com/media/en/technical-documentation/data-sheets/AD9174.pdf), and the [AMD RFSoC](https://docs.amd.com/r/en-US/pg269-rf-data-converter/RF-DAC-Numerical-Controlled-Oscillator-and-Mixer) with its [NCO Setting](https://docs.amd.com/r/en-US/pg269-rf-data-converter/NCO-Frequency-Conversion), where a standalone NCO with configurable frequency and phase is instantiated, allowing 1st or 2nd Nyquist zone modulation. For 2nd Nyquist zone operation, most DACs has a Mix-Mode available to increase the amplitude response.
 
-### Digital Up Conversion DSP implementation
+### DSP implementation
 
 In practice, this spectral flip is implemented by simply flipping the sign of the $\sin(\omega n + \theta)$ for the LO to rotate in a counter clock wise direction.
 
 ![digital up conversion](./fig/digital_up_conversion.drawio.svg)
+
+## Feedback controller
+
+Implemented in `dsp_core.v`, it is designed to operate in base band with a single, complex input and output signal.
+There are two parallel PI controllers for amplitude and phase control, respectively. The phase wrapping is taken care of in the difference calculation.
+A pair of CORDIC are used to convert the complex signal to between rectangular and polar representation, where phase offsets can be added optionally.
+
+The DSP implementation is shown in the following diagram:
+
+![feedback controller](./fig/dsp_core.drawio.svg)
 
 ## LLRF DSP
 
