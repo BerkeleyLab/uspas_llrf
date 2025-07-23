@@ -119,18 +119,19 @@ $$
 
 To avoid aliasing, condition $\omega \in (-\pi, \pi)$ is due to the [Nyquist–Shannon sampling theorem](https://en.wikipedia.org/wiki/Nyquist%E2%80%93Shannon_sampling_theorem).
 
-
 When operating in the [under-sampling](https://en.wikipedia.org/wiki/Undersampling) scheme, the signal location at the first Nyquist zone must be calculated to derive the effective NCO frequency value.
+The following figure illustrates two cases of modulation at carrier frequency $f_c$ with sampling frequency $f_s$:
 
-### Second Nyquist zone DUC
+![frequency conversion](./fig/freq_conversion.drawio.svg)
 
-For example, the up conversion from base band to the 2nd Nyquist zone (i.e. $\frac{f_\text{S}}{2} < f_\text{IF\_DAC} < f_\text{S}$) is illustrated at Figure 32 (b) in [NCO Setting Examples](https://docs.amd.com/r/en-US/pg269-rf-data-converter/NCO-Frequency-Conversion), where the NCO frequency is set to be $-(f_\text{S} - f_\text{IF\_DAC})$ or $-f_\text{IF\_DAC}$. This flip of sign is known as the spectral inversion due to frequency folding around the Nyquist frequency.
+* First Nyquist zone: $0 < f_c < \frac{f_s}{2}$, see case (b).
+* Second Nyquist zone: $\frac{f_s}{2} < f_c < f_s$, see case (c). The DDS frequency is set to be $-(f_s - f_c)$ or $-f_c$. This flip of sign is known as the spectral inversion due to [frequency folding](https://en.wikipedia.org/wiki/Nyquist_frequency#Folding_frequency) around the Nyquist frequency.
 
-In practice, this spectral flip is implemented by simply flipping the sign of the $\sin(\omega n + \theta)$ for the LO to rotate in a counter clock wise direction.
-
-This approach is consistent with the NCO Modulator in many RF-DACs such as the [AD9174 (Figure 79)](https://www.analog.com/media/en/technical-documentation/data-sheets/AD9174.pdf), and the [AMD RFSoC](https://docs.amd.com/r/en-US/pg269-rf-data-converter/RF-DAC-Numerical-Controlled-Oscillator-and-Mixer), where a standalone NCO with configurable frequency and phase is instantiated, allowing 1st or 2nd Nyquist zone modulation. For 2nd Nyquist zone operation, most DACs has a Mix-Mode available to increase the amplitude response.
+This approach is consistent with the NCO Modulator in many RF-DACs such as the [AD9174 (Figure 79)](https://www.analog.com/media/en/technical-documentation/data-sheets/AD9174.pdf), and the [AMD RFSoC](https://docs.amd.com/r/en-US/pg269-rf-data-converter/RF-DAC-Numerical-Controlled-Oscillator-and-Mixer) with its [NCO Setting](https://docs.amd.com/r/en-US/pg269-rf-data-converter/NCO-Frequency-Conversion), where a standalone NCO with configurable frequency and phase is instantiated, allowing 1st or 2nd Nyquist zone modulation. For 2nd Nyquist zone operation, most DACs has a Mix-Mode available to increase the amplitude response.
 
 ### Digital Up Conversion DSP implementation
+
+In practice, this spectral flip is implemented by simply flipping the sign of the $\sin(\omega n + \theta)$ for the LO to rotate in a counter clock wise direction.
 
 ![digital up conversion](./fig/digital_up_conversion.drawio.svg)
 
