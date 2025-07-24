@@ -37,7 +37,7 @@ initial begin
     $display("FAIL");
     $stop();
 end
-    `include "settings.vh"
+    `include "functions.vh"
     `include "localbus.vh"
     `include "regmap_llrf_shell.vh"
 

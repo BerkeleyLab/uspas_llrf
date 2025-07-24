@@ -31,7 +31,7 @@ class LLRFModel(LLRFModule):
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
         # absolute max signal level
-        self.max_adc_amp = (1 << 15) / np.abs(self.rx.gain) * 1.95
+        self.max_adc_amp = (1 << 15) * 0.95
         self.inlk_gain = self.cic_inlk.gain * np.abs(self.rx.gain) / 4
         self.mon_gain = self.cic_mon.gain * \
             np.abs(self.rx.gain) / self.CORDIC_GAIN / 4
