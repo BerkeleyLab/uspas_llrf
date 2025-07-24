@@ -1,8 +1,67 @@
-# USPAS LLRF firmware
+# USPAS LLRF System Design
 
 [[_TOC_]]
 
-## Clocking
+## Overall Architecture
+
+![architecture](./fig/architect.drawio.svg)
+
+## Firmware and Gateware
+
+### Applications and settings
+
+The following of pre-defined LLRF applications are supported, and their frequency settings are described in [README.md](./README.md).
+
+* `USPAS`: For USPAS LLRF class taught in 2023.
+* `ALSU`: For LBNL ALS-U AR LLRF system.
+* `LEMP`: SLAC Linac Electronics Modernization Project
+* `AWA`: Argonne AWA facility
+
+Detailed description of settings:
+
+* LLRF DSP:
+  All configurations are contained in [llrf_dsp/settings.json].
+* Board Support:
+  For each application, customized hardware settings and LLRF configurations can be found in `soc/marble_zest/`, where each application's configuration files for FPGA carrier and digitizer are located at.
+
+## System-On-Chip architecture
+
+A RISC-V soft core [PicoRV32](https://github.com/YosysHQ/picorv32) is used for peripheral control, booting and diagnostics.
+We leverage the the cross-compiler tool and common modules described in Berkeley Lab's [Bedrock](https://github.com/BerkeleyLab/Bedrock/tree/master/soc/picorv32) repository.
+
+The design can be found in [soc/marble_zest](soc/marble_zest), where:
+
+* Open source RTL simulation:
+  See [soc/marble_zest/sim](soc/marble_zest/sim), for the booting process, using purely icarus verilog.
+* Full RTL simulation:
+  See [soc/marble_zest/top_sim](soc/marble_zest/top_sim). This simulation process requires Xilinx vivado command tools like `xvlog` and `xelab`, for building and execution respectively.
+  This allows the use of UNISIM models provided by vivado's installation package, for a complete behavioral verification of Xilinx primitives including XADC, ISERDES, etc, which is needed for the development of board support package with LVDS digitizer interface.
+* Hardware test: See [soc/marble_zest/synth](soc/marble_zest/synth), where two functions are implemented:
+  * Synthesis: A minimal structured bitstream file containing only the soft core and essential peripherals.
+  * Boot-loading: The CPU program memory in the deployed production bitstream can be updated using a boot-loading process thanks to a built-in bootloader.
+    This is a well known technique in embedded system designs, and provides flexible and quick iterations for development / troubleshooting.
+    Details and examples can be found in [soc/marble_zest/synth/README.md](soc/marble_zest/synth/README.md).
+
+## Top level synthesize
+
+We use LBNL Bedrock's Makefile based building system to find dependencies and synthesize the bitstream file at [top/marble_zest](top/marble_zest), where the top level RTL `marble_zest_top.v` assembles the soft core, board support package and LLRF DSP together.
+
+## Board Support Package (BSP)
+
+### FPGA carrier ([Marble](https://github.com/BerkeleyLab/marble))
+
+See [marble_bsp/marble_bsp.v](marble_bsp/marble_bsp.v), which features:
+* LBNL local bus control interface;
+* LBNL Gigabit Ethernet UDP engine ([Packet Badger](https://github.com/BerkeleyLab/Bedrock/tree/master/badger));
+* LBNL 8b10b MRF timing event receiver (EVR);
+* LBNL Marble micro-controller (MMC) mail-box interface;
+* External trigger logic;
+
+### Digitizer ([Zest](https://github.com/BerkeleyLab/zest))
+
+See [bedrock/board_support/zest_soc](https://github.com/BerkeleyLab/Bedrock/tree/master/board_support/zest_soc).
+
+### Clocking
 
 As shown in the following diagram of the digitizer (Zest) board support,
 the clock distribution chip (LMK01801) receives an external reference clock,
@@ -15,7 +74,9 @@ $$
     f_\text{dac\_clk} = 2 f_\text{adc\_clk} = 2 f_\text{dsp\_clk}
 $$
 
-## IQ representation conventions
+## Digital Signal Processing (DSP)
+
+### IQ representation conventions
 
 There are two conventions for IQ decomposition of a RF signal $y$ at carrier frequency $\omega$:
 
@@ -43,14 +104,22 @@ There are two conventions for IQ decomposition of a RF signal $y$ at carrier fre
 
    This convention is used in `bedrock/dsp` RTL modules.
 
-## Digital Direct Synthesis (DDS)
+### Digital Direct Synthesis (DDS)
 
 Also known as NCO, it is used to generate a pair of sinusoidal signals at a single frequency, with a known starting phase.
-The DSP implementation is shown in the following figure. It is consisted of an phase accumulator `ph_acc_general.v` and a CORDIC for conversion from Polar to Rectangular coordinate.
+The DSP implementation is shown in the following figure. It is consisted of an phase accumulator and a CORDIC for conversion from Polar to Rectangular coordinate.
 
-![DDS](./fig/dds.drawio.svg)
+* RTL implementation
 
-## Digital Down-Conversion (DDC)
+  See [llrf_dsp/dds.v](llrf_dsp/dds.v).
+
+  ![DDS](./fig/dds.drawio.svg)
+
+* Simulation
+
+  See [llrf_dsp/tests/dds](llrf_dsp/tests/dds).
+
+### Digital Down-Conversion (DDC)
 
 For high precision digitization, [Non-IQ direct digital down-conversion](https://accelconf.web.cern.ch/l06/papers/thp004.pdf) is used to avoid aliasing.
 
@@ -89,12 +158,18 @@ $$
 \end{pmatrix}
 $$
 
-RTL implementation is in [`noniq_ddc.v`](llrf_dsp/noniq_ddc.v), where a serialized stream of IQ data is generated.
-An interpolation module `fiq_interp.v` is used to convert to parallel I and Q sample streams. A DC-blocking module `fwashout.v` is inserted before the `noniq_ddc.v`. The full DDC is packaged in [`ddc.v`](llrf_dsp/ddc.v).
+* RTL implementation
 
-![DDC](./fig/ddc.drawio.svg)
+  RTL implementation is in [`noniq_ddc.v`](llrf_dsp/noniq_ddc.v), where a serialized stream of IQ data is generated.
+  An interpolation module `fiq_interp.v` is used to convert to parallel I and Q sample streams. A DC-blocking module `fwashout.v` is inserted before the `noniq_ddc.v`. The full DDC is packaged in [`ddc.v`](llrf_dsp/ddc.v).
 
-## Digital Up-Conversion (DUC)
+  ![DDC](./fig/ddc.drawio.svg)
+
+* Simulation
+
+  See [llrf_dsp/tests/ddc](llrf_dsp/tests/ddc).
+
+### Digital Up-Conversion (DUC)
 
 A generic digital up-conversion scheme is implemented, in the `dac_clk` domain.
 
@@ -136,24 +211,44 @@ The following figure illustrates two cases of modulation at carrier frequency $f
 * First Nyquist zone: $0 < f_c < \frac{f_s}{2}$, see case (b).
 * Second Nyquist zone: $\frac{f_s}{2} < f_c < f_s$, see case (c). The NCO frequency is set to be $-(f_s - f_c)$ or $-f_c$. This flip of sign is known as the spectral inversion due to [frequency folding](https://en.wikipedia.org/wiki/Nyquist_frequency#Folding_frequency) around the Nyquist frequency.
 
+* RTL implementation
+
+  In practice, this spectral inversion is implemented by simply flipping the sign of the $\sin(\omega n + \theta)$ for the LO to rotate in a counter clock wise direction.
+
+  ![digital up conversion](./fig/digital_up_conversion.drawio.svg)
+
+* Simulation
+
+  See [llrf_dsp/tests/duc](llrf_dsp/tests/duc).
+
 This approach is consistent with the NCO Modulator in many RF-DACs such as the [AD9174 (Figure 79)](https://www.analog.com/media/en/technical-documentation/data-sheets/AD9174.pdf), and the [AMD RFSoC](https://docs.amd.com/r/en-US/pg269-rf-data-converter/RF-DAC-Numerical-Controlled-Oscillator-and-Mixer) with its [NCO Setting](https://docs.amd.com/r/en-US/pg269-rf-data-converter/NCO-Frequency-Conversion), where a standalone NCO with configurable frequency and phase is instantiated, allowing 1st or 2nd Nyquist zone modulation. For 2nd Nyquist zone operation, most DACs has a Mix-Mode available to increase the amplitude response.
 
-### DSP implementation
+### Feedback controller
 
-In practice, this spectral flip is implemented by simply flipping the sign of the $\sin(\omega n + \theta)$ for the LO to rotate in a counter clock wise direction.
-
-![digital up conversion](./fig/digital_up_conversion.drawio.svg)
-
-## Feedback controller
-
-Implemented in `dsp_core.v`, it is designed to operate in base band with a single, complex input and output signal.
+As a classical PI controller, it is designed to operate in base band with a single, complex input and output signal.
 There are two parallel PI controllers for amplitude and phase control, respectively. The phase wrapping is taken care of in the difference calculation.
 A pair of CORDIC are used to convert the complex signal to between rectangular and polar representation, where phase offsets can be added optionally.
 
-The DSP implementation is shown in the following diagram:
+* RTL implementation
 
-![feedback controller](./fig/dsp_core.drawio.svg)
+  See [llrf_dsp/dsp_core.v](llrf_dsp/dsp_core.v), as shown in the following diagram:
 
-## LLRF DSP
+  ![feedback controller](./fig/dsp_core.drawio.svg)
 
-![zest_clk](./fig/llrf_dsp.drawio.svg)
+### LLRF Shell
+
+* RTL implementation
+
+  Putting things together, we can form a complete chain of digital frequency conversion for base-band feedback PI control.
+  See [llrf_dsp/dsp_core.v](llrf_dsp/llrf_dsp.v). Diagram:
+
+  ![zest_clk](./fig/llrf_dsp.drawio.svg)
+
+* Simulation
+
+  See [llrf_dsp/tests/llrf](llrf_dsp/tests/llrf).
+
+  A collection of LLRF DSP numerical models can be found in [llrf_dsp/tests/llrf_dsp.py](llrf_dsp/tests/llrf_dsp.py), which is shared among all simulations.
+  The complete feedback controller is modeled at [llrf_dsp/tests/llrf_models.py](llrf_dsp/tests/llrf_models.py), and it can be used for `cocotb` simulation with cavity emulators, whose parameters are defined in [llrf_dsp/tests/cavity.json](llrf_dsp/tests/cavity.json). The detailed cavity model co-simulation with discrete signal process is explained in [llrf_dsp/tests/lti.ipynb](llrf_dsp/tests/lti.ipynb).
+
+  The `cocotb` tests will go through all test cases for various frequency settings, each has a test of RX, open loop and close loop responses. The results are integrated as part of the gitlab Continuous Integration, where the configuration can be found at [.gitlab-ci.cml](.gitlab-ci.cml).
