@@ -9,9 +9,12 @@ import itertools
 
 
 class TB:
-    def __init__(self, dut, num: int = 4, den: int = 11):
+    def __init__(self, dut, num: int = 4, den: int = 11,
+                 spectral_flip: bool = False):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
+        assert num > 0 and den > 0, "num and den must be positive integers"
+        self.spectral_flip = spectral_flip
         # DSPCoreTX is in dac_clock domain
         # duc_pipeline is the number of clock cycles
         self.model = DSPCoreTX(num=num, den=den,
@@ -44,22 +47,30 @@ class TB:
             sig = amp * np.exp(1j * (omega * t + np.deg2rad(phs)))
             await RisingEdge(self.dut.dsp_clk)
             self.dut.i_data_in.value = int(sig.real)
+            self.dut.i_data_valid.value = 1
             self.dut.q_data_in.value = int(sig.imag)
+            self.dut.q_data_valid.value = 1
 
     async def init_test(self) -> None:
         amp_exp = (1 << (self.dut.DW.value - 1)) * 0.95
         phs_exp = random.randint(-180, 180)
         await self.cycle_reset()
         self.dut._log.debug('reset done.')
+        self.dut.spectral_flip.value = self.spectral_flip
         cocotb.start_soon(self.drive_dds())
-        cocotb.start_soon(self.drive_dac(amp=amp_exp, omega=0, phs=phs_exp))
+        cocotb.start_soon(self.drive_dac(amp=amp_exp, phs=phs_exp))
         amp_exp *= np.abs(self.model.gain)
-        # XXX why -?
-        phs_exp = wrap_phase(phs_exp - np.angle(self.model.gain, deg=True))
+        # XXX why ?
+        if self.spectral_flip:
+            phs_exp = wrap_phase(phs_exp + np.angle(self.model.gain, deg=True))
+        else:
+            phs_exp = wrap_phase(phs_exp - np.angle(self.model.gain, deg=True))
         return amp_exp, phs_exp
 
     async def check_sig(self, amp_exp, phs_off) -> None:
         phs_step_exp = np.rad2deg(self.model.omega)
+        if self.spectral_flip:
+            phs_step_exp = -phs_step_exp
         self.dut._log.warning(
             f"expected mag: {amp_exp:8.2f} cnt,  phs: {phs_off:8.2f} deg,  "
             f"  omega: {phs_step_exp:8.2f} deg")
@@ -103,13 +114,15 @@ async def test_uspas(dut):
 
 @cocotb.test(timeout_time=1, timeout_unit='us')
 async def test_lemp(dut):
-    tb = TB(dut, num=3, den=14*2)
+    tb = TB(dut, num=11, den=28)
     tb.log_banner('LEMP DDS Test')
     await tb.test()
 
 
 @cocotb.test(timeout_time=1, timeout_unit='us')
 async def test_awa(dut):
-    tb = TB(dut, num=7, den=33*2)
+    # Second Nyquist zone
+    # IF / DAC = 203 / 264
+    tb = TB(dut, num=(264-203), den=264, spectral_flip=True)
     tb.log_banner('AWA DDS Test')
     await tb.test()

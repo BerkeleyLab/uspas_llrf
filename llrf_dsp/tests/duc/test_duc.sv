@@ -6,6 +6,7 @@ module test_duc #(
 ) (
     input dsp_clk,
     input dsp_reset,
+    input spectral_flip,
     input signed [DWI-1:0] i_data_in,    // baseband input
     input signed [DWI-1:0] q_data_in,
     input i_data_valid,
@@ -18,13 +19,13 @@ module test_duc #(
     output signed [DW-1:0] dac_q_out
 );
 
-    logic signed [DWI-1:0] dac_i_data, dac_q_data;
+    wire signed [DWI-1:0] dac_i_data, dac_q_data;
     // interpolation
     dac_interp #(.DW(DW)) dac_interp_i (
         .dsp_clk        (dsp_clk),
         .dsp_reset      (dsp_reset),
         .dsp_din        (i_data_in),
-        .dsp_din_valid  (1'b1),
+        .dsp_din_valid  (i_data_valid),
         .dac_clk        (dac_clk),
         .dac_dout       (dac_i_data)
     );
@@ -33,11 +34,12 @@ module test_duc #(
         .dsp_clk        (dsp_clk),
         .dsp_reset      (dsp_reset),
         .dsp_din        (q_data_in),
-        .dsp_din_valid  (1'b1),
+        .dsp_din_valid  (q_data_valid),
         .dac_clk        (dac_clk),
         .dac_dout       (dac_q_data)
     );
 
+    wire signed [DWLO-1:0] sin_i = spectral_flip ? -sina : sina;
     cpxmul_fullspeed #(
         .DWI(DWI), .OUT_SHIFT(DW+1), .OWI(DW)
     ) duc_iq (
@@ -45,7 +47,7 @@ module test_duc #(
         .re_a   (dac_i_data),
         .im_a   (dac_q_data),
         .re_b   (cosa),
-        .im_b   (sina),
+        .im_b   (sin_i),
         .re_out (dac_i_out),
         .im_out (dac_q_out)
     );
