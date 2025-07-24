@@ -248,7 +248,18 @@ A pair of CORDIC are used to convert the complex signal to between rectangular a
 
   See [llrf_dsp/tests/llrf](llrf_dsp/tests/llrf).
 
-  A collection of LLRF DSP numerical models can be found in [llrf_dsp/tests/llrf_dsp.py](llrf_dsp/tests/llrf_dsp.py), which is shared among all simulations.
-  The complete feedback controller is modeled at [llrf_dsp/tests/llrf_models.py](llrf_dsp/tests/llrf_models.py), and it can be used for `cocotb` simulation with cavity emulators, whose parameters are defined in [llrf_dsp/tests/cavity.json](llrf_dsp/tests/cavity.json). The detailed cavity model co-simulation with discrete signal process is explained in [llrf_dsp/tests/lti.ipynb](llrf_dsp/tests/lti.ipynb).
+  A collection of LLRF DSP numerical models can be found in [llrf_dsp/tests/lllrf/lrf_dsp.py](llrf_dsp/tests/llrf/llrf_dsp.py), which is shared among all simulations.
+  The complete feedback controller is modeled at [llrf_dsp/tests/llrf/llrf_models.py](llrf_dsp/tests/llrf/llrf_models.py), and it can be used for `cocotb` simulation with cavity emulators, whose parameters are defined in [llrf_dsp/tests/llrf/cavity.json](llrf_dsp/tests/llrf/cavity.json).
+  The detailed cavity model co-simulation with discrete signal process is explained in [llrf_dsp/tests/llrf/lti.ipynb](llrf_dsp/tests/llrf/lti.ipynb).
 
-  The `cocotb` tests will go through all test cases for various frequency settings, each has a test of RX, open loop and close loop responses. The results are integrated as part of the gitlab Continuous Integration, where the configuration can be found at [.gitlab-ci.cml](.gitlab-ci.cml).
+  The [`cocotb`](https://docs.cocotb.org/en/stable/index.html) tests will go through all test cases for various frequency settings, each has a test of RX, open loop and close loop responses. The results are integrated as part of the gitlab Continuous Integration, where the configuration can be found at [.gitlab-ci.cml](.gitlab-ci.cml).
+
+## Software
+
+### Python IO
+
+An example python class for packaging the LLRF application can be found in [python/llrf_app](python/llrf_app), where a few Jupyter notebook examples are provided as reference use cases.
+
+### EPICS IOC
+
+See LBNL [FEED](https://gitlab.lbl.gov/drivers/FEED).
