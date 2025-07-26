@@ -18,7 +18,7 @@ class TB:
         # DSPCoreTX is in dac_clock domain
         # duc_pipeline is the number of clock cycles
         self.model = DSPCoreTX(num=num, den=den,
-                               has_cordic=False, duc_pipeline=9)
+                               has_cordic=False, duc_pipeline=8)
         cocotb.start_soon(Clock(dut.dsp_clk, 8, units="ns").start())
         cocotb.start_soon(Clock(dut.dac_clk, 4, units="ns").start())
 
@@ -37,22 +37,22 @@ class TB:
         for t in itertools.count():
             nco = self.model.dds.amp * np.exp(1j * (self.model.omega * t))
             nco *= self.model.CORDIC_GAIN
-            await RisingEdge(self.dut.dac_clk)
             self.dut.cosa.value = int(nco.real)
             self.dut.sina.value = int(nco.imag)
+            await RisingEdge(self.dut.dac_clk)
 
     async def drive_dac(self, amp=1, omega=0, phs=0) -> None:
         """ Drive the DAC input at base band in the DSP clock domain. """
         for t in itertools.count():
             sig = amp * np.exp(1j * (omega * t + np.deg2rad(phs)))
-            await RisingEdge(self.dut.dsp_clk)
             self.dut.i_data_in.value = int(sig.real)
             self.dut.i_data_valid.value = 1
             self.dut.q_data_in.value = int(sig.imag)
             self.dut.q_data_valid.value = 1
+            await RisingEdge(self.dut.dsp_clk)
 
     async def init_test(self) -> None:
-        amp_exp = (1 << (self.dut.DW.value - 1)) * 0.95
+        amp_exp = (1 << (self.dut.DWO.value - 1)) * 0.95
         phs_exp = random.randint(-180, 180)
         await self.cycle_reset()
         self.dut._log.debug('reset done.')
@@ -60,7 +60,7 @@ class TB:
         cocotb.start_soon(self.drive_dds())
         cocotb.start_soon(self.drive_dac(amp=amp_exp, phs=phs_exp))
         amp_exp *= np.abs(self.model.gain)
-        # XXX why ?
+        # base band signal is lag of DDS by 8 cycles
         if self.spectral_flip:
             phs_exp = wrap_phase(phs_exp + np.angle(self.model.gain, deg=True))
         else:
@@ -94,7 +94,7 @@ class TB:
     async def test(self):
         self.dut._log.info(f'LLRF Model:\n{self.model}')
         amp_exp, phs_exp = await self.init_test()
-        await ClockCycles(self.dut.dac_clk, self.model.duc_pipeline + 5)
+        await ClockCycles(self.dut.dac_clk, self.model.duc_pipeline + 4)
         await self.check_sig(amp_exp, phs_exp)
 
 
