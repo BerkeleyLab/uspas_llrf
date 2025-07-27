@@ -1,12 +1,13 @@
 import json
 import numpy as np
 from scipy import signal
-from llrf_model import LLRFModel
+from .llrf_dsp import LLRFModel
 import cocotb
 from cocotb.queue import Queue
 from cocotb.triggers import Timer
 from typing import Optional
 from abc import ABC, abstractmethod
+from importlib.resources import files
 
 
 class Element(ABC):
@@ -79,7 +80,8 @@ class CAV(Element):
                  llrf: LLRFModel = LLRFModel(),
                  i_queue: Optional[Queue] = None,
                  o_queue: Optional[Queue] = None, ) -> None:
-        with open(settings_fname) as f:
+        f_path = files('llrf_model').joinpath(settings_fname)
+        with open(f_path) as f:
             configs = json.load(f)
         for k, v in configs[conf].items():
             setattr(self, k, v)

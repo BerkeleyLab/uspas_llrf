@@ -2,7 +2,7 @@ import cocotb
 import random
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, ClockCycles
-from llrf_dsp import DSPCoreTX, wrap_phase
+from llrf_model.llrf_dsp import DSPCoreTX, wrap_phase
 import logging
 import numpy as np
 import itertools
@@ -60,7 +60,7 @@ class TB:
         cocotb.start_soon(self.drive_dds())
         cocotb.start_soon(self.drive_dac(amp=amp_exp, phs=phs_exp))
         amp_exp *= np.abs(self.model.gain)
-        # base band signal is lag of DDS by 8 cycles
+        # base band signal is lag of DDS
         if self.spectral_flip:
             phs_exp = wrap_phase(phs_exp + np.angle(self.model.gain, deg=True))
         else:

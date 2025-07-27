@@ -246,11 +246,11 @@ A pair of CORDIC are used to convert the complex signal to between rectangular a
 
 * Simulation
 
-  See [llrf_dsp/tests/llrf](llrf_dsp/tests/llrf).
+  See [llrf_dsp/llrf_model](llrf_dsp/llrf_model).
 
-  A collection of LLRF DSP numerical models can be found in [llrf_dsp/tests/lllrf/lrf_dsp.py](llrf_dsp/tests/llrf/llrf_dsp.py), which is shared among all simulations.
-  The complete feedback controller is modeled at [llrf_dsp/tests/llrf/llrf_models.py](llrf_dsp/tests/llrf/llrf_models.py), and it can be used for `cocotb` simulation with cavity emulators, whose parameters are defined in [llrf_dsp/tests/llrf/cavity.json](llrf_dsp/tests/llrf/cavity.json).
-  The detailed cavity model co-simulation with discrete signal process is explained in [llrf_dsp/tests/llrf/lti.ipynb](llrf_dsp/tests/llrf/lti.ipynb).
+  A collection of LLRF DSP numerical models can be found in [llrf_dsp/llrf_model/lrf_dsp.py](llrf_dsp/llrf_model/llrf_dsp.py), which is shared among all simulations.
+  The complete feedback controller is modeled, and it can be used for `cocotb` simulation with cavity emulators, whose parameters are defined in [llrf_dsp/llrf_model/cavity.json](llrf_dsp/llrf_model/cavity.json).
+  The detailed cavity model co-simulation with discrete signal process is explained in [llrf_dsp/llrf_model/lti.ipynb](llrf_dsp/llrf_model/lti.ipynb).
 
   The [`cocotb`](https://docs.cocotb.org/en/stable/index.html) tests will go through all test cases for various frequency settings, each has a test of RX, open loop and close loop responses. The results are integrated as part of the gitlab Continuous Integration, where the configuration can be found at [.gitlab-ci.cml](.gitlab-ci.cml).
 

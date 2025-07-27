@@ -3,9 +3,8 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, ClockCycles, Timer
 from cocotb.handle import SimHandleBase
-from llrf_model import LLRFModel
-from llrf_dsp import wrap_phase
-from plant import Plant
+from llrf_model.llrf_dsp import LLRFModel, wrap_phase
+from llrf_model.plant import Plant
 import itertools
 import random
 import logging
@@ -20,8 +19,8 @@ class TestLLRF:
         self.plant = Plant(
             conf=f_config, settings_fname='cavity.json', llrf=llrf)
         self.log_banner(f'Simulating: {f_config}')
-        rx_phase_off_reg = self.encode_phase(-llrf.rx.phase_off_deg)
-        tx_phase_off_reg = self.encode_phase(-llrf.tx.phase_off_deg)
+        rx_phase_off_reg = self.llrf.encode_phase(-llrf.rx.phase_off_deg)
+        tx_phase_off_reg = self.llrf.encode_phase(-llrf.tx.phase_off_deg)
         self.dut.rx_phase_offset.value = rx_phase_off_reg
         self.dut.tx_phase_offset.value = tx_phase_off_reg
         self.dut._log.info(
@@ -46,20 +45,6 @@ class TestLLRF:
 
     def log_banner(self, str):
         self.dut._log.info('*'*20 + f"{str:^20s}" + '*'*20)
-
-    def encode_phase(self, phs: float, deg=True, width=19):
-        """Convert phase value to register
-        """
-        scale = 360 if deg else (2 * np.pi)
-        return int(phs / scale * 2**width)
-
-    def decode_phase(self, signal: SimHandleBase, deg=True):
-        """Convert phase value from register
-        """
-        scale = 360 if deg else (2 * np.pi)
-        reg = signal.value.signed_integer
-        width = len(signal)
-        return wrap_phase(reg / 2**width * scale)
 
     async def init_test(self) -> None:
         await self.reset_dut()
@@ -168,7 +153,7 @@ class TestLLRF:
             iq_meas = i_meas + 1j * q_meas
             amp_meas = self.dut.amp_measured.value.signed_integer
             amp_meas /= np.abs(self.llrf.rx.gain)
-            phs_meas = self.decode_phase(self.dut.phs_measured)
+            phs_meas = self.llrf.decode_phase(self.dut.phs_measured)
             self.dut._log.debug(
                 f"raw IQ   mag: {np.abs(iq_meas):8.2f} cnt,  "
                 f"phs: {np.angle(iq_meas, deg=True):6.3f} deg")

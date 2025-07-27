@@ -300,7 +300,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 
     assign wave_trig = wave_trig_sel==WAVE_TRIG_EXT     ? etrig_pulse :
                        wave_trig_sel==WAVE_TRIG_EXT_DLY ? etrig_pulse_delay :
-                       wave_trig_sel==WAVE_TRIG_EVR     ? evr_trig :  // XXX untested
+                       wave_trig_sel==WAVE_TRIG_EVR     ? evr_trig :
                        cbuf_sync; // WAVE_TRIG_ALWAYS
     assign trig_out = wave_trig;
 
