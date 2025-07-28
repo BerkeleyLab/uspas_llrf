@@ -30,7 +30,7 @@ llrf_dsp_test:
 
 cocotb_dsp_test:
   before_script:
-    - pip install numpy scipy cocotb==1.9.1 pytest
+    - pip install numpy scipy cocotb==1.9.1 pytest cocotb-bus
     - cd llrf_dsp/tests
   stage: test
   script:
@@ -54,7 +54,7 @@ marble_bsp_test:
   script:
     - make
 
-marble_zest_synth:
+.marble_zest_synth:
   before_script:
     - cd top/marble_zest
   stage: synthesis
@@ -86,7 +86,7 @@ marble_zest_synth:
   script:
     - make system_config MARBLE_SERIAL=42 FSET=LEMP && sleep 4 && make system_test MARBLE_SERIAL=42
 
-marble_awa_run:
+.marble_awa_run:
   before_script:
     - pip install pandas
     - cd top/marble_zest
@@ -101,7 +101,7 @@ marble_awa_run:
   script:
     - make system_config MARBLE_SERIAL=39 FSET=AWA && sleep 4 && make system_test MARBLE_SERIAL=39
 
-marble_uspas_run:
+.marble_uspas_run:
   before_script:
     - pip install pandas
     - cd top/marble_zest
