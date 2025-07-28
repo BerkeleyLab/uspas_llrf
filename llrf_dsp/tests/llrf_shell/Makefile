@@ -1,6 +1,7 @@
 include ../../../dir_list.mk
 include $(TOP)settings.mk
 
+SIM      = icarus   # verilator 5.0.32 also works
 DUT      = llrf_shell
 TOPLEVEL = $(DUT)
 MODULE   = test_$(DUT)
