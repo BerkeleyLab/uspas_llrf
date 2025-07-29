@@ -106,6 +106,7 @@ class TB:
         # mo_adc = await self.read_waveform_task(self.llrf.MO_ADC)
         # self.check_sig(np.abs(mo_adc), np.angle(mo_adc, deg=True))
 
+
 @cocotb.test(timeout_time=30, timeout_unit='us')
 async def test(dut):
     tb = TB(dut)
