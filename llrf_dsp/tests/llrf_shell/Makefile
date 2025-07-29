@@ -3,10 +3,11 @@ include $(TOP)settings.mk
 
 SIM      = icarus   # verilator 5.0.32 also works
 DUT      = llrf_shell
-TOPLEVEL = $(DUT)
+TOPLEVEL = test_$(DUT)
 MODULE   = test_$(DUT)
 
 VERILOG_SOURCES += $(APP_DSP_DIR)/llrf_shell_expand.v
+VERILOG_SOURCES += test_$(DUT).sv
 
 # module parameters
 export PARAM_CBUF_AW     := 6

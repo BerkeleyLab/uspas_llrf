@@ -30,7 +30,7 @@ class LocalBusMaster(BusDriver):
     _signals = ['read', 'write', 'addr', 'wdata', 'rdata', 'rvalid']
 
     def __init__(self, entity, clock, name='lb', read_latency=3, **kwargs):
-        self._read_latency = read_latency
+        self._read_latency = read_latency + 1
         super().__init__(entity, name, clock, **kwargs)
 
     async def write(self, addr, data):

@@ -9,7 +9,6 @@ localparam LB_READ_DELAY    = 3;
 parameter  N_ADC            = 8;
 localparam MAX_SIM          = 8000000;  // ns
 localparam DW               = 16;
-localparam BUF_DWI          = 16;
 localparam CLK_CYCLE        = 8;        // ns
 localparam GTX_RX_CYCLE     = 8;        // ns
 parameter CBUF_AW           = 6;
@@ -180,8 +179,6 @@ end
     wire etrig_pulse;
 
     llrf_shell #(
-        .CIC_BASE_PERIOD(`CIC_BASE_PERIOD),
-        .SHIFT_BASE     (`SHIFT_BASE),
         .MO_ADC         (MO_ADC),
         .FDBK_ADC       (FDBK_ADC),
         .SIG_BUF_AW     (SIG_BUF_AW),
