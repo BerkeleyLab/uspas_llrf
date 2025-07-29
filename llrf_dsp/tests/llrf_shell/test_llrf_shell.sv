@@ -39,13 +39,13 @@ module test_llrf_shell #(
     genvar ch;
     generate for (ch=0; ch<N_ADC; ch=ch+1) begin: ch_map_i
         assign adc_data_in[DW*ch +: DW] = adc_array_in[ch];
-    end endgenerate;
+    end endgenerate
 
 
     logic [N_DAC*DW-1:0] dac_flat_out;
     generate for (ch=0; ch<N_DAC; ch=ch+1) begin: ch_map_o
         assign dac_array_out[ch] = dac_flat_out[DW*ch +: DW];
-    end endgenerate;
+    end endgenerate
 
     llrf_shell #(
         .SIG_BUF_AW     (SIG_BUF_AW),
