@@ -42,16 +42,11 @@ module test_llrf_shell #(
     end endgenerate
 
 
-    logic [N_DAC*DW-1:0] dac_flat_out;
-    generate for (ch=0; ch<N_DAC; ch=ch+1) begin: ch_map_o
-        assign dac_array_out[ch] = dac_flat_out[DW*ch +: DW];
-    end endgenerate
-
     llrf_shell #(
         .SIG_BUF_AW     (SIG_BUF_AW),
         .CBUF_AW        (CBUF_AW),
         .CBUF_DW        (CBUF_DW)
-    ) dut(
+    ) llrf_shell (
         .lb_clk,
         .lb_write,
         .lb_addr,

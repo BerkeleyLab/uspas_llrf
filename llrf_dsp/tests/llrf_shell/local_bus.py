@@ -38,7 +38,7 @@ class LocalBusMaster(BusDriver):
         await RisingEdge(self.clock)
         self.bus.write.value = 1
         self.bus.addr.value = addr
-        self.bus.wdata.value = data
+        self.bus.wdata.value = int(data)
         await RisingEdge(self.clock)
         self.bus.write.value = 0
 
@@ -52,6 +52,7 @@ class LocalBusMaster(BusDriver):
         await RisingEdge(self.clock)
         self.bus.rvalid.value = 0
         self.bus.read.value = 0
+        await RisingEdge(self.clock)
         return self.bus.rdata.value
 
 
@@ -82,14 +83,16 @@ class LocalbusAppMaster(LocalBusMaster):
             raise ValueError(f"Register {reg_name} is not writable.")
         await self.write(reg.base_addr, data)
 
-    async def read_reg(self, reg_name):
-        """Read data from a register by name."""
+    async def read_reg(self, reg_name, offset=0):
+        """Read data from an array register by name and offset."""
         reg = getattr(self.reg_map, reg_name, None)
         if reg is None:
             raise ValueError(f"Register {reg_name} not found in register map.")
         if reg.access not in ['rw', 'r']:
             raise ValueError(f"Register {reg_name} is not readable.")
-        data = await self.read(reg.base_addr)
+        if offset > 2**reg.addr_width - 1:
+            raise IndexError(f"offset {offset} out of bounds for {reg_name}.")
+        data = await self.read(reg.base_addr + offset)
         if reg.sign == 'signed':
             return data.signed_integer
         else:
