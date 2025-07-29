@@ -5,13 +5,11 @@ stages:
 
 variables:
   XILINX_VIVADO: /non-free/Xilinx/Vivado_and_Vitis/2022.1/Vivado/2022.1
-  CI_REGISTRY: mohs.dhcp.lbl.gov
-  CONTAINER_IMAGE: $CI_REGISTRY/testing_base_bookworm
   DOCKER_HOST: tcp://docker:2375/
   DOCKER_DRIVER: overlay2
   GIT_SUBMODULE_STRATEGY: normal
 
-image: $CONTAINER_IMAGE:master
+image: mohs.dhcp.lbl.gov/xilinx_env_bookworm
 
 flake8:
   stage: test
