@@ -50,10 +50,9 @@ class LocalBusMaster(BusDriver):
         await ClockCycles(self.clock, self._read_latency)
         self.bus.rvalid.value = 1
         await RisingEdge(self.clock)
-        data = self.bus.rdata.value
         self.bus.rvalid.value = 0
         self.bus.read.value = 0
-        return data
+        return self.bus.rdata.value
 
 
 class LocalBusMonitor(BusMonitor):
@@ -81,18 +80,16 @@ class LocalbusAppMaster(LocalBusMaster):
             raise ValueError(f"Register {reg_name} not found in register map.")
         if reg.access not in ['rw', 'w']:
             raise ValueError(f"Register {reg_name} is not writable.")
-        addr = reg.base_addr
-        await self.write(addr, data)
+        await self.write(reg.base_addr, data)
 
     async def read_reg(self, reg_name):
         """Read data from a register by name."""
         reg = getattr(self.reg_map, reg_name, None)
         if reg is None:
             raise ValueError(f"Register {reg_name} not found in register map.")
-        addr = reg.base_addr
         if reg.access not in ['rw', 'r']:
             raise ValueError(f"Register {reg_name} is not readable.")
-        data = await self.read(addr)
+        data = await self.read(reg.base_addr)
         if reg.sign == 'signed':
             return data.signed_integer
         else:

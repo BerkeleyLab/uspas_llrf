@@ -1,5 +1,6 @@
 import numpy as np
 import json
+from dataclasses import dataclass
 
 
 def wrap_phase(phs: float, deg=True):
@@ -77,6 +78,11 @@ class DDS(LLRFModule):
         super().__init__(num, den)
         self.width = width - 1
         self.amp = amp
+        self.phase_step_h, self.phase_step_l, self.modulo = \
+            self.calc_dds_config()
+        self.dwh = 20  # high part of phase step
+        self.dwl = 32 - self.dwh  # low part of phase step
+        self.phase_step = (self.phase_step_h << self.dwl) | self.phase_step_l
 
     @property
     def amp(self) -> int:
@@ -296,6 +302,30 @@ class DSPCoreTX(LLRFModule):
             self.submodules += [self.tx_cordic]
 
 
+@dataclass
+class LLRFInitConfig:
+    """Initial register configuration for LLRF DSP module."""
+    dds_phase_step: int = 0
+    dds_modulo: int = 0
+    wave_samp_per: int = 1
+    wave_shift: int = 0
+    chan_keep: int = 0
+    amp_setpoint: int = 0
+    phs_setpoint: int = 0
+    amp_loop_enable: bool = False
+    phs_loop_enable: bool = False
+    amp_loop_reset: bool = True
+    phs_loop_reset: bool = True
+    dsp_reset: bool = False
+    Kp_amp: int = 0
+    Ki_amp: int = 0
+    Kp_phs: int = 0
+    Ki_phs: int = 0
+    pulse_mode: bool = False
+    pulse_high_len: int = 1
+    dac_permit: bool = False
+
+
 class LLRFModel(LLRFModule):
     def __init__(self, conf='LEMP', settings_fname='settings.json') -> None:
         """Math model that provides helper functions for simulation
@@ -311,7 +341,7 @@ class LLRFModel(LLRFModule):
             setattr(self, k, v)
         super().__init__(self.NUM_DDS, self.DEN_DDS)
         assert self.LO_AMP < (2 ** 17 / self.CORDIC_GAIN), "LO_AMP saturate!"
-        dds = DDS(amp=self.LO_AMP, num=self.num, den=self.den)
+        self.dds = dds = DDS(amp=self.LO_AMP, num=self.num, den=self.den)
         self.rx = DSPCoreRX(num=self.num, den=self.den, dds=dds)
         self.tx = DSPCoreTX(num=self.num, den=self.den, dds=dds)
         self.cic_inlk = CICWaveRecorder(
@@ -323,11 +353,27 @@ class LLRFModel(LLRFModule):
             shift_base=self.SHIFT_BASE, wave_samp_per=1)
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
-        # absolute max signal level
+
+        # absolute max input signal level
         self.max_adc_amp = (1 << 15) * 0.95
+        # Interlock IQ stream gain
         self.inlk_gain = self.cic_inlk.gain * np.abs(self.rx.gain) / 4
+        # CIC waveform recorder gain
         self.mon_gain = self.cic_mon.gain * \
             np.abs(self.rx.gain) / self.CORDIC_GAIN / 4
+
+        self.init_config = LLRFInitConfig(
+            dds_phase_step=self.dds.phase_step,
+            dds_modulo=self.dds.modulo,
+            wave_samp_per=1,
+            wave_shift=self.cic_mon.wave_shift,
+            chan_keep=0b11,  # all channels are kept
+            amp_setpoint=0, phs_setpoint=0,
+            amp_loop_enable=False, phs_loop_enable=False,
+            amp_loop_reset=True, phs_loop_reset=True,
+            dsp_reset=False,
+            Kp_amp=20, Ki_amp=50, Kp_phs=50, Ki_phs=200,
+            pulse_mode=False, pulse_high_len=1, dac_permit=False)
 
     def calc_open_loop_setp(self, amp_setpoint_adc, phs_setpoint_deg):
         """calculate open loop setpoint register values

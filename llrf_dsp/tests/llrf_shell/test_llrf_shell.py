@@ -3,6 +3,7 @@ from cocotb.clock import Clock
 from llrf_model.llrf_dsp import LLRFModel
 from local_bus import LocalbusAppMaster
 import logging
+from dataclasses import asdict
 
 
 class TB:
@@ -20,14 +21,14 @@ class TB:
         self.dut._log.warning('*'*20 + f"{str:^20s}" + '*'*20)
 
     async def init_test(self):
-        await self.lb.write_reg('dds_phase_step', 0xdeadbeaf)
+        for name, reg in asdict(self.llrf.init_config).items():
+            await self.lb.write_reg(name, reg)
 
     async def test(self, wait=200):
         await self.init_test()
-        val = await self.lb.read_reg('dds_phase_step')
-        assert val == 0xdeadbeaf, \
-            f"Expected 0xdeadbeaf, got {val}"
-        self.dut._log.info(f"Read dds_phase_step: {val}")
+        for name, reg in asdict(self.llrf.init_config).items():
+            value = await self.lb.read_reg(name)
+            assert value == reg, f"Expected {name}:{reg}, got {value}"
 
 
 @cocotb.test(timeout_time=15, timeout_unit='us')
