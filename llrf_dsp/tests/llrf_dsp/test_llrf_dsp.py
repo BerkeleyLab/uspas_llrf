@@ -19,6 +19,7 @@ class TestLLRF:
         self.plant = Plant(
             conf=f_config, settings_fname='cavity.json', llrf=llrf)
         self.log_banner(f'Simulating: {f_config}')
+        self.dut._log.info(f'LLRFModel:\n{llrf}')
         rx_phase_off_reg = self.llrf.encode_phase(-llrf.rx.phase_off_deg)
         tx_phase_off_reg = self.llrf.encode_phase(-llrf.tx.phase_off_deg)
         self.dut.rx_phase_offset.value = rx_phase_off_reg
@@ -32,6 +33,7 @@ class TestLLRF:
         self.dut._log.info(f'inlk_gain: {llrf.inlk_gain:10.6f}')
         self.dut._log.info(f'mon_gain:  {llrf.mon_gain:10.6f}')
         # validate settings.json against calculated values
+        # XXX to be retired
         assert np.abs(llrf.rx.phase_off_deg - llrf.RX_LO_PHS_DEG) < 1e-4, \
             "Unexpected RX_LO_PHS_DEG."
         assert np.abs(llrf.tx.phase_off_deg - llrf.TX_LO_PHS_DEG) < 1e-4, \
@@ -50,7 +52,7 @@ class TestLLRF:
         await self.reset_dut()
         # scramble internal init states of dut:
         await ClockCycles(self.dut.clk, random.randint(0, 20))
-        amp_exp = self.llrf.max_adc_amp
+        amp_exp = self.llrf.cal_config.max_adc_input
         phs_exp = wrap_phase(random.random() * 360)
         cocotb.start_soon(self.drive_dds())
         return amp_exp, phs_exp

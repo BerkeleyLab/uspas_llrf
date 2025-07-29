@@ -22,7 +22,7 @@ def write_init(init_dict, ifname, ofname):
     for k in sorted(init_dict.keys()):
         cf += "   {{{0:36s} {1:8d}}},\n".format(
                 k.upper() + ',',
-                init_dict[k]
+                int(init_dict[k])
                 # np.bitwise_and(init_dict[k], 0xffffffff)
                 )
     cf += '};\n'

@@ -3,6 +3,7 @@ JSON_DIR    = ./regmap
 LB_AW       = 17    # should be LB_HI
 NEWAD_ARGS += -m    # mirror
 NEWAD_ARGS_llrf_shell = -b69632  # 0x11000
+FSET       ?= USPAS
 
 TEST_BENCH_D= $(TEST_BENCH:%_tb=$(DEPDIR)/%_tb.d)
 VERILOG_AUTOGEN += settings.vams
@@ -12,6 +13,7 @@ VERILOG_AUTOGEN += $(AUTOGEN_DIR)/regmap_llrf_shell.vh
 $(TEST_BENCH_D):             cordicg_b22.v
 $(DEPDIR)/$(APP_NAME)_tb.d:  $(VERILOG_AUTOGEN)
 
+# XXX to be retired
 settings.vams: settings.json
 	python3 scripts/gen_settings.py -f $< -c $(FSET) -o $@
 
@@ -24,6 +26,7 @@ $(AUTOGEN_DIR)/%_expand.v: %.v $(AUTOGEN_DIR)/%_auto.vh $(AUTOGEN_DIR)/addr_map_
 	$(VERILOG) $(VFLAGS_DEP) -E -o$@ $^
 	sed -i '/^$$/d' $@
 
+# XXX to be retired
 $(AUTOGEN_DIR)/regmap_%.vh: %.json
 	mkdir -p $(AUTOGEN_DIR); \
 	$(PYTHON) $(BEDROCK_DIR)/localbus/gen_regmap.py -i $< -o $@
@@ -38,8 +41,8 @@ $(AUTOGEN_DIR)/scalar_%_regmap.json: %.v
 $(APP_NAME)_expand.v: $(APP_NAME).v
 	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(filter %.v, $^)
 
-$(APP_NAME)_init_regs.json: $(APP_NAME)_tb
-	$(VVP) $< $(VVP_FLAGS) +gen_init="$@"
+$(APP_NAME)_init_regs.json: settings.json
+	$(PYTHON) llrf_model/llrf_dsp.py -c $(FSET) -f $< -o $@
 
 ifneq (,$(findstring _tb,$(MAKECMDGOALS)))
     -include $(MAKECMDGOALS:%_tb=$(DEPDIR)/%_tb.d)

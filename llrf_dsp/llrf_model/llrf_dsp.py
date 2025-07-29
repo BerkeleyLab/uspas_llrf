@@ -1,6 +1,8 @@
 import numpy as np
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import argparse
+import pprint
 
 
 def wrap_phase(phs: float, deg=True):
@@ -306,6 +308,7 @@ class DSPCoreTX(LLRFModule):
 class LLRFInitConfig:
     """Initial register configuration for LLRF DSP module."""
     dds_phase_step: int = 0
+    dds_phase_shift: int = 0
     dds_modulo: int = 0
     wave_samp_per: int = 1
     wave_shift: int = 0
@@ -314,16 +317,36 @@ class LLRFInitConfig:
     phs_setpoint: int = 0
     amp_loop_enable: bool = False
     phs_loop_enable: bool = False
-    amp_loop_reset: bool = True
-    phs_loop_reset: bool = True
+    amp_loop_reset: bool = False
+    phs_loop_reset: bool = False
     dsp_reset: bool = False
     Kp_amp: int = 0
     Ki_amp: int = 0
     Kp_phs: int = 0
     Ki_phs: int = 0
     pulse_mode: bool = False
-    pulse_high_len: int = 1
+    pulse_high_len: int = 10
     dac_permit: bool = False
+
+
+@dataclass
+class LLRFCalibrationConfig:
+    """Calibration configuration for LLRF DSP module."""
+    rx_gain: complex = 1.0  # ratio from ADC to controller
+    tx_gain: complex = 1.0  # ratio from controller to DAC
+    rx_phase_off_deg: float = 0.0
+    tx_phase_off_deg: float = 0.0
+    mon_gain: float = 1.0
+    inlk_gain: float = 1.0
+    max_adc_input: float = (1 << 15) * 0.95  # absolute max input signal level
+    max_dac_output: float = (1 << 15) * 0.95  # absolute max DAC output level
+    max_amp_setpoint: float = field(init=False)  # max amplitude setpoint
+    open_loop_gain: float = field(init=False)
+
+    def __post_init__(self):
+        """Post-initialization to calculate dependent fields."""
+        self.max_amp_setpoint = self.max_dac_output / np.abs(self.tx_gain)
+        self.open_loop_gain = np.abs(self.tx_gain)
 
 
 class LLRFModel(LLRFModule):
@@ -354,26 +377,30 @@ class LLRFModel(LLRFModule):
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
 
-        # absolute max input signal level
-        self.max_adc_amp = (1 << 15) * 0.95
         # Interlock IQ stream gain
         self.inlk_gain = self.cic_inlk.gain * np.abs(self.rx.gain) / 4
         # CIC waveform recorder gain
         self.mon_gain = self.cic_mon.gain * \
             np.abs(self.rx.gain) / self.CORDIC_GAIN / 4
 
+        # initialization parameters for simulation and SoC integration
         self.init_config = LLRFInitConfig(
             dds_phase_step=self.dds.phase_step,
             dds_modulo=self.dds.modulo,
             wave_samp_per=1,
             wave_shift=self.cic_mon.wave_shift,
-            chan_keep=0b11,  # all channels are kept
-            amp_setpoint=0, phs_setpoint=0,
-            amp_loop_enable=False, phs_loop_enable=False,
-            amp_loop_reset=True, phs_loop_reset=True,
-            dsp_reset=False,
-            Kp_amp=20, Ki_amp=50, Kp_phs=50, Ki_phs=200,
-            pulse_mode=False, pulse_high_len=1, dac_permit=False)
+            chan_keep=0b11,
+            Kp_amp=20, Ki_amp=50, Kp_phs=50, Ki_phs=200
+        )
+
+        self.cal_config = LLRFCalibrationConfig(
+            rx_gain=self.rx.gain,
+            tx_gain=self.tx.gain,
+            rx_phase_off_deg=self.rx.phase_off_deg,
+            tx_phase_off_deg=self.tx.phase_off_deg,
+            mon_gain=self.mon_gain,
+            inlk_gain=self.inlk_gain,
+        )
 
     def calc_open_loop_setp(self, amp_setpoint_adc, phs_setpoint_deg):
         """calculate open loop setpoint register values
@@ -417,3 +444,22 @@ class LLRFModel(LLRFModule):
         reg = signal.value.signed_integer
         width = len(signal)
         return wrap_phase(reg / 2**width * scale)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--conf", default="LEMP",
+                        help="Configuration key in settings.json")
+    parser.add_argument("-f", "--settings_fname", default="settings.json",
+                        help="Path to settings.json file")
+    parser.add_argument("-o", "--output_fname",
+                        default="llrf_shell_init_regs.json",
+                        help="Path to output initialization json file")
+    args = parser.parse_args()
+
+    llrf_model = LLRFModel(conf=args.conf, settings_fname=args.settings_fname)
+    with open(args.output_fname, 'w') as f:
+        json.dump(llrf_model.init_config.__dict__, f, indent=4)
+    pprint.pp(llrf_model.init_config)
+    pprint.pp(llrf_model.cal_config)
+    print(f"{args.output_fname} wrote with configuration: {args.conf}")
