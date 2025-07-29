@@ -9,6 +9,9 @@ MODULE   = test_$(DUT)
 VERILOG_SOURCES += $(APP_DSP_DIR)/llrf_shell_expand.v
 
 # module parameters
+export PARAM_CBUF_AW     := 6
+export PARAM_SIG_BUF_AW  := 6
+export PARAM_CBUF_DW     := 24
 include ../cocotb_inc.mk
 
 $(APP_DSP_DIR)/llrf_shell_expand.v:

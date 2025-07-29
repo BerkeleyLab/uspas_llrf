@@ -13,7 +13,6 @@ VERILOG_AUTOGEN += $(AUTOGEN_DIR)/regmap_llrf_shell.vh
 $(TEST_BENCH_D):             cordicg_b22.v
 $(DEPDIR)/$(APP_NAME)_tb.d:  $(VERILOG_AUTOGEN)
 
-# XXX to be retired
 settings.vams: settings.json
 	python3 scripts/gen_settings.py -f $< -c $(FSET) -o $@
 

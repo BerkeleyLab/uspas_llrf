@@ -332,8 +332,8 @@ class LLRFInitConfig:
 @dataclass
 class LLRFCalibrationConfig:
     """Calibration configuration for LLRF DSP module."""
-    rx_gain: complex = 1.0  # ratio from ADC to controller
-    tx_gain: complex = 1.0  # ratio from controller to DAC
+    rx_gain: float = 1.0  # ratio from ADC to controller
+    tx_gain: float = 1.0  # ratio from controller to DAC
     rx_phase_off_deg: float = 0.0
     tx_phase_off_deg: float = 0.0
     mon_gain: float = 1.0
@@ -345,8 +345,8 @@ class LLRFCalibrationConfig:
 
     def __post_init__(self):
         """Post-initialization to calculate dependent fields."""
-        self.max_amp_setpoint = self.max_dac_output / np.abs(self.tx_gain)
-        self.open_loop_gain = np.abs(self.tx_gain)
+        self.max_amp_setpoint = self.max_dac_output / self.tx_gain
+        self.open_loop_gain = self.tx_gain
 
 
 class LLRFModel(LLRFModule):
@@ -394,8 +394,8 @@ class LLRFModel(LLRFModule):
         )
 
         self.cal_config = LLRFCalibrationConfig(
-            rx_gain=self.rx.gain,
-            tx_gain=self.tx.gain,
+            rx_gain=np.abs(self.rx.gain),
+            tx_gain=np.abs(self.tx.gain),
             rx_phase_off_deg=self.rx.phase_off_deg,
             tx_phase_off_deg=self.tx.phase_off_deg,
             mon_gain=self.mon_gain,
