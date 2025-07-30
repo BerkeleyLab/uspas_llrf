@@ -105,6 +105,14 @@ class TB:
             wfm.append(s)
         return np.array(wfm)
 
+    async def read_adc_min_max(self, chan=0):
+        await self.lb.write_reg('sig_buf_flip', 1)
+        await RisingEdge(self.dut.llrf_shell.sig_buf_iq_transferred[0])
+        assert await self.lb.read_reg('sig_buf_ready')
+        min = await self.lb.read_reg('dsp_slow_adc_min', chan)
+        max = await self.lb.read_reg('dsp_slow_adc_max', chan)
+        return min, max
+
     async def init_test(self):
         self.llrf.init_config.chan_keep = \
             (1 << self.test_adc | 1 << self.loopback_adc)
@@ -139,10 +147,20 @@ class TB:
         gain = self.llrf.cal_config.rx_gain / self.llrf.CORDIC_GAIN
         self.check_sig(iq_avg / gain)
 
-        self.log_banner('Interlock Waveform')
-        inlk_meas = await self.read_inlk_task(self.test_adc)
-        self.check_sig(inlk_meas / self.llrf.inlk_gain)
+        self.log_banner('Min / Max')
+        for chan in [self.test_adc, self.loopback_adc]:
+            min, max = await self.read_adc_min_max(chan)
+            assert abs(-self.amp_exp - min) / self.amp_exp < 0.1, \
+                "ADC min out of range"
+            assert abs(self.amp_exp - max) / self.amp_exp < 0.1, \
+                "ADC min out of range"
+            self.dut._log.warning(
+                f"measured min: {min:8.2f} cnt,  max: {max:6.2f} cnt")
 
+        self.log_banner('Interlock')
+        for chan in [self.test_adc, self.loopback_adc]:
+            inlk_meas = await self.read_inlk_task(chan)
+            self.check_sig(inlk_meas / self.llrf.inlk_gain)
 
 @cocotb.test(timeout_time=50, timeout_unit='us')
 async def test(dut):
