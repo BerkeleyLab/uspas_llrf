@@ -16,7 +16,7 @@ class TB:
         cocotb.start_soon(Clock(dut.clk, 8, units="ns").start())
 
     def log_banner(self, str):
-        self.dut._log.warning('*'*20 + f"{str:^20s}" + '*'*20)
+        self.dut._log.info('*'*20 + f"{str:^20s}" + '*'*20)
 
     async def cycle_reset(self):
         self.dut.reset.setimmediatevalue(0)
@@ -80,8 +80,7 @@ class TB:
             assert amp_err < 0.001, "amplitude out-of-bound of 0.1%"
             assert phs_err < 0.1, "phase out-of-bound of 0.1 deg"
 
-    async def test_rx(self, wait=200):
-        self.log_banner('RX Test')
+    async def test(self, wait=200):
         self.dut._log.info(f'LLRF Model:\n{self.model}')
         amp_exp, phs_exp = await self.init_test()
         await ClockCycles(self.dut.clk, wait)  # settling time of filters
@@ -89,7 +88,28 @@ class TB:
 
 
 @cocotb.test(timeout_time=15, timeout_unit='us')
-async def test_rx(dut):
-    tb = TB(dut)
-    for _ in range(3):
-        await tb.test_rx()
+async def test_alsu(dut):
+    tb = TB(dut, num=4, den=11)
+    tb.log_banner('ALSU')
+    await tb.test()
+
+
+@cocotb.test(timeout_time=15, timeout_unit='us')
+async def test_uspas(dut):
+    tb = TB(dut, num=4, den=23)
+    tb.log_banner('USPAS')
+    await tb.test()
+
+
+@cocotb.test(timeout_time=15, timeout_unit='us')
+async def test_lemp(dut):
+    tb = TB(dut, num=3, den=14)
+    tb.log_banner('LEMP')
+    await tb.test()
+
+
+@cocotb.test(timeout_time=15, timeout_unit='us')
+async def test_awa(dut):
+    tb = TB(dut, num=7, den=33)
+    tb.log_banner('AWA')
+    await tb.test()

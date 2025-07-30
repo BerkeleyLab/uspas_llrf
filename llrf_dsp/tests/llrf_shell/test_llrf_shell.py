@@ -19,6 +19,7 @@ class TB:
             dut, dut.lb_clk, regmap_json_path='../../llrf_shell.json')
         self.log_banner(f'Simulating: {f_config}')
         self.dut._log.debug(f'Init registers:\n{pformat(llrf.init_config)}')
+        self.dut._log.info(f'LLRF Model:\n{llrf.rx}')
         self.dut._log.info(f'Calibrations:\n{pformat(llrf.cal_config)}')
         # clocks
         cocotb.start_soon(Clock(dut.lb_clk, 8, units="ns").start())
@@ -74,37 +75,39 @@ class TB:
                 self.dut.dac_array_out[dac_chan].value.signed_integer)
 
     async def read_inlk_task(self, chan=0):
-        """Read inlk amplitude and phase from the local bus.
-        Args:
-            chan: Channel to read.
-        Returns:
-            complex value of reconstructed signal at the given index.
-        """
+        """Read inlk amplitude and phase from the local bus. """
         amp = await self.lb.read_reg('mon_amp', chan)
         phs = await self.lb.read_reg('mon_phs', chan)
         phs = wrap_phase(phs / 2**17 * np.pi * 2, deg=False)
         return amp * np.exp(1j * phs)
 
-    async def read_cic_waveform(self, index=0, chan=0):
-        """Read one sample of waveform data at index from the circle buffer.
-        Args:
-            index: Waveform index of the sample to read,
-            chan:  channel offset within chan_keep.
-        Returns:
-            complex value of reconstructed signal at the given index.
-        """
+    async def read_cic_waveform(self, chan=0):
+        """Read average of waveform data from the circle buffer. """
         await self.lb.write_reg('circle_buf_flip', 1)
         # wait for circle buffer ready, rely on timeout_time for exceptions
         await RisingEdge(self.dut.llrf_shell.cbuf_transferred)
         assert await self.lb.read_reg('llrf_circle_ready')
-        offset = self.cic_n_chan * index * 2  # 2 for I/Q
-        i = await self.lb.read_reg('circle_data', offset + chan * 2)
-        q = await self.lb.read_reg('circle_data', offset + chan * 2 + 1)
-        return i + 1j * q
+        wfm = []
+        for idx in range(1 << self.dut.CBUF_AW.value):
+            offset = self.cic_n_chan * idx * 2  # 2 for I/Q
+            i = await self.lb.read_reg('circle_data', offset + chan * 2)
+            q = await self.lb.read_reg('circle_data', offset + chan * 2 + 1)
+            wfm.append(i + 1j * q)
+        return np.array(wfm, dtype=np.complex64).mean()
+
+    async def read_sig_buf(self, name='adc0_buf'):
+        await self.lb.write_reg('sig_buf_flip', 1)
+        await RisingEdge(self.dut.llrf_shell.sig_buf_iq_transferred[0])
+        assert await self.lb.read_reg('sig_buf_ready')
+        wfm = []
+        for idx in range(1 << self.dut.SIG_BUF_AW.value):
+            s = await self.lb.read_reg(name, idx)
+            wfm.append(s)
+        return np.array(wfm)
 
     async def init_test(self):
-        self.llrf.init_config.chan_keep = 1 << self.test_adc
-        self.llrf.init_config.chan_keep |= 1 << self.loopback_adc
+        self.llrf.init_config.chan_keep = \
+            (1 << self.test_adc | 1 << self.loopback_adc)
         self.cic_n_chan = bin(self.llrf.init_config.chan_keep).count('1')
         amp_setp, phs_setp = self.llrf.calc_open_loop_setp(
             self.amp_exp, self.phs_exp)
@@ -120,21 +123,28 @@ class TB:
         await self.init_test()
         self.log_banner('Init Registers')
         for name, val in asdict(self.llrf.init_config).items():
-            value = await self.lb.read_reg(name)
-            assert value == val, f"Expected {name}:{val}, got {value}"
+            r = await self.lb.read_reg(name)
+            assert r == val, f"Expected {name}:{val}, got {r}"
 
         await self.read_cic_waveform()  # discard 1st waveform
         self.log_banner('CIC Waveform')
         for i in range(self.cic_n_chan):
-            cic_meas = await self.read_cic_waveform(0, i)
+            cic_meas = await self.read_cic_waveform(i)
             self.check_sig(cic_meas / self.llrf.mon_gain)
+
+        self.log_banner('IQ Waveform')
+        i_buf = await self.read_sig_buf(f'adc{self.test_adc}_i_buf')
+        q_buf = await self.read_sig_buf(f'adc{self.test_adc}_q_buf')
+        iq_avg = np.mean(i_buf + 1j * q_buf)
+        gain = self.llrf.cal_config.rx_gain / self.llrf.CORDIC_GAIN
+        self.check_sig(iq_avg / gain)
 
         self.log_banner('Interlock Waveform')
         inlk_meas = await self.read_inlk_task(self.test_adc)
         self.check_sig(inlk_meas / self.llrf.inlk_gain)
 
 
-@cocotb.test(timeout_time=30, timeout_unit='us')
+@cocotb.test(timeout_time=50, timeout_unit='us')
 async def test(dut):
     tb = TB(dut)
     await tb.test()
