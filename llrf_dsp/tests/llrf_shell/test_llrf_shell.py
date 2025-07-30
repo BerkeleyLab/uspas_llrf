@@ -69,10 +69,11 @@ class TB:
                 clamp(int(sig.real + noise), -32768, 32767)
 
     async def loopback(self, dac_chan=0, adc_chan=0):
+        """ loopback dac_chan -> adc_chan with 1 cycle of latency """
         while True:
             await RisingEdge(self.dut.dsp_clk)
-            self.dut.adc_array_in[adc_chan].setimmediatevalue(
-                self.dut.dac_array_out[dac_chan].value.signed_integer)
+            self.dut.adc_array_in[adc_chan].value = \
+                self.dut.dac_array_out[dac_chan].value
 
     async def read_inlk_task(self, chan=0):
         """Read inlk amplitude and phase from the local bus. """
@@ -97,7 +98,7 @@ class TB:
 
     async def read_sig_buf(self, name='adc0_buf'):
         await self.lb.write_reg('sig_buf_flip', 1)
-        await RisingEdge(self.dut.llrf_shell.sig_buf_iq_transferred[0])
+        await RisingEdge(self.dut.llrf_shell.slow_snap)
         assert await self.lb.read_reg('sig_buf_ready')
         wfm = []
         for idx in range(1 << self.dut.SIG_BUF_AW.value):
@@ -107,7 +108,7 @@ class TB:
 
     async def read_adc_min_max(self, chan=0):
         await self.lb.write_reg('sig_buf_flip', 1)
-        await RisingEdge(self.dut.llrf_shell.sig_buf_iq_transferred[0])
+        await RisingEdge(self.dut.llrf_shell.slow_snap)
         assert await self.lb.read_reg('sig_buf_ready')
         min = await self.lb.read_reg('dsp_slow_adc_min', chan)
         max = await self.lb.read_reg('dsp_slow_adc_max', chan)
@@ -117,8 +118,10 @@ class TB:
         self.llrf.init_config.chan_keep = \
             (1 << self.test_adc | 1 << self.loopback_adc)
         self.cic_n_chan = bin(self.llrf.init_config.chan_keep).count('1')
+        # compensate for 1 cycle latency of loopback
+        phs_exp1 = wrap_phase(self.phs_exp + np.rad2deg(self.llrf.omega))
         amp_setp, phs_setp = self.llrf.calc_open_loop_setp(
-            self.amp_exp, self.phs_exp)
+            self.amp_exp, phs_exp1)
         self.llrf.init_config.amp_setpoint = amp_setp
         self.llrf.init_config.phs_setpoint = phs_setp
         self.llrf.init_config.dac_permit = True
@@ -126,6 +129,7 @@ class TB:
         for name, val in asdict(self.llrf.init_config).items():
             await self.lb.write_reg(name, val)
         await self.lb.write_reg('dsp_reset', 0)
+        await self.lb.write_reg('slow_snap_sel', 1)
 
     async def test(self):
         await self.init_test()
@@ -161,6 +165,7 @@ class TB:
         for chan in [self.test_adc, self.loopback_adc]:
             inlk_meas = await self.read_inlk_task(chan)
             self.check_sig(inlk_meas / self.llrf.inlk_gain)
+
 
 @cocotb.test(timeout_time=50, timeout_unit='us')
 async def test(dut):
