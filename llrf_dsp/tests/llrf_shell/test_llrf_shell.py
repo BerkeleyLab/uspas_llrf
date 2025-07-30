@@ -28,30 +28,31 @@ class TB:
             Clock(dut.dsp_clk, llrf.DSP_CLK_CYCLE, units="ns").start())
         # inputs
         self.amp_exp = 10000
-        self.phs_exp = 0
+        self.phs_exp = -5
+        # testbench setup
+        self.llrf.init_config.chan_keep = 1 << llrf.MO_ADC
+        self.circ_n_chan = bin(self.llrf.init_config.chan_keep).count('1')
+        self.llrf.init_config.amp_setpoint = self.amp_exp
+        self.llrf.init_config.phs_setpoint = self.phs_exp
         cocotb.start_soon(
             self.drive_adc(llrf.MO_ADC, self.amp_exp, self.phs_exp))
 
     def log_banner(self, str):
         self.dut._log.warning('*'*20 + f"{str:^20s}" + '*'*20)
 
-    def decode_phase(self, phs_cnt, deg=True, width=18):
-        """Convert phase value from register
-        """
-        scale = 360 if deg else (2 * np.pi)
-        return wrap_phase(phs_cnt / 2**width * scale)
-
-    def check_sig(self, amp_meas, phs_meas):
-        amp_exp = self.amp_exp
-        phs_exp = self.phs_exp
+    def check_sig(self, sig_meas):
+        """Check the measured signal against expected amplitude and phase."""
+        amp_meas = np.abs(sig_meas)
+        phs_meas = np.angle(sig_meas, deg=True)
         self.dut._log.warning(
-            f"expected mag: {amp_exp:8.2f} cnt,  phs: {phs_exp:6.3f} deg")
+            f"expected mag: {self.amp_exp:8.2f} cnt,  "
+            f"phs: {self.phs_exp:6.3f} deg")
         self.dut._log.warning(
             f"measured mag: {amp_meas:8.2f} cnt,  "
             f"phs: {phs_meas:6.3f} deg")
-        amp_err = abs(amp_meas - amp_exp) / amp_exp
+        amp_err = abs(amp_meas - self.amp_exp) / self.amp_exp
         assert amp_err < 0.001, "amplitude out-of-bound of 0.1%"
-        phs_err = abs(wrap_phase(phs_meas - phs_exp))
+        phs_err = abs(wrap_phase(phs_meas - self.phs_exp))
         assert phs_err < 0.1, "phase out-of-bound of 0.1 deg"
 
     async def drive_adc(self, ch=0, amp=0, phs=0, noise_amp=3):
@@ -63,21 +64,32 @@ class TB:
                 clamp(int(sig.real + noise), -32768, 32767)
 
     async def read_inlk_task(self, chan=0):
-        """Read inlk amplitude and phase from the local bus."""
+        """Read inlk amplitude and phase from the local bus.
+        Args:
+            chan: Channel to read, 0 for MO_ADC.
+        Returns:
+            complex value of reconstructed signal at the given index.
+        """
         amp = await self.lb.read_reg('mon_amp', chan)
         phs = await self.lb.read_reg('mon_phs', chan)
-        phs_deg = self.decode_phase(phs)
-        return amp, phs_deg
+        phs = wrap_phase(phs / 2**17 * np.pi * 2, deg=False)
+        return amp * np.exp(1j * phs)
 
-    async def read_waveform_task(self, chan=0):
-        """Read waveform data from the circle buffer."""
+    async def read_waveform_task(self, index=0, chan=0):
+        """Read one sample of waveform data at index from the circle buffer.
+        Args:
+            index: Waveform index of the sample to read,
+            chan:  channel offset within chan_keep.
+        Returns:
+            complex value of reconstructed signal at the given index.
+        """
         await self.lb.write_reg('circle_buf_flip', 1)
         # wait for circle buffer ready, rely on timeout_time for exceptions
         await RisingEdge(self.dut.llrf_shell.cbuf_transferred)
         assert await self.lb.read_reg('llrf_circle_ready')
-
-        i = await self.lb.read_reg('circle_data', chan * 2)
-        q = await self.lb.read_reg('circle_data', chan * 2 + 1)
+        offset = self.circ_n_chan * index * 2  # 2 for I/Q
+        i = await self.lb.read_reg('circle_data', offset + chan * 2)
+        q = await self.lb.read_reg('circle_data', offset + chan * 2 + 1)
         return i + 1j * q
 
     async def init_test(self):
@@ -92,19 +104,11 @@ class TB:
             value = await self.lb.read_reg(name)
             assert value == reg, f"Expected {name}:{reg}, got {value}"
 
-        test_regs = {
-            'amp_setpoint': self.amp_exp,
-            'phs_setpoint': self.phs_exp,
-            'chan_keep': 1 << self.llrf.MO_ADC,
-            'sig_buf_flip': 1,
-        }
-        for name, reg in test_regs.items():
-            await self.lb.write_reg(name, reg)
-
-        inlk_amp, inlk_phs = await self.read_inlk_task(self.llrf.MO_ADC)
-        self.check_sig(inlk_amp / self.llrf.inlk_gain, inlk_phs)
-        # mo_adc = await self.read_waveform_task(self.llrf.MO_ADC)
-        # self.check_sig(np.abs(mo_adc), np.angle(mo_adc, deg=True))
+        inlk_meas = await self.read_inlk_task(self.llrf.MO_ADC)
+        self.check_sig(inlk_meas / self.llrf.inlk_gain)
+        await self.read_waveform_task()  # discard 1st waveform
+        mon_mo_meas = await self.read_waveform_task(0, 0)
+        self.check_sig(mon_mo_meas / self.llrf.mon_gain)
 
 
 @cocotb.test(timeout_time=30, timeout_unit='us')
