@@ -76,14 +76,16 @@ class LocalbusAppMaster(LocalBusMaster):
         self.reg_map = RegisterMap(regmap_json_path)
         super().__init__(entity, clock, name, read_latency, **kwargs)
 
-    async def write_reg(self, reg_name, data):
+    async def write_reg(self, reg_name, data, offset=0):
         """Write data to a register by name."""
         reg = getattr(self.reg_map, reg_name, None)
         if reg is None:
             raise ValueError(f"Register {reg_name} not found in register map.")
         if reg.access not in ['rw', 'w']:
             raise ValueError(f"Register {reg_name} is not writable.")
-        await self.write(reg.base_addr, data)
+        if offset > 2**reg.addr_width - 1:
+            raise IndexError(f"offset {offset} out of bounds for {reg_name}.")
+        await self.write(reg.base_addr + offset, data)
 
     async def read_reg(self, reg_name, offset=0):
         """Read data from an array register by name and offset."""

@@ -168,7 +168,7 @@ class TB:
             inlk_meas = await self.read_inlk_task(chan)
             self.check_sig(inlk_meas / self.llrf.inlk_gain)
 
-    async def test_close_loop(self, wait=3000):
+    async def test_close_loop(self, wait=2000):
         self.log_banner('Close Loop Test')
         amp_setp, phs_setp = self.llrf.calc_close_loop_setp(
             self.amp_exp, self.phs_exp)
@@ -177,7 +177,7 @@ class TB:
         self.llrf.init_config.Kp_amp = 2000
         self.llrf.init_config.Kp_phs = 5000
         self.llrf.init_config.Ki_amp = 100
-        self.llrf.init_config.Ki_phs = 100
+        self.llrf.init_config.Ki_phs = 500
         await self.init_test()
         regs = [
             ('amp_loop_reset', 1),
@@ -193,9 +193,50 @@ class TB:
         inlk_meas = await self.read_inlk_task(self.feedback_adc)
         self.check_sig(inlk_meas / self.llrf.inlk_gain)
 
+    async def test_fast_interlock(self, wait=30):
+        self.log_banner('Fast Interlock Test')
+        amp_lo = self.amp_exp * self.llrf.inlk_gain * 0.99
+        amp_hi = self.amp_exp * self.llrf.inlk_gain * 1.01
+        regs = [
+            ('inlk_inlk_mode', self.test_adc, 0b10),
+            ('inlk_amp_lo', self.test_adc, amp_lo),
+            ('inlk_amp_hi', self.test_adc, amp_hi),
+        ]
+        for name, offset, val in regs:
+            await self.lb.write_reg(name, val, offset)
+        await ClockCycles(self.dut.dsp_clk, wait)  # wait for setting
+        await self.lb.write_reg('inlk_permit_mask', 1 << self.test_adc)
+        await self.lb.write_reg('inlk_reset_inlk', 1)
+        dut = self.dut.llrf_shell
+        self.dut._log.info("%8s " * 11 % (
+            'chan', 'mon_amp', 'amp_lo', 'amp_hi', '>=lo', '>=hi', "mode",
+            'ok', 'permit', 'amp', 'phs'))
+        for _ in range(20):
+            await RisingEdge(self.dut.dsp_clk)
+            mon_addr = dut.mon_addr_out.value.integer
+            mon_amp_out = dut.mon_amp_out.value.signed_integer
+            mon_phs_out = dut.mon_phs_out.value.signed_integer * 360 / 2**17
+            if mon_addr == self.test_adc and dut.inlk.wave_valid.value:
+                self.dut._log.info(
+                    f"{mon_addr:8d} "
+                    f"{mon_amp_out:8d} "
+                    f"{dut.inlk.amp_lo.value.integer:8d} "
+                    f"{dut.inlk.amp_hi.value.integer:8d} "
+                    f"{dut.inlk.cmpg_lo.value.integer:8d} "
+                    f"{dut.inlk.cmpg_hi.value.integer:8d} "
+                    f"{dut.inlk.inlk_mode.value.integer:8d} "
+                    f"{dut.inlk.inlk_ok.value[mon_addr].integer:8d} "
+                    f"{dut.inlk_permit_out.value.integer:8d} "
+                    f"{mon_amp_out / self.llrf.inlk_gain:8.1f} "
+                    f"{mon_phs_out:8.1f} "
+                )
+                assert dut.inlk_permit_out.value == 1, \
+                    "Unexpected inlk_permit_out"
+
 
 @cocotb.test(timeout_time=100, timeout_unit='us')
 async def test(dut):
     tb = TB(dut)
     await tb.test_open_loop()
     await tb.test_close_loop()
+    await tb.test_fast_interlock()
