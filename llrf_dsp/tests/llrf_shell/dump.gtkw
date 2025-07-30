@@ -1,0 +1,60 @@
+[timestart] 0
+[size] 1836 1116
+[pos] 353 15
+*-15.674021 1312000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] test_llrf_shell.
+[treeopen] test_llrf_shell.llrf_shell.
+[sst_width] 290
+[signals_width] 399
+[sst_expanded] 1
+[sst_vpaned_height] 322
+@22
+$rootio.adc_array_in[0][15:0]
+@8420
+$rootio.adc_array_in[3][15:0]
+@28
+$rootio.dsp_clk
+$rootio.lb_read
+@22
+$rootio.lb_rdata[31:0]
+$rootio.lb_addr[17:0]
+@28
+$rootio.lb_rvalid
+test_llrf_shell.llrf_shell.lb_write
+@25
+test_llrf_shell.llrf_shell.lb_wdata[31:0]
+@22
+test_llrf_shell.llrf_shell.chan_keep[9:0]
+test_llrf_shell.llrf_shell.chan_keep_iq[19:0]
+@28
+test_llrf_shell.llrf_shell.wave_trig
+test_llrf_shell.llrf_shell.wave_trig_sel[1:0]
+test_llrf_shell.llrf_shell.cbuf_write
+test_llrf_shell.llrf_shell.cc_sample
+@22
+test_llrf_shell.llrf_shell.wave_samp_per[6:0]
+@28
+test_llrf_shell.llrf_shell.cic_sample
+@22
+test_llrf_shell.llrf_shell.chan_keep_iq[19:0]
+@28
+test_llrf_shell.llrf_shell.di_stb_out
+@22
+test_llrf_shell.llrf_shell.di_sr_out[43:0]
+@28
+test_llrf_shell.llrf_shell.cbuf_sync
+test_llrf_shell.llrf_shell.cbuf_transferred
+@420
+test_llrf_shell.llrf_shell.cbuf_stat1[15:0]
+@28
+test_llrf_shell.llrf_shell.dsp_reset[0]
+@22
+test_llrf_shell.llrf_shell.sig_iq_flat[359:0]
+test_llrf_shell.llrf_shell.adc_data_in[127:0]
+test_llrf_shell.adc_array_in[3][15:0]
+test_llrf_shell.adc_array_in[0][15:0]
+test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+test_llrf_shell.llrf_shell.cbuf_count[15:0]
+test_llrf_shell.llrf_shell.cbuf_out[23:0]
+[pattern_trace] 1
+[pattern_trace] 0
