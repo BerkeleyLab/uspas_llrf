@@ -26,10 +26,10 @@ class TB:
         cocotb.start_soon(Clock(dut.gtx_rxclk, 8, units="ns").start())
         cocotb.start_soon(
             Clock(dut.dsp_clk, llrf.DSP_CLK_CYCLE, units="ns").start())
-        # inputs
-        self.amp_exp = 10000
-        self.phs_exp = -5
-        # testbench setup
+
+        # test bench setup
+        self.amp_exp = int(llrf.cal_config.max_adc_input)
+        self.phs_exp = random.randint(-180, 180)
         self.llrf.init_config.chan_keep = 1 << llrf.MO_ADC
         self.circ_n_chan = bin(self.llrf.init_config.chan_keep).count('1')
         self.llrf.init_config.amp_setpoint = self.amp_exp

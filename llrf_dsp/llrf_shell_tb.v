@@ -168,7 +168,7 @@ end
     end
 
     // ---------------------
-    // DUTsig_buf_flip
+    // DUT
     // ---------------------
     wire [N_ADC*DW-1:0] adc_in_flat;
     wire [DW-1:0] dac_a_out;
