@@ -1,7 +1,7 @@
 [timestart] 0
 [size] 1616 1003
-[pos] -1 -1
-*-20.466276 320000 37971240 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -2025 43
+*-23.279566 320000 37971240 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [markername] AA
 [treeopen] test_llrf_shell.
 [treeopen] test_llrf_shell.llrf_shell.
@@ -35,15 +35,10 @@ test_llrf_shell.llrf_shell.amp_setpoint[17:0]
 (15)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
 (16)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
 (17)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
-@1401600
+@1401200
 -group_end
 @420
 test_llrf_shell.llrf_shell.phs_setpoint[17:0]
-@8420
-test_llrf_shell.adc_array_in[0][15:0]
-test_llrf_shell.adc_array_in[3][15:0]
-test_llrf_shell.dac_array_out[0][15:0]
-test_llrf_shell.dac_array_out[1][15:0]
 @800200
 -local_bus
 @28
@@ -87,5 +82,14 @@ test_llrf_shell.llrf_shell.inlk_count[8:0]
 test_llrf_shell.llrf_shell.inlk_dval
 @1000200
 -inlk
+@800200
+-dsp_core
+@8420
+test_llrf_shell.llrf_shell.dsp.amp_measured[17:0]
+test_llrf_shell.llrf_shell.dsp.phs_measured[17:0]
+@22
+test_llrf_shell.llrf_shell.dsp.phs_setpoint[17:0]
+@1000200
+-dsp_core
 [pattern_trace] 1
 [pattern_trace] 0
