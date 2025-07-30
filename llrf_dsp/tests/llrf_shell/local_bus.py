@@ -42,6 +42,7 @@ class LocalBusMaster(BusDriver):
         self.bus.wdata.value = int(data)
         await RisingEdge(self.clock)
         self.bus.write.value = 0
+        await RisingEdge(self.clock)
 
     async def read(self, addr):
         """Read data from the bus at the specified address."""
