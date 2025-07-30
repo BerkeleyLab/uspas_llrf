@@ -1,7 +1,7 @@
 import cocotb
 import random
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import RisingEdge, ClockCycles
 from llrf_model.llrf_dsp import LLRFModel, clamp, wrap_phase
 from local_bus import LocalbusAppMaster
 import logging
@@ -28,13 +28,16 @@ class TB:
             Clock(dut.dsp_clk, llrf.DSP_CLK_CYCLE, units="ns").start())
 
         # test bench setup
-        self.loopback_dac, self.loopback_adc, self.test_adc = 0, 0, llrf.MO_ADC
+        self.loopback_dac, self.feedback_dac = 0, 1
+        self.loopback_adc, self.feedback_adc, self.test_adc = 0, 1, 2
         self.amp_exp = int(llrf.cal_config.max_adc_input)
         self.phs_exp = random.randint(-180, 180)
         cocotb.start_soon(
-            self.drive_adc(self.test_adc, self.amp_exp, self.phs_exp))
+            self.drive_test_adc(self.test_adc, self.amp_exp, self.phs_exp))
         cocotb.start_soon(
             self.loopback(self.loopback_dac, self.loopback_adc))
+        cocotb.start_soon(
+            self.loopback(self.feedback_dac, self.feedback_adc))
 
     def log_banner(self, str):
         self.dut._log.info('*'*20 + f"{str:^20s}" + '*'*20)
@@ -54,7 +57,7 @@ class TB:
         phs_err = abs(wrap_phase(phs_meas - self.phs_exp))
         assert phs_err < 0.1, "phase out-of-bound of 0.1 deg"
 
-    async def drive_adc(self, ch=0, amp=0, phs=0, noise_amp=3):
+    async def drive_test_adc(self, ch=0, amp=0, phs=0, noise_amp=3):
         t = 0
         while True:
             await RisingEdge(self.dut.dsp_clk)
@@ -115,25 +118,24 @@ class TB:
         return min, max
 
     async def init_test(self):
+        await self.lb.write_reg('dsp_reset', 1)
+        for name, val in asdict(self.llrf.init_config).items():
+            await self.lb.write_reg(name, val)
+        await self.lb.write_reg('dsp_reset', 0)
+
+    async def test_open_loop(self):
         self.llrf.init_config.chan_keep = \
             (1 << self.test_adc | 1 << self.loopback_adc)
         self.cic_n_chan = bin(self.llrf.init_config.chan_keep).count('1')
+        self.llrf.init_config.dac_permit = True
         # compensate for 1 cycle latency of loopback
         phs_exp1 = wrap_phase(self.phs_exp + np.rad2deg(self.llrf.omega))
         amp_setp, phs_setp = self.llrf.calc_open_loop_setp(
             self.amp_exp, phs_exp1)
         self.llrf.init_config.amp_setpoint = amp_setp
         self.llrf.init_config.phs_setpoint = phs_setp
-        self.llrf.init_config.dac_permit = True
-        await self.lb.write_reg('dsp_reset', 1)
-        for name, val in asdict(self.llrf.init_config).items():
-            await self.lb.write_reg(name, val)
-        await self.lb.write_reg('dsp_reset', 0)
-        await self.lb.write_reg('slow_snap_sel', 1)
-
-    async def test(self):
         await self.init_test()
-        self.log_banner('Init Registers')
+        self.log_banner('Open Loop Test')
         for name, val in asdict(self.llrf.init_config).items():
             r = await self.lb.read_reg(name)
             assert r == val, f"Expected {name}:{val}, got {r}"
@@ -166,8 +168,34 @@ class TB:
             inlk_meas = await self.read_inlk_task(chan)
             self.check_sig(inlk_meas / self.llrf.inlk_gain)
 
+    async def test_close_loop(self, wait=3000):
+        self.log_banner('Close Loop Test')
+        amp_setp, phs_setp = self.llrf.calc_close_loop_setp(
+            self.amp_exp, self.phs_exp)
+        self.llrf.init_config.amp_setpoint = amp_setp
+        self.llrf.init_config.phs_setpoint = phs_setp
+        self.llrf.init_config.Kp_amp = 2000
+        self.llrf.init_config.Kp_phs = 5000
+        self.llrf.init_config.Ki_amp = 100
+        self.llrf.init_config.Ki_phs = 100
+        await self.init_test()
+        regs = [
+            ('amp_loop_reset', 1),
+            ('phs_loop_reset', 1),
+            ('amp_loop_enable', 1),
+            ('phs_loop_enable', 1),
+            ('amp_loop_reset', 0),
+            ('phs_loop_reset', 0),
+        ]
+        for name, val in regs:
+            await self.lb.write_reg(name, val)
+        await ClockCycles(self.dut.dsp_clk, wait)  # settling time of loops
+        inlk_meas = await self.read_inlk_task(self.feedback_adc)
+        self.check_sig(inlk_meas / self.llrf.inlk_gain)
 
-@cocotb.test(timeout_time=50, timeout_unit='us')
+
+@cocotb.test(timeout_time=100, timeout_unit='us')
 async def test(dut):
     tb = TB(dut)
-    await tb.test()
+    await tb.test_open_loop()
+    await tb.test_close_loop()

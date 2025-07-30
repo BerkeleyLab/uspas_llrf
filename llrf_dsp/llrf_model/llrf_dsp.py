@@ -327,6 +327,7 @@ class LLRFInitConfig:
     pulse_mode: bool = False
     pulse_high_len: int = 10
     dac_permit: bool = False
+    slow_snap_sel: bool = True
 
 
 @dataclass
