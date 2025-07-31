@@ -1,7 +1,6 @@
 include ../../../dir_list.mk
 include $(TOP)settings.mk
 
-SIM      = icarus   # verilator 5.0.32 also works
 DUT      = llrf_shell
 TOPLEVEL = test_$(DUT)
 MODULE   = test_$(DUT)
@@ -13,7 +12,6 @@ VERILOG_SOURCES += test_$(DUT).sv
 export PARAM_CBUF_AW     := 6
 export PARAM_SIG_BUF_AW  := 6
 export PARAM_CBUF_DW     := 24
-export COCOTB_RESOLVE_X  := ZEROS
 include ../cocotb_inc.mk
 
 $(APP_DSP_DIR)/llrf_shell_expand.v:

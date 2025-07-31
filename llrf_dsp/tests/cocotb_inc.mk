@@ -4,8 +4,9 @@ TOPLEVEL_LANG = verilog
 SIM ?= verilator
 WAVES ?= 0
 
-COCOTB_HDL_TIMEUNIT = 1ns
+COCOTB_HDL_TIMEUNIT      = 1ns
 COCOTB_HDL_TIMEPRECISION = 1ps
+COCOTB_RESOLVE_X         = RANDOM
 
 ifeq ($(SIM), icarus)
 	COMPILE_ARGS += -Wall -Wno-timescale

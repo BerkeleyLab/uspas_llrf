@@ -9,7 +9,7 @@ variables:
   DOCKER_DRIVER: overlay2
   GIT_SUBMODULE_STRATEGY: normal
 
-image: mohs.dhcp.lbl.gov/xilinx_env_bookworm
+image: mohs.dhcp.lbl.gov/xilinx_env_trixie
 
 flake8:
   stage: test
@@ -28,7 +28,7 @@ llrf_dsp_test:
 
 cocotb_dsp_test:
   before_script:
-    - pip install numpy scipy cocotb==1.9.1 pytest cocotb-bus
+    - pip install numpy scipy cocotb==1.9.2 pytest cocotb-bus
     - cd llrf_dsp/tests
   stage: test
   script:
