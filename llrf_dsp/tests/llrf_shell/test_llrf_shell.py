@@ -42,15 +42,15 @@ class TB:
     def log_banner(self, str):
         self.dut._log.info('*'*20 + f"{str:^20s}" + '*'*20)
 
-    def check_sig(self, sig_meas):
+    def check_sig(self, sig_meas, sig_name='signal'):
         """Check the measured signal against expected amplitude and phase."""
         amp_meas = np.abs(sig_meas)
         phs_meas = np.angle(sig_meas, deg=True)
         self.dut._log.warning(
-            f"expected mag: {self.amp_exp:8.2f} cnt,  "
+            f"expected {sig_name:12s} mag: {self.amp_exp:8.2f} cnt,  "
             f"phs: {self.phs_exp:6.3f} deg")
         self.dut._log.warning(
-            f"measured mag: {amp_meas:8.2f} cnt,  "
+            f"measured {sig_name:12s} mag: {amp_meas:8.2f} cnt,  "
             f"phs: {phs_meas:6.3f} deg")
         amp_err = abs(amp_meas - self.amp_exp) / self.amp_exp
         assert amp_err < 0.001, "amplitude out-of-bound of 0.1%"
@@ -124,6 +124,7 @@ class TB:
         await self.lb.write_reg('dsp_reset', 0)
 
     async def test_open_loop(self):
+        sig_names = ['test_adc', 'loopback_adc']
         self.llrf.init_config.chan_keep = \
             (1 << self.test_adc | 1 << self.loopback_adc)
         self.cic_n_chan = bin(self.llrf.init_config.chan_keep).count('1')
@@ -142,31 +143,32 @@ class TB:
 
         await self.read_cic_waveform()  # discard 1st waveform
         self.log_banner('CIC Waveform')
-        for i in range(self.cic_n_chan):
+        for i, name in enumerate(sig_names):
             cic_meas = await self.read_cic_waveform(i)
-            self.check_sig(cic_meas / self.llrf.mon_gain)
+            self.check_sig(cic_meas / self.llrf.mon_gain, sig_name=name)
 
         self.log_banner('IQ Waveform')
         i_buf = await self.read_sig_buf(f'adc{self.test_adc}_i_buf')
         q_buf = await self.read_sig_buf(f'adc{self.test_adc}_q_buf')
         iq_avg = np.mean(i_buf + 1j * q_buf)
         gain = self.llrf.cal_config.rx_gain / self.llrf.CORDIC_GAIN
-        self.check_sig(iq_avg / gain)
+        self.check_sig(iq_avg / gain, sig_name='test_adc')
 
         self.log_banner('Min / Max')
-        for chan in [self.test_adc, self.loopback_adc]:
+        for chan, name in zip([self.test_adc, self.loopback_adc], sig_names):
             min, max = await self.read_adc_min_max(chan)
             assert abs(-self.amp_exp - min) / self.amp_exp < 0.1, \
                 "ADC min out of range"
             assert abs(self.amp_exp - max) / self.amp_exp < 0.1, \
                 "ADC min out of range"
             self.dut._log.warning(
-                f"measured min: {min:8.2f} cnt,  max: {max:6.2f} cnt")
+                f"measured {name:12s} min: {min:8.2f} cnt,  "
+                f"max: {max:6.2f} cnt")
 
         self.log_banner('Interlock')
-        for chan in [self.test_adc, self.loopback_adc]:
+        for chan, name in zip([self.test_adc, self.loopback_adc], sig_names):
             inlk_meas = await self.read_inlk_task(chan)
-            self.check_sig(inlk_meas / self.llrf.inlk_gain)
+            self.check_sig(inlk_meas / self.llrf.inlk_gain, sig_name=name)
 
     async def test_close_loop(self, wait=2000):
         self.log_banner('Close Loop Test')
@@ -191,7 +193,8 @@ class TB:
             await self.lb.write_reg(name, val)
         await ClockCycles(self.dut.dsp_clk, wait)  # settling time of loops
         inlk_meas = await self.read_inlk_task(self.feedback_adc)
-        self.check_sig(inlk_meas / self.llrf.inlk_gain)
+        self.check_sig(inlk_meas / self.llrf.inlk_gain,
+                       sig_name='feedback_adc')
 
     async def test_fast_interlock(self, wait=30):
         self.log_banner('Fast Interlock Test')
@@ -230,8 +233,7 @@ class TB:
                     f"{dut.inlk.cmpg_hi.value.integer:8d} "
                     f"{dut.inlk_permit_out.value.integer:8d} "
                     f"{mon_amp_out / self.llrf.inlk_gain:8.1f} "
-                    f"{mon_phs_out:8.1f} "
-                )
+                    f"{mon_phs_out:8.1f} ")
         assert dut.inlk_permit_out.value == 1
 
     async def test_trigger(self):
@@ -243,5 +245,5 @@ class TB:
 async def test(dut):
     tb = TB(dut)
     await tb.test_open_loop()
-    await tb.test_close_loop()
     await tb.test_fast_interlock()
+    await tb.test_close_loop()

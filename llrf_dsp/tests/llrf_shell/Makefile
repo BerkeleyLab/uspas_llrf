@@ -13,6 +13,7 @@ VERILOG_SOURCES += test_$(DUT).sv
 export PARAM_CBUF_AW     := 6
 export PARAM_SIG_BUF_AW  := 6
 export PARAM_CBUF_DW     := 24
+export COCOTB_RESOLVE_X  := ZEROS
 include ../cocotb_inc.mk
 
 $(APP_DSP_DIR)/llrf_shell_expand.v:
