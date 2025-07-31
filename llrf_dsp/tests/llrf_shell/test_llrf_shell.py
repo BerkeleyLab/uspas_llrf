@@ -82,7 +82,7 @@ class TB:
         """Read inlk amplitude and phase from the local bus. """
         amp = await self.lb.read_reg('mon_amp', chan)
         phs = await self.lb.read_reg('mon_phs', chan)
-        phs = wrap_phase(phs / 2**17 * np.pi * 2, deg=False)
+        phs = self.llrf.decode_phase(phs, width=17, deg=False)
         return amp * np.exp(1j * phs)
 
     async def read_cic_waveform(self, chan=0):
@@ -221,7 +221,8 @@ class TB:
             await RisingEdge(self.dut.dsp_clk)
             mon_addr = dut.mon_addr_out.value.integer
             mon_amp_out = dut.mon_amp_out.value.signed_integer
-            mon_phs_out = dut.mon_phs_out.value.signed_integer * 360 / 2**17
+            mon_phs_cnt = dut.mon_phs_out.value.signed_integer
+            mon_phs_out = self.llrf.decode_phase(mon_phs_cnt, width=17)
             amp_valid = dut.inlk.wave_cnt.value % 2 == 1
             if dut.inlk.wave_valid and amp_valid:
                 self.dut._log.info(

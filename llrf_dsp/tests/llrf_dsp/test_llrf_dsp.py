@@ -155,7 +155,9 @@ class TestLLRF:
             iq_meas = i_meas + 1j * q_meas
             amp_meas = self.dut.amp_measured.value.signed_integer
             amp_meas /= np.abs(self.llrf.rx.gain)
-            phs_meas = self.llrf.decode_phase(self.dut.phs_measured)
+            phs_sig = self.dut.phs_measured
+            phs_meas = self.llrf.decode_phase(
+                phs_sig.value.signed_integer, width=len(phs_sig))
             self.dut._log.debug(
                 f"raw IQ   mag: {np.abs(iq_meas):8.2f} cnt,  "
                 f"phs: {np.angle(iq_meas, deg=True):6.3f} deg")

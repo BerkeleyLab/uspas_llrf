@@ -277,8 +277,8 @@ A pair of CORDIC are used to convert the complex signal to between rectangular a
 
 * Simulation
 
-  See [llrf_dsp/tests/llrf_shell](llrf_dsp/tests/llrf_shell). 
-  
+  See [llrf_dsp/tests/llrf_shell](llrf_dsp/tests/llrf_shell).
+
   A complete instantiation of `llrf_shell.v` and its pre-processed application settings is tested under `cocotb` verification through the LBNL [Local Bus](https://github.com/BerkeleyLab/Bedrock/tree/master/localbus) control interface, which include:
   * A test signal driving an ADC channel with known frequency, amplitude and phase, for testing RX path including down-conversion;
   * A looped-back signal from one DAC channel to an ADC channel, for testing TX path including up-conversion;

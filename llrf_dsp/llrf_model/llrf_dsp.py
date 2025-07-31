@@ -214,7 +214,7 @@ class CICWaveRecorder(LLRFModule):
         self.cic_base_period = cic_base_period
         assert self.cic_base_period % self.den == 0, \
             "CIC base period must be multiple of DEN."
-        self.gain = self.calc_cic_gain(wave_samp_per)
+        self.wave_samp_per = wave_samp_per
 
     def calc_cic_gain(self, wave_samp_per):
         """calculate CIC filter gain in waveforms
@@ -222,16 +222,24 @@ class CICWaveRecorder(LLRFModule):
             It is the number of bits needs to be shifted to avoid saturation.
 
         Returns:
-            mon_gain (float): total gain after CIC after shifting.
+            gain (float): total gain after CIC after shifting.
         """
         cic_R = wave_samp_per * self.cic_base_period
         cic_bit_growth = 2 * np.log2(cic_R)
         cic_snr_bit_growth = np.log2(cic_R) / 2
         full_shift = np.floor(cic_bit_growth - cic_snr_bit_growth)
         self.wave_shift = max((full_shift - self.shift_base)/2, 0)
-        mon_gain = 2**(
-            cic_bit_growth - self.shift_base + 2 - 2 * self.wave_shift)
-        return mon_gain
+        gain = 2**(cic_bit_growth - self.shift_base + 2 - 2 * self.wave_shift)
+        return gain
+
+    @property
+    def wave_samp_per(self):
+        return self._wave_samp_per
+
+    @wave_samp_per.setter
+    def wave_samp_per(self, val):
+        self._wave_samp_per = val
+        self.gain = self.calc_cic_gain(val)
 
 
 class DSPCoreRX(LLRFModule):
@@ -365,6 +373,7 @@ class LLRFModel(LLRFModule):
             setattr(self, k, v)
         super().__init__(self.NUM_DDS, self.DEN_DDS)
         assert self.LO_AMP < (2 ** 17 / self.CORDIC_GAIN), "LO_AMP saturate!"
+        self.wave_samp_per = 1
         self.dds = dds = DDS(amp=self.LO_AMP, num=self.num, den=self.den)
         self.rx = DSPCoreRX(num=self.num, den=self.den, dds=dds)
         self.tx = DSPCoreTX(num=self.num, den=self.den, dds=dds)
@@ -374,21 +383,15 @@ class LLRFModel(LLRFModule):
         self.cic_mon = CICWaveRecorder(
             num=self.num, den=self.den,
             cic_base_period=self.CIC_BASE_PERIOD,
-            shift_base=self.SHIFT_BASE, wave_samp_per=1)
+            shift_base=self.SHIFT_BASE, wave_samp_per=self.wave_samp_per)
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
-
-        # Interlock IQ stream gain
-        self.inlk_gain = self.cic_inlk.gain * np.abs(self.rx.gain) / 4
-        # CIC waveform recorder gain
-        self.mon_gain = self.cic_mon.gain * \
-            np.abs(self.rx.gain) / self.CORDIC_GAIN / 4
 
         # initialization parameters for simulation and SoC integration
         self.init_config = LLRFInitConfig(
             dds_phase_step=self.dds.phase_step,
             dds_modulo=self.dds.modulo,
-            wave_samp_per=1,
+            wave_samp_per=self.wave_samp_per,
             wave_shift=self.cic_mon.wave_shift,
             chan_keep=0b11,
             Kp_amp=20, Ki_amp=50, Kp_phs=50, Ki_phs=200
@@ -402,6 +405,16 @@ class LLRFModel(LLRFModule):
             mon_gain=self.mon_gain,
             inlk_gain=self.inlk_gain,
         )
+
+    @property
+    def mon_gain(self):
+        """ CIC waveform recorder gain """
+        return self.cic_mon.gain * np.abs(self.rx.gain) / self.CORDIC_GAIN / 4
+
+    @property
+    def inlk_gain(self):
+        """ Interlock IQ stream gain """
+        return self.cic_inlk.gain * np.abs(self.rx.gain) / 4
 
     def calc_open_loop_setp(self, amp_setpoint_adc, phs_setpoint_deg):
         """calculate open loop setpoint register values
@@ -438,13 +451,11 @@ class LLRFModel(LLRFModule):
         scale = 360 if deg else (2 * np.pi)
         return int(phs / scale * 2**width)
 
-    def decode_phase(self, signal, deg=True):
+    def decode_phase(self, phs_cnt, width=19, deg=True):
         """Convert phase value from register
         """
         scale = 360 if deg else (2 * np.pi)
-        reg = signal.value.signed_integer
-        width = len(signal)
-        return wrap_phase(reg / 2**width * scale)
+        return wrap_phase(phs_cnt / 2**width * scale)
 
 
 if __name__ == "__main__":
