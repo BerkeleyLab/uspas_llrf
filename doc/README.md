@@ -6,6 +6,24 @@
 
 ![architecture](./fig/architect.drawio.svg)
 
+## Development tools
+
+As part of the full-stack open source firmware development in Berkeley Lab, we leverage a collection of open source tools including [Icarus Verilog](https://github.com/steveicarus/iverilog), [`verilator`](https://github.com/verilator/verilator), [cocotb](https://github.com/cocotb/cocotb), [yosys](https://github.com/YosysHQ/yosys), and Jupyter notebooks for demonstration and documentation.
+
+* For `conda` users, a python virtual environment can be created as:
+
+  ```
+  conda env create -f python/environment.yml
+  conda activate uspas_llrf
+  ```
+
+* `gitlab` Continuous Integration is enabled in this repository as defined [here](.gitlab-ci.yml), including steps of:
+  * Coding style sanity checking using `flake8`;
+  * `cocotb` LLRF DSP behavioral verification;
+  * Clock domain crossing validation;
+  * Bit-stream synthesize for all supported variants of applications;
+  * Hardware in-the-loop testing;
+
 ## Firmware and Gateware
 
 ### Applications and settings
@@ -75,6 +93,13 @@ $$
 $$
 
 ## Digital Signal Processing (DSP)
+
+### Numerical Models for simulation
+
+  A collection of LLRF DSP numerical models can be found in [llrf_dsp/llrf_model/lrf_dsp.py](llrf_dsp/llrf_model/llrf_dsp.py), which is shared among all simulations.
+
+  The complete feedback controller is modeled, and it can be used for `cocotb` simulation with cavity emulators, whose parameters are defined in [llrf_dsp/llrf_model/cavity.json](llrf_dsp/llrf_model/cavity.json).
+  The detailed cavity model co-simulation with discrete signal process is explained in [llrf_dsp/llrf_model/lti.ipynb](llrf_dsp/llrf_model/lti.ipynb).
 
 ### IQ representation conventions
 
@@ -235,6 +260,12 @@ A pair of CORDIC are used to convert the complex signal to between rectangular a
 
   ![feedback controller](./fig/dsp_core.drawio.svg)
 
+* Simulation
+
+  See [llrf_dsp/tests/llrf_dsp](llrf_dsp/tests/llrf_dsp).
+
+  [`cocotb`](https://docs.cocotb.org/en/stable/index.html) tests will go through all test cases for various frequency settings, each has a test of RX, open loop and close loop responses. The results are integrated as part of the gitlab Continuous Integration, where the configuration can be found at [.gitlab-ci.cml](.gitlab-ci.cml).
+
 ### LLRF Shell
 
 * RTL implementation
@@ -246,13 +277,17 @@ A pair of CORDIC are used to convert the complex signal to between rectangular a
 
 * Simulation
 
-  See [llrf_dsp/llrf_model](llrf_dsp/llrf_model).
+  See [llrf_dsp/tests/llrf_shell](llrf_dsp/tests/llrf_shell). 
+  
+  A complete instantiation of `llrf_shell.v` and its pre-processed application settings is tested under `cocotb` verification through the LBNL [Local Bus](https://github.com/BerkeleyLab/Bedrock/tree/master/localbus) control interface, which include:
+  * A test signal driving an ADC channel with known frequency, amplitude and phase, for testing RX path including down-conversion;
+  * A looped-back signal from one DAC channel to an ADC channel, for testing TX path including up-conversion;
+  * A looped-back signal from the other DAC channel to an ADC channel, for testing feedback loop settings and closed-loop response;
+  * CIC filtered waveform acquisition for multi-channel signals including 2 DACs and 10 ADCs, with configurable decimation factors;
+  * Wide bandwidth IQ waveform acquisition for each DAC and ADC base-band signal with sample-to-sample resolution;
+  * Fast interlock protection logic and RF permit latching;
+  * Trigger logic;
 
-  A collection of LLRF DSP numerical models can be found in [llrf_dsp/llrf_model/lrf_dsp.py](llrf_dsp/llrf_model/llrf_dsp.py), which is shared among all simulations.
-  The complete feedback controller is modeled, and it can be used for `cocotb` simulation with cavity emulators, whose parameters are defined in [llrf_dsp/llrf_model/cavity.json](llrf_dsp/llrf_model/cavity.json).
-  The detailed cavity model co-simulation with discrete signal process is explained in [llrf_dsp/llrf_model/lti.ipynb](llrf_dsp/llrf_model/lti.ipynb).
-
-  The [`cocotb`](https://docs.cocotb.org/en/stable/index.html) tests will go through all test cases for various frequency settings, each has a test of RX, open loop and close loop responses. The results are integrated as part of the gitlab Continuous Integration, where the configuration can be found at [.gitlab-ci.cml](.gitlab-ci.cml).
 
 ## Software
 
