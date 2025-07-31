@@ -207,16 +207,20 @@ class TB:
         await ClockCycles(self.dut.dsp_clk, wait)  # wait for setting
         await self.lb.write_reg('inlk_permit_mask', 1 << self.test_adc)
         await self.lb.write_reg('inlk_reset_inlk', 1)
+
         dut = self.dut.llrf_shell
-        self.dut._log.info("%8s " * 11 % (
-            'chan', 'mon_amp', 'amp_lo', 'amp_hi', '>=lo', '>=hi', "mode",
-            'ok', 'permit', 'amp', 'phs'))
+        await RisingEdge(dut.inlk_permit_out)  # wait for inlk permit to reset
+        await RisingEdge(dut.inlk.wave_valid)
+        self.dut._log.info("%8s " * 9 % (
+            'chan', 'mon_amp', 'amp_lo', 'amp_hi', '>=lo', '>=hi',
+            'permit', 'amp', 'phs'))
         for _ in range(20):
             await RisingEdge(self.dut.dsp_clk)
             mon_addr = dut.mon_addr_out.value.integer
             mon_amp_out = dut.mon_amp_out.value.signed_integer
             mon_phs_out = dut.mon_phs_out.value.signed_integer * 360 / 2**17
-            if mon_addr == self.test_adc and dut.inlk.wave_valid.value:
+            amp_valid = dut.inlk.wave_cnt.value % 2 == 1
+            if dut.inlk.wave_valid and amp_valid:
                 self.dut._log.info(
                     f"{mon_addr:8d} "
                     f"{mon_amp_out:8d} "
@@ -224,14 +228,15 @@ class TB:
                     f"{dut.inlk.amp_hi.value.integer:8d} "
                     f"{dut.inlk.cmpg_lo.value.integer:8d} "
                     f"{dut.inlk.cmpg_hi.value.integer:8d} "
-                    f"{dut.inlk.inlk_mode.value.integer:8d} "
-                    f"{dut.inlk.inlk_ok.value[mon_addr].integer:8d} "
                     f"{dut.inlk_permit_out.value.integer:8d} "
                     f"{mon_amp_out / self.llrf.inlk_gain:8.1f} "
                     f"{mon_phs_out:8.1f} "
                 )
-                assert dut.inlk_permit_out.value == 1, \
-                    "Unexpected inlk_permit_out"
+        assert dut.inlk_permit_out.value == 1
+
+    async def test_trigger(self):
+        await self.lb.write_reg('wave_trig_sel', 1)
+        pass
 
 
 @cocotb.test(timeout_time=100, timeout_unit='us')
