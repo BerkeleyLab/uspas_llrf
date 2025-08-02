@@ -40,6 +40,9 @@ IP_JSON += marble_zest_top.json
 $(BSP_DIR)/marble_bsp.json:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
+$(APP_DSP_DIR)/llrf_shell.json:
+	$(MAKE) -C $(dir $@) $(notdir $@)
+
 $(TARGET).json: $(IP_JSON)
 	$(PYTHON) $(BUILD_DIR)/merge_json.py -o $@ -i $^
 

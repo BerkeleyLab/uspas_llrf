@@ -52,7 +52,7 @@ marble_bsp_test:
   script:
     - make
 
-.marble_zest_synth:
+marble_zest_synth:
   before_script:
     - cd top/marble_zest
   stage: synthesis

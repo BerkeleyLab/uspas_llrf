@@ -33,5 +33,5 @@ check_results: sim
 include $(shell cocotb-config --makefiles)/Makefile.sim
 
 clean::
-	rm -f results.xml dump.fst
+	rm -f results.xml
 	rm -rf __pycache__

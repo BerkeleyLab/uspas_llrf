@@ -405,7 +405,6 @@ class LLRFModel(LLRFModule):
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
 
-        print('xxx', self.cic_mon.wave_shift)
         # initialization parameters for simulation and SoC integration
         self.init_config = LLRFInitRegisters(
             dds_phase_step=self.dds.phase_step,

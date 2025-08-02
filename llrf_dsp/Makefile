@@ -3,8 +3,6 @@ include $(TOP)settings.mk
 include $(BUILD_DIR)/top_rules.mk
 include $(BUILD_DIR)/newad_top_rules.mk
 include $(CORDIC_DIR)/rules.mk
-TEST_BENCH  = llrf_shell_tb
-CHECKS      = llrf_shell_check
 
 vpath %.v $(DSP_DIR)
 VFLAGS_DEP += -y$(DSP_DIR) -y$(CORDIC_DIR) -y$(SERIAL_IO_DIR)/EVG_EVR -y.
@@ -15,7 +13,10 @@ VFLAGS += -g2012
 
 .DEFAULT_GOAL = all
 .PHONY: all clean
-all: $(TEST_BENCH) $(CHECKS)
+all: llrf_shell_expand.v
+	$(MAKE) -C tests
+
+llrf_shell_expand.v: cordicg_b22.v
 
 ##### others #####
 include build.mk
@@ -30,13 +31,10 @@ llrf_shell_yosys.json: llrf_shell_skin.v llrf_shell_expand.v $(SHELL_EXTRA_V) $(
 	$(YOSYS) $(YOSYS_QUIET) -p "read_verilog $(YOSYS_JSON_OPTION) $(filter %.v, $^); script $(filter %_proc.ys, $^); write_json $@"
 # exercise with make llrf_shell_expand.v llrf_shell_cdc.txt
 
-CLEAN += $(TEST_BENCH)
-CLEAN += xvlog.log xvlog.pb
-CLEAN_DIRS += xsim.dir
+CLEAN += llrf_shell_expand.v
 CLEAN += llrf_shell_yosys.json llrf_shell_cdc.txt
-CLEAN += $(TEST_BENCH:%_tb=%.vcd)
 
 clean::
-	make -C tests clean
+	$(MAKE) -C tests clean
 
 include $(BUILD_DIR)/bottom_rules.mk

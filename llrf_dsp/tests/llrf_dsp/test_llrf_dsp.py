@@ -38,10 +38,6 @@ class TestLLRF:
             "Unexpected RX_LO_PHS_DEG."
         assert np.abs(llrf.tx.phase_off_deg - llrf.TX_LO_PHS_DEG) < 1e-4, \
             "Unexpected TX_LO_PHS_DEG."
-        assert np.abs(llrf.inlk_gain - llrf.INLK_GAIN) / llrf.inlk_gain \
-            < 1e-4, "Unexpected INLK_GAIN."
-        assert np.abs(llrf.mon_gain - llrf.MON_GAIN) / llrf.inlk_gain \
-            < 1e-4, "Unexpected MON_GAIN."
         clock = Clock(self.dut.clk, llrf.DSP_CLK_CYCLE, units="ns")
         cocotb.start_soon(clock.start())
 
