@@ -11,15 +11,16 @@ from pprint import pformat
 
 
 class TB:
-    def __init__(self, dut, f_config='LEMP', settings_fname='settings.json'):
+    def __init__(self, dut, f_config='LEMP', settings_fname='settings.json',
+                 wave_samp_per=1):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
-        self.llrf = llrf = LLRFModel(f_config, settings_fname)
+        self.llrf = llrf = LLRFModel(f_config, settings_fname, wave_samp_per)
         self.lb = LocalbusAppMaster(
             dut, dut.lb_clk, regmap_json_path='../../llrf_shell.json')
         self.log_banner(f'Simulating: {f_config}')
-        self.dut._log.debug(f'Init registers:\n{pformat(llrf.init_config)}')
         self.dut._log.info(f'LLRF Model:\n{llrf.rx}')
+        self.dut._log.info(f'InitRegisters:\n{pformat(llrf.init_config)}')
         self.dut._log.info(f'Calibrations:\n{pformat(llrf.cal_config)}')
         # clocks
         cocotb.start_soon(Clock(dut.lb_clk, 8, units="ns").start())
@@ -117,11 +118,16 @@ class TB:
         max = await self.lb.read_reg('dsp_slow_adc_max', chan)
         return min, max
 
-    async def init_test(self):
+    async def write_init_regs(self):
         await self.lb.write_reg('dsp_reset', 1)
         for name, val in asdict(self.llrf.init_config).items():
             await self.lb.write_reg(name, val)
         await self.lb.write_reg('dsp_reset', 0)
+
+    async def verify_init_regs(self):
+        for name, val in asdict(self.llrf.init_config).items():
+            r = await self.lb.read_reg(name)
+            assert r == val, f"Expected {name}:{val}, got {r}"
 
     async def test_open_loop(self):
         sig_names = ['test_adc', 'loopback_adc']
@@ -135,11 +141,9 @@ class TB:
             self.amp_exp, phs_exp1)
         self.llrf.init_config.amp_setpoint = amp_setp
         self.llrf.init_config.phs_setpoint = phs_setp
-        await self.init_test()
+        await self.write_init_regs()
         self.log_banner('Open Loop Test')
-        for name, val in asdict(self.llrf.init_config).items():
-            r = await self.lb.read_reg(name)
-            assert r == val, f"Expected {name}:{val}, got {r}"
+        await self.verify_init_regs()
 
         await self.read_cic_waveform()  # discard 1st waveform
         self.log_banner('CIC Waveform')
@@ -180,7 +184,7 @@ class TB:
         self.llrf.init_config.Kp_phs = 5000
         self.llrf.init_config.Ki_amp = 100
         self.llrf.init_config.Ki_phs = 500
-        await self.init_test()
+        await self.write_init_regs()
         regs = [
             ('amp_loop_reset', 1),
             ('phs_loop_reset', 1),
@@ -242,9 +246,9 @@ class TB:
         pass
 
 
-@cocotb.test(timeout_time=100, timeout_unit='us')
+@cocotb.test(timeout_time=400, timeout_unit='us')
 async def test(dut):
-    tb = TB(dut)
+    tb = TB(dut, wave_samp_per=random.randint(1, 8))
     await tb.test_open_loop()
     await tb.test_fast_interlock()
     await tb.test_close_loop()

@@ -226,11 +226,19 @@ class CICWaveRecorder(LLRFModule):
         """
         cic_R = wave_samp_per * self.cic_base_period
         cic_bit_growth = 2 * np.log2(cic_R)
-        cic_snr_bit_growth = np.log2(cic_R) / 2
+        cic_snr_bit_growth = np.log2(cic_R / 2) / 2
         full_shift = np.floor(cic_bit_growth - cic_snr_bit_growth)
-        self.wave_shift = max((full_shift - self.shift_base)/2, 0)
-        gain = 2**(cic_bit_growth - self.shift_base + 2 - 2 * self.wave_shift)
-        return gain
+        self._wave_shift = int(max((full_shift - self.shift_base) / 2, 0))
+        self._gain = 2**(cic_bit_growth - self.shift_base + 2
+                         - 2 * self._wave_shift)
+
+    @property
+    def gain(self):
+        return self._gain
+
+    @property
+    def wave_shift(self):
+        return self._wave_shift
 
     @property
     def wave_samp_per(self):
@@ -239,7 +247,7 @@ class CICWaveRecorder(LLRFModule):
     @wave_samp_per.setter
     def wave_samp_per(self, val):
         self._wave_samp_per = val
-        self.gain = self.calc_cic_gain(val)
+        self.calc_cic_gain(val)
 
 
 class DSPCoreRX(LLRFModule):
@@ -313,7 +321,7 @@ class DSPCoreTX(LLRFModule):
 
 
 @dataclass
-class LLRFInitConfig:
+class LLRFInitRegisters:
     """Initial register configuration for LLRF DSP module."""
     dds_phase_step: int = 0
     dds_phase_shift: int = 0
@@ -337,6 +345,15 @@ class LLRFInitConfig:
     dac_permit: bool = False
     slow_snap_sel: bool = True
 
+    def __setattr__(self, name, value):
+        """Enforce data type casting, e.g. int"""
+        annotations = getattr(self, '__annotations__', {})
+        if name in annotations:
+            expected_type = annotations[name]
+            if not isinstance(value, expected_type):
+                value = expected_type(value)
+        super().__setattr__(name, value)
+
 
 @dataclass
 class LLRFCalibrationConfig:
@@ -359,7 +376,8 @@ class LLRFCalibrationConfig:
 
 
 class LLRFModel(LLRFModule):
-    def __init__(self, conf='LEMP', settings_fname='settings.json') -> None:
+    def __init__(self, conf='LEMP', settings_fname='settings.json',
+                 wave_samp_per=1):
         """Math model that provides helper functions for simulation
 
         Args:
@@ -373,7 +391,7 @@ class LLRFModel(LLRFModule):
             setattr(self, k, v)
         super().__init__(self.NUM_DDS, self.DEN_DDS)
         assert self.LO_AMP < (2 ** 17 / self.CORDIC_GAIN), "LO_AMP saturate!"
-        self.wave_samp_per = 1
+        self.wave_samp_per = wave_samp_per
         self.dds = dds = DDS(amp=self.LO_AMP, num=self.num, den=self.den)
         self.rx = DSPCoreRX(num=self.num, den=self.den, dds=dds)
         self.tx = DSPCoreTX(num=self.num, den=self.den, dds=dds)
@@ -387,8 +405,9 @@ class LLRFModel(LLRFModule):
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
 
+        print('xxx', self.cic_mon.wave_shift)
         # initialization parameters for simulation and SoC integration
-        self.init_config = LLRFInitConfig(
+        self.init_config = LLRFInitRegisters(
             dds_phase_step=self.dds.phase_step,
             dds_modulo=self.dds.modulo,
             wave_samp_per=self.wave_samp_per,

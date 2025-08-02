@@ -274,7 +274,7 @@ end
     task init_task;
         begin
         $display("---- Init settings ----");
-        wave_samp_per = 1;
+        wave_samp_per = 2;
 
         init_dds_task(phase_step, modulo);
         calc_cic_gain_task(wave_samp_per, `SHIFT_BASE, shift, mon_gain);
