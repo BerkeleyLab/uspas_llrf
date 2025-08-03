@@ -228,9 +228,9 @@ class CICWaveRecorder(LLRFModule):
         cic_bit_growth = 2 * np.log2(cic_R)
         cic_snr_bit_growth = np.log2(cic_R / 2) / 2
         full_shift = np.floor(cic_bit_growth - cic_snr_bit_growth)
-        self._wave_shift = int(max((full_shift - self.shift_base) / 2, 0))
+        self._wave_shift = int(max((full_shift - self.shift_base), 0))
         self._gain = 2**(cic_bit_growth - self.shift_base + 2
-                         - 2 * self._wave_shift)
+                         - self._wave_shift)
 
     @property
     def gain(self):

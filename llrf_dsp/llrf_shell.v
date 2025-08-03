@@ -108,8 +108,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [15:0] cbuf_post_delay; top-level
 // reg [6:0] wave_samp_per; top-level
 // reg [9:0] chan_keep; top-level
-// reg [2:0] cic_wave_shift; top-level
-// reg [2:0] inlk_wave_shift; top-level
+// reg [3:0] cic_wave_shift; top-level
+// reg [3:0] inlk_wave_shift; top-level
 // reg [0:0] dds_reset; top-level single-cycle
 // reg [31:0] dds_phase_step; top-level
 // reg signed [18:0] dds_phase_shift; top-level
@@ -363,7 +363,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .di_sr_out    (di_sr_out),
 
         .cc_sample    (cc_sample),
-        .cc_shift     ({cic_wave_shift, 1'b0}), // controls scaling of filter result
+        .cc_shift     (cic_wave_shift), // controls scaling of filter result
 
         // Channel selector controls
         .chan_mask    (chan_keep_iq),     // Bitmask of channels to record. chan_mask[0] -> CH0
@@ -403,7 +403,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
        .reset    (dsp_reset),
        .sr_in    (di_sr_out),
        .sr_valid (di_stb_out),    // fixed wave_samp_per = 1
-       .shift    ({inlk_wave_shift, 1'b0}),
+       .shift    (inlk_wave_shift),
        .result   (inlk_data),     // signed filtered and scaled result
        .strobe   (inlk_dval)
     );

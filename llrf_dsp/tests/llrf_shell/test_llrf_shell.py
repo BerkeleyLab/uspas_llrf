@@ -31,14 +31,17 @@ class TB:
 
         # test bench setup
         self.loopback_dac, self.feedback_dac = 0, 1
-        self.loopback_adc, self.feedback_adc, self.test_adc = 0, 1, 2
+        self.loopback_adc, self.feedback_adc, self.test_adc = 0, 1, 5
         # flattened signal array of 2 DAC + 8 ADC
         self.sig_names = {
-            9: 'feedback_dac', 8: 'loopback_dac',
-            2: 'loopback_adc', 1: 'feedback_adc', 0: 'test_adc'}
+            8 + self.feedback_dac: 'feedback_dac',
+            8 + self.loopback_dac: 'loopback_dac',
+            self.loopback_adc: 'loopback_adc',
+            self.feedback_adc: 'feedback_adc',
+            self.test_adc: 'test_adc'}
 
         self.amp_exp = int(llrf.cal_config.max_adc_input)
-        self.phs_exp = random.randint(-180, 180) * 0
+        self.phs_exp = random.randint(-180, 180)
         cocotb.start_soon(
             self.drive_test_adc(self.test_adc, self.amp_exp, self.phs_exp))
         cocotb.start_soon(
