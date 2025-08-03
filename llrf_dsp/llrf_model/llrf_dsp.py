@@ -498,7 +498,7 @@ if __name__ == "__main__":
 
     llrf_model = LLRFModel(conf=args.conf, settings_fname=args.settings_fname)
     with open(args.output_fname, 'w') as f:
-        json.dump(llrf_model.init_config.__dict__, f, indent=4)
-    pprint.pp(llrf_model.init_config)
+        json.dump(llrf_model.init_regs.__dict__, f, indent=4)
+    pprint.pp(llrf_model.init_regs)
     pprint.pp(llrf_model.cal_config)
     print(f"{args.output_fname} wrote with configuration: {args.conf}")
