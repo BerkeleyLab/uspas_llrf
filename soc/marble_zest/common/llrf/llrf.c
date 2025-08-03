@@ -58,7 +58,7 @@ void align_mo_phase(void) {
     int16_t mo_phs_cnt=0;
     uint32_t phase_shift_cnt=0, mo_adc_chan=0;
 
-    mo_adc_chan = read_lb_reg(MO_ADC_CHAN);
+    mo_adc_chan = read_lb_reg(PRL_ADC_CHAN);
     write_lb_reg(DDS_PHASE_SHIFT, 0);
     DELAY_MS(1);
     mo_phs_cnt = read_lb_reg(MON_PHS_0 + mo_adc_chan) >> 1;

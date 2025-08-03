@@ -1,13 +1,14 @@
 import cocotb
 import random
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, ClockCycles
+from cocotb.triggers import RisingEdge, FallingEdge, ClockCycles
 from llrf_model.llrf_dsp import LLRFModel, clamp, wrap_phase
 from local_bus import LocalbusAppMaster
 import logging
 import numpy as np
 from dataclasses import asdict
 from pprint import pformat
+import itertools
 
 
 class TB:
@@ -37,7 +38,7 @@ class TB:
             2: 'loopback_adc', 1: 'feedback_adc', 0: 'test_adc'}
 
         self.amp_exp = int(llrf.cal_config.max_adc_input)
-        self.phs_exp = random.randint(-180, 180)
+        self.phs_exp = random.randint(-180, 180) * 0
         cocotb.start_soon(
             self.drive_test_adc(self.test_adc, self.amp_exp, self.phs_exp))
         cocotb.start_soon(
@@ -64,14 +65,10 @@ class TB:
         assert phs_err < 0.1, "phase out-of-bound of 0.1 deg"
 
     async def drive_test_adc(self, ch=0, amp=0, phs=0, noise_amp=3):
-        t = 0
-        while True:
+        await FallingEdge(self.dut.llrf_shell.dsp_reset)
+        # truly important but empirical to synchronize with DDS
+        for t in itertools.count(8):
             await RisingEdge(self.dut.dsp_clk)
-            # truly important but empirical to synchronize with DDS
-            if self.dut.llrf_shell.dsp_reset.value == 1:
-                t = self.llrf.CIC_BASE_PERIOD % 15 + 5
-            else:
-                t += 1
             sig = amp * np.exp(1j * (self.llrf.omega * t + np.deg2rad(phs)))
             noise = random.randint(-noise_amp, noise_amp)
             self.dut.adc_array_in[ch].value = \

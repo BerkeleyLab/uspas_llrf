@@ -328,7 +328,8 @@ class LLRFInitRegisters:
     dds_phase_shift: int = 0
     dds_modulo: int = 0
     wave_samp_per: int = 1
-    wave_shift: int = 0
+    cic_wave_shift: int = 0
+    inlk_wave_shift: int = 0
     chan_keep: int = 0
     rx_phase_offset: int = 0
     tx_phase_offset: int = 0
@@ -347,6 +348,8 @@ class LLRFInitRegisters:
     pulse_high_len: int = 10
     dac_permit: bool = False
     slow_snap_sel: bool = True
+    prl_adc_chan: int = 0
+    fdbk_adc_chan: int = 0
 
     def __setattr__(self, name, value):
         """Enforce data type casting, e.g. int"""
@@ -400,15 +403,18 @@ class LLRFModel(LLRFModule):
         self.tx = DSPCoreTX(num=self.num, den=self.den, dds=dds)
         self.cic_inlk = CICWaveRecorder(
             num=self.num, den=self.den,
-            cic_base_period=self.CIC_BASE_PERIOD, shift_base=self.SHIFT_INLK)
+            cic_base_period=self.CIC_BASE_PERIOD,
+            shift_base=self.INLK_SHIFT_BASE)
         self.cic_mon = CICWaveRecorder(
             num=self.num, den=self.den,
             cic_base_period=self.CIC_BASE_PERIOD,
-            shift_base=self.SHIFT_BASE, wave_samp_per=self.wave_samp_per)
+            shift_base=self.CIC_SHIFT_BASE,
+            wave_samp_per=self.wave_samp_per)
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
 
         # initialization parameters for simulation and SoC integration
+        # cic and inlk wave_shift values are derived from gain calculations
         self.init_regs = LLRFInitRegisters(
             dds_amplitude=self.dds.amp,
             dds_phase_shift=self.encode_phase(self.rx.phase_off_deg),
@@ -417,8 +423,11 @@ class LLRFModel(LLRFModule):
             rx_phase_offset=0,
             tx_phase_offset=self.encode_phase(
                 -self.rx.phase_off_deg-self.tx.phase_off_deg),
+            prl_adc_chan=self.PRL_ADC_CHAN,
+            fdbk_adc_chan=self.FDBK_ADC_CHAN,
             wave_samp_per=self.wave_samp_per,
-            wave_shift=self.cic_mon.wave_shift,
+            cic_wave_shift=self.cic_mon.wave_shift,
+            inlk_wave_shift=self.cic_inlk.wave_shift,
             chan_keep=0b11,
             Kp_amp=20, Ki_amp=50, Kp_phs=50, Ki_phs=200
         )

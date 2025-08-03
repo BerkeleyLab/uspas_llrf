@@ -33,10 +33,8 @@
 
 module llrf_shell #(
     parameter integer CIC_BASE_PERIOD = `CIC_BASE_PERIOD,
-    parameter integer SHIFT_BASE = `SHIFT_BASE,
-    parameter integer SHIFT_INLK = `SHIFT_INLK,
-    parameter integer MO_ADC = `MO_ADC,
-    parameter integer FDBK_ADC = `FDBK_ADC,
+    parameter integer CIC_SHIFT_BASE = `CIC_SHIFT_BASE,
+    parameter integer INLK_SHIFT_BASE = `INLK_SHIFT_BASE,
     parameter integer CBUF_DW = 24,
     parameter integer CBUF_AW = 16,
     parameter integer SIG_BUF_AW = 12,
@@ -110,7 +108,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [15:0] cbuf_post_delay; top-level
 // reg [6:0] wave_samp_per; top-level
 // reg [9:0] chan_keep; top-level
-// reg [2:0] wave_shift; top-level
+// reg [2:0] cic_wave_shift; top-level
+// reg [2:0] inlk_wave_shift; top-level
 // reg [0:0] dds_reset; top-level single-cycle
 // reg [31:0] dds_phase_step; top-level
 // reg signed [18:0] dds_phase_shift; top-level
@@ -118,6 +117,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [17:0] dds_amplitude; top-level
 // reg signed [18:0] rx_phase_offset; top-level
 // reg signed [18:0] tx_phase_offset; top-level
+// reg [2:0] prl_adc_chan; top-level
+// reg [2:0] fdbk_adc_chan; top-level
 // reg signed [17:0] amp_setpoint; top-level
 // reg signed [17:0] phs_setpoint; top-level
 // reg signed [17:0] Kp_amp; top-level
@@ -181,7 +182,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire signed [DW-1:0] sig_raw_data [0:N_CH-1];
     wire signed [DWBB-1:0] sig_i_data [0:N_CH-1];
     wire signed [DWBB-1:0] sig_q_data [0:N_CH-1];
-    wire signed [DW-1:0] cav_cel = sig_raw_data[FDBK_ADC]; // for feedback in dsp_core
 
     // synchronize I/Q divider state for multiple DDC channels
     reg i_sel = 0;
@@ -346,7 +346,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .di_noise_bits (0),
         .cc_outw       (CBUF_DW),       // CCFilt output width; Must be 20 if using half-band filter
         .cc_halfband   (0),
-        .cc_shift_base (SHIFT_BASE),   // Bits to discard from previous acc step
+        .cc_shift_base (CIC_SHIFT_BASE),   // Bits to discard from previous acc step
         .buf_dw        (CBUF_DW),
         .buf_aw        (CBUF_AW),
         .lsb_mask      (1),             // LSB of channel mask is CH0
@@ -363,7 +363,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .di_sr_out    (di_sr_out),
 
         .cc_sample    (cc_sample),
-        .cc_shift     ({wave_shift, 1'b0}), // controls scaling of filter result
+        .cc_shift     ({cic_wave_shift, 1'b0}), // controls scaling of filter result
 
         // Channel selector controls
         .chan_mask    (chan_keep_iq),     // Bitmask of channels to record. chan_mask[0] -> CH0
@@ -395,7 +395,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     ccfilt #(
        .dw         (MON_RW),
        .outw       (16),
-       .shift_base (SHIFT_INLK),     // 2*np.log2(CIC_BASE_PERIOD) + 3
+       .shift_base (INLK_SHIFT_BASE),     // 2*np.log2(CIC_BASE_PERIOD) + 3
        .dsr_len    (2*N_CH),
        .use_hb     (0)
     ) inlk_ccfilt (
@@ -403,7 +403,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
        .reset    (dsp_reset),
        .sr_in    (di_sr_out),
        .sr_valid (di_stb_out),    // fixed wave_samp_per = 1
-       .shift    (4'b0),
+       .shift    ({inlk_wave_shift, 1'b0}),
        .result   (inlk_data),     // signed filtered and scaled result
        .strobe   (inlk_dval)
     );
@@ -528,11 +528,11 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     llrf_dsp #(.KW(DWBB), .EW(15), .BASEBAND_INPUT(1)) dsp (
         .clk              (dsp_clk),
         .reset            (dsp_reset),
-        .adc_in           (cav_cel),
+        .adc_in           (sig_raw_data[fdbk_adc_chan]),
         .cosa             (cosd),
         .sina             (sind),
-        .i_data_in        (sig_i_data[FDBK_ADC]),
-        .q_data_in        (sig_q_data[FDBK_ADC]),
+        .i_data_in        (sig_i_data[fdbk_adc_chan]),
+        .q_data_in        (sig_q_data[fdbk_adc_chan]),
         .rx_phase_offset  (rx_phase_offset),
         .tx_phase_offset  (tx_phase_offset),
         .dac_out          (dac_out),
@@ -692,8 +692,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             4'ha: reg_bank_0 <= err_out_phs_lb;       // alias: loop_phs_err
             4'hb: reg_bank_0 <= evr_evcnt;            // alias: evr_evcnt
             4'hc: reg_bank_0 <= evr_timestamp_valid;  // alias: evr_timestamp_valid
-            4'hd: reg_bank_0 <= MO_ADC;               // alias: mo_adc_chan
-            4'he: reg_bank_0 <= FDBK_ADC;             // alias: fdbk_adc_chan
             default: reg_bank_0 <= 32'hfaceface;
         endcase
     end
