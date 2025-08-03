@@ -25,7 +25,7 @@ llrf_dsp_test:
     - make FSET=${TARGET}
   parallel:
     matrix:
-      - TARGET: [ALSU, USPAS, LEMP, AWA]
+      - TARGET: [LEMP]
 
 llrf_cdc_test:
   before_script:

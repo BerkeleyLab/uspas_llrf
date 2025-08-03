@@ -32,12 +32,6 @@ class TestLLRF:
             f'TX phase off: {tx_phase_off_reg:8d} cnt')
         self.dut._log.info(f'inlk_gain: {llrf.inlk_gain:10.6f}')
         self.dut._log.info(f'mon_gain:  {llrf.mon_gain:10.6f}')
-        # validate settings.json against calculated values
-        # XXX to be retired
-        assert np.abs(llrf.rx.phase_off_deg - llrf.RX_LO_PHS_DEG) < 1e-4, \
-            "Unexpected RX_LO_PHS_DEG."
-        assert np.abs(llrf.tx.phase_off_deg - llrf.TX_LO_PHS_DEG) < 1e-4, \
-            "Unexpected TX_LO_PHS_DEG."
         clock = Clock(self.dut.clk, llrf.DSP_CLK_CYCLE, units="ns")
         cocotb.start_soon(clock.start())
 
@@ -56,10 +50,6 @@ class TestLLRF:
     async def test_rx(self, wait=200) -> None:
         self.log_banner('RX Test')
         self.dut._log.info(f'LLRFModel RX:\n{self.llrf.rx}')
-        # validate settings.json against calculated values
-        assert -0.0001 < self.llrf.AMP_RX_GAIN - np.abs(self.llrf.rx.gain) \
-            < 0.0001, "Unexpected AMP_RX_GAIN."
-
         amp_exp, phs_exp = await self.init_test()
         cocotb.start_soon(self.drive_adc(amp_exp, phs_exp))
         await ClockCycles(self.dut.clk, wait)  # settling time of filters

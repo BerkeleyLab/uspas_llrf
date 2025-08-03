@@ -2,14 +2,13 @@
 
 module dds #(
     parameter integer DWLO = 18,
-    parameter [DWLO-1:0] LO_AMP = 74840,
-    parameter [DWLO:0] PHS_OFF = 0,
     parameter integer DWH = 20,
     parameter integer DWL = 12
 ) (
     input clk,
     input reset,
-    input [DWLO:0] phase_shift,
+    input [DWLO-1:0] amplitude,
+    input signed [DWLO:0] phase_shift,
     input [DWH-1:0] phase_step_h,
     input [DWL-1:0] phase_step_l,
     input [DWL-1:0] modulo,
@@ -28,11 +27,11 @@ module dds #(
         .modulo         (modulo)
     );
 
-    wire signed [DWLO:0] dds_phase = phase_acc + phase_shift - PHS_OFF;
+    wire signed [DWLO:0] dds_phase = phase_acc + phase_shift;
     cordicg_b22 #(.nstg(20), .width(DWLO)) cordic (
         .clk            (clk),
         .opin           (2'b00),
-        .xin            (LO_AMP),
+        .xin            (amplitude),
         .yin            ({DWLO{1'b0}}),
         .phasein        (dds_phase),
         .xout           (cos_out),

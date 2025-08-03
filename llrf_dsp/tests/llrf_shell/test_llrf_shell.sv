@@ -6,7 +6,6 @@ module test_llrf_shell #(
     parameter integer DWLO = 18,
     parameter integer LB_ADW = 18,
     parameter integer CBUF_AW = 6,
-    parameter integer CBUF_DW = 24,
     parameter integer SIG_BUF_AW = 6
 ) (
     // ---------------------
@@ -44,8 +43,7 @@ module test_llrf_shell #(
 
     llrf_shell #(
         .SIG_BUF_AW     (SIG_BUF_AW),
-        .CBUF_AW        (CBUF_AW),
-        .CBUF_DW        (CBUF_DW)
+        .CBUF_AW        (CBUF_AW)
     ) llrf_shell (
         .lb_clk,
         .lb_write,

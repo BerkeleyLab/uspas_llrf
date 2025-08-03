@@ -48,9 +48,7 @@ module llrf_shell #(
     localparam integer DWBB = 18, // base band DW
     localparam integer N_CH = 10,  // N_ADC + N_DAC
     localparam integer N_ADC = 8,
-    localparam integer N_DAC = 2,
-    localparam signed [DWLO:0] DDC_RX_PHS_OFF = -$rtoi(`RX_LO_PHS_DEG * 2**(DWLO+1) / 360.0),
-    localparam signed [DWLO:0] DDC_TX_PHS_OFF = -$rtoi(`TX_LO_PHS_DEG * 2**(DWLO+1) / 360.0)
+    localparam integer N_DAC = 2
 ) (
     // ---------------------
     // Localbus interface
@@ -115,8 +113,11 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [2:0] wave_shift; top-level
 // reg [0:0] dds_reset; top-level single-cycle
 // reg [31:0] dds_phase_step; top-level
-// reg [18:0] dds_phase_shift; top-level
+// reg signed [18:0] dds_phase_shift; top-level
 // reg [11:0] dds_modulo; top-level
+// reg [17:0] dds_amplitude; top-level
+// reg signed [18:0] rx_phase_offset; top-level
+// reg signed [18:0] tx_phase_offset; top-level
 // reg signed [17:0] amp_setpoint; top-level
 // reg signed [17:0] phs_setpoint; top-level
 // reg signed [17:0] Kp_amp; top-level
@@ -152,11 +153,10 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 
     // RX NCO LO
     wire signed [DWLO-1:0] cosd, sind;
-    dds #(
-        .DWLO(DWLO), .LO_AMP(`LO_AMP), .PHS_OFF(DDC_RX_PHS_OFF)
-    ) rx_dds (
+    dds #( .DWLO(DWLO) ) rx_dds (
         .clk          (dsp_clk),
         .reset        (dds_reset),
+        .amplitude    (dds_amplitude),
         .phase_shift  (dds_phase_shift),
         .phase_step_h (dds_phase_step[31:12]),
         .phase_step_l (dds_phase_step[11:0]),
@@ -525,8 +525,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // ---------------------
 
     wire signed [15:0] dac_out;
-    wire signed [DWLO:0] rx_phase_offset = 0;
-    wire signed [DWLO:0] tx_phase_offset = DDC_TX_PHS_OFF + DDC_RX_PHS_OFF;
     llrf_dsp #(.KW(DWBB), .EW(15), .BASEBAND_INPUT(1)) dsp (
         .clk              (dsp_clk),
         .reset            (dsp_reset),

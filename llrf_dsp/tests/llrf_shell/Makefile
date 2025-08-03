@@ -12,7 +12,6 @@ CUSTOM_SIM_DEPS += $(APP_DSP_DIR)/llrf_shell.json
 # module parameters
 export PARAM_CBUF_AW     := 6
 export PARAM_SIG_BUF_AW  := 6
-export PARAM_CBUF_DW     := 24
 include ../cocotb_inc.mk
 
 $(APP_DSP_DIR)/llrf_shell_expand.v:
@@ -21,3 +20,6 @@ $(APP_DSP_DIR)/llrf_shell_expand.v:
 $(APP_DSP_DIR)/llrf_shell.json:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
+clean::
+	rm -f $(APP_DSP_DIR)/llrf_shell_expand.v
+	rm -f $(APP_DSP_DIR)/llrf_shell.json

@@ -11,8 +11,7 @@ class TB:
     def __init__(self, dut, num: int = 4, den: int = 11):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
-        self.model = DDS(num=num, den=den,
-                         amp=dut.LO_AMP.value, width=dut.DWLO.value)
+        self.model = DDS(num=num, den=den, width=dut.DWLO.value)
         cocotb.start_soon(Clock(dut.clk, 8, units="ns").start())
 
     def log_banner(self, str):
@@ -26,6 +25,7 @@ class TB:
             await RisingEdge(self.dut.clk)
 
     async def init_test(self) -> None:
+        self.model.amp = random.randint(70000, 80000)
         phase_step_h, phase_step_l, modulo = self.model.calc_dds_config(
             dwh=self.dut.DWH.value, dwl=self.dut.DWL.value)
         self.dut.phase_step_h.value = phase_step_h
@@ -33,6 +33,7 @@ class TB:
         await RisingEdge(self.dut.clk)
         self.dut.phase_step_l.value = phase_step_l
         self.dut.modulo.value = modulo
+        self.dut.amplitude.value = self.model.amp
         await self.cycle_reset()
         phs_off = random.randint(-180, 180)
         self.dut.phase_shift.value = \

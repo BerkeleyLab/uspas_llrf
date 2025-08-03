@@ -20,7 +20,7 @@ class TB:
             dut, dut.lb_clk, regmap_json_path='../../llrf_shell.json')
         self.log_banner(f'Simulating: {f_config}')
         self.dut._log.info(f'LLRF Model:\n{llrf.rx}')
-        self.dut._log.info(f'InitRegisters:\n{pformat(llrf.init_config)}')
+        self.dut._log.info(f'InitRegisters:\n{pformat(llrf.init_regs)}')
         self.dut._log.info(f'Calibrations:\n{pformat(llrf.cal_config)}')
         # clocks
         cocotb.start_soon(Clock(dut.lb_clk, 8, units="ns").start())
@@ -31,6 +31,11 @@ class TB:
         # test bench setup
         self.loopback_dac, self.feedback_dac = 0, 1
         self.loopback_adc, self.feedback_adc, self.test_adc = 0, 1, 2
+        # flattened signal array of 2 DAC + 8 ADC
+        self.sig_names = {
+            9: 'feedback_dac', 8: 'loopback_dac',
+            2: 'loopback_adc', 1: 'feedback_adc', 0: 'test_adc'}
+
         self.amp_exp = int(llrf.cal_config.max_adc_input)
         self.phs_exp = random.randint(-180, 180)
         cocotb.start_soon(
@@ -64,7 +69,7 @@ class TB:
             await RisingEdge(self.dut.dsp_clk)
             # truly important but empirical to synchronize with DDS
             if self.dut.llrf_shell.dsp_reset.value == 1:
-                t = self.llrf.CIC_BASE_PERIOD % 15
+                t = self.llrf.CIC_BASE_PERIOD % 15 + 5
             else:
                 t += 1
             sig = amp * np.exp(1j * (self.llrf.omega * t + np.deg2rad(phs)))
@@ -120,34 +125,38 @@ class TB:
 
     async def write_init_regs(self):
         await self.lb.write_reg('dsp_reset', 1)
-        for name, val in asdict(self.llrf.init_config).items():
+        for name, val in asdict(self.llrf.init_regs).items():
             await self.lb.write_reg(name, val)
         await self.lb.write_reg('dsp_reset', 0)
 
     async def verify_init_regs(self):
-        for name, val in asdict(self.llrf.init_config).items():
+        for name, val in asdict(self.llrf.init_regs).items():
             r = await self.lb.read_reg(name)
             assert r == val, f"Expected {name}:{val}, got {r}"
 
     async def test_open_loop(self):
-        sig_names = ['test_adc', 'loopback_adc']
-        self.llrf.init_config.chan_keep = \
+        self.llrf.init_regs.chan_keep = \
             (1 << self.test_adc | 1 << self.loopback_adc)
-        self.cic_n_chan = bin(self.llrf.init_config.chan_keep).count('1')
-        self.llrf.init_config.dac_permit = True
+        self.cic_chans = [
+            int(b) for b in f'{self.llrf.init_regs.chan_keep:010b}']
+        self.cic_n_chan = self.cic_chans.count(1)
+        self.cic_names = [
+            self.sig_names[9-idx] for idx, enabled in enumerate(self.cic_chans)
+            if enabled]
+        self.llrf.init_regs.dac_permit = True
         # compensate for 1 cycle latency of loopback
         phs_exp1 = wrap_phase(self.phs_exp + np.rad2deg(self.llrf.omega))
         amp_setp, phs_setp = self.llrf.calc_open_loop_setp(
             self.amp_exp, phs_exp1)
-        self.llrf.init_config.amp_setpoint = amp_setp
-        self.llrf.init_config.phs_setpoint = phs_setp
+        self.llrf.init_regs.amp_setpoint = amp_setp
+        self.llrf.init_regs.phs_setpoint = phs_setp
         await self.write_init_regs()
         self.log_banner('Open Loop Test')
         await self.verify_init_regs()
 
         await self.read_cic_waveform()  # discard 1st waveform
         self.log_banner('CIC Waveform')
-        for i, name in enumerate(sig_names):
+        for i, name in enumerate(self.cic_names):
             cic_meas = await self.read_cic_waveform(i)
             self.check_sig(cic_meas / self.llrf.mon_gain, sig_name=name)
 
@@ -159,31 +168,32 @@ class TB:
         self.check_sig(iq_avg / gain, sig_name='test_adc')
 
         self.log_banner('Min / Max')
-        for chan, name in zip([self.test_adc, self.loopback_adc], sig_names):
+        for chan in [self.test_adc, self.loopback_adc]:
             min, max = await self.read_adc_min_max(chan)
             assert abs(-self.amp_exp - min) / self.amp_exp < 0.1, \
                 "ADC min out of range"
             assert abs(self.amp_exp - max) / self.amp_exp < 0.1, \
                 "ADC min out of range"
             self.dut._log.warning(
-                f"measured {name:12s} min: {min:8.2f} cnt,  "
+                f"measured {self.sig_names[chan]:12s} min: {min:8.2f} cnt,  "
                 f"max: {max:6.2f} cnt")
 
         self.log_banner('Interlock')
-        for chan, name in zip([self.test_adc, self.loopback_adc], sig_names):
+        for chan in [self.test_adc, self.loopback_adc]:
             inlk_meas = await self.read_inlk_task(chan)
-            self.check_sig(inlk_meas / self.llrf.inlk_gain, sig_name=name)
+            self.check_sig(inlk_meas / self.llrf.inlk_gain,
+                           sig_name=self.sig_names[chan])
 
     async def test_close_loop(self, wait=2000):
         self.log_banner('Close Loop Test')
         amp_setp, phs_setp = self.llrf.calc_close_loop_setp(
             self.amp_exp, self.phs_exp)
-        self.llrf.init_config.amp_setpoint = amp_setp
-        self.llrf.init_config.phs_setpoint = phs_setp
-        self.llrf.init_config.Kp_amp = 2000
-        self.llrf.init_config.Kp_phs = 5000
-        self.llrf.init_config.Ki_amp = 100
-        self.llrf.init_config.Ki_phs = 500
+        self.llrf.init_regs.amp_setpoint = amp_setp
+        self.llrf.init_regs.phs_setpoint = phs_setp
+        self.llrf.init_regs.Kp_amp = 2000
+        self.llrf.init_regs.Kp_phs = 5000
+        self.llrf.init_regs.Ki_amp = 100
+        self.llrf.init_regs.Ki_phs = 500
         await self.write_init_regs()
         regs = [
             ('amp_loop_reset', 1),

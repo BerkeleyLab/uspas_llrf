@@ -9,7 +9,10 @@ VERILOG_AUTOGEN += settings.vams
 VERILOG_AUTOGEN += $(AUTOGEN_DIR)/llrf_shell_auto.vh $(AUTOGEN_DIR)/addr_map_llrf_shell.vh
 
 settings.vams: settings.json
-	python3 scripts/gen_settings.py -f $< -c $(FSET) -o $@
+	$(PYTHON) scripts/gen_settings.py -f $< -c $(FSET) -o $@
+
+$(APP_NAME)_init_regs.json: settings.json
+	$(PYTHON) llrf_model/llrf_dsp.py -c $(FSET) -f $< -o $@
 
 $(DEPDIR)/$(APP_NAME).d: $(APP_NAME).v $(VERILOG_AUTOGEN) cordicg_b22.v
 	@set -e; mkdir -p $(DEPDIR); \
@@ -29,9 +32,6 @@ $(AUTOGEN_DIR)/scalar_%_regmap.json: %.v
 
 $(APP_NAME)_expand.v: $(APP_NAME).v
 	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(filter %.v, $^)
-
-$(APP_NAME)_init_regs.json: settings.json
-	$(PYTHON) llrf_model/llrf_dsp.py -c $(FSET) -f $< -o $@
 
 ifneq (,$(findstring json,$(MAKECMDGOALS)))
     -include $(DEPDIR)/$(APP_NAME).d

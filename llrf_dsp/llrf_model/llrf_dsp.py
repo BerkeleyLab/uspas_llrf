@@ -323,12 +323,15 @@ class DSPCoreTX(LLRFModule):
 @dataclass
 class LLRFInitRegisters:
     """Initial register configuration for LLRF DSP module."""
+    dds_amplitude: int = 0
     dds_phase_step: int = 0
     dds_phase_shift: int = 0
     dds_modulo: int = 0
     wave_samp_per: int = 1
     wave_shift: int = 0
     chan_keep: int = 0
+    rx_phase_offset: int = 0
+    tx_phase_offset: int = 0
     amp_setpoint: int = 0
     phs_setpoint: int = 0
     amp_loop_enable: bool = False
@@ -406,9 +409,14 @@ class LLRFModel(LLRFModule):
         self.submodules += self.tx.submodules
 
         # initialization parameters for simulation and SoC integration
-        self.init_config = LLRFInitRegisters(
+        self.init_regs = LLRFInitRegisters(
+            dds_amplitude=self.dds.amp,
+            dds_phase_shift=self.encode_phase(self.rx.phase_off_deg),
             dds_phase_step=self.dds.phase_step,
             dds_modulo=self.dds.modulo,
+            rx_phase_offset=0,
+            tx_phase_offset=self.encode_phase(
+                -self.rx.phase_off_deg-self.tx.phase_off_deg),
             wave_samp_per=self.wave_samp_per,
             wave_shift=self.cic_mon.wave_shift,
             chan_keep=0b11,
@@ -463,13 +471,14 @@ class LLRFModel(LLRFModule):
         phs_setpoint = phs_setpoint_deg / 360 * (1 << 18)
         return int(amp_setpoint), int(phs_setpoint)
 
-    def encode_phase(self, phs: float, deg=True, width=19):
-        """Convert phase value to register
+    def encode_phase(self, phs: float, width=19, deg=True):
+        """Convert phase value to signed register
         """
         scale = 360 if deg else (2 * np.pi)
-        return int(phs / scale * 2**width)
+        wrapped_phase = wrap_phase(phs, deg)
+        return int(wrapped_phase / scale * 2**width)
 
-    def decode_phase(self, phs_cnt, width=19, deg=True):
+    def decode_phase(self, phs_cnt: int, width=19, deg=True):
         """Convert phase value from register
         """
         scale = 360 if deg else (2 * np.pi)
