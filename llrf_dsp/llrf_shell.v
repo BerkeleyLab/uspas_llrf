@@ -34,10 +34,10 @@
 module llrf_shell #(
     parameter integer CIC_BASE_PERIOD = `CIC_BASE_PERIOD,
     parameter integer CIC_SHIFT_BASE = `CIC_SHIFT_BASE,
-    parameter integer INLK_SHIFT_BASE = `INLK_SHIFT_BASE,
     parameter integer CBUF_DW = 24,
     parameter integer CBUF_AW = 16,
     parameter integer SIG_BUF_AW = 12,
+    localparam integer INLK_SHIFT_BASE = `INLK_SHIFT_BASE, // near 2*np.log2(CIC_BASE_PERIOD) + 3
     localparam integer MON_RW = 44, // must <= 44, see ccfilt.v:51
     localparam integer LB_DW = 32,
     localparam integer LB_ADW = 18,
@@ -395,7 +395,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     ccfilt #(
        .dw         (MON_RW),
        .outw       (16),
-       .shift_base (INLK_SHIFT_BASE),     // 2*np.log2(CIC_BASE_PERIOD) + 3
+       .shift_base (INLK_SHIFT_BASE),
        .dsr_len    (2*N_CH),
        .use_hb     (0)
     ) inlk_ccfilt (

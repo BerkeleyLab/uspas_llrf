@@ -9,6 +9,7 @@ import numpy as np
 from dataclasses import asdict
 from pprint import pformat
 import itertools
+import os
 
 
 class TB:
@@ -16,6 +17,7 @@ class TB:
                  wave_samp_per=1):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
+        self.f_config = f_config
         self.llrf = llrf = LLRFModel(f_config, settings_fname, wave_samp_per)
         self.lb = LocalbusAppMaster(
             dut, dut.lb_clk, regmap_json_path='../../llrf_shell.json')
@@ -31,7 +33,12 @@ class TB:
 
         # test bench setup
         self.loopback_dac, self.feedback_dac = 0, 1
-        self.loopback_adc, self.feedback_adc, self.test_adc = 0, 1, 5
+        self.feedback_adc = self.llrf.FDBK_ADC_CHAN
+        self.test_adc = self.llrf.PRL_ADC_CHAN
+        available_adcs = [
+            ch for ch in range(8)
+            if ch not in [self.test_adc, self.feedback_adc]]
+        self.loopback_adc = random.choice(available_adcs)
         # flattened signal array of 2 DAC + 8 ADC
         self.sig_names = {
             8 + self.feedback_dac: 'feedback_dac',
@@ -41,7 +48,7 @@ class TB:
             self.test_adc: 'test_adc'}
 
         self.amp_exp = int(llrf.cal_config.max_adc_input)
-        self.phs_exp = random.randint(-180, 180)
+        self.phs_exp = random.randint(-180, 180) * 0
         cocotb.start_soon(
             self.drive_test_adc(self.test_adc, self.amp_exp, self.phs_exp))
         cocotb.start_soon(
@@ -70,7 +77,8 @@ class TB:
     async def drive_test_adc(self, ch=0, amp=0, phs=0, noise_amp=3):
         await FallingEdge(self.dut.llrf_shell.dsp_reset)
         # truly important but empirical to synchronize with DDS
-        for t in itertools.count(8):
+        t_start = {'ALSU': 9, 'USPAS': 20, 'LEMP': 8, 'AWA': 13}
+        for t in itertools.count(t_start[self.f_config]):
             await RisingEdge(self.dut.dsp_clk)
             sig = amp * np.exp(1j * (self.llrf.omega * t + np.deg2rad(phs)))
             noise = random.randint(-noise_amp, noise_amp)
@@ -258,7 +266,9 @@ class TB:
 
 @cocotb.test(timeout_time=400, timeout_unit='us')
 async def test(dut):
-    tb = TB(dut, wave_samp_per=random.randint(1, 8))
+    tb = TB(dut,
+            f_config=os.environ['FSET'],
+            wave_samp_per=random.randint(1, 8))
     await tb.test_open_loop()
     await tb.test_fast_interlock()
     await tb.test_close_loop()

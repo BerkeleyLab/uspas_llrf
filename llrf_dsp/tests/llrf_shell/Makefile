@@ -21,5 +21,5 @@ $(APP_DSP_DIR)/llrf_shell.json:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
 clean::
-	rm -f $(APP_DSP_DIR)/llrf_shell_expand.v
+	rm -f $(APP_DSP_DIR)/llrf_shell_expand.v $(APP_DSP_DIR)/settings.vams
 	rm -f $(APP_DSP_DIR)/llrf_shell.json
