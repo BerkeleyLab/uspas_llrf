@@ -404,11 +404,11 @@ class LLRFModel(LLRFModule):
         self.cic_inlk = CICWaveRecorder(
             num=self.num, den=self.den,
             cic_base_period=self.CIC_BASE_PERIOD,
-            shift_base=self.INLK_SHIFT_BASE)
+            shift_base=12)
         self.cic_mon = CICWaveRecorder(
             num=self.num, den=self.den,
             cic_base_period=self.CIC_BASE_PERIOD,
-            shift_base=self.CIC_SHIFT_BASE,
+            shift_base=7,
             wave_samp_per=self.wave_samp_per)
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules

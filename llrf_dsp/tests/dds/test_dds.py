@@ -25,7 +25,8 @@ class TB:
             await RisingEdge(self.dut.clk)
 
     async def init_test(self) -> None:
-        self.model.amp = random.randint(70000, 80000)
+        full_scale_amp = (1 << self.model.width) / self.model.CORDIC_GAIN
+        self.model.amp = int(random.uniform(0.8, 0.95) * full_scale_amp)
         phase_step_h, phase_step_l, modulo = self.model.calc_dds_config(
             dwh=self.dut.DWH.value, dwl=self.dut.DWL.value)
         self.dut.phase_step_h.value = phase_step_h
