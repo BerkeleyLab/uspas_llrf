@@ -32,7 +32,6 @@
 // 30000 to 3ffff   Circular buffer
 
 module llrf_shell #(
-    parameter integer CIC_BASE_PERIOD = `CIC_BASE_PERIOD,
     parameter integer CBUF_DW = 24,
     parameter integer CBUF_AW = 16,
     parameter integer SIG_BUF_AW = 12,
@@ -108,6 +107,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [15:0] cbuf_post_delay; top-level
 // reg [6:0] wave_samp_per; top-level
 // reg [9:0] chan_keep; top-level
+// reg [6:0] cic_base_period; top-level
 // reg [3:0] cic_wave_shift; top-level
 // reg [3:0] inlk_wave_shift; top-level
 // reg [0:0] dds_reset; top-level single-cycle
@@ -264,10 +264,10 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // ---------------------
     wire cic_sample, cc_sample;
 
-    cic_timing #(
-        .CIC_BASE_PERIOD(CIC_BASE_PERIOD)
-    ) cic_timing_i (
+    cic_timing cic_timing_i (
         .clk            (dsp_clk),
+        .reset          (dsp_reset),
+        .base_period    (cic_base_period),
         .wave_samp_per  (wave_samp_per),
         .cic_sample     (cic_sample),
         .sample_wave    (cc_sample)

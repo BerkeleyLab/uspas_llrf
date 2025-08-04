@@ -33,11 +33,13 @@ class TB:
 
         # test bench setup
         self.loopback_dac, self.feedback_dac = 0, 1
+        # use known ADC channels for feedback and phase reference line (PRL)
         self.feedback_adc = self.llrf.FDBK_ADC_CHAN
-        self.test_adc = self.llrf.PRL_ADC_CHAN
+        self.phaseref_adc = self.llrf.PRL_ADC_CHAN
+        # pick a random available ADC channel for loopback test
         available_adcs = [
             ch for ch in range(8)
-            if ch not in [self.test_adc, self.feedback_adc]]
+            if ch not in [self.phaseref_adc, self.feedback_adc]]
         self.loopback_adc = random.choice(available_adcs)
         # flattened signal array of 2 DAC + 8 ADC
         self.sig_names = {
@@ -45,12 +47,13 @@ class TB:
             8 + self.loopback_dac: 'loopback_dac',
             self.loopback_adc: 'loopback_adc',
             self.feedback_adc: 'feedback_adc',
-            self.test_adc: 'test_adc'}
+            self.phaseref_adc: 'phaseref_adc'}
 
         self.amp_exp = int(llrf.cal_config.max_adc_input)
-        self.phs_exp = random.randint(-180, 180) * 0
+        self.phs_exp = random.randint(-180, 180) * 0  # XXX
         cocotb.start_soon(
-            self.drive_test_adc(self.test_adc, self.amp_exp, self.phs_exp))
+            self.drive_phaseref_adc(
+                self.phaseref_adc, self.amp_exp, self.phs_exp))
         cocotb.start_soon(
             self.loopback(self.loopback_dac, self.loopback_adc))
         cocotb.start_soon(
@@ -74,10 +77,10 @@ class TB:
         phs_err = abs(wrap_phase(phs_meas - self.phs_exp))
         assert phs_err < 0.1, "phase out-of-bound of 0.1 deg"
 
-    async def drive_test_adc(self, ch=0, amp=0, phs=0, noise_amp=3):
+    async def drive_phaseref_adc(self, ch=0, amp=0, phs=0, noise_amp=3):
         await FallingEdge(self.dut.llrf_shell.dsp_reset)
         # truly important but empirical to synchronize with DDS
-        t_start = {'ALSU': 9, 'USPAS': 20, 'LEMP': 8, 'AWA': 13}
+        t_start = {'ALSU': 12, 'USPAS': 0, 'LEMP': 11, 'AWA': 15}
         for t in itertools.count(t_start[self.f_config]):
             await RisingEdge(self.dut.dsp_clk)
             sig = amp * np.exp(1j * (self.llrf.omega * t + np.deg2rad(phs)))
@@ -144,7 +147,7 @@ class TB:
 
     async def test_open_loop(self):
         self.llrf.init_regs.chan_keep = \
-            (1 << self.test_adc | 1 << self.loopback_adc)
+            (1 << self.phaseref_adc | 1 << self.loopback_adc)
         self.cic_chans = [
             int(b) for b in f'{self.llrf.init_regs.chan_keep:010b}']
         self.cic_n_chan = self.cic_chans.count(1)
@@ -164,19 +167,21 @@ class TB:
 
         await self.read_cic_waveform()  # discard 1st waveform
         self.log_banner('CIC Waveform')
+        self.dut._log.info(f'cic chans: {self.cic_chans}')
+        self.dut._log.info(f'cic names: {self.cic_names}')
         for i, name in enumerate(self.cic_names):
             cic_meas = await self.read_cic_waveform(i)
             self.check_sig(cic_meas / self.llrf.mon_gain, sig_name=name)
 
         self.log_banner('IQ Waveform')
-        i_buf = await self.read_sig_buf(f'adc{self.test_adc}_i_buf')
-        q_buf = await self.read_sig_buf(f'adc{self.test_adc}_q_buf')
+        i_buf = await self.read_sig_buf(f'adc{self.phaseref_adc}_i_buf')
+        q_buf = await self.read_sig_buf(f'adc{self.phaseref_adc}_q_buf')
         iq_avg = np.mean(i_buf + 1j * q_buf)
         gain = self.llrf.cal_config.rx_gain / self.llrf.CORDIC_GAIN
-        self.check_sig(iq_avg / gain, sig_name='test_adc')
+        self.check_sig(iq_avg / gain, sig_name='phaseref_adc')
 
         self.log_banner('Min / Max')
-        for chan in [self.test_adc, self.loopback_adc]:
+        for chan in [self.phaseref_adc, self.loopback_adc]:
             min, max = await self.read_adc_min_max(chan)
             assert abs(-self.amp_exp - min) / self.amp_exp < 0.1, \
                 "ADC min out of range"
@@ -187,7 +192,7 @@ class TB:
                 f"max: {max:6.2f} cnt")
 
         self.log_banner('Interlock')
-        for chan in [self.test_adc, self.loopback_adc]:
+        for chan in [self.phaseref_adc, self.loopback_adc]:
             inlk_meas = await self.read_inlk_task(chan)
             self.check_sig(inlk_meas / self.llrf.inlk_gain,
                            sig_name=self.sig_names[chan])
@@ -223,14 +228,14 @@ class TB:
         amp_lo = self.amp_exp * self.llrf.inlk_gain * 0.99
         amp_hi = self.amp_exp * self.llrf.inlk_gain * 1.01
         regs = [
-            ('inlk_inlk_mode', self.test_adc, 0b10),
-            ('inlk_amp_lo', self.test_adc, amp_lo),
-            ('inlk_amp_hi', self.test_adc, amp_hi),
+            ('inlk_inlk_mode', self.phaseref_adc, 0b10),
+            ('inlk_amp_lo', self.phaseref_adc, amp_lo),
+            ('inlk_amp_hi', self.phaseref_adc, amp_hi),
         ]
         for name, offset, val in regs:
             await self.lb.write_reg(name, val, offset)
         await ClockCycles(self.dut.dsp_clk, wait)  # wait for setting
-        await self.lb.write_reg('inlk_permit_mask', 1 << self.test_adc)
+        await self.lb.write_reg('inlk_permit_mask', 1 << self.phaseref_adc)
         await self.lb.write_reg('inlk_reset_inlk', 1)
 
         dut = self.dut.llrf_shell

@@ -328,6 +328,7 @@ class LLRFInitRegisters:
     dds_phase_shift: int = 0
     dds_modulo: int = 0
     wave_samp_per: int = 1
+    cic_base_period: int = 14
     cic_wave_shift: int = 0
     inlk_wave_shift: int = 0
     chan_keep: int = 0
@@ -404,11 +405,11 @@ class LLRFModel(LLRFModule):
         self.cic_inlk = CICWaveRecorder(
             num=self.num, den=self.den,
             cic_base_period=self.CIC_BASE_PERIOD,
-            shift_base=12)
+            shift_base=self.INLK_SHIFT_BASE)
         self.cic_mon = CICWaveRecorder(
             num=self.num, den=self.den,
             cic_base_period=self.CIC_BASE_PERIOD,
-            shift_base=7,
+            shift_base=self.CIC_SHIFT_BASE,
             wave_samp_per=self.wave_samp_per)
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
@@ -422,10 +423,11 @@ class LLRFModel(LLRFModule):
             dds_modulo=self.dds.modulo,
             rx_phase_offset=0,
             tx_phase_offset=self.encode_phase(
-                -self.rx.phase_off_deg-self.tx.phase_off_deg),
+                -self.rx.phase_off_deg - self.tx.phase_off_deg),
             prl_adc_chan=self.PRL_ADC_CHAN,
             fdbk_adc_chan=self.FDBK_ADC_CHAN,
             wave_samp_per=self.wave_samp_per,
+            cic_base_period=self.CIC_BASE_PERIOD,
             cic_wave_shift=self.cic_mon.wave_shift,
             inlk_wave_shift=self.cic_inlk.wave_shift,
             chan_keep=0b11,
