@@ -523,5 +523,7 @@ if __name__ == "__main__":
     if 'write_verilog_header' in args:
         with open(args.write_verilog_header, 'w') as f:
             for k, v in llrf_model.config.items():
-                if k == 'DSP_EV1':  # XXX the only macro still being used
+                # the only 2 macros still being used.
+                # Others are in init registers
+                if k in ['DSP_EV1', 'DSP_CLK_CYCLE']:
                     f.write(f"`define {k} {v}\n")

@@ -39,7 +39,7 @@ VERILOG_AUTOGEN  += $(RTEFI_V)
 
 
 settings.vams: $(APP_DSP_DIR)/settings.json
-	python3 $(APP_DSP_DIR)/scripts/gen_settings.py -f $< -c $(FSET) -o $@
+	$(PYTHON) $(APP_DSP_DIR)/llrf_model/llrf_dsp.py -c $(FSET) -f $< --write-verilog-header $@
 
 $(DEPDIR)/$(IP_NAME)_tb.d: $(VERILOG_AUTOGEN)
 
