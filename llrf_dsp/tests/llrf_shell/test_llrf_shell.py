@@ -50,7 +50,7 @@ class TB:
             self.phaseref_adc: 'phaseref_adc'}
 
         self.amp_exp = int(llrf.cal_config.max_adc_input)
-        self.phs_exp = random.randint(-180, 180) * 0  # XXX
+        self.phs_exp = random.randint(-180, 180)
         cocotb.start_soon(
             self.drive_phaseref_adc(
                 self.phaseref_adc, self.amp_exp, self.phs_exp))
@@ -153,7 +153,7 @@ class TB:
         self.cic_n_chan = self.cic_chans.count(1)
         self.cic_names = [
             self.sig_names[9-idx] for idx, enabled in enumerate(self.cic_chans)
-            if enabled]
+            if enabled][::-1]  # lsb_mask==1: first chan is LSB
         self.llrf.init_regs.dac_permit = True
         # compensate for 1 cycle latency of loopback
         phs_exp1 = wrap_phase(self.phs_exp + np.rad2deg(self.llrf.omega))

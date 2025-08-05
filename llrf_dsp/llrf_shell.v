@@ -589,7 +589,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire [0:0]  evr_timestamp_valid;
     wire [0:0]  evr_live_pps_marker;
     wire [0:0]  evr_live_hb_marker;
-    timing_core #(.DSP_EV1(`DSP_EV1), .DSP_EV2(`DSP_EV2)) timing_evr
+    timing_core #(.DSP_EV1(`DSP_EV1)) timing_evr
     (
         .lb_clk              (lb_clk),
         .evr_clk             (gtx_rxclk),

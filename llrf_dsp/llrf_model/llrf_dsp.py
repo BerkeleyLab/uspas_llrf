@@ -396,6 +396,7 @@ class LLRFModel(LLRFModule):
             configs = json.load(f)
         for k, v in configs[conf].items():
             setattr(self, k, v)
+        self.config = configs[conf]
         super().__init__(self.NUM_DDS, self.DEN_DDS)
         assert self.LO_AMP < (2 ** 17 / self.CORDIC_GAIN), "LO_AMP saturate!"
         self.wave_samp_per = wave_samp_per
@@ -502,14 +503,25 @@ if __name__ == "__main__":
                         help="Configuration key in settings.json")
     parser.add_argument("-f", "--settings_fname", default="settings.json",
                         help="Path to settings.json file")
-    parser.add_argument("-o", "--output_fname",
+    parser.add_argument("--write-init-reg",
                         default="llrf_shell_init_regs.json",
-                        help="Path to output initialization json file")
+                        help="Path to write initialization registers json")
+    parser.add_argument("--write-verilog-header",
+                        default="settings.vams",
+                        help="Path to write initialization registers json")
+
     args = parser.parse_args()
 
     llrf_model = LLRFModel(conf=args.conf, settings_fname=args.settings_fname)
-    with open(args.output_fname, 'w') as f:
-        json.dump(llrf_model.init_regs.__dict__, f, indent=4)
     pprint.pp(llrf_model.init_regs)
     pprint.pp(llrf_model.cal_config)
-    print(f"{args.output_fname} wrote with configuration: {args.conf}")
+    if 'write_init_reg' in args:
+        with open(args.write_init_reg, 'w') as f:
+            json.dump(llrf_model.init_regs.__dict__, f, indent=4)
+        print(f"{args.write_init_reg} wrote with configuration: {args.conf}")
+
+    if 'write_verilog_header' in args:
+        with open(args.write_verilog_header, 'w') as f:
+            for k, v in llrf_model.config.items():
+                if k == 'DSP_EV1':  # XXX the only macro still being used
+                    f.write(f"`define {k} {v}\n")
