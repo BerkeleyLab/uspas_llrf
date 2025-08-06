@@ -504,23 +504,21 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--settings_fname", default="settings.json",
                         help="Path to settings.json file")
     parser.add_argument("--write-init-reg",
-                        default="llrf_shell_init_regs.json",
                         help="Path to write initialization registers json")
     parser.add_argument("--write-verilog-header",
-                        default="settings.vams",
-                        help="Path to write initialization registers json")
+                        help="Path to write verilog header")
 
     args = parser.parse_args()
 
     llrf_model = LLRFModel(conf=args.conf, settings_fname=args.settings_fname)
-    pprint.pp(llrf_model.init_regs)
-    pprint.pp(llrf_model.cal_config)
-    if 'write_init_reg' in args:
+    if args.write_init_reg:
+        pprint.pp(llrf_model.init_regs)
+        pprint.pp(llrf_model.cal_config)
         with open(args.write_init_reg, 'w') as f:
             json.dump(llrf_model.init_regs.__dict__, f, indent=4)
         print(f"{args.write_init_reg} wrote with configuration: {args.conf}")
 
-    if 'write_verilog_header' in args:
+    if args.write_verilog_header:
         with open(args.write_verilog_header, 'w') as f:
             for k, v in llrf_model.config.items():
                 # the only 2 macros still being used.

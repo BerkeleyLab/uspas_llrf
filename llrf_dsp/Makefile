@@ -14,7 +14,7 @@ VFLAGS += -g2012
 .DEFAULT_GOAL = all
 .PHONY: all clean
 all: llrf_shell_expand.v
-	$(MAKE) -C tests
+	$(MAKE) -C tests FSET=$(FSET)
 
 llrf_shell_expand.v: cordicg_b22.v
 
@@ -31,8 +31,8 @@ llrf_shell_yosys.json: llrf_shell_skin.v llrf_shell_expand.v $(SHELL_EXTRA_V) $(
 	$(YOSYS) $(YOSYS_QUIET) -p "read_verilog $(YOSYS_JSON_OPTION) $(filter %.v, $^); script $(filter %_proc.ys, $^); write_json $@"
 # exercise with make llrf_shell_expand.v llrf_shell_cdc.txt
 
-CLEAN += llrf_shell_expand.v
 CLEAN += llrf_shell_yosys.json llrf_shell_cdc.txt
+CLEAN_DIRS += llrf_model/__pycache__
 
 clean::
 	$(MAKE) -C tests clean

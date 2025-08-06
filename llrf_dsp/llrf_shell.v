@@ -331,10 +331,12 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire        di_stb_out;
     wire [MON_RW-1:0] di_sr_out;
     wire [2*N_CH-1:0] chan_keep_iq;
-    gen_chan_keep_iq #(.N_CH(N_CH)) gen_chan_keep_iq_i (
-        .chan_keep      (chan_keep[N_CH-1:0]),
-        .chan_keep_iq   (chan_keep_iq)
-    );
+    generate for (ch=0; ch<N_CH; ch=ch+1)
+        begin: gen_chan_keep
+            assign chan_keep_iq[2*ch] = chan_keep[ch];
+            assign chan_keep_iq[2*ch+1] = chan_keep[ch];
+        end
+    endgenerate
 
     wire [CBUF_AW-1:0] cbuf_addr = lb_addr[CBUF_AW-1:0];
     cic_wave_recorder #(
