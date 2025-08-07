@@ -6,11 +6,12 @@
 */
 
 module cic_waves #(
-    parameter integer N_CH=12,
+    parameter integer N_CH=10,
+    parameter integer N_ADC=8,
     parameter integer DW=16,            // raw data width for slow data
     parameter integer DWIQ=18,          // iq_data width per channel
     parameter integer MON_RW=24,        // result width
-    parameter integer CBUF_DW=24,      // CCFilt output width; Must be 20 if using half-band filter
+    parameter integer CBUF_DW=24,       // CCFilt output width; Must be 20 if using half-band filter
     parameter integer CBUF_AW=13,
     parameter integer CIC_SHIFT_BASE=7,
     parameter integer INLK_SHIFT_BASE=12
@@ -22,7 +23,7 @@ module cic_waves #(
     input                      iq_dval,     // Strobe signal for input samples
     input [2*N_CH*DWIQ-1:0]    iq_data,     // Flattened array of unprocessed data streams. CH0 in LSBs
     // slow bridge
-    input [DW*N_CH-1:0]        slow_bridge_data_in,     // flattened raw adc data to slow_bridge
+    input [DW*N_ADC-1:0]       slow_bridge_data_in,     // flattened raw adc data to slow_bridge
     input                      slow_snap,
     input [63:0]               evr_timestamp,
 
@@ -192,8 +193,8 @@ module cic_waves #(
     //     for adc_min / adc_max, timestamp, waveform status,
     //     and snap for validation of a waveform if register changed in between
     // ---------------------
-    wire [15:0] cbuf_stat2_pad = cbuf_stat2;
-    slow_bridge_shell #(.AW(7), .DW(DW), .N_CH(N_CH)) slow_bridge (
+    wire [15:0] cbuf_stat2_lsb = cbuf_stat2;
+    slow_bridge_shell #(.AW(7), .DW(DW), .N_CH(N_ADC)) slow_bridge (
         .lb_clk         (lb_clk),
         .lb_addr        (lb_addr[6:0]),
         .lb_read        (lb_read),
@@ -204,7 +205,7 @@ module cic_waves #(
         .buf_start      (cbuf_start),
         .buf_sync       (cbuf_sync),
         .buf_stat1      (cbuf_stat1),
-        .buf_stat2      (cbuf_stat2_pad),
+        .buf_stat2      (cbuf_stat2_lsb),
         .buf_count      (cbuf_count),
         .buf_ready      (cbuf_ready),
         .data_in        (slow_bridge_data_in),

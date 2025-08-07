@@ -168,24 +168,10 @@
         "data_width": 16,
         "sign": "signed"
     },
-    "dsp_slow_dac_min": {
-        "access": "r",
-        "addr_width": 1,
-        "base_addr": "0x1091e",
-        "data_width": 16,
-        "sign": "signed"
-    },
     "dsp_slow_adc_max": {
         "access": "r",
         "addr_width": 3,
-        "base_addr": "0x10920",
-        "data_width": 16,
-        "sign": "signed"
-    },
-    "dsp_slow_dac_max": {
-        "access": "r",
-        "addr_width": 1,
-        "base_addr": "0x10928",
+        "base_addr": "0x1091e",
         "data_width": 16,
         "sign": "signed"
     },

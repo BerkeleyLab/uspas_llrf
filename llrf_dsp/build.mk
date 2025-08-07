@@ -34,9 +34,6 @@ $(AUTOGEN_DIR)/scalar_%_regmap.json: %.v
 $(MODULE)_expand.v: $(MODULE).v
 	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(filter %.v, $^)
 
-ifneq (,$(findstring json,$(MAKECMDGOALS)))
-    -include $(DEPDIR)/$(MODULE).d
-endif
 ifneq (,$(findstring _expand,$(MAKECMDGOALS)))
     -include $(DEPDIR)/$(MODULE).d
 endif

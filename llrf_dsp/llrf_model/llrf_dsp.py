@@ -1,6 +1,7 @@
 import numpy as np
 import json
 from dataclasses import dataclass, field
+from enum import IntEnum
 import argparse
 import pprint
 
@@ -320,6 +321,12 @@ class DSPCoreTX(LLRFModule):
             self.submodules += [self.tx_cordic]
 
 
+class WaveTrigSel(IntEnum):
+    Internal = 0
+    External = 1
+    EVR = 3
+
+
 @dataclass
 class LLRFInitRegisters:
     """Initial register configuration for LLRF DSP module."""
@@ -351,6 +358,7 @@ class LLRFInitRegisters:
     slow_snap_cic: bool = False
     prl_adc_chan: int = 0
     fdbk_adc_chan: int = 0
+    wave_trig_sel: int = WaveTrigSel.Internal
 
     def __setattr__(self, name, value):
         """Enforce data type casting, e.g. int"""

@@ -136,7 +136,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [0:0] ntw_amp_enable; top-level
 // reg [0:0] ntw_phs_enable; top-level
 // reg [0:0] system_bist_pass; top-level
-// reg [1:0] wave_trig_sel; top-level; 2-bits for future functionality
+// reg [1:0] wave_trig_sel; top-level;
 // reg [0:0] slow_snap_cic; top-level
 // newad-force lb domain
 
@@ -294,12 +294,13 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // -- slow_snap logic
     wire slow_snap = slow_snap_cic ? cbuf_transferred : sig_buf_iq_transferred[0];
 
-    wire [15:0] lb_slow_rdata;
+    wire [15:0] slow_rdata;
     wire [63:0] evr_live_ts;
     wire slow_ready;
     wire inlk_permit_in = drive_permit_in & slow_permit_in;
     cic_waves #(
         .N_CH               (N_CH),
+        .N_ADC              (N_ADC),
         .DW                 (DW),
         .DWIQ               (DWBB),
         .MON_RW             (MON_RW),
@@ -313,7 +314,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .iq_dval            (1'b1),
         .iq_data            (sig_iq_flat),
 
-        .slow_bridge_data_in(dac_adc_flat),
+        .slow_bridge_data_in(adc_data_in),
         .slow_snap          (slow_snap),
         .evr_timestamp      (evr_live_ts),
         .cic_wave_samp_per  (wave_samp_per),
@@ -340,7 +341,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .cbuf_ready         (cbuf_ready),
         .cbuf_out           (cbuf_out),
         .slow_ready         (slow_ready),
-        .slow_rdata         (lb_slow_rdata)
+        .slow_rdata         (slow_rdata)
     );
 
     wire mon_valid_out;
@@ -609,7 +610,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             18'h10800: lb_rdata_r <= llrf_circle_ready;
             18'h10801: lb_rdata_r <= sig_buf_ready;
             18'h10802: lb_rdata_r <= sig_iq_buf_ready;
-            18'h109??: lb_rdata_r <= lb_slow_rdata;
+            18'h109??: lb_rdata_r <= slow_rdata;
             18'h10a0?: lb_rdata_r <= mon_amp_lb;
             18'h10a1?: lb_rdata_r <= mon_phs_lb;
             18'h11???: lb_rdata_r <= mirror_out_0;

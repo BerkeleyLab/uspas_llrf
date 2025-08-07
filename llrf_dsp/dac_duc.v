@@ -8,10 +8,10 @@
 // \Im(y_n) = Q_n\cos(n\omega) + I_n\sin(n\omega)
 
 module dac_duc #(
-    parameter int DWI = 18,
-    parameter int DWO = 16,
-    parameter int DWLO = 18,
-    localparam int INTP_NUM = 2
+    parameter integer DWI = 18,
+    parameter integer DWO = 16,
+    parameter integer DWLO = 18,
+    localparam integer INTP_NUM = 2
 ) (
     input dsp_clk,
     input dsp_reset,
