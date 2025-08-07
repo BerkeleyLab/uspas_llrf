@@ -348,7 +348,7 @@ class LLRFInitRegisters:
     pulse_mode: bool = False
     pulse_high_len: int = 10
     dac_permit: bool = False
-    slow_snap_sel: bool = True
+    slow_snap_cic: bool = False
     prl_adc_chan: int = 0
     fdbk_adc_chan: int = 0
 

@@ -34,7 +34,7 @@ llrf_shell_yosys.json: llrf_shell_skin.v llrf_shell_expand.v $(SHELL_EXTRA_V) $(
 CLEAN += llrf_shell_yosys.json llrf_shell_cdc.txt
 CLEAN_DIRS += llrf_model/__pycache__
 
-clean::
+distclean::
 	$(MAKE) -C tests clean
 
 include $(BUILD_DIR)/bottom_rules.mk
