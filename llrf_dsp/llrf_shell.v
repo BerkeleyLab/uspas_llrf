@@ -420,24 +420,24 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire signed [17:0] amp_setpoint_i =  (ntw_amp_enable && amp_loop_enable) ? amp_setpoint_ntw : amp_setpoint;
 
     // ---------------------
-    // Instantiate llrf_dsp
+    // Instantiate feedback controller in baseband
     // ---------------------
 
     wire signed [15:0] dac_out;
-    wire signed [DWBB-1:0] i_data_out, q_data_out;
-    llrf_dsp #(.KW(DWBB), .EW(15), .BASEBAND_INPUT(1)) dsp (
+    wire signed [DWBB-1:0] drive_i, drive_q;
+    wire signed [DWBB-1:0] amp_measured, phs_measured;
+
+    dsp_core #(.KW(DWBB), .EW(15)) feedback (
         .clk              (dsp_clk),
         .reset            (dsp_reset),
-        .adc_in           (adc_raw_data[fdbk_adc_chan]),
-        .cosa             (cosd),
-        .sina             (sind),
-        .i_data_in        (sig_i_data[fdbk_adc_chan]),
-        .q_data_in        (sig_q_data[fdbk_adc_chan]),
-        .i_data_out       (i_data_out),
-        .q_data_out       (q_data_out),
+        .field_i          (sig_i_data[fdbk_adc_chan]),
+        .field_q          (sig_q_data[fdbk_adc_chan]),
+        .drive_i          (drive_i),
+        .drive_q          (drive_q),
         .rx_phase_offset  (rx_phase_offset),
         .tx_phase_offset  (tx_phase_offset),
-        .dac_out          (dac_out),
+        .amp_measured     (amp_measured),
+        .phs_measured     (phs_measured),
         .amp_setpoint     (amp_setpoint_i),
         .phs_setpoint     (phs_setpoint_i),
         .Kp_amp           (Kp_amp),
@@ -451,12 +451,29 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .err_out_amp      (err_out_amp),
         .err_out_phs      (err_out_phs)
     );
-    // base-band DAC output for IQ waveform monitoring
 
-    assign sig_i_data[N_ADC] = i_data_out;
-    assign sig_q_data[N_ADC] = q_data_out;
-    assign sig_i_data[N_ADC+1] = i_data_out;
-    assign sig_q_data[N_ADC+1] = q_data_out;
+   // base-band DAC output for IQ waveform monitoring
+
+    assign sig_i_data[N_ADC] = drive_i;
+    assign sig_q_data[N_ADC] = drive_q;
+    assign sig_i_data[N_ADC+1] = drive_i;
+    assign sig_q_data[N_ADC+1] = drive_q;
+
+    // Digital Up-converter - Double side-band modulator
+    // Digital quadrature modulation followed by analog up-conversion mixer
+    // rf_out = I*cos(wt) - Q*sin(wt)
+    // delay: 3 cycles
+    // XXX: cpxmul_fullspeed requires DWBB==DWLO
+    cpxmul_fullspeed #(
+        .DWI(DWBB), .OUT_SHIFT(DW+1), .OWI(DW)
+    ) duc (
+        .clk    (dsp_clk),
+        .re_a   (drive_i),
+        .im_a   (drive_q),
+        .re_b   (cosd),
+        .im_b   (sind),
+        .re_out (dac_out)
+    );
 
     // ----------------------
     // Network analyzer feature

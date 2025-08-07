@@ -12,8 +12,8 @@ VERILOG_SOURCES += $(DSP_DIR)/dpram.v $(DSP_DIR)/fiq_interp.v \
                     $(CORDIC_DIR)/addsubg.v $(CORDIC_DIR)/cstageg.v
 
 VERILOG_SOURCES += cordicg_b22.v \
+                    llrf_dsp.v \
                     $(APP_DSP_DIR)/ph_acc_general.v \
-                    $(APP_DSP_DIR)/llrf_dsp.v \
                     $(APP_DSP_DIR)/ddc.v \
                     $(APP_DSP_DIR)/dsp_core.v \
                     $(APP_DSP_DIR)/noniq_ddc.v \
