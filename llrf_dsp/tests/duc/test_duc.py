@@ -17,8 +17,7 @@ class TB:
         self.spectral_flip = spectral_flip
         # DSPCoreTX is in dac_clock domain
         # duc_pipeline is the number of clock cycles
-        self.model = DSPCoreTX(num=num, den=den,
-                               has_cordic=False, duc_pipeline=8)
+        self.model = DSPCoreTX(num=num, den=den, has_cordic=False)
         cocotb.start_soon(Clock(dut.dsp_clk, 8, units="ns").start())
         cocotb.start_soon(Clock(dut.dac_clk, 4, units="ns").start())
 
@@ -62,9 +61,9 @@ class TB:
         amp_exp *= np.abs(self.model.gain)
         # base band signal is lag of DDS
         if self.spectral_flip:
-            phs_exp = wrap_phase(phs_exp + np.angle(self.model.gain, deg=True))
-        else:
             phs_exp = wrap_phase(phs_exp - np.angle(self.model.gain, deg=True))
+        else:
+            phs_exp = wrap_phase(phs_exp + np.angle(self.model.gain, deg=True))
         return amp_exp, phs_exp
 
     async def check_sig(self, amp_exp, phs_off) -> None:
@@ -94,20 +93,21 @@ class TB:
     async def test(self):
         self.dut._log.info(f'LLRF Model:\n{self.model}')
         amp_exp, phs_exp = await self.init_test()
-        await ClockCycles(self.dut.dac_clk, self.model.duc_pipeline + 4)
+        # wait for the first sample becomes available
+        await ClockCycles(self.dut.dac_clk, abs(self.model.duc.pipeline) + 4)
         await self.check_sig(amp_exp, phs_exp)
 
 
 @cocotb.test(timeout_time=1, timeout_unit='us')
 async def test_alsu(dut):
-    tb = TB(dut, num=4, den=11*2)
+    tb = TB(dut, num=2, den=11)
     tb.log_banner('ALSU DDS Test')
     await tb.test()
 
 
 @cocotb.test(timeout_time=1, timeout_unit='us')
 async def test_uspas(dut):
-    tb = TB(dut, num=4, den=23*2)
+    tb = TB(dut, num=2, den=23)
     tb.log_banner('USPAS DDS Test')
     await tb.test()
 

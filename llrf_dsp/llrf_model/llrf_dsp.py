@@ -1,9 +1,14 @@
 import numpy as np
 import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from enum import IntEnum
 import argparse
 import pprint
+
+
+with open(Path(__file__).resolve().parent.parent / 'settings.json') as f:
+    default_configs = json.load(f)
 
 
 def wrap_phase(phs: float, deg=True):
@@ -253,6 +258,7 @@ class CICWaveRecorder(LLRFModule):
 
 class DSPCoreRX(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
+                 dds_amp=74840,
                  has_cordic: bool = True,
                  dds: DDS = None) -> None:
         """Receiver DSP chain in dsp_core.v.
@@ -265,7 +271,7 @@ class DSPCoreRX(LLRFModule):
         """
         super().__init__(num, den)
         if dds is None:
-            dds = DDS(amp=74840, num=num, den=den)
+            dds = DDS(amp=dds_amp, num=num, den=den)
         self.dds = dds
         self.submodules += [
             WashoutFilter(num=num, den=den),
@@ -280,25 +286,31 @@ class DSPCoreRX(LLRFModule):
 
 
 class DUC(LLRFModule):
-    def __init__(self, num: int = 4,  den: int = 11, pipeline: int = 3):
+    def __init__(self, num: int = 4,  den: int = 11, upsample: bool = True):
         """Non-IQ Digital Up-Conversion.
-            Gateware: cpxmul_fullspeed.v.
+            Gateware:
+            upsample = False:
+                cpxmul_fullspeed.v with pipeline=3
+            upsample = True:
+                dac_duc.v with pipeline=8
 
         Args:
             num (int): numerator of IF / Fs. Defaults to 4.
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        self.gain = self.z**(-pipeline)
+        self.pipeline = -8 if upsample else 3
+        self.gain = self.z**(-self.pipeline)
 
 
 class DSPCoreTX(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
+                 dds_amp=74840,
                  has_cordic: bool = True,
-                 duc_pipeline: int = 3,
+                 upsample: bool = True,
                  dds: DDS = None) -> None:
         """Transmitter DSP chain.
-            Gateware: tx_cordic.v, cpxmul_fullspeed.v
+            Gateware: tx_cordic.v, cpxmul_fullspeed.v or dac_duc.v
 
         Args:
             num (int): numerator of IF / Fs. Defaults to 4.
@@ -307,13 +319,10 @@ class DSPCoreTX(LLRFModule):
         """
         super().__init__(num, den)
         if dds is None:
-            dds = DDS(amp=74840, num=num, den=den)
+            dds = DDS(amp=dds_amp, num=num, den=den)
         self.dds = dds
-
-        self.submodules += [
-            dds,
-            DUC(num=num, den=den, pipeline=duc_pipeline)]
-        self.duc_pipeline = duc_pipeline
+        self.duc = duc = DUC(num=num, den=den, upsample=upsample)
+        self.submodules += [dds, duc]
         self.phase_off_deg = np.angle(self.gain, deg=True)
         if has_cordic:  # in dsp_core.v
             self.tx_cordic = CORDIC(
@@ -334,6 +343,11 @@ class LLRFInitRegisters:
     dds_phase_step: int = 0
     dds_phase_shift: int = 0
     dds_modulo: int = 0
+    tx_dds_amplitude: int = 0
+    tx_dds_phase_step: int = 0
+    tx_dds_phase_shift: int = 0
+    tx_dds_modulo: int = 0
+    duc_spectral_flip: bool = False
     wave_samp_per: int = 1
     cic_base_period: int = 14
     cic_wave_shift: int = 0
@@ -347,7 +361,6 @@ class LLRFInitRegisters:
     phs_loop_enable: bool = False
     amp_loop_reset: bool = False
     phs_loop_reset: bool = False
-    dsp_reset: bool = False
     Kp_amp: int = 0
     Ki_amp: int = 0
     Kp_phs: int = 0
@@ -371,12 +384,14 @@ class LLRFInitRegisters:
 
 
 @dataclass
-class LLRFCalibrationConfig:
+class LLRFCalibrations:
     """Calibration configuration for LLRF DSP module."""
     rx_gain: float = 1.0  # ratio from ADC to controller
     tx_gain: float = 1.0  # ratio from controller to DAC
     rx_phase_off_deg: float = 0.0
     tx_phase_off_deg: float = 0.0
+    rx_dds_omega_deg: float = 0.0  # num / den
+    tx_dds_omega_deg: float = 0.0  # tx_num / tx_den
     mon_gain: float = 1.0
     inlk_gain: float = 1.0
     max_adc_input: float = (1 << 15) * 0.95  # absolute max input signal level
@@ -391,26 +406,27 @@ class LLRFCalibrationConfig:
 
 
 class LLRFModel(LLRFModule):
-    def __init__(self, conf='LEMP', settings_fname='settings.json',
-                 wave_samp_per=1):
+    def __init__(self, dsp_config=default_configs['USPAS'],
+                 tx_upsample=True, wave_samp_per=1):
         """Math model that provides helper functions for simulation
 
         Args:
             conf (str): Application configuration key (aka FSET),
               in ['LEMP', 'ALSU', 'USPAS', 'AWA']
-            settings_fname (str): configuration json file path
+            tx_upsample (bool): True if using dac_duc.v
+            wave_samp_per (int): CIC waveform decimation factor
         """
-        with open(settings_fname) as f:
-            configs = json.load(f)
-        for k, v in configs[conf].items():
+        for k, v in dsp_config.items():
             setattr(self, k, v)
-        self.config = configs[conf]
+        self.config = dsp_config
         super().__init__(self.NUM_DDS, self.DEN_DDS)
         assert self.LO_AMP < (2 ** 17 / self.CORDIC_GAIN), "LO_AMP saturate!"
         self.wave_samp_per = wave_samp_per
-        self.dds = dds = DDS(amp=self.LO_AMP, num=self.num, den=self.den)
-        self.rx = DSPCoreRX(num=self.num, den=self.den, dds=dds)
-        self.tx = DSPCoreTX(num=self.num, den=self.den, dds=dds)
+        self.feedback_adc = self.FDBK_ADC_CHAN
+        self.phaseref_adc = self.PRL_ADC_CHAN
+        self.rx = DSPCoreRX(num=self.num, den=self.den, dds_amp=self.LO_AMP)
+        self.tx = DSPCoreTX(num=self.TX_NUM_DDS, den=self.TX_DEN_DDS,
+                            dds_amp=self.LO_AMP, upsample=tx_upsample)
         self.cic_inlk = CICWaveRecorder(
             num=self.num, den=self.den,
             cic_base_period=self.CIC_BASE_PERIOD,
@@ -422,17 +438,33 @@ class LLRFModel(LLRFModule):
             wave_samp_per=self.wave_samp_per)
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
+        self.gen_init_regs()
 
-        # initialization parameters for simulation and SoC integration
-        # cic and inlk wave_shift values are derived from gain calculations
+    @classmethod
+    def from_json(cls, conf='USPAS', json_fname="../settings.json",
+                  tx_upsample=True, wave_samp_per=1):
+        """alternative constructor from json file loader"""
+        with open(json_fname) as f:
+            configs = json.load(f)
+        return cls(configs[conf], tx_upsample, wave_samp_per)
+
+    def gen_init_regs(self):
+        """ initialization registers for simulation and SoC integration
+            cic and inlk wave_shift values are derived from gain calculations
+        """
         self.init_regs = LLRFInitRegisters(
-            dds_amplitude=self.dds.amp,
+            dds_amplitude=self.rx.dds.amp,
             dds_phase_shift=self.encode_phase(self.rx.phase_off_deg),
-            dds_phase_step=self.dds.phase_step,
-            dds_modulo=self.dds.modulo,
+            dds_phase_step=self.rx.dds.phase_step,
+            dds_modulo=self.rx.dds.modulo,
+            tx_dds_amplitude=self.tx.dds.amp,
+            tx_dds_phase_shift=self.encode_phase(-self.tx.phase_off_deg),
+            tx_dds_phase_step=self.tx.dds.phase_step,
+            tx_dds_modulo=self.tx.dds.modulo,
+            duc_spectral_flip=False,
             rx_phase_offset=0,
-            tx_phase_offset=self.encode_phase(
-                -self.rx.phase_off_deg - self.tx.phase_off_deg),
+            # XXX why -5?
+            tx_phase_offset=self.encode_phase(-5 * np.rad2deg(self.omega)),
             prl_adc_chan=self.PRL_ADC_CHAN,
             fdbk_adc_chan=self.FDBK_ADC_CHAN,
             wave_samp_per=self.wave_samp_per,
@@ -443,11 +475,15 @@ class LLRFModel(LLRFModule):
             Kp_amp=20, Ki_amp=50, Kp_phs=50, Ki_phs=200
         )
 
-        self.cal_config = LLRFCalibrationConfig(
+    @property
+    def cal_factors(self):
+        return LLRFCalibrations(
             rx_gain=np.abs(self.rx.gain),
             tx_gain=np.abs(self.tx.gain),
             rx_phase_off_deg=self.rx.phase_off_deg,
             tx_phase_off_deg=self.tx.phase_off_deg,
+            rx_dds_omega_deg=np.rad2deg(self.rx.dds.omega),
+            tx_dds_omega_deg=np.rad2deg(self.tx.dds.omega),
             mon_gain=self.mon_gain,
             inlk_gain=self.inlk_gain,
         )
@@ -509,7 +545,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--conf", default="LEMP",
                         help="Configuration key in settings.json")
-    parser.add_argument("-f", "--settings_fname", default="settings.json",
+    parser.add_argument("-f", "--json_fname", default="../settings.json",
                         help="Path to settings.json file")
     parser.add_argument("--write-init-reg",
                         help="Path to write initialization registers json")
@@ -518,10 +554,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    llrf_model = LLRFModel(conf=args.conf, settings_fname=args.settings_fname)
+    llrf_model = LLRFModel.from_json(
+        conf=args.conf, json_fname=args.json_fname)
     if args.write_init_reg:
         pprint.pp(llrf_model.init_regs)
-        pprint.pp(llrf_model.cal_config)
+        pprint.pp(llrf_model.cal_factors)
         with open(args.write_init_reg, 'w') as f:
             json.dump(llrf_model.init_regs.__dict__, f, indent=4)
         print(f"{args.write_init_reg} wrote with configuration: {args.conf}")

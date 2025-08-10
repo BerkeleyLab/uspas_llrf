@@ -24,6 +24,7 @@ module test_llrf_shell #(
     // ---------------------
     input                  dsp_clk,
     input signed  [DW-1:0] adc_array_in  [N_ADC],
+    input                  dac_clk,
     output signed [DW-1:0] dac_array_out [N_DAC],
 
     // ---------------------
@@ -56,6 +57,7 @@ module test_llrf_shell #(
 
         .dsp_clk,
         .adc_data_in,
+        .dac_clk,
         .dac_data_a_out (dac_array_out[0]),
         .dac_data_b_out (dac_array_out[1]),
 

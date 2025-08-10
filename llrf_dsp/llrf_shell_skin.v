@@ -20,6 +20,7 @@ module llrf_skin #(
     // ---------------------
     input                dsp_clk,
     input [DW*N_ADC-1:0] adc_data_in,
+    input                dac_clk,
     output [DW-1:0]      dac_data_a_out,
     output [DW-1:0]      dac_data_b_out,
 
@@ -113,6 +114,7 @@ llrf_shell #(.CBUF_AW(11)) dsp (
 
     .dsp_clk            (dsp_clk),
     .adc_data_in        (adc_data_in_r),
+    .dac_clk            (dac_clk),
     .dac_data_a_out     (dac_data_a_out),
     .dac_data_b_out     (dac_data_b_out),
 

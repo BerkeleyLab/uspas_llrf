@@ -201,13 +201,9 @@ gmii_to_rgmii #( .in_phase_tx_clk(1)) gmii_to_rgmii_i (
 `define DSP_FREQ_MHZ 115.0
 `endif
 
-`ifndef DAC_INTERP_COEFF_R
-`define DAC_INTERP_COEFF_R 1.0
-`endif
-
 zest #(
     .DSP_FREQ_MHZ       (`DSP_FREQ_MHZ),
-    .DAC_INTERP_COEFF_R (`DAC_INTERP_COEFF_R),
+    .TRANSPARENT_DAC    (1),    // XXX
     .BASE_ADDR          (8'h05)
 ) zest_inst (
     .ADC_PDWN       (ZEST_ADC_PDWN      ),
@@ -260,6 +256,7 @@ zest #(
     .clk_div_out    (clk_div_out),
     .adc_out_clk    (adc_out_clk),
     .adc_out_data   (adc_out_data),
+    .dac_clk_out    (dac_clk_out),
     .dac_in_data_i  (dac_a_out[15:2]),
     .dac_in_data_q  (dac_b_out[15:2]),
 

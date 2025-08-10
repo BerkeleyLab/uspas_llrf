@@ -62,6 +62,7 @@ module llrf_shell #(
     // ---------------------
     input                dsp_clk,
     input [DW*N_ADC-1:0] adc_data_in,
+    input                dac_clk,
     output [DW-1:0]      dac_data_a_out,
     output [DW-1:0]      dac_data_b_out,
 
@@ -108,7 +109,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [6:0] cic_base_period; top-level
 // reg [3:0] cic_wave_shift; top-level
 // reg [3:0] inlk_wave_shift; top-level
-// reg [0:0] dds_reset; top-level single-cycle
 // reg [31:0] dds_phase_step; top-level
 // reg signed [18:0] dds_phase_shift; top-level
 // reg [11:0] dds_modulo; top-level
@@ -127,15 +127,21 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [0:0] phs_loop_enable; top-level
 // reg [0:0] amp_loop_reset; top-level
 // reg [0:0] phs_loop_reset; top-level
-// reg [0:0] dsp_reset; top-level
+// reg [0:0] dsp_reset; top-level single-cycle
 // reg [31:0] pulse_high_len; top-level
 // reg [0:0] pulse_mode; top-level
 // reg [0:0] dac_permit; top-level
+// reg [0:0] duc_spectral_flip; top-level
 // reg [0:0] ntw_amp_enable; top-level
 // reg [0:0] ntw_phs_enable; top-level
 // reg [0:0] system_bist_pass; top-level
 // reg [1:0] wave_trig_sel; top-level;
 // reg [0:0] slow_snap_cic; top-level
+// newad-force lb2 domain
+// reg [31:0] tx_dds_phase_step; top-level
+// reg signed [18:0] tx_dds_phase_shift; top-level
+// reg [11:0] tx_dds_modulo; top-level
+// reg [17:0] tx_dds_amplitude; top-level
 // newad-force lb domain
 
 // Transfer local bus to dsp clk domain:
@@ -148,13 +154,23 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
      .clk_out(lb1_clk), .gate_out(lb1_write), .data_out({lb1_addr,lb1_data})
  );
 
+// Transfer local bus to dac clk domain:
+ wire lb2_clk = dac_clk;
+ wire [LB_DW-1:0] lb2_data;
+ wire [LB_ADW-1:0] lb2_addr;
+ wire lb2_write;
+ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_2x(
+     .clk_in(lb_clk), .gate_in(lb_write), .data_in({lb_addr,lb_data}),
+     .clk_out(lb2_clk), .gate_out(lb2_write), .data_out({lb2_addr,lb2_data})
+ );
+
 `AUTOMATIC_decode
 
     // RX NCO LO
     wire signed [DWLO-1:0] cosd, sind;
     dds #( .DWLO(DWLO) ) rx_dds (
         .clk          (dsp_clk),
-        .reset        (dds_reset),
+        .reset        (dsp_reset),
         .amplitude    (dds_amplitude),
         .phase_shift  (dds_phase_shift),
         .phase_step_h (dds_phase_step[31:12]),
@@ -423,7 +439,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // Instantiate feedback controller in baseband
     // ---------------------
 
-    wire signed [15:0] dac_out;
+    wire signed [DW-1:0] dac_out;
     wire signed [DWBB-1:0] drive_i, drive_q;
     wire signed [DWBB-1:0] amp_measured, phs_measured;
 
@@ -452,27 +468,53 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .err_out_phs      (err_out_phs)
     );
 
-   // base-band DAC output for IQ waveform monitoring
+    // base-band DAC output for IQ waveform monitoring
 
     assign sig_i_data[N_ADC] = drive_i;
     assign sig_q_data[N_ADC] = drive_q;
     assign sig_i_data[N_ADC+1] = drive_i;
     assign sig_q_data[N_ADC+1] = drive_q;
 
-    // Digital Up-converter - Double side-band modulator
-    // Digital quadrature modulation followed by analog up-conversion mixer
-    // rf_out = I*cos(wt) - Q*sin(wt)
-    // delay: 3 cycles
-    // XXX: cpxmul_fullspeed requires DWBB==DWLO
-    cpxmul_fullspeed #(
-        .DWI(DWBB), .OUT_SHIFT(DW+1), .OWI(DW)
+    // Digital Up Conversion after interpolation and domain crossing
+
+    wire tx_dds_reset;
+    flag_xdomain dsp_reset_dac (
+        .clk1           (dsp_clk),
+        .flagin_clk1    (dsp_reset),
+        .clk2           (dac_clk),
+        .flagout_clk2   (tx_dds_reset)
+    );
+
+    wire signed [DWLO-1:0] duc_cos, duc_sin;
+    dds #( .DWLO(DWLO) ) tx_dds (
+        .clk          (dac_clk),
+        .reset        (tx_dds_reset),
+        .amplitude    (tx_dds_amplitude),
+        .phase_shift  (tx_dds_phase_shift),
+        .phase_step_h (tx_dds_phase_step[31:12]),
+        .phase_step_l (tx_dds_phase_step[11:0]),
+        .modulo       (tx_dds_modulo),
+        .cos_out      (duc_cos),
+        .sin_out      (duc_sin)
+    );
+
+    dac_duc #(
+        .DWI    (DWBB),
+        .DWO    (DW),
+        .DWLO   (DWLO)
     ) duc (
-        .clk    (dsp_clk),
-        .re_a   (drive_i),
-        .im_a   (drive_q),
-        .re_b   (cosd),
-        .im_b   (sind),
-        .re_out (dac_out)
+        .dsp_clk        (dsp_clk),
+        .dsp_reset      (dsp_reset),
+        .spectral_flip  (duc_spectral_flip),
+        .i_data_in      (drive_i),
+        .i_data_valid   (1'b1),
+        .q_data_in      (drive_q),
+        .q_data_valid   (1'b1),
+        .dac_clk        (dac_clk),
+        .cosa           (duc_cos),
+        .sina           (duc_sin),
+        .dac_i_out      (dac_out),
+        .dac_q_out      ()
     );
 
     // ----------------------

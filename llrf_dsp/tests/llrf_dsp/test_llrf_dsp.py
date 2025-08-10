@@ -8,14 +8,20 @@ from llrf_model.plant import Plant
 import itertools
 import random
 import logging
+import json
 
 
-class TestLLRF:
-    def __init__(self, dut: SimHandleBase,
-                 f_config='USPAS', settings_fname='settings.json'):
+class TB:
+    def __init__(self, dut: SimHandleBase, f_config='USPAS'):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
-        self.llrf = llrf = LLRFModel(f_config, settings_fname)
+        with open('../../settings.json') as f:
+            configs = json.load(f)
+        dsp_config = configs[f_config]
+        # override tx dds setting for loopback test at IF_adc, no upsampling
+        dsp_config['TX_NUM_DDS'] = dsp_config['NUM_DDS']
+        dsp_config['TX_DEN_DDS'] = dsp_config['DEN_DDS']
+        self.llrf = llrf = LLRFModel(dsp_config, tx_upsample=False)
         self.plant = Plant(
             conf=f_config, settings_fname='cavity.json', llrf=llrf)
         self.log_banner(f'Simulating: {f_config}')
@@ -27,7 +33,7 @@ class TestLLRF:
         self.dut._log.info(
             f'RX phase off: {llrf.rx.phase_off_deg:8.2f} deg; '
             f'TX phase off: {llrf.tx.phase_off_deg:8.2f} deg')
-        self.dut._log.info(
+        self.dut._log.debug(
             f'RX phase off: {rx_phase_off_reg:8d} cnt; '
             f'TX phase off: {tx_phase_off_reg:8d} cnt')
         self.dut._log.info(f'inlk_gain: {llrf.inlk_gain:10.6f}')
@@ -42,7 +48,7 @@ class TestLLRF:
         await self.reset_dut()
         # scramble internal init states of dut:
         await ClockCycles(self.dut.clk, random.randint(0, 20))
-        amp_exp = self.llrf.cal_config.max_adc_input
+        amp_exp = self.llrf.cal_factors.max_adc_input
         phs_exp = wrap_phase(random.random() * 360)
         cocotb.start_soon(self.drive_dds())
         return amp_exp, phs_exp
@@ -158,7 +164,7 @@ class TestLLRF:
 
 @cocotb.test(timeout_time=30, timeout_unit='us')
 async def test_alsu(dut):
-    tester = TestLLRF(dut, f_config='ALSU')
+    tester = TB(dut, f_config='ALSU')
     await tester.test_rx()
     await tester.test_open_loop()
     await tester.test_close_loop()
@@ -166,7 +172,7 @@ async def test_alsu(dut):
 
 @cocotb.test(timeout_time=30, timeout_unit='us')
 async def test_uspas(dut):
-    tester = TestLLRF(dut, f_config='USPAS')
+    tester = TB(dut, f_config='USPAS')
     await tester.test_rx()
     await tester.test_open_loop()
     await tester.test_close_loop()
@@ -174,7 +180,7 @@ async def test_uspas(dut):
 
 @cocotb.test(timeout_time=30, timeout_unit='us')
 async def test_lemp(dut):
-    tester = TestLLRF(dut, f_config='LEMP')
+    tester = TB(dut, f_config='LEMP')
     await tester.test_rx()
     await tester.test_open_loop()
     await tester.test_close_loop()
@@ -182,7 +188,7 @@ async def test_lemp(dut):
 
 @cocotb.test(timeout_time=30, timeout_unit='us')
 async def test_awa(dut):
-    tester = TestLLRF(dut, f_config='AWA')
+    tester = TB(dut, f_config='AWA')
     await tester.test_rx()
     await tester.test_open_loop()
     await tester.test_close_loop()

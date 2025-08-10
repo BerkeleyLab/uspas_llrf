@@ -8,39 +8,50 @@ import logging
 import numpy as np
 from dataclasses import asdict
 from pprint import pformat
+import json
 import itertools
 import os
 
 
 class TB:
-    def __init__(self, dut, f_config='LEMP', settings_fname='settings.json',
-                 wave_samp_per=1):
+    def __init__(self, dut, conf='LEMP', wave_samp_per=1):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
-        self.f_config = f_config
-        self.llrf = llrf = LLRFModel(f_config, settings_fname, wave_samp_per)
+        self.conf = conf
+        with open('../../settings.json') as f:
+            configs = json.load(f)
+        dsp_config = configs[conf]
+        # override tx dds setting for loopback test at IF_adc
+        dsp_config['TX_NUM_DDS'] = dsp_config['NUM_DDS']
+        dsp_config['TX_DEN_DDS'] = dsp_config['DEN_DDS'] * 2
+        self.llrf = llrf = LLRFModel(dsp_config, wave_samp_per=wave_samp_per)
         self.lb = LocalbusAppMaster(
             dut, dut.lb_clk, regmap_json_path='../../llrf_shell.json')
-        self.log_banner(f'Simulating: {f_config}')
-        self.dut._log.info(f'LLRF Model:\n{llrf.rx}')
-        self.dut._log.info(f'InitRegisters:\n{pformat(llrf.init_regs)}')
-        self.dut._log.info(f'Calibrations:\n{pformat(llrf.cal_config)}')
+        self.log_banner(f'Simulating: {conf}')
+        self.dut._log.info(f'LLRF RX:\n{llrf.rx}')
+        self.dut._log.info(f'LLRF TX:\n{llrf.tx}')
+        self.dut._log.info(f'Calibrations:\n{pformat(llrf.cal_factors)}')
+
         # clocks
         cocotb.start_soon(Clock(dut.lb_clk, 8, units="ns").start())
         cocotb.start_soon(Clock(dut.gtx_rxclk, 8, units="ns").start())
         cocotb.start_soon(
             Clock(dut.dsp_clk, llrf.DSP_CLK_CYCLE, units="ns").start())
+        cocotb.start_soon(
+            Clock(dut.dac_clk, llrf.DSP_CLK_CYCLE / 2, units="ns").start())
 
         # test bench setup
         self.loopback_dac, self.feedback_dac = 0, 1
-        # use known ADC channels for feedback and phase reference line (PRL)
-        self.feedback_adc = self.llrf.FDBK_ADC_CHAN
-        self.phaseref_adc = self.llrf.PRL_ADC_CHAN
+        self.feedback_adc = self.llrf.feedback_adc
+        self.phaseref_adc = self.llrf.phaseref_adc
         # pick a random available ADC channel for loopback test
         available_adcs = [
             ch for ch in range(8)
             if ch not in [self.phaseref_adc, self.feedback_adc]]
         self.loopback_adc = random.choice(available_adcs)
+        self.dut._log.warning(
+            f'phaseref_adc: {self.phaseref_adc}, '
+            f'loopback_adc: {self.loopback_adc}')
         # flattened signal array of 2 DAC + 8 ADC
         self.sig_names = {
             8 + self.feedback_dac: 'feedback_dac',
@@ -49,7 +60,7 @@ class TB:
             self.feedback_adc: 'feedback_adc',
             self.phaseref_adc: 'phaseref_adc'}
 
-        self.amp_exp = int(llrf.cal_config.max_adc_input)
+        self.amp_exp = int(llrf.cal_factors.max_adc_input)
         self.phs_exp = random.randint(-180, 180)
         cocotb.start_soon(
             self.drive_phaseref_adc(
@@ -80,8 +91,8 @@ class TB:
     async def drive_phaseref_adc(self, ch=0, amp=0, phs=0, noise_amp=3):
         await FallingEdge(self.dut.llrf_shell.dsp_reset)
         # truly important but empirical to synchronize with DDS
-        t_start = {'ALSU': 12, 'USPAS': 0, 'LEMP': 11, 'AWA': 15}
-        for t in itertools.count(t_start[self.f_config]):
+        t_start = {'ALSU': 0, 'USPAS': 1, 'LEMP': 6, 'AWA': 11}
+        for t in itertools.count(t_start[self.conf]):
             await RisingEdge(self.dut.dsp_clk)
             sig = amp * np.exp(1j * (self.llrf.omega * t + np.deg2rad(phs)))
             noise = random.randint(-noise_amp, noise_amp)
@@ -135,10 +146,11 @@ class TB:
         return min, max
 
     async def write_init_regs(self):
-        await self.lb.write_reg('dsp_reset', 1)
+        self.dut._log.info(f'InitRegisters:\n{pformat(self.llrf.init_regs)}')
         for name, val in asdict(self.llrf.init_regs).items():
             await self.lb.write_reg(name, val)
-        await self.lb.write_reg('dsp_reset', 0)
+        # single cycle, for resetting both up/down DDS
+        await self.lb.write_reg('dsp_reset', 1)
 
     async def verify_init_regs(self):
         for name, val in asdict(self.llrf.init_regs).items():
@@ -154,6 +166,8 @@ class TB:
         self.cic_names = [
             self.sig_names[9-idx] for idx, enabled in enumerate(self.cic_chans)
             if enabled][::-1]  # lsb_mask==1: first chan is LSB
+        self.dut._log.debug(f'cic chans: {self.cic_chans}')
+        self.dut._log.debug(f'cic names: {self.cic_names}')
         self.llrf.init_regs.dac_permit = True
         # compensate for 1 cycle latency of loopback
         phs_exp1 = wrap_phase(self.phs_exp + np.rad2deg(self.llrf.omega))
@@ -167,8 +181,6 @@ class TB:
 
         await self.read_cic_waveform()  # discard 1st waveform
         self.log_banner('CIC Waveform')
-        self.dut._log.info(f'cic chans: {self.cic_chans}')
-        self.dut._log.info(f'cic names: {self.cic_names}')
         for i, name in enumerate(self.cic_names):
             cic_meas = await self.read_cic_waveform(i)
             self.check_sig(cic_meas / self.llrf.mon_gain, sig_name=name)
@@ -177,7 +189,7 @@ class TB:
         i_buf = await self.read_sig_buf(f'adc{self.phaseref_adc}_i_buf')
         q_buf = await self.read_sig_buf(f'adc{self.phaseref_adc}_q_buf')
         iq_avg = np.mean(i_buf + 1j * q_buf)
-        gain = self.llrf.cal_config.rx_gain / self.llrf.CORDIC_GAIN
+        gain = self.llrf.cal_factors.rx_gain / self.llrf.CORDIC_GAIN
         self.check_sig(iq_avg / gain, sig_name='phaseref_adc')
 
         self.log_banner('Min / Max')
@@ -272,7 +284,7 @@ class TB:
 @cocotb.test(timeout_time=400, timeout_unit='us')
 async def test(dut):
     tb = TB(dut,
-            f_config=os.getenv('FSET', 'LEMP'),  # XXX
+            conf=os.getenv('FSET', 'LEMP'),  # XXX
             wave_samp_per=random.randint(1, 8))
     await tb.test_open_loop()
     await tb.test_fast_interlock()
