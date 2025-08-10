@@ -131,7 +131,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [31:0] pulse_high_len; top-level
 // reg [0:0] pulse_mode; top-level
 // reg [0:0] dac_permit; top-level
-// reg [0:0] duc_spectral_flip; top-level
 // reg [0:0] ntw_amp_enable; top-level
 // reg [0:0] ntw_phs_enable; top-level
 // reg [0:0] system_bist_pass; top-level
@@ -142,6 +141,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg signed [18:0] tx_dds_phase_shift; top-level
 // reg [11:0] tx_dds_modulo; top-level
 // reg [17:0] tx_dds_amplitude; top-level
+// reg [0:0] duc_spectral_flip; top-level
 // newad-force lb domain
 
 // Transfer local bus to dsp clk domain:

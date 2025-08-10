@@ -91,8 +91,9 @@ class TB:
     async def drive_phaseref_adc(self, ch=0, amp=0, phs=0, noise_amp=3):
         await FallingEdge(self.dut.llrf_shell.dsp_reset)
         # truly important but empirical to synchronize with DDS
-        t_start = {'ALSU': 0, 'USPAS': 1, 'LEMP': 6, 'AWA': 11}
-        for t in itertools.count(t_start[self.conf]):
+        # t_start = {'ALSU': 0, 'USPAS': 1, 'LEMP': 6, 'AWA': 11}
+        t_start = 2 * self.llrf.DEN_DDS % 22
+        for t in itertools.count(t_start):
             await RisingEdge(self.dut.dsp_clk)
             sig = amp * np.exp(1j * (self.llrf.omega * t + np.deg2rad(phs)))
             noise = random.randint(-noise_amp, noise_amp)
