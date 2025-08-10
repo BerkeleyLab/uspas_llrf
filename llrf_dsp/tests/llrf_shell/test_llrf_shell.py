@@ -92,7 +92,7 @@ class TB:
         await FallingEdge(self.dut.llrf_shell.dsp_reset)
         # truly important but empirical to synchronize with DDS
         # t_start = {'ALSU': 0, 'USPAS': 1, 'LEMP': 6, 'AWA': 11}
-        t_start = 2 * self.llrf.DEN_DDS % 22
+        t_start = self.llrf.CIC_BASE_PERIOD % 22
         for t in itertools.count(t_start):
             await RisingEdge(self.dut.dsp_clk)
             sig = amp * np.exp(1j * (self.llrf.omega * t + np.deg2rad(phs)))
