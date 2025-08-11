@@ -439,7 +439,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // Instantiate feedback controller in baseband
     // ---------------------
 
-    wire signed [DW-1:0] dac_out;
     wire signed [DWBB-1:0] drive_i, drive_q;
     wire signed [DWBB-1:0] amp_measured, phs_measured;
 
@@ -468,14 +467,33 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .err_out_phs      (err_out_phs)
     );
 
+    // ----------------------
+    // Pulsing and permit at baseband
+    // ----------------------
+    wire pulse_val;
+    pulse_gen #(.AW(32)) pulse_gen (
+        .clk        (dsp_clk),
+        .trigger    (cbuf_sync),        // sync with waveform
+        .high_len   (pulse_high_len),   // unit: DSP_CLK_CYCLE
+        .pulse_out  (pulse_val)
+    );
+    wire drive_on2 = pulse_mode ? pulse_val : 1'b1;  // non-interruptible
+    wire drive_on1 = dac_permit ? drive_on2 : 1'b0;  // TBD with interlock
+
+    wire signed [DWBB-1:0] drive_i_out, drive_q_out;
+    assign drive_i_out = drive_on1 ? drive_i : {DWBB{1'b0}};
+    assign drive_q_out = drive_on2 ? drive_q : {DWBB{1'b0}};
+
     // base-band DAC output for IQ waveform monitoring
 
-    assign sig_i_data[N_ADC] = drive_i;
-    assign sig_q_data[N_ADC] = drive_q;
-    assign sig_i_data[N_ADC+1] = drive_i;
-    assign sig_q_data[N_ADC+1] = drive_q;
+    assign sig_i_data[N_ADC] = drive_i_out;
+    assign sig_q_data[N_ADC] = drive_q_out;
+    assign sig_i_data[N_ADC+1] = drive_i_out;
+    assign sig_q_data[N_ADC+1] = drive_q_out;
 
-    // Digital Up Conversion after interpolation and domain crossing
+    // ----------------------
+    // Digital Up Conversion after interpolation and domain crossing to dac_clk
+    // ----------------------
 
     wire tx_dds_reset;
     flag_xdomain dsp_reset_dac (
@@ -498,6 +516,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .sin_out      (duc_sin)
     );
 
+    wire signed [DW-1:0] dac_i_out, dac_q_out;
     dac_duc #(
         .DWI    (DWBB),
         .DWO    (DW),
@@ -506,16 +525,18 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .dsp_clk        (dsp_clk),
         .dsp_reset      (dsp_reset),
         .spectral_flip  (duc_spectral_flip),
-        .i_data_in      (drive_i),
+        .i_data_in      (drive_i_out),
         .i_data_valid   (1'b1),
-        .q_data_in      (drive_q),
+        .q_data_in      (drive_q_out),
         .q_data_valid   (1'b1),
         .dac_clk        (dac_clk),
         .cosa           (duc_cos),
         .sina           (duc_sin),
-        .dac_i_out      (dac_out),
-        .dac_q_out      ()
+        .dac_i_out      (dac_i_out),
+        .dac_q_out      (dac_q_out)
     );
+    assign dac_data_a_out = dac_i_out;
+    assign dac_data_b_out = dac_q_out;
 
     // ----------------------
     // Network analyzer feature
@@ -538,18 +559,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         .phs_stp_ntw      (phs_setpoint_ntw),
         `AUTOMATIC_ntw
     );
-
-    wire pulse_val;
-    pulse_gen #(.AW(32)) pulse_gen (
-        .clk        (dsp_clk),
-        .trigger    (cbuf_sync),        // sync with waveform
-        .high_len   (pulse_high_len),   // unit: DSP_CLK_CYCLE
-        .pulse_out  (pulse_val)
-    );
-    wire drive_on2 = pulse_mode ? pulse_val : 1'b1;  // non-interruptible
-    wire drive_on1 = dac_permit ? drive_on2 : 1'b0;  // TBD with interlock
-    assign dac_data_a_out = drive_on1 ? dac_out : 16'h0;
-    assign dac_data_b_out = drive_on2 ? dac_out : 16'h0;
 
     // timing module with EVR
     wire [15:0] evr_evcnt;

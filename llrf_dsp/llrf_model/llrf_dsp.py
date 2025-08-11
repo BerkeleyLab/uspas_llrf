@@ -299,7 +299,7 @@ class DUC(LLRFModule):
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        self.pipeline = -8 if upsample else 3
+        self.pipeline = 0 if upsample else 3
         self.gain = self.z**(-self.pipeline)
 
 

@@ -94,7 +94,7 @@ class TB:
         self.dut._log.info(f'LLRF Model:\n{self.model}')
         amp_exp, phs_exp = await self.init_test()
         # wait for the first sample becomes available
-        await ClockCycles(self.dut.dac_clk, abs(self.model.duc.pipeline) + 4)
+        await ClockCycles(self.dut.dac_clk, 12)
         await self.check_sig(amp_exp, phs_exp)
 
 

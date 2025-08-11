@@ -11,7 +11,8 @@ module dac_duc #(
     parameter integer DWI = 18,
     parameter integer DWO = 16,
     parameter integer DWLO = 18,
-    localparam integer INTP_NUM = 2
+    localparam integer INTP_NUM = 2,
+    localparam integer LO_DELAY = 8  // match latench of interp_xdomain
 ) (
     input dsp_clk,
     input dsp_reset,
@@ -50,14 +51,34 @@ module dac_duc #(
         .out_data       (dac_q_data)
     );
 
-    wire signed [DWLO-1:0] sin_i = spectral_flip ? -sina : sina;
+    // delay LO to match pipeline latency of I/Q
+    // also helps timing
+    wire signed [DWLO-1:0] cos_i=0, sin_i=0;
+    reg_delay #(.dw(DWLO), .len(LO_DELAY)) cos_d (
+        .clk    (dac_clk),
+        .reset  (1'b0),
+        .gate   (1'b1),
+        .din    (cosa),
+        .dout   (cos_i)
+    );
+
+    wire signed [DWLO-1:0] sinb = spectral_flip ? -sina : sina;
+    reg_delay #(.dw(DWLO), .len(LO_DELAY)) sin_d (
+        .clk    (dac_clk),
+        .reset  (1'b0),
+        .gate   (1'b1),
+        .din    (sinb),
+        .dout   (sin_i)
+    );
+
+    // actual modulation
     cpxmul_fullspeed #(
         .DWI(DWI), .OUT_SHIFT(DWO+1), .OWI(DWO)
     ) duc_iq (
         .clk    (dac_clk),
         .re_a   (dac_i_data),
         .im_a   (dac_q_data),
-        .re_b   (cosa),
+        .re_b   (cos_i),
         .im_b   (sin_i),
         .re_out (dac_i_out),
         .im_out (dac_q_out)
