@@ -266,6 +266,15 @@ A pair of CORDIC are used to convert the complex signal to between rectangular a
 
   [`cocotb`](https://docs.cocotb.org/en/stable/index.html) tests will go through all test cases for various frequency settings, each has a test of RX, open loop and close loop responses. The results are integrated as part of the gitlab Continuous Integration, where the configuration can be found at [.gitlab-ci.cml](.gitlab-ci.cml).
 
+### Waveform recorder
+
+Three functions are integrated in the [llrf_dsp/cic_waves.v](llrf_dsp/cic_waves.v):
+* Dynamic waveform with a run-time configurable CIC filter and channel selector. The decimation factor is the production of `cic_base_period` and `wave_samp_per` registers. The CIC filter response and calibration factors are calculated at the `CICWaveRecorder` class in `llrf_dsp.py`.
+* A circular buffer that captures the CIC waveform, associated with diagnostic data including minimum and maximum value of each channel, 64 bit timestamp and fault status. Trigger logic, pre and post trigger buffer, fault freezing features are included.
+* Sharing the same integrator, a fixed decimation filtered datastream of all channels are generated for the use of fast interlock purpose.
+
+![cic_waves](./fig/cic_wave.drawio.svg)
+
 ### LLRF Shell
 
 * RTL implementation

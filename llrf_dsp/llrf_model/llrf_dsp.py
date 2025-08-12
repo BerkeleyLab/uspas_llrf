@@ -23,7 +23,8 @@ def clamp(value, min_value, max_value):
 
 
 class LLRFModule:
-    CORDIC_GAIN = 1.646760258
+    # 1.646760258
+    CORDIC_GAIN = np.prod([np.sqrt(1 + 4**-n) for n in range(21)])
 
     def __init__(self, num: int = 4,  den: int = 11) -> None:
         """Base class for LLRF DSP module
