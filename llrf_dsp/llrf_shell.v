@@ -92,6 +92,7 @@ module llrf_shell #(
     // ---------------------
     // External trigger interface
     // ---------------------
+    // XXX simplify
     input [15:0]         etrig_pulse_cnt,
     input                etrig_pulse,
     input                etrig_pulse_delay
@@ -292,7 +293,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // -- Waveform triggering logic
     localparam WAVE_TRIG_ALWAYS = 0,  // internal trigger
                WAVE_TRIG_EXT    = 1,
-               WAVE_TRIG_EXT_DLY= 2,
+               WAVE_TRIG_EXT_DLY= 2,  // XXX remove
                WAVE_TRIG_EVR    = 3;
 
     // ---------------------
@@ -494,6 +495,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // ----------------------
     // Digital Up Conversion after interpolation and domain crossing to dac_clk
     // ----------------------
+    // XXX enable dual loop controllers and DAC switches
 
     wire tx_dds_reset;
     flag_xdomain dsp_reset_dac (
@@ -541,6 +543,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     // ----------------------
     // Network analyzer feature
     // ----------------------
+    // XXX replace by dds.v
     wire ntw_trig_i = (ntw_amp_enable || ntw_phs_enable) ? cbuf_sync : 0;
 
     wire signed [17:0] ntw_cos_debug;
