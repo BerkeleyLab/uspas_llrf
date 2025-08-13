@@ -12,12 +12,12 @@ As part of the full-stack open source firmware development in Berkeley Lab, we l
 
 * For `conda` users, a python virtual environment can be created as:
 
-  ```
+  ```bash
   conda env create -f python/environment.yml
   conda activate uspas_llrf
   ```
 
-* `gitlab` Continuous Integration is enabled in this repository as defined [here](.gitlab-ci.yml), including steps of:
+* `gitlab` Continuous Integration is enabled in this repository as defined [.gitlab-ci.yml](.gitlab-ci.yml), including steps of:
   * Coding style sanity checking using `flake8`;
   * `cocotb` LLRF DSP behavioral verification;
   * Clock domain crossing validation;
@@ -69,6 +69,7 @@ We use LBNL Bedrock's Makefile based building system to find dependencies and sy
 ### FPGA carrier ([Marble](https://github.com/BerkeleyLab/marble))
 
 See [marble_bsp/marble_bsp.v](marble_bsp/marble_bsp.v), which features:
+
 * LBNL local bus control interface;
 * LBNL Gigabit Ethernet UDP engine ([Packet Badger](https://github.com/BerkeleyLab/Bedrock/tree/master/badger));
 * LBNL 8b10b MRF timing event receiver (EVR);
@@ -269,6 +270,7 @@ A pair of CORDIC are used to convert the complex signal to between rectangular a
 ### Waveform recorder
 
 Three functions are integrated in the [llrf_dsp/cic_waves.v](llrf_dsp/cic_waves.v):
+
 * Dynamic waveform with a run-time configurable CIC filter and channel selector. The decimation factor is the production of `cic_base_period` and `wave_samp_per` registers. The CIC filter response and calibration factors are calculated at the `CICWaveRecorder` class in `llrf_dsp.py`.
 * A circular buffer that captures the CIC waveform, associated with diagnostic data including minimum and maximum value of each channel, 64 bit timestamp and fault status. Trigger logic, pre and post trigger buffer, fault freezing features are included.
 * Sharing the same integrator, a fixed decimation filtered datastream of all channels are generated for the use of fast interlock purpose.
@@ -279,10 +281,9 @@ Three functions are integrated in the [llrf_dsp/cic_waves.v](llrf_dsp/cic_waves.
 
 * RTL implementation
 
-  Putting things together, we can form a complete chain of digital frequency conversion for base-band feedback PI control.
-  See [llrf_dsp/dsp_core.v](llrf_dsp/llrf_dsp.v). Diagram:
+  Putting things together, we can form a complete chain of digital frequency conversion with two independent feedback control loops with flexible ADC / DAC channel mapping, with independent ADC / DAC IF frequencies.
 
-  ![zest_clk](./fig/llrf_dsp.drawio.svg)
+  ![llrf_shell](./fig/llrf_shell.drawio.svg)
 
 * Simulation
 
@@ -296,7 +297,6 @@ Three functions are integrated in the [llrf_dsp/cic_waves.v](llrf_dsp/cic_waves.
   * Wide bandwidth IQ waveform acquisition for each DAC and ADC base-band signal with sample-to-sample resolution;
   * Fast interlock protection logic and RF permit latching;
   * Trigger logic;
-
 
 ## Software
 
