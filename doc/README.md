@@ -28,7 +28,7 @@ As part of the full-stack open source firmware development in Berkeley Lab, we l
 
 ### Applications and settings
 
-The following of pre-defined LLRF applications are supported, and their frequency settings are described in [README.md](./README.md).
+The following of pre-defined LLRF applications are supported, and their frequency settings are described in [README.md](../README.md).
 
 * `USPAS`: For USPAS LLRF class taught in 2023.
 * `ALSU`: For LBNL ALS-U AR LLRF system.
@@ -38,14 +38,14 @@ The following of pre-defined LLRF applications are supported, and their frequenc
 Detailed description of settings:
 
 * LLRF DSP:
-  All configurations are contained in [llrf_dsp/settings.json].
+  All configurations are contained in [settings.json](../llrf_dsp/settings.json).
 * Board Support:
-  For each application, customized hardware settings and LLRF configurations can be found in `soc/marble_zest/`, where each application's configuration files for FPGA carrier and digitizer are located at.
+  For each application, customized hardware settings and LLRF configurations can be found in [../soc/marble_zest/common](../soc/marble_zest/common), where each application's configuration files for FPGA carrier and digitizer are located at.
 
 ## System-On-Chip architecture
 
 A RISC-V soft core [PicoRV32](https://github.com/YosysHQ/picorv32) is used for peripheral control, booting and diagnostics.
-We leverage the the cross-compiler tool and common modules described in Berkeley Lab's [Bedrock](https://github.com/BerkeleyLab/Bedrock/tree/master/soc/picorv32) repository.
+We leverage the cross-compiler tool and common modules described in Berkeley Lab's [Bedrock](https://github.com/BerkeleyLab/Bedrock/tree/master/soc/picorv32) repository.
 
 The design can be found in [soc/marble_zest](soc/marble_zest), where:
 
@@ -83,9 +83,8 @@ See [bedrock/board_support/zest_soc](https://github.com/BerkeleyLab/Bedrock/tree
 ### Clocking
 
 As shown in the following diagram of the digitizer (Zest) board support,
-the clock distribution chip (LMK01801) receives an external reference clock,
-and the outputs of two divider groups drives ADC (AD9563) and DAC (AD9781) respectively,
-where the DAC sampling clock is double of the ADC sampling clock, which is the same as the DSP clock.
+the clock distribution chip [LMK01801](https://www.ti.com/lit/ds/symlink/lmk01801.pdf?ts=1755208007264&ref_url=https%253A%252F%252Fwww.google.com%252F) receives an external reference clock,
+and the outputs of two divider groups drives ADC [AD9563](https://www.analog.com/media/en/technical-documentation/data-sheets/AD9653.pdf) and DAC [AD9781](https://www.analog.com/media/en/technical-documentation/data-sheets/ad9780_9781_9783.pdf) respectively, where the DAC sampling clock is double of the ADC sampling clock, which is the same as the DSP clock.
 
 ![zest_clk](./fig/zest_clk.drawio.svg)
 
@@ -97,7 +96,7 @@ $$
 
 ### Numerical Models for simulation
 
-  A collection of LLRF DSP numerical models can be found in [llrf_dsp/llrf_model/lrf_dsp.py](llrf_dsp/llrf_model/llrf_dsp.py), which is shared among all simulations.
+  A collection of LLRF DSP numerical models can be found in [llrf_dsp/llrf_model/llrf_dsp.py](llrf_dsp/llrf_model/llrf_dsp.py), which is shared among all simulations.
 
   The complete feedback controller is modeled, and it can be used for `cocotb` simulation with cavity emulators, whose parameters are defined in [llrf_dsp/llrf_model/cavity.json](llrf_dsp/llrf_model/cavity.json).
   The detailed cavity model co-simulation with discrete signal process is explained in [llrf_dsp/llrf_model/lti.ipynb](llrf_dsp/llrf_model/lti.ipynb).
@@ -133,7 +132,7 @@ There are two conventions for IQ decomposition of a RF signal $y$ at carrier fre
 ### Digital Direct Synthesis (DDS)
 
 Also known as NCO, it is used to generate a pair of sinusoidal signals at a single frequency, with a known starting phase.
-The DSP implementation is shown in the following figure. It is consisted of an phase accumulator and a CORDIC for conversion from Polar to Rectangular coordinate.
+The DSP implementation is shown in the following figure. It is consisted of a phase accumulator and a CORDIC for conversion from Polar to Rectangular coordinate.
 
 * RTL implementation
 

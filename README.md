@@ -78,9 +78,9 @@ make
 
 ```bash
 cd top/marble_zest
-make
+make FSET={TARGET}
 ```
-
+Where TARGET is ALSU, AWA, LEMP or USPAS
 ## Boot-load soft core program
 
 See [soc/marble_zest](soc/marble_zest/synth/README.md).
