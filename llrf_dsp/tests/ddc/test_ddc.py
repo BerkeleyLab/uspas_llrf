@@ -2,7 +2,7 @@ import cocotb
 import random
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, ClockCycles
-from llrf_model.llrf_dsp import DSPCoreRX, wrap_phase, clamp
+from llrf_model.llrf_dsp import DSPCoreRX, wrap_phase, clip_int
 import logging
 import numpy as np
 import itertools
@@ -44,8 +44,7 @@ class TB:
             sig = amp * np.exp(1j * (self.model.omega * t + np.deg2rad(phs)))
             noise = random.randint(-noise_amp, noise_amp)
             await RisingEdge(self.dut.clk)
-            self.dut.adc.value = clamp(
-                int(sig.real + noise), -32768, 32767)
+            self.dut.adc.value = clip_int(sig.real + noise)
 
     async def init_test(self, noise_amp=3) -> None:
         await self.cycle_reset()

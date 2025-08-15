@@ -2,7 +2,7 @@ import cocotb
 import random
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, FallingEdge, ClockCycles
-from llrf_model.llrf_dsp import LLRFModel, clamp, wrap_phase
+from llrf_model.llrf_dsp import LLRFModel, clip_int, wrap_phase
 from local_bus import LocalbusAppMaster
 import logging
 import numpy as np
@@ -96,15 +96,14 @@ class TB:
             await RisingEdge(self.dut.dsp_clk)
             sig = amp * np.exp(1j * (self.llrf.omega * t + np.deg2rad(phs)))
             noise = random.randint(-noise_amp, noise_amp)
-            self.dut.adc_array_in[ch].value = \
-                clamp(int(sig.real + noise), -32768, 32767)
+            self.dut.adc_array_in[ch].value = clip_int(sig.real + noise)
 
     async def loopback(self, dac_chan=0, adc_chan=0):
-        """ loopback dac_chan -> adc_chan with 1 cycle of latency """
+        """ loopback dac_chan -> adc_chan with 0 cycle of latency """
         while True:
             await RisingEdge(self.dut.dsp_clk)
-            self.dut.adc_array_in[adc_chan].value = \
-                self.dut.dac_array_out[dac_chan].value
+            self.dut.adc_array_in[adc_chan].setimmediatevalue(
+                self.dut.dac_array_out[dac_chan].value.signed_integer)
 
     async def read_inlk_task(self, chan=0):
         """Read inlk amplitude and phase from the local bus. """
@@ -169,10 +168,8 @@ class TB:
         self.dut._log.debug(f'cic chans: {self.cic_chans}')
         self.dut._log.debug(f'cic names: {self.cic_names}')
         self.llrf.init_regs.dac_permit = True
-        # compensate for 1 cycle latency of loopback
-        phs_exp1 = wrap_phase(self.phs_exp + np.rad2deg(self.llrf.omega))
         amp_setp, phs_setp = self.llrf.calc_open_loop_setp(
-            self.amp_exp, phs_exp1)
+            self.amp_exp, self.phs_exp)
         self.llrf.init_regs.amp_setpoint = amp_setp
         self.llrf.init_regs.phs_setpoint = phs_setp
         await self.write_init_regs()

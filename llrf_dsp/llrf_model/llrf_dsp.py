@@ -18,8 +18,10 @@ def wrap_phase(phs: float, deg=True):
     return (phs + scale) % (2 * scale) - scale
 
 
-def clamp(value, min_value, max_value):
-    return max(min_value, min(value, max_value))
+def clip_int(value, n_bit=16):
+    max_value = (1 << n_bit - 1) - 1
+    min_value = -(1 << n_bit - 1)
+    return max(min_value, min(int(value), max_value))
 
 
 class LLRFModule:

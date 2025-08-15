@@ -1,4 +1,5 @@
 from leep.raw import LEEPDevice
+from llrf_model.llrf_dsp import LLRFModel
 from llrf_app.bsp import MarbleDevInfo
 import numpy as np
 import pandas as pd
@@ -6,8 +7,6 @@ import json
 import time
 import logging
 logger = logging.getLogger(__name__)
-
-CORDIC_GAIN = 1.646760258
 
 
 class LLRFApp(LEEPDevice):
@@ -20,12 +19,12 @@ class LLRFApp(LEEPDevice):
 
         with open(settings_fname) as f:
             configs = json.load(f)
-        for k, v in configs[conf].items():
-            setattr(self, k, v)
-        self.wave_samp_per = 1
+        dsp_config = configs[conf]
+        self.wave_samp_per = wave_samp_per = 1
+        self.model = model = LLRFModel(dsp_config, wave_samp_per=wave_samp_per)
         self.wfm_len = wfm_len
         assert self.wfm_len <= 2**15  # cbuf size / 2
-        self.cic_ts = self.DSP_CLK_CYCLE * self.CIC_BASE_PERIOD
+        self.cic_ts = model.DSP_CLK_CYCLE * model.CIC_BASE_PERIOD
         self.cic_ts *= self.wave_samp_per
         self.chan_keep = chan_keep & 0x03ff  # 2 dacs, 8 adcs
         self.circ_n_chan = bin(self.chan_keep).count('1')
@@ -66,7 +65,7 @@ class LLRFApp(LEEPDevice):
         df = pd.DataFrame(
             data=np.array(self.reg_read(cols)).T[:len(self.signals)],
             index=self.signals, columns=cols)
-        df['Amp [cnt]'] = df['mon_amp'] / self.INLK_GAIN
+        df['Amp [cnt]'] = df['mon_amp'] / self.model.inlk_gain
         df['Phs [deg]'] = df['mon_phs'] * 360 / (1 << 17)
         return df
 
@@ -81,7 +80,8 @@ class LLRFApp(LEEPDevice):
         """Returns a DataFrame of raw waveforms for 8 adc and 2 dac channels"""
         sig_wfms = self.read_raw_bufs()
         df = pd.DataFrame(sig_wfms.T, columns=self.signals)
-        df['Time [ns]'] = np.arange(sig_wfms.shape[-1]) * self.DSP_CLK_CYCLE
+        df['Time [ns]'] = np.arange(sig_wfms.shape[-1]) * \
+            self.model.DSP_CLK_CYCLE
         df.set_index('Time [ns]', inplace=True)
         return df
 
@@ -92,7 +92,7 @@ class LLRFApp(LEEPDevice):
         self.write_reg('sig_buf_flip', 1)
         while (self.read_reg('sig_buf_ready') != 0x3ff):
             time.sleep(0.001)
-        gain = self.AMP_RX_GAIN / CORDIC_GAIN
+        gain = self.model.rx_gain / self.model.CORDIC_GAIN
         iq_wfms = np.array(self.reg_read(
             [f'{ch}_i_buf' for ch in self.signals] +
             [f'{ch}_q_buf' for ch in self.signals])) / gain
@@ -102,7 +102,8 @@ class LLRFApp(LEEPDevice):
         """returns a DataFrame of all IQ waveforms, in ADC count unit"""
         iq_wfms = self.read_iq_wfms()
         df = pd.DataFrame(iq_wfms.T, columns=self.signals)
-        df['Time [ns]'] = np.arange(iq_wfms.shape[-1]) * self.DSP_CLK_CYCLE
+        df['Time [ns]'] = np.arange(iq_wfms.shape[-1]) * \
+            self.model.DSP_CLK_CYCLE
         df.set_index('Time [ns]', inplace=True)
         for ch in self.signals:
             df[f'{ch}_amp'] = np.abs(df[ch])
@@ -125,7 +126,7 @@ class LLRFApp(LEEPDevice):
         darray = varray.reshape(-1, 2*self.circ_n_chan).T
         iq_arrays = np.array([
             (darray[ix*2] + 1j * darray[ix*2+1])
-            for ix in range(self.circ_n_chan)]) / self.MON_GAIN
+            for ix in range(self.circ_n_chan)]) / self.model.mon_gain
         return iq_arrays
 
     def calc_mp_traces(self, iq_arrays):
