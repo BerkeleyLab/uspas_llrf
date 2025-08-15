@@ -326,8 +326,9 @@ class DSPCoreTX(LLRFModule):
         self.dds = dds
         self.duc = duc = DUC(num=num, den=den, upsample=upsample)
         self.submodules += [dds, duc]
-        self.phase_off_deg = np.angle(self.gain, deg=True)
         if has_cordic:  # in dsp_core.v
+            self.phase_off_deg = np.angle(self.gain, deg=True)
+            # compensate phase gain of upstream modules
             self.tx_cordic = CORDIC(
                 num=num, den=den, phase_off_deg=-self.phase_off_deg)
             self.submodules += [self.tx_cordic]

@@ -53,7 +53,7 @@ module dac_duc #(
 
     // delay LO to match pipeline latency of I/Q
     // also helps timing
-    wire signed [DWLO-1:0] cos_i=0, sin_i=0;
+    wire signed [DWLO-1:0] cos_i, sin_i;
     reg_delay #(.dw(DWLO), .len(LO_DELAY)) cos_d (
         .clk    (dac_clk),
         .reset  (1'b0),

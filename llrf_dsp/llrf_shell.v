@@ -204,7 +204,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 
     // synchronize I/Q divider state for multiple DDC channels
     reg i_sel = 0;
-    always @(posedge dsp_clk) i_sel <= ~i_sel;
+    always @(posedge dsp_clk) i_sel <= dsp_reset ? 0 : ~i_sel;
 
     // create data stream strobes for sig_buf
     // applies to all raw, i, q waveforms

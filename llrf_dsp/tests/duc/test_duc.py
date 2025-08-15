@@ -15,8 +15,6 @@ class TB:
         self.dut = dut
         assert num > 0 and den > 0, "num and den must be positive integers"
         self.spectral_flip = spectral_flip
-        # DSPCoreTX is in dac_clock domain
-        # duc_pipeline is the number of clock cycles
         self.model = DSPCoreTX(num=num, den=den, has_cordic=False)
         cocotb.start_soon(Clock(dut.dsp_clk, 8, units="ns").start())
         cocotb.start_soon(Clock(dut.dac_clk, 4, units="ns").start())
