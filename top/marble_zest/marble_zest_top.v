@@ -203,7 +203,6 @@ gmii_to_rgmii #( .in_phase_tx_clk(1)) gmii_to_rgmii_i (
 
 zest #(
     .DSP_FREQ_MHZ       (`DSP_FREQ_MHZ),
-    .TRANSPARENT_DAC    (1),    // XXX
     .BASE_ADDR          (8'h05)
 ) zest_inst (
     .ADC_PDWN       (ZEST_ADC_PDWN      ),
