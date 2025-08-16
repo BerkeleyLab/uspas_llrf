@@ -64,7 +64,7 @@ marble_zest_synth:
 
 .marble_lemp_run:
   before_script:
-    - pip install pandas
+    - pip install pandas git+https://github.com/BerkeleyLab/leep.git
     - cd top/marble_zest
   stage: run
   tags:
@@ -79,7 +79,7 @@ marble_zest_synth:
 
 .marble_awa_run:
   before_script:
-    - pip install pandas
+    - pip install pandas git+https://github.com/BerkeleyLab/leep.git
     - cd top/marble_zest
   stage: run
   tags:
@@ -94,7 +94,7 @@ marble_zest_synth:
 
 .marble_uspas_run:
   before_script:
-    - pip install pandas
+    - pip install pandas git+https://github.com/BerkeleyLab/leep.git
     - cd top/marble_zest
   stage: run
   tags:

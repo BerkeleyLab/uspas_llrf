@@ -16,6 +16,9 @@ class TB:
         assert num > 0 and den > 0, "num and den must be positive integers"
         self.spectral_flip = spectral_flip
         self.model = DSPCoreTX(num=num, den=den, has_cordic=False)
+        self.dds_omega_deg = np.rad2deg(self.model.omega)
+        if self.spectral_flip:
+            self.dds_omega_deg *= -1
         cocotb.start_soon(Clock(dut.dsp_clk, 8, units="ns").start())
         cocotb.start_soon(Clock(dut.dac_clk, 4, units="ns").start())
 
@@ -34,17 +37,17 @@ class TB:
         for t in itertools.count():
             nco = self.model.dds.amp * np.exp(1j * (self.model.omega * t))
             nco *= self.model.CORDIC_GAIN
-            self.dut.cosa.value = int(nco.real)
-            self.dut.sina.value = int(nco.imag)
+            self.dut.cosa.setimmediatevalue(int(nco.real))
+            self.dut.sina.setimmediatevalue(int(nco.imag))
             await RisingEdge(self.dut.dac_clk)
 
     async def drive_dac(self, amp=1, omega=0, phs=0) -> None:
         """ Drive the DAC input at base band in the DSP clock domain. """
         for t in itertools.count():
             sig = amp * np.exp(1j * (omega * t + np.deg2rad(phs)))
-            self.dut.i_data_in.value = int(sig.real)
+            self.dut.i_data_in.setimmediatevalue(int(sig.real))
+            self.dut.q_data_in.setimmediatevalue(int(sig.imag))
             self.dut.i_data_valid.value = 1
-            self.dut.q_data_in.value = int(sig.imag)
             self.dut.q_data_valid.value = 1
             await RisingEdge(self.dut.dsp_clk)
 
@@ -65,19 +68,16 @@ class TB:
         return amp_exp, phs_exp
 
     async def check_sig(self, amp_exp, phs_off) -> None:
-        phs_step_exp = np.rad2deg(self.model.omega)
-        if self.spectral_flip:
-            phs_step_exp = -phs_step_exp
         self.dut._log.warning(
             f"expected mag: {amp_exp:8.2f} cnt,  phs: {phs_off:8.2f} deg,  "
-            f"  omega: {phs_step_exp:8.2f} deg")
+            f"  omega: {self.dds_omega_deg:8.2f} deg")
         for ix in range(8):
             i_meas = self.dut.dac_i_out.value.signed_integer
             q_meas = self.dut.dac_q_out.value.signed_integer
             iq_meas = i_meas + 1j * q_meas
             amp_meas = np.abs(iq_meas)
             phs_meas = np.angle(iq_meas, deg=True)
-            phs_exp = wrap_phase(phs_off + ix * phs_step_exp)
+            phs_exp = wrap_phase(phs_off + ix * self.dds_omega_deg)
             self.dut._log.warning(
                 f"measured mag: {amp_meas:8.2f} cnt,  "
                 f"phs: {phs_meas:8.2f} deg,  "
@@ -91,8 +91,10 @@ class TB:
     async def test(self):
         self.dut._log.info(f'LLRF Model:\n{self.model}')
         amp_exp, phs_exp = await self.init_test()
-        # wait for the first sample becomes available
-        await ClockCycles(self.dut.dac_clk, 12)
+        # wait after the first sample becomes available
+        n = random.randint(self.model.duc.pipeline, 100)
+        await ClockCycles(self.dut.dac_clk, n)
+        phs_exp = wrap_phase(phs_exp + n * self.dds_omega_deg)
         await self.check_sig(amp_exp, phs_exp)
 
 

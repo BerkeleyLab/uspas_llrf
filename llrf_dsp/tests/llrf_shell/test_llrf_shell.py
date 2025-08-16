@@ -206,6 +206,11 @@ class TB:
             self.check_sig(inlk_meas / self.llrf.inlk_gain,
                            sig_name=self.sig_names[chan])
 
+        for chan in [8 + self.loopback_dac]:
+            inlk_meas = await self.read_inlk_task(chan)
+            self.check_sig(inlk_meas / self.llrf.inlk_tx_gain,
+                           sig_name=self.sig_names[chan])
+
     async def test_close_loop(self, wait=2000):
         self.log_banner('Close Loop Test')
         amp_setp, phs_setp = self.llrf.calc_close_loop_setp(

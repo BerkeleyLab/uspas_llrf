@@ -238,8 +238,7 @@ class CICWaveRecorder(LLRFModule):
         cic_snr_bit_growth = np.log2(cic_R / 2) / 2
         full_shift = np.floor(cic_bit_growth - cic_snr_bit_growth)
         self._wave_shift = int(max((full_shift - self.shift_base), 0))
-        self._gain = 2**(cic_bit_growth - self.shift_base + 2
-                         - self._wave_shift)
+        self._gain = 2**(cic_bit_growth - self.shift_base - self._wave_shift)
 
     @property
     def gain(self):
@@ -289,20 +288,21 @@ class DSPCoreRX(LLRFModule):
 
 
 class DUC(LLRFModule):
-    def __init__(self, num: int = 4,  den: int = 11, upsample: bool = True):
+    def __init__(self, num: int = 4,  den: int = 11,
+                 upsample: bool = True, upsample_pipeline=11):
         """Non-IQ Digital Up-Conversion.
             Gateware:
             upsample = False:
                 cpxmul_fullspeed.v with pipeline=3
             upsample = True:
-                dac_duc.v with pipeline=8
+                dac_duc.v with pipeline=8 + 3
 
         Args:
             num (int): numerator of IF / Fs. Defaults to 4.
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        self.pipeline = 0 if upsample else 3
+        self.pipeline = upsample_pipeline if upsample else 3
         self.gain = self.z**(-self.pipeline)
 
 
@@ -311,6 +311,7 @@ class DSPCoreTX(LLRFModule):
                  dds_amp=74840,
                  has_cordic: bool = True,
                  upsample: bool = True,
+                 upsample_pipeline: int = 11,
                  dds: DDS = None) -> None:
         """Transmitter DSP chain.
             Gateware: tx_cordic.v, cpxmul_fullspeed.v or dac_duc.v
@@ -324,7 +325,9 @@ class DSPCoreTX(LLRFModule):
         if dds is None:
             dds = DDS(amp=dds_amp, num=num, den=den)
         self.dds = dds
-        self.duc = duc = DUC(num=num, den=den, upsample=upsample)
+        self.duc = duc = DUC(
+            num=num, den=den,
+            upsample=upsample, upsample_pipeline=upsample_pipeline)
         self.submodules += [dds, duc]
         if has_cordic:  # in dsp_core.v
             self.phase_off_deg = np.angle(self.gain, deg=True)
@@ -398,15 +401,14 @@ class LLRFCalibrations:
     tx_dds_omega_deg: float = 0.0  # tx_num / tx_den
     mon_gain: float = 1.0
     inlk_gain: float = 1.0
-    max_adc_input: float = (1 << 15) * 0.95  # absolute max input signal level
-    max_dac_output: float = (1 << 15) * 0.95  # absolute max DAC output level
+    inlk_tx_gain: float = 1.0
+    max_adc_input: float = (1 << 15) * 0.95  # absolute max ADC input level
+    max_dac_drive: float = (1 << 15) * 0.95  # absolute max DAC drive level
     max_amp_setpoint: float = field(init=False)  # max amplitude setpoint
-    open_loop_gain: float = field(init=False)
 
     def __post_init__(self):
         """Post-initialization to calculate dependent fields."""
-        self.max_amp_setpoint = self.max_dac_output / self.tx_gain
-        self.open_loop_gain = self.tx_gain
+        self.max_amp_setpoint = self.max_dac_drive / self.tx_gain
 
 
 class LLRFModel(LLRFModule):
@@ -429,8 +431,10 @@ class LLRFModel(LLRFModule):
         self.feedback_adc = self.FDBK_ADC_CHAN
         self.phaseref_adc = self.PRL_ADC_CHAN
         self.rx = DSPCoreRX(num=self.num, den=self.den, dds_amp=self.LO_AMP)
+        # XXX Empirical of 1 more cycle
         self.tx = DSPCoreTX(num=self.TX_NUM_DDS, den=self.TX_DEN_DDS,
-                            dds_amp=self.LO_AMP, upsample=tx_upsample)
+                            dds_amp=self.LO_AMP, upsample=tx_upsample,
+                            upsample_pipeline=13)
         self.cic_inlk = CICWaveRecorder(
             num=self.num, den=self.den,
             cic_base_period=self.CIC_BASE_PERIOD,
@@ -467,8 +471,7 @@ class LLRFModel(LLRFModule):
             tx_dds_modulo=self.tx.dds.modulo,
             duc_spectral_flip=False,
             rx_phase_offset=0,
-            # XXX why -5?
-            tx_phase_offset=self.encode_phase(-5 * np.rad2deg(self.omega)),
+            tx_phase_offset=0,
             prl_adc_chan=self.PRL_ADC_CHAN,
             fdbk_adc_chan=self.FDBK_ADC_CHAN,
             wave_samp_per=self.wave_samp_per,
@@ -490,17 +493,25 @@ class LLRFModel(LLRFModule):
             tx_dds_omega_deg=np.rad2deg(self.tx.dds.omega),
             mon_gain=self.mon_gain,
             inlk_gain=self.inlk_gain,
+            inlk_tx_gain=self.inlk_tx_gain
         )
 
     @property
     def mon_gain(self):
-        """ CIC waveform recorder gain """
-        return self.cic_mon.gain * np.abs(self.rx.gain) / self.CORDIC_GAIN / 4
+        """ CIC waveform recorder gain for RX, from ADC to IQ pairs """
+        return self.cic_mon.gain * self.rx.gain / self.CORDIC_GAIN
 
     @property
     def inlk_gain(self):
-        """ Interlock IQ stream gain """
-        return self.cic_inlk.gain * np.abs(self.rx.gain) / 4
+        """ Interlock IQ stream gain for RX, from ADC to mon_amp/mon_phs
+            values, which includes CORDIC in monitor_inlk.v """
+        return self.cic_inlk.gain * self.rx.gain
+
+    @property
+    def inlk_tx_gain(self):
+        """ Interlock IQ stream gain for TX, from DAC to mon_amp/mon_phs
+            values, which include CORDIC in monitor_inlk.v, and DUC gain """
+        return self.cic_inlk.gain * self.CORDIC_GAIN**2 / self.tx.gain
 
     def calc_open_loop_setp(self, amp_setpoint_adc, phs_setpoint_deg):
         """calculate open loop setpoint register values

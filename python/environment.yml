@@ -16,3 +16,4 @@ dependencies:
       - pyserial==3.5
       - pytest==8.4.1
       - scipy==1.16.1
+      - git+https://github.com/BerkeleyLab/leep.git

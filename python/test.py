@@ -1,5 +1,5 @@
 from llrf_app.app import LLRFApp
-from llrf_app.leep.cli import getargs
+from leep.cli import getargs
 import logging
 logger = logging.getLogger(__name__)
 

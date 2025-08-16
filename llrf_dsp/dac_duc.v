@@ -71,7 +71,7 @@ module dac_duc #(
         .dout   (sin_i)
     );
 
-    // actual modulation
+    // actual modulation, delay: 3 cycles in dac_clk domain
     cpxmul_fullspeed #(
         .DWI(DWI), .OUT_SHIFT(DWO+1), .OWI(DWO)
     ) duc_iq (
