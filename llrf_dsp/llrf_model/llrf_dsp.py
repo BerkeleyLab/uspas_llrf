@@ -26,7 +26,8 @@ def clip_int(value, n_bit=16):
 
 class LLRFModule:
     # 1.646760258
-    CORDIC_GAIN = np.prod([np.sqrt(1 + 4**-n) for n in range(21)])
+    CORDIC_LATENCY = 21  # cordic_g22.v
+    CORDIC_GAIN = np.prod([np.sqrt(1 + 4**-n) for n in range(CORDIC_LATENCY)])
 
     def __init__(self, num: int = 4,  den: int = 11) -> None:
         """Base class for LLRF DSP module
@@ -288,8 +289,7 @@ class DSPCoreRX(LLRFModule):
 
 
 class DUC(LLRFModule):
-    def __init__(self, num: int = 4,  den: int = 11,
-                 upsample: bool = True, upsample_pipeline=11):
+    def __init__(self, num: int = 4,  den: int = 11, upsample: bool = True):
         """Non-IQ Digital Up-Conversion.
             Gateware:
             upsample = False:
@@ -302,7 +302,7 @@ class DUC(LLRFModule):
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        self.pipeline = upsample_pipeline if upsample else 3
+        self.pipeline = 11 if upsample else 3
         self.gain = self.z**(-self.pipeline)
 
 
@@ -311,7 +311,6 @@ class DSPCoreTX(LLRFModule):
                  dds_amp=74840,
                  has_cordic: bool = True,
                  upsample: bool = True,
-                 upsample_pipeline: int = 11,
                  dds: DDS = None) -> None:
         """Transmitter DSP chain.
             Gateware: tx_cordic.v, cpxmul_fullspeed.v or dac_duc.v
@@ -325,11 +324,9 @@ class DSPCoreTX(LLRFModule):
         if dds is None:
             dds = DDS(amp=dds_amp, num=num, den=den)
         self.dds = dds
-        self.duc = duc = DUC(
-            num=num, den=den,
-            upsample=upsample, upsample_pipeline=upsample_pipeline)
+        self.duc = duc = DUC(num=num, den=den, upsample=upsample)
         self.submodules += [dds, duc]
-        if has_cordic:  # in dsp_core.v
+        if has_cordic:  # in dsp_core.v, in dsp_clk domain!
             self.phase_off_deg = np.angle(self.gain, deg=True)
             # compensate phase gain of upstream modules
             self.tx_cordic = CORDIC(
@@ -412,6 +409,9 @@ class LLRFCalibrations:
 
 
 class LLRFModel(LLRFModule):
+    # tx_phase_off_cycles_map = {'ALSU': 1, 'USPAS': 2, 'LEMP': 7, 'AWA': -21}
+    # tx_phase_off_cycles = 45
+
     def __init__(self, dsp_config=default_configs['USPAS'],
                  tx_upsample=True, wave_samp_per=1):
         """Math model that provides helper functions for simulation
@@ -428,13 +428,14 @@ class LLRFModel(LLRFModule):
         super().__init__(self.NUM_DDS, self.DEN_DDS)
         assert self.LO_AMP < (2 ** 17 / self.CORDIC_GAIN), "LO_AMP saturate!"
         self.wave_samp_per = wave_samp_per
+        # pre-compensate TX phase to match DAC IF phase, applied to tx_cordic
+        # very tricky to understand!
+        self.tx_phase_off_cycles = self.TX_DEN_DDS - self.CORDIC_LATENCY
         self.feedback_adc = self.FDBK_ADC_CHAN
         self.phaseref_adc = self.PRL_ADC_CHAN
         self.rx = DSPCoreRX(num=self.num, den=self.den, dds_amp=self.LO_AMP)
-        # XXX Empirical of 1 more cycle
         self.tx = DSPCoreTX(num=self.TX_NUM_DDS, den=self.TX_DEN_DDS,
-                            dds_amp=self.LO_AMP, upsample=tx_upsample,
-                            upsample_pipeline=13)
+                            dds_amp=self.LO_AMP, upsample=tx_upsample)
         self.cic_inlk = CICWaveRecorder(
             num=self.num, den=self.den,
             cic_base_period=self.CIC_BASE_PERIOD,
@@ -471,7 +472,8 @@ class LLRFModel(LLRFModule):
             tx_dds_modulo=self.tx.dds.modulo,
             duc_spectral_flip=False,
             rx_phase_offset=0,
-            tx_phase_offset=0,
+            tx_phase_offset=self.encode_phase(
+                self.tx_phase_off_cycles * np.rad2deg(self.tx.omega)),
             prl_adc_chan=self.PRL_ADC_CHAN,
             fdbk_adc_chan=self.FDBK_ADC_CHAN,
             wave_samp_per=self.wave_samp_per,
@@ -498,20 +500,36 @@ class LLRFModel(LLRFModule):
 
     @property
     def mon_gain(self):
-        """ CIC waveform recorder gain for RX, from ADC to IQ pairs """
+        """ CIC waveform recorder gain for RX,
+            from ADC to IQ pairs, including:
+            * RX (DDC) gain (excluding CORDIC)
+            * CIC wave recorder gain
+        """
         return self.cic_mon.gain * self.rx.gain / self.CORDIC_GAIN
 
     @property
     def inlk_gain(self):
-        """ Interlock IQ stream gain for RX, from ADC to mon_amp/mon_phs
-            values, which includes CORDIC in monitor_inlk.v """
+        """ Interlock IQ stream gain for RX,
+            from ADC to mon_amp/mon_phs values,
+            which include
+              * RX (DDC) gain, including CORDIC in monitor_inlk.v
+              * CIC filter (inlk) gain
+        """
         return self.cic_inlk.gain * self.rx.gain
 
     @property
     def inlk_tx_gain(self):
-        """ Interlock IQ stream gain for TX, from DAC to mon_amp/mon_phs
-            values, which include CORDIC in monitor_inlk.v, and DUC gain """
-        return self.cic_inlk.gain * self.CORDIC_GAIN**2 / self.tx.gain
+        """ Interlock IQ stream gain for TX,
+            from DAC to mon_amp/mon_phs values,
+            which include:
+              * CIC filter (inlk) gain
+              * CORDIC in monitor_inlk.v
+            Because baseband drive_i/drive_q are used for monitoring, the
+            TX (DUC) gain needs to be considered when deriving DAC values.
+            Also include pre-compensate by setpoint
+        """
+        return self.cic_inlk.gain * self.CORDIC_GAIN**2 / self.tx.gain * \
+            self.tx.z**(self.tx_phase_off_cycles)
 
     def calc_open_loop_setp(self, amp_setpoint_adc, phs_setpoint_deg):
         """calculate open loop setpoint register values

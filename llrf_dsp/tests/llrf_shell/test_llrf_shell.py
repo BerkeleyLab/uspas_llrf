@@ -286,7 +286,7 @@ class TB:
 @cocotb.test(timeout_time=400, timeout_unit='us')
 async def test(dut):
     tb = TB(dut,
-            conf=os.getenv('FSET', 'LEMP'),  # XXX
+            conf=os.getenv('FSET', 'USPAS'),
             wave_samp_per=random.randint(1, 8))
     await tb.test_open_loop()
     await tb.test_fast_interlock()

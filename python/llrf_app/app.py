@@ -26,8 +26,9 @@ class LLRFApp(LEEPDevice):
         assert self.wfm_len <= 2**15  # cbuf size / 2
         self.cic_ts = model.DSP_CLK_CYCLE * model.CIC_BASE_PERIOD
         self.cic_ts *= self.wave_samp_per
+        self.n_dac, self.n_adc = 2, 8
         self.chan_keep = chan_keep & 0x03ff  # 2 dacs, 8 adcs
-        self.circ_n_chan = bin(self.chan_keep).count('1')
+        self.cic_n_chan = bin(self.chan_keep).count('1')
         self.signals = [f'adc{n}' for n in range(8)] + \
             [f'dac{n}' for n in range(2)]
         self.marble_info = MarbleDevInfo()
@@ -115,7 +116,7 @@ class LLRFApp(LEEPDevice):
         while (self.read_reg('llrf_circle_ready') != 3):
             time.sleep(0.01)
         d = np.array(self.read_reg('circle_data'))
-        return d[:self.wfm_len * 2 * self.circ_n_chan]
+        return d[:self.wfm_len * 2 * self.cic_n_chan]
 
     def get_cic_iq_wfms(self):
         darray = self.read_cbuf_data()
@@ -123,10 +124,10 @@ class LLRFApp(LEEPDevice):
         # return self.calc_mp_traces(iq_traces)
 
     def decode_interleaved_iq_wfm(self, varray):
-        darray = varray.reshape(-1, 2*self.circ_n_chan).T
+        darray = varray.reshape(-1, 2*self.cic_n_chan).T
         iq_arrays = np.array([
             (darray[ix*2] + 1j * darray[ix*2+1])
-            for ix in range(self.circ_n_chan)]) / self.model.mon_gain
+            for ix in range(self.cic_n_chan)]) / self.model.mon_gain
         return iq_arrays
 
     def calc_mp_traces(self, iq_arrays):
