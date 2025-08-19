@@ -1,7 +1,7 @@
 import json
 import numpy as np
 from scipy import signal
-from .llrf_dsp import LLRFModel
+from .llrf_dsp import LLRF_DSP
 import cocotb
 from cocotb.queue import Queue
 from cocotb.triggers import Timer
@@ -77,7 +77,7 @@ class CAV(Element):
     def __init__(self,
                  delay_ns: float = 0.1,
                  conf='LEMP', settings_fname='cavity.json',
-                 llrf: LLRFModel = LLRFModel(),
+                 llrf: LLRF_DSP = LLRF_DSP(),
                  i_queue: Optional[Queue] = None,
                  o_queue: Optional[Queue] = None, ) -> None:
         f_path = files('llrf_model').joinpath(settings_fname)
@@ -155,7 +155,7 @@ class Plant:
     """
     def __init__(self,
                  conf='LEMP', settings_fname='cavity.json',
-                 llrf: LLRFModel = LLRFModel(),
+                 llrf: LLRF_DSP = LLRF_DSP(),
                  ) -> None:
         self.i_queue = Queue()
         self.o_queue = Queue()

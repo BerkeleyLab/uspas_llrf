@@ -2,7 +2,7 @@ import cocotb
 import random
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, FallingEdge, ClockCycles
-from llrf_model.llrf_dsp import LLRFModel, clip_int, wrap_phase
+from llrf_model.llrf_dsp import LLRFShell, clip_int, wrap_phase
 from local_bus import LocalbusAppMaster
 import logging
 import numpy as np
@@ -24,7 +24,7 @@ class TB:
         # override tx dds setting for loopback test at IF_adc
         dsp_config['TX_NUM_DDS'] = dsp_config['NUM_DDS']
         dsp_config['TX_DEN_DDS'] = dsp_config['DEN_DDS'] * 2
-        self.llrf = llrf = LLRFModel(dsp_config, wave_samp_per=wave_samp_per)
+        self.llrf = llrf = LLRFShell(dsp_config, wave_samp_per=wave_samp_per)
         self.lb = LocalbusAppMaster(
             dut, dut.lb_clk, regmap_json_path='../../llrf_shell.json')
         self.log_banner(f'Simulating: {conf}')

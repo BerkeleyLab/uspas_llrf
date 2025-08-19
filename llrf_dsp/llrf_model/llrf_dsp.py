@@ -360,202 +360,62 @@ class DSPCoreTX(LLRFModule):
             self.submodules += [self.tx_cordic]
 
 
-class WaveTrigSel(IntEnum):
-    Internal = 0
-    External = 1
-    EVR = 3
-
-
-@dataclass
-class LLRFInitRegisters:
-    """Initial register configuration for LLRF DSP module."""
-    dds_amplitude: int = 0
-    dds_phase_step: int = 0
-    dds_phase_shift: int = 0
-    dds_modulo: int = 0
-    tx_dds_amplitude: int = 0
-    tx_dds_phase_step: int = 0
-    tx_dds_phase_shift: int = 0
-    tx_dds_modulo: int = 0
-    duc_spectral_flip: bool = False
-    wave_samp_per: int = 1
-    cic_base_period: int = 14
-    cic_wave_shift: int = 0
-    inlk_wave_shift: int = 0
-    chan_keep: int = 0
-    rx_phase_offset: int = 0
-    tx_phase_offset: int = 0
-    amp_setpoint: int = 0
-    phs_setpoint: int = 0
-    amp_loop_enable: bool = False
-    phs_loop_enable: bool = False
-    amp_loop_reset: bool = False
-    phs_loop_reset: bool = False
-    Kp_amp: int = 0
-    Ki_amp: int = 0
-    Kp_phs: int = 0
-    Ki_phs: int = 0
-    pulse_mode: bool = False
-    pulse_high_len: int = 10
-    dac_permit: bool = False
-    slow_snap_cic: bool = False
-    prl_adc_chan: int = 0
-    fdbk_adc_chan: int = 0
-    wave_trig_sel: int = WaveTrigSel.Internal
-
-    def __setattr__(self, name, value):
-        """Enforce data type casting, e.g. int"""
-        annotations = getattr(self, '__annotations__', {})
-        if name in annotations:
-            expected_type = annotations[name]
-            if not isinstance(value, expected_type):
-                value = expected_type(value)
-        super().__setattr__(name, value)
-
-
-@dataclass
-class LLRFCalibrations:
-    """Calibration configuration for LLRF DSP module."""
-    rx_gain: float = 1.0  # ratio from ADC to controller
-    tx_gain: float = 1.0  # ratio from controller to DAC
-    rx_phase_off_deg: float = 0.0
-    tx_phase_off_deg: float = 0.0
-    rx_dds_omega_deg: float = 0.0  # num / den
-    tx_dds_omega_deg: float = 0.0  # tx_num / tx_den
-    mon_gain: float = 1.0
-    inlk_gain: float = 1.0
-    inlk_tx_gain: float = 1.0
-    max_adc_input: float = (1 << 15) * 0.95  # absolute max ADC input level
-    max_dac_drive: float = (1 << 15) * 0.95  # absolute max DAC drive level
-    max_amp_setpoint: float = field(init=False)  # max amplitude setpoint
-
-    def __post_init__(self):
-        """Post-initialization to calculate dependent fields."""
-        self.max_amp_setpoint = self.max_dac_drive / self.tx_gain
-
-
-class LLRFModel(LLRFModule):
-    # tx_phase_off_cycles_map = {'ALSU': 1, 'USPAS': 2, 'LEMP': 7, 'AWA': -21}
-    # tx_phase_off_cycles = 45
-
-    def __init__(self, dsp_config=default_configs['USPAS'],
-                 tx_upsample=True, wave_samp_per=1):
-        """Math model that provides helper functions for simulation
+class LLRF_DSP(LLRFModule):
+    def __init__(self, dsp_config=default_configs['USPAS']):
+        """Math model that represents `llrf_dsp.v` to include DDC, DUC
+        and feedback controller in `dsp_core.v`.
+        See cocotb simulation in `test_llrf_dsp.py`.
 
         Args:
-            conf (str): Application configuration key (aka FSET),
+            dsp_config (str): Application configuration key (aka FSET),
               in ['LEMP', 'ALSU', 'USPAS', 'AWA']
-            tx_upsample (bool): True if using dac_duc.v
-            wave_samp_per (int): CIC waveform decimation factor
         """
         for k, v in dsp_config.items():
             setattr(self, k, v)
         self.config = dsp_config
         super().__init__(self.NUM_DDS, self.DEN_DDS)
-        assert self.LO_AMP < (2 ** 17 / self.CORDIC_GAIN), "LO_AMP saturate!"
-        self.wave_samp_per = wave_samp_per
-        # pre-compensate TX phase to match DAC IF phase, applied to tx_cordic
-        # very tricky to understand!
-        self.tx_phase_off_cycles = self.TX_DEN_DDS - self.CORDIC_NSTG
-        self.feedback_adc = self.FDBK_ADC_CHAN
-        self.phaseref_adc = self.PRL_ADC_CHAN
-        self.rx = DSPCoreRX(num=self.num, den=self.den, dds_amp=self.LO_AMP)
-        self.tx = DSPCoreTX(num=self.TX_NUM_DDS, den=self.TX_DEN_DDS,
-                            dds_amp=self.LO_AMP, upsample=tx_upsample)
-        self.cic_inlk = CICWaveRecorder(
-            num=self.num, den=self.den,
-            cic_base_period=self.CIC_BASE_PERIOD,
-            shift_base=self.INLK_SHIFT_BASE)
-        self.cic_mon = CICWaveRecorder(
-            num=self.num, den=self.den,
-            cic_base_period=self.CIC_BASE_PERIOD,
-            shift_base=self.CIC_SHIFT_BASE,
-            wave_samp_per=self.wave_samp_per)
+        self.init_modules()
+
+    @dataclass
+    class LLRFCalibrations:
+        """Calibration configuration for LLRF DSP module."""
+        rx_gain: float = 1.0  # ratio from ADC to controller
+        tx_gain: float = 1.0  # ratio from controller to DAC
+        rx_phase_off_deg: float = 0.0
+        tx_phase_off_deg: float = 0.0
+        rx_dds_omega_deg: float = 0.0  # num / den
+        tx_dds_omega_deg: float = 0.0  # tx_num / tx_den
+        mon_gain: float = 1.0
+        inlk_gain: float = 1.0
+        inlk_tx_gain: float = 1.0
+        max_adc_input: float = (1 << 15) * 0.95  # absolute max ADC input level
+        max_dac_drive: float = (1 << 15) * 0.95  # absolute max DAC drive level
+        max_amp_setpoint: float = field(init=False)  # max amplitude setpoint
+
+        def __post_init__(self):
+            """Post-initialization to calculate dependent fields."""
+            self.max_amp_setpoint = self.max_dac_drive / self.tx_gain
+
+    def init_modules(self):
+        """ Assemble DSP modules """
+        self.rx = DSPCoreRX(
+            num=self.num, den=self.den, dds_amp=self.LO_AMP)
+        self.tx = DSPCoreTX(
+            num=self.TX_NUM_DDS, den=self.TX_DEN_DDS,
+            dds_amp=self.LO_AMP, upsample=False)
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
-        self.gen_init_regs()
-
-    @classmethod
-    def from_json(cls, conf='USPAS', json_fname="../settings.json",
-                  tx_upsample=True, wave_samp_per=1):
-        """alternative constructor from json file loader"""
-        with open(json_fname) as f:
-            configs = json.load(f)
-        return cls(configs[conf], tx_upsample, wave_samp_per)
-
-    def gen_init_regs(self):
-        """ initialization registers for simulation and SoC integration
-            cic and inlk wave_shift values are derived from gain calculations
-        """
-        self.init_regs = LLRFInitRegisters(
-            dds_amplitude=self.rx.dds.amp,
-            dds_phase_shift=self.encode_phase(self.rx.phase_off_deg),
-            dds_phase_step=self.rx.dds.phase_step,
-            dds_modulo=self.rx.dds.modulo,
-            tx_dds_amplitude=self.tx.dds.amp,
-            tx_dds_phase_shift=self.encode_phase(-self.tx.phase_off_deg),
-            tx_dds_phase_step=self.tx.dds.phase_step,
-            tx_dds_modulo=self.tx.dds.modulo,
-            duc_spectral_flip=False,
-            rx_phase_offset=0,
-            tx_phase_offset=self.encode_phase(
-                self.tx_phase_off_cycles * np.rad2deg(self.tx.omega)),
-            prl_adc_chan=self.PRL_ADC_CHAN,
-            fdbk_adc_chan=self.FDBK_ADC_CHAN,
-            wave_samp_per=self.wave_samp_per,
-            cic_base_period=self.CIC_BASE_PERIOD,
-            cic_wave_shift=self.cic_mon.wave_shift,
-            inlk_wave_shift=self.cic_inlk.wave_shift,
-            chan_keep=0b11,
-            Kp_amp=20, Ki_amp=50, Kp_phs=50, Ki_phs=200
-        )
 
     @property
     def cal_factors(self):
-        return LLRFCalibrations(
+        return self.LLRFCalibrations(
             rx_gain=np.abs(self.rx.gain),
             tx_gain=np.abs(self.tx.gain),
             rx_phase_off_deg=self.rx.phase_off_deg,
             tx_phase_off_deg=self.tx.phase_off_deg,
             rx_dds_omega_deg=np.rad2deg(self.rx.dds.omega),
-            tx_dds_omega_deg=np.rad2deg(self.tx.dds.omega),
-            mon_gain=self.mon_gain,
-            inlk_gain=self.inlk_gain,
-            inlk_tx_gain=self.inlk_tx_gain
+            tx_dds_omega_deg=np.rad2deg(self.tx.dds.omega)
         )
-
-    @property
-    def mon_gain(self):
-        """ CIC waveform recorder gain for RX,
-            from ADC to IQ pairs, including:
-            * RX (DDC) gain (excluding CORDIC)
-            * CIC wave recorder gain
-        """
-        return self.cic_mon.gain * self.rx.gain / self.CORDIC_GAIN
-
-    @property
-    def inlk_gain(self):
-        """ Interlock IQ stream gain for RX,
-            from ADC to mon_amp/mon_phs values,
-            which include
-              * RX (DDC) gain, including CORDIC in monitor_inlk.v
-              * CIC filter (inlk) gain
-        """
-        return self.cic_inlk.gain * self.rx.gain
-
-    @property
-    def inlk_tx_gain(self):
-        """ Interlock IQ stream gain for TX,
-            from DAC to mon_amp/mon_phs values,
-            which include:
-              * CIC filter (inlk) gain
-              * CORDIC in monitor_inlk.v
-            Because baseband drive_i/drive_q are used for monitoring, the
-            TX (DUC) gain needs to be considered when deriving DAC values.
-            Also include pre-compensate by setpoint
-        """
-        return self.cic_inlk.gain * self.CORDIC_GAIN**2 / self.tx.gain * \
-            self.tx.z**(self.tx_phase_off_cycles)
 
     def calc_open_loop_setp(self, amp_setpoint_adc, phs_setpoint_deg):
         """calculate open loop setpoint register values
@@ -600,6 +460,188 @@ class LLRFModel(LLRFModule):
         return wrap_phase(phs_cnt / 2**width * scale)
 
 
+class WaveTrigSel(IntEnum):
+    Internal = 0
+    External = 1
+    EVR = 3
+
+
+class LLRFShell(LLRF_DSP):
+    def __init__(self, dsp_config=default_configs['USPAS'], wave_samp_per=1):
+        """Represent DSP modules in llrf_shell.v, which include separate RX
+        and TX DDS for digital down and up conversion, where the TX DUC is
+        in dac_clk domain with interpolation (upsample). Also, CIC waveform
+        and interlock data streams are included with gain properties.
+
+        A set of registers are created for initialization during booting.
+        The value of these registers are generated based on DSP configuration.
+        A json file is generated and converted into C source files for actual
+        build.
+
+        Behavioral simulation are performed using cocotb by writing through
+        the control bus before verification in `test_llrf_shell.py`.
+        Args:
+            dsp_config (str): Application configuration key (aka FSET),
+              in ['LEMP', 'ALSU', 'USPAS', 'AWA']
+            wave_samp_per (int): CIC waveform decimation factor
+        """
+        self.wave_samp_per = wave_samp_per
+        super().__init__(dsp_config)
+        self.feedback_adc = self.FDBK_ADC_CHAN
+        self.phaseref_adc = self.PRL_ADC_CHAN
+
+    @classmethod
+    def from_json(cls, conf='USPAS', json_fname="../settings.json",
+                  wave_samp_per=1):
+        """alternative constructor from json file loader"""
+        with open(json_fname) as f:
+            configs = json.load(f)
+        return cls(configs[conf], wave_samp_per)
+
+    @dataclass
+    class LLRFInitRegisters:
+        """Initial register configuration for LLRF DSP module."""
+        dds_amplitude: int = 0
+        dds_phase_step: int = 0
+        dds_phase_shift: int = 0
+        dds_modulo: int = 0
+        tx_dds_amplitude: int = 0
+        tx_dds_phase_step: int = 0
+        tx_dds_phase_shift: int = 0
+        tx_dds_modulo: int = 0
+        duc_spectral_flip: bool = False
+        wave_samp_per: int = 1
+        cic_base_period: int = 14
+        cic_wave_shift: int = 0
+        inlk_wave_shift: int = 0
+        chan_keep: int = 0
+        rx_phase_offset: int = 0
+        tx_phase_offset: int = 0
+        amp_setpoint: int = 0
+        phs_setpoint: int = 0
+        amp_loop_enable: bool = False
+        phs_loop_enable: bool = False
+        amp_loop_reset: bool = False
+        phs_loop_reset: bool = False
+        Kp_amp: int = 0
+        Ki_amp: int = 0
+        Kp_phs: int = 0
+        Ki_phs: int = 0
+        pulse_mode: bool = False
+        pulse_high_len: int = 10
+        dac_permit: bool = False
+        slow_snap_cic: bool = False
+        prl_adc_chan: int = 0
+        fdbk_adc_chan: int = 0
+        wave_trig_sel: int = WaveTrigSel.Internal
+
+        def __setattr__(self, name, value):
+            """Enforce data type casting, e.g. int"""
+            annotations = getattr(self, '__annotations__', {})
+            if name in annotations:
+                expected_type = annotations[name]
+                if not isinstance(value, expected_type):
+                    value = expected_type(value)
+            super().__setattr__(name, value)
+
+    def init_modules(self):
+        """ Assemble DSP modules """
+        # pre-compensate TX phase to match DAC IF phase, applied to tx_cordic
+        # very tricky to understand!
+        self.tx_phase_off_cycles = self.TX_DEN_DDS - self.CORDIC_NSTG
+        self.rx = DSPCoreRX(
+            num=self.num, den=self.den, dds_amp=self.LO_AMP)
+        self.tx = DSPCoreTX(
+            num=self.TX_NUM_DDS, den=self.TX_DEN_DDS,
+            dds_amp=self.LO_AMP, upsample=True)
+        self.cic_inlk = CICWaveRecorder(
+            num=self.num, den=self.den,
+            cic_base_period=self.CIC_BASE_PERIOD,
+            shift_base=self.INLK_SHIFT_BASE)
+        self.cic_mon = CICWaveRecorder(
+            num=self.num, den=self.den,
+            cic_base_period=self.CIC_BASE_PERIOD,
+            shift_base=self.CIC_SHIFT_BASE,
+            wave_samp_per=self.wave_samp_per)
+        self.submodules += self.rx.submodules
+        self.submodules += self.tx.submodules
+        self.gen_init_regs()
+
+    def gen_init_regs(self):
+        """ initialization registers for simulation and SoC integration
+            cic and inlk wave_shift values are derived from gain calculations
+        """
+        self.init_regs = self.LLRFInitRegisters(
+            dds_amplitude=self.rx.dds.amp,
+            dds_phase_shift=self.encode_phase(self.rx.phase_off_deg),
+            dds_phase_step=self.rx.dds.phase_step,
+            dds_modulo=self.rx.dds.modulo,
+            tx_dds_amplitude=self.tx.dds.amp,
+            tx_dds_phase_shift=self.encode_phase(-self.tx.phase_off_deg),
+            tx_dds_phase_step=self.tx.dds.phase_step,
+            tx_dds_modulo=self.tx.dds.modulo,
+            duc_spectral_flip=False,
+            rx_phase_offset=0,
+            tx_phase_offset=self.encode_phase(
+                self.tx_phase_off_cycles * np.rad2deg(self.tx.omega)),
+            prl_adc_chan=self.PRL_ADC_CHAN,
+            fdbk_adc_chan=self.FDBK_ADC_CHAN,
+            wave_samp_per=self.wave_samp_per,
+            cic_base_period=self.CIC_BASE_PERIOD,
+            cic_wave_shift=self.cic_mon.wave_shift,
+            inlk_wave_shift=self.cic_inlk.wave_shift,
+            chan_keep=0b11,
+            Kp_amp=20, Ki_amp=50, Kp_phs=50, Ki_phs=200
+        )
+
+    @property
+    def mon_gain(self):
+        """ CIC waveform recorder gain for RX,
+            from ADC to IQ pairs, including:
+            * RX (DDC) gain (excluding CORDIC)
+            * CIC wave recorder gain
+        """
+        return self.cic_mon.gain * self.rx.gain / self.CORDIC_GAIN
+
+    @property
+    def inlk_gain(self):
+        """ Interlock IQ stream gain for RX,
+            from ADC to mon_amp/mon_phs values,
+            which include
+              * RX (DDC) gain, including CORDIC in monitor_inlk.v
+              * CIC filter (inlk) gain
+        """
+        return self.cic_inlk.gain * self.rx.gain
+
+    @property
+    def inlk_tx_gain(self):
+        """ Interlock IQ stream gain for TX,
+            from DAC to mon_amp/mon_phs values,
+            which include:
+              * CIC filter (inlk) gain
+              * CORDIC in monitor_inlk.v
+            Because baseband drive_i/drive_q are used for monitoring, the
+            TX (DUC) gain needs to be considered when deriving DAC values.
+            Also include pre-compensate by setpoint
+        """
+        return self.cic_inlk.gain * self.CORDIC_GAIN**2 / self.tx.gain * \
+            self.tx.z**(self.tx_phase_off_cycles)
+
+    @property
+    def cal_factors(self):
+        return self.LLRFCalibrations(
+            rx_gain=np.abs(self.rx.gain),
+            tx_gain=np.abs(self.tx.gain),
+            rx_phase_off_deg=self.rx.phase_off_deg,
+            tx_phase_off_deg=self.tx.phase_off_deg,
+            rx_dds_omega_deg=np.rad2deg(self.rx.dds.omega),
+            tx_dds_omega_deg=np.rad2deg(self.tx.dds.omega),
+            mon_gain=self.mon_gain,
+            inlk_gain=self.inlk_gain,
+            inlk_tx_gain=self.inlk_tx_gain
+        )
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--conf", default="LEMP",
@@ -613,7 +655,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    llrf_model = LLRFModel.from_json(
+    llrf_model = LLRFShell.from_json(
         conf=args.conf, json_fname=args.json_fname)
     if args.write_init_reg:
         pprint.pp(llrf_model.init_regs)

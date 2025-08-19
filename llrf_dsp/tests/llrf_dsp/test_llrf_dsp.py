@@ -3,7 +3,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, ClockCycles, Timer
 from cocotb.handle import SimHandleBase
-from llrf_model.llrf_dsp import LLRFModel, wrap_phase
+from llrf_model.llrf_dsp import LLRF_DSP, wrap_phase
 from llrf_model.plant import Plant
 import itertools
 import random
@@ -21,7 +21,7 @@ class TB:
         # override tx dds setting for loopback test at IF_adc, no upsampling
         dsp_config['TX_NUM_DDS'] = dsp_config['NUM_DDS']
         dsp_config['TX_DEN_DDS'] = dsp_config['DEN_DDS']
-        self.llrf = llrf = LLRFModel(dsp_config, tx_upsample=False)
+        self.llrf = llrf = LLRF_DSP(dsp_config)
         self.plant = Plant(
             conf=f_config, settings_fname='cavity.json', llrf=llrf)
         self.log_banner(f'Simulating: {f_config}')
@@ -36,8 +36,6 @@ class TB:
         self.dut._log.debug(
             f'RX phase off: {rx_phase_off_reg:8d} cnt; '
             f'TX phase off: {tx_phase_off_reg:8d} cnt')
-        self.dut._log.info(f'inlk_gain: {llrf.inlk_gain:10.6f}')
-        self.dut._log.info(f'mon_gain:  {llrf.mon_gain:10.6f}')
         clock = Clock(self.dut.clk, llrf.DSP_CLK_CYCLE, units="ns")
         cocotb.start_soon(clock.start())
 
