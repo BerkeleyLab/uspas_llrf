@@ -26,8 +26,9 @@ def clip_int(value, n_bit=16):
 
 class LLRFModule:
     # 1.646760258
-    CORDIC_LATENCY = 21  # cordic_g22.v
-    CORDIC_GAIN = np.prod([np.sqrt(1 + 4**-n) for n in range(CORDIC_LATENCY)])
+    CORDIC_NSTG = 21  # cordic_g22.v: nstg=21
+    CORDIC_LATENCY = CORDIC_NSTG + 1
+    CORDIC_GAIN = np.prod([np.sqrt(1 + 4**-n) for n in range(CORDIC_NSTG)])
 
     def __init__(self, num: int = 4,  den: int = 11) -> None:
         """Base class for LLRF DSP module
@@ -74,7 +75,7 @@ class LLRFModule:
 
 class DDS(LLRFModule):
     def __init__(
-            self, amp: int = 74840, width: int = 18,
+            self, amp: int = 74840, phs_shift_deg: float = 0, width: int = 18,
             num: int = 4,  den: int = 11) -> None:
         """ Direct Digital Synthesizer using a phase accumulator and a CORDIC,
         which is in Polar -> Rect mode.
@@ -88,13 +89,20 @@ class DDS(LLRFModule):
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        self.width = width - 1
-        self.amp = amp
+        self.width = width
+        self.lo_width = width - 1
+        self._amp = amp
+        self._phs_shift_deg = phs_shift_deg
+        self.update_gain()
+        self.dwh = dwh = 20  # high part of phase step
+        self.dwl = dwl = 32 - self.dwh  # low part of phase step
         self.phase_step_h, self.phase_step_l, self.modulo = \
-            self.calc_dds_config()
-        self.dwh = 20  # high part of phase step
-        self.dwl = 32 - self.dwh  # low part of phase step
-        self.phase_step = (self.phase_step_h << self.dwl) | self.phase_step_l
+            self.calc_dds_config(dwh, dwl)
+        self.phase_step = (self.phase_step_h << dwl) | self.phase_step_l
+
+    @property
+    def full_scale_amp(self) -> int:
+        return (1 << self.lo_width) / self.CORDIC_GAIN
 
     @property
     def amp(self) -> int:
@@ -102,8 +110,21 @@ class DDS(LLRFModule):
 
     @amp.setter
     def amp(self, val: int) -> None:
-        self._amp = val
-        self.gain = self.CORDIC_GAIN * self._amp / (1 << self.width)
+        self._amp = int(val)
+        self.update_gain()
+
+    @property
+    def phs_shift_deg(self) -> int:
+        return self._phs_shift_deg
+
+    @phs_shift_deg.setter
+    def phs_shift_deg(self, val: float) -> None:
+        self._phs_shift_deg = val
+        self.update_gain()
+
+    def update_gain(self):
+        self.gain = self._amp / self.full_scale_amp * \
+            np.exp(1j * np.deg2rad(self._phs_shift_deg))
         assert self.gain < 1.0, f"NCO saturates: gain={self.gain}."
 
     def calc_dds_config(self, dwh: int = 20, dwl: int = 12) -> tuple:
@@ -115,6 +136,11 @@ class DDS(LLRFModule):
         phase_step_h = int(r / self.den) & (2**dwh - 1)
         phase_step_l = int((r % self.den) * m) & (2**dwl - 1)
         return phase_step_h, phase_step_l, modulo
+
+    def encode_phase(self, phs, deg=True):
+        scale = 360 if deg else (2 * np.pi)
+        wrapped_phase = wrap_phase(phs, deg)
+        return int(wrapped_phase / scale * 2**(self.width + 1))
 
 
 class DDC(LLRFModule):
@@ -430,7 +456,7 @@ class LLRFModel(LLRFModule):
         self.wave_samp_per = wave_samp_per
         # pre-compensate TX phase to match DAC IF phase, applied to tx_cordic
         # very tricky to understand!
-        self.tx_phase_off_cycles = self.TX_DEN_DDS - self.CORDIC_LATENCY
+        self.tx_phase_off_cycles = self.TX_DEN_DDS - self.CORDIC_NSTG
         self.feedback_adc = self.FDBK_ADC_CHAN
         self.phaseref_adc = self.PRL_ADC_CHAN
         self.rx = DSPCoreRX(num=self.num, den=self.den, dds_amp=self.LO_AMP)

@@ -25,8 +25,9 @@ class TB:
             await RisingEdge(self.dut.clk)
 
     async def init_test(self) -> None:
-        full_scale_amp = (1 << self.model.width) / self.model.CORDIC_GAIN
-        self.model.amp = int(random.uniform(0.8, 0.95) * full_scale_amp)
+        self.model.amp = int(
+            random.uniform(0.8, 0.95) * self.model.full_scale_amp)
+        self.model.phs_shift_deg = phs_shift = random.randint(-180, 180)
         phase_step_h, phase_step_l, modulo = self.model.calc_dds_config(
             dwh=self.dut.DWH.value, dwl=self.dut.DWL.value)
         self.dut.phase_step_h.value = phase_step_h
@@ -36,11 +37,12 @@ class TB:
         self.dut.modulo.value = modulo
         self.dut.amplitude.value = self.model.amp
         await self.cycle_reset()
-        phs_off = random.randint(-180, 180)
         self.dut.phase_shift.value = \
-            int(phs_off / 360 * 2**(self.dut.DWLO.value + 1))
-        amp_exp = int(self.model.amp) * self.model.CORDIC_GAIN
-        return amp_exp, phs_off
+            self.model.encode_phase(phs_shift)
+        amp_exp = np.abs(self.model.gain) * (1 << self.model.lo_width)
+        phs_exp = np.angle(self.model.gain, deg=True)
+        await self.cycle_reset()
+        return amp_exp, phs_exp
 
     async def check_sig(self, amp_exp, phs_off) -> None:
         phs_step_exp = np.rad2deg(self.model.omega)
@@ -63,10 +65,10 @@ class TB:
             assert amp_err < 0.001, "amplitude out-of-bound of 0.1%"
             assert phs_err < 0.1, "phase out-of-bound of 0.1 deg"
 
-    async def test(self, wait=22):
+    async def test(self):
         self.dut._log.info(f'LLRF Model:\n{self.model}')
         amp_exp, phs_off = await self.init_test()
-        await ClockCycles(self.dut.clk, wait)  # settling time of CORDIC
+        await ClockCycles(self.dut.clk, self.model.CORDIC_LATENCY)
         await self.check_sig(amp_exp, phs_off)
 
 
