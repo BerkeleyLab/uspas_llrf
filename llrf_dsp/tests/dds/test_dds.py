@@ -39,7 +39,7 @@ class TB:
         await self.cycle_reset()
         self.dut.phase_shift.value = \
             self.model.encode_phase(phs_shift)
-        amp_exp = np.abs(self.model.gain) * (1 << self.model.lo_width)
+        amp_exp = np.abs(self.model.gain) * (1 << self.model.width - 1)
         phs_exp = np.angle(self.model.gain, deg=True)
         await self.cycle_reset()
         return amp_exp, phs_exp
