@@ -24,6 +24,17 @@ def clip_int(value, n_bit=16):
     return max(min_value, min(int(value), max_value))
 
 
+def to_signed(value: int, width: int = 18):
+    """Converts an integer to the signed value from two's compliment format
+        e.g. 0b1000 is -8
+    """
+    v = int(value)
+    if v >= 2**(width - 1):
+        return v - 2**width
+    else:
+        return v
+
+
 class LLRFModule:
     # 1.646760258
     CORDIC_NSTG = 21  # cordic_g22.v: nstg=21
@@ -90,7 +101,7 @@ class DDS(LLRFModule):
         """
         super().__init__(num, den)
         self.width = width
-        self.lo_width = width - 1
+        self.phs_shift_width = width + 1
         self._amp = amp
         self._phs_shift_deg = phs_shift_deg
         self.update_gain()
@@ -102,7 +113,7 @@ class DDS(LLRFModule):
 
     @property
     def full_scale_amp(self) -> int:
-        return (1 << self.lo_width) / self.CORDIC_GAIN
+        return (1 << self.width - 1) / self.CORDIC_GAIN
 
     @property
     def amp(self) -> int:
@@ -139,8 +150,8 @@ class DDS(LLRFModule):
 
     def encode_phase(self, phs, deg=True):
         scale = 360 if deg else (2 * np.pi)
-        wrapped_phase = wrap_phase(phs, deg)
-        return int(wrapped_phase / scale * 2**(self.width + 1))
+        p = wrap_phase(phs, deg) / scale * 2**(self.phs_shift_width)
+        return to_signed(p, width=self.phs_shift_width)
 
 
 class DDC(LLRFModule):
@@ -430,7 +441,7 @@ class LLRF_DSP(LLRFModule):
         # scaling to compensate open loop setpoint (after PID)
         amp_setpoint = amp_setpoint_adc / np.abs(self.tx.gain)
         phs_setpoint = phs_setpoint_deg / 360 * (1 << 18)
-        return int(amp_setpoint), int(phs_setpoint)
+        return to_signed(amp_setpoint), to_signed(phs_setpoint)
 
     def calc_close_loop_setp(self, amp_setpoint_adc, phs_setpoint_deg):
         """calculate close loop setpoint register values
@@ -444,14 +455,14 @@ class LLRF_DSP(LLRFModule):
         # signal gain for open loop setpoint (before PID)
         amp_setpoint = amp_setpoint_adc * np.abs(self.rx.gain)
         phs_setpoint = phs_setpoint_deg / 360 * (1 << 18)
-        return int(amp_setpoint), int(phs_setpoint)
+        return to_signed(amp_setpoint), to_signed(phs_setpoint)
 
     def encode_phase(self, phs: float, width=19, deg=True):
         """Convert phase value to signed register
         """
         scale = 360 if deg else (2 * np.pi)
-        wrapped_phase = wrap_phase(phs, deg)
-        return int(wrapped_phase / scale * 2**width)
+        wrapped_phase = wrap_phase(phs, deg) / scale * 2**width
+        return to_signed(wrapped_phase, width=width)
 
     def decode_phase(self, phs_cnt: int, width=19, deg=True):
         """Convert phase value from register
