@@ -180,7 +180,7 @@ class TB:
         self.log_banner('CIC Waveform')
         for i, name in enumerate(self.cic_names):
             cic_meas = await self.read_cic_waveform(i)
-            self.check_sig(cic_meas / self.llrf.mon_gain, sig_name=name)
+            self.check_sig(cic_meas / self.llrf.cic_wfm_gain, sig_name=name)
 
         self.log_banner('IQ Waveform')
         i_buf = await self.read_sig_buf(f'adc{self.phaseref_adc}_i_buf')

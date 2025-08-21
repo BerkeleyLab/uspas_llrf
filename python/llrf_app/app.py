@@ -1,5 +1,5 @@
 from leep.raw import LEEPDevice
-from llrf_model.llrf_dsp import LLRFModel
+from llrf_model.llrf_dsp import LLRFShell, wrap_phase
 from llrf_app.bsp import MarbleDevInfo
 import numpy as np
 import pandas as pd
@@ -21,7 +21,7 @@ class LLRFApp(LEEPDevice):
             configs = json.load(f)
         dsp_config = configs[conf]
         self.wave_samp_per = wave_samp_per = 1
-        self.model = model = LLRFModel(dsp_config, wave_samp_per=wave_samp_per)
+        self.model = model = LLRFShell(dsp_config, wave_samp_per=wave_samp_per)
         self.wfm_len = wfm_len
         assert self.wfm_len <= 2**15  # cbuf size / 2
         self.cic_ts = model.DSP_CLK_CYCLE * model.CIC_BASE_PERIOD
@@ -29,8 +29,8 @@ class LLRFApp(LEEPDevice):
         self.n_dac, self.n_adc = 2, 8
         self.chan_keep = chan_keep & 0x03ff  # 2 dacs, 8 adcs
         self.cic_n_chan = bin(self.chan_keep).count('1')
-        self.signals = [f'adc{n}' for n in range(8)] + \
-            [f'dac{n}' for n in range(2)]
+        self.signals = [f'adc{n}' for n in range(self.n_adc)] + \
+            [f'dac{n}' for n in range(self.n_dac)]
         self.marble_info = MarbleDevInfo()
         self.init_demo()
 
@@ -66,21 +66,24 @@ class LLRFApp(LEEPDevice):
         df = pd.DataFrame(
             data=np.array(self.reg_read(cols)).T[:len(self.signals)],
             index=self.signals, columns=cols)
-        df['Amp [cnt]'] = df['mon_amp'] / self.model.inlk_gain
-        df['Phs [deg]'] = df['mon_phs'] * 360 / (1 << 17)
+        inlk_gains = [self.model.inlk_gain] * self.n_adc
+        inlk_gains += [self.model.inlk_tx_gain] * self.n_dac
+        df['Amp [cnt]'] = df['mon_amp'] / np.abs(inlk_gains)
+        df['Phs [deg]'] = wrap_phase(
+            df['mon_phs'] * 360 / (1 << 17) - np.angle(inlk_gains, deg=True))
         return df
 
     def read_raw_bufs(self):
         self.write_reg('sig_buf_flip', 1)
-        while (self.read_reg('sig_buf_ready') != 0x3ff):
+        while (self.read_reg('sig_buf_ready') != 0xff):
             time.sleep(0.001)
         return np.array(self.reg_read(
-            [f'{ch}_buf' for ch in self.signals]), dtype=np.int16)
+            [f'{ch}_buf' for ch in self.signals[:self.n_adc]]), dtype=np.int16)
 
     def get_raw_bufs_df(self):
-        """Returns a DataFrame of raw waveforms for 8 adc and 2 dac channels"""
+        """Returns a DataFrame of raw waveforms for 8 adc channels"""
         sig_wfms = self.read_raw_bufs()
-        df = pd.DataFrame(sig_wfms.T, columns=self.signals)
+        df = pd.DataFrame(sig_wfms.T, columns=self.signals[:self.n_adc])
         df['Time [ns]'] = np.arange(sig_wfms.shape[-1]) * \
             self.model.DSP_CLK_CYCLE
         df.set_index('Time [ns]', inplace=True)
@@ -91,13 +94,15 @@ class LLRFApp(LEEPDevice):
             Returns a 2D array of shape (n_chan, wfm_len)
         """
         self.write_reg('sig_buf_flip', 1)
-        while (self.read_reg('sig_buf_ready') != 0x3ff):
+        while (self.read_reg('sig_iq_buf_ready') != 0xfffff):
             time.sleep(0.001)
-        gain = self.model.rx_gain / self.model.CORDIC_GAIN
         iq_wfms = np.array(self.reg_read(
             [f'{ch}_i_buf' for ch in self.signals] +
-            [f'{ch}_q_buf' for ch in self.signals])) / gain
-        return iq_wfms[:len(self.signals)] + 1j * iq_wfms[len(self.signals):]
+            [f'{ch}_q_buf' for ch in self.signals]))
+        wfms = iq_wfms[:len(self.signals)] + 1j * iq_wfms[len(self.signals):]
+        wfms[:self.n_adc] /= self.model.rx_iq_gain
+        wfms[-self.n_dac:] *= self.model.tx_iq_gain
+        return wfms
 
     def get_iq_wfms_df(self):
         """returns a DataFrame of all IQ waveforms, in ADC count unit"""
@@ -127,7 +132,7 @@ class LLRFApp(LEEPDevice):
         darray = varray.reshape(-1, 2*self.cic_n_chan).T
         iq_arrays = np.array([
             (darray[ix*2] + 1j * darray[ix*2+1])
-            for ix in range(self.cic_n_chan)]) / self.model.mon_gain
+            for ix in range(self.cic_n_chan)]) / self.model.cic_wfm_gain
         return iq_arrays
 
     def calc_mp_traces(self, iq_arrays):

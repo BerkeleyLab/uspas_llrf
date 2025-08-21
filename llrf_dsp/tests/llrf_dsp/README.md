@@ -38,7 +38,7 @@
 
       0.00ns INFO     cocotb.llrf_dsp                    RX phase off:   131.75 deg; TX phase off:   -32.73 deg
       0.00ns INFO     cocotb.llrf_dsp                    inlk_gain:   0.285443
-      0.00ns INFO     cocotb.llrf_dsp                    mon_gain:    5.546751
+      0.00ns INFO     cocotb.llrf_dsp                    cic_wfm_gain:    5.546751
       0.00ns INFO     cocotb.llrf_dsp                    ********************      RX Test       ********************
       0.00ns INFO     cocotb.llrf_dsp                    LLRFModel RX:
                                                          < DSPCoreRX   :   Amp gain= 2.416,   Phs gain=    0.00 deg >
@@ -100,7 +100,7 @@
 
    22707.00ns INFO     cocotb.llrf_dsp                    RX phase off:    65.65 deg; TX phase off:   172.17 deg
    22707.00ns INFO     cocotb.llrf_dsp                    inlk_gain:   0.366054
-   22707.00ns INFO     cocotb.llrf_dsp                    mon_gain:    7.113198
+   22707.00ns INFO     cocotb.llrf_dsp                    cic_wfm_gain:    7.113198
    22707.00ns INFO     cocotb.llrf_dsp                    ********************      RX Test       ********************
    22707.00ns INFO     cocotb.llrf_dsp                    LLRFModel RX:
                                                          < DSPCoreRX   :   Amp gain= 2.834,   Phs gain=    0.00 deg >
@@ -162,7 +162,7 @@
 
    45474.90ns INFO     cocotb.llrf_dsp                    RX phase off:    79.46 deg; TX phase off:   128.57 deg
    45474.90ns INFO     cocotb.llrf_dsp                    inlk_gain:   0.596041
-   45474.90ns INFO     cocotb.llrf_dsp                    mon_gain:   11.582334
+   45474.90ns INFO     cocotb.llrf_dsp                    cic_wfm_gain:   11.582334
    45474.90ns INFO     cocotb.llrf_dsp                    ********************      RX Test       ********************
    45474.90ns INFO     cocotb.llrf_dsp                    LLRFModel RX:
                                                          < DSPCoreRX   :   Amp gain= 3.114,   Phs gain=   -0.00 deg >
@@ -224,7 +224,7 @@
 
    67331.70ns INFO     cocotb.llrf_dsp                    RX phase off:    78.71 deg; TX phase off:   130.91 deg
    67331.70ns INFO     cocotb.llrf_dsp                    inlk_gain:   0.824394
-   67331.70ns INFO     cocotb.llrf_dsp                    mon_gain:    8.009853
+   67331.70ns INFO     cocotb.llrf_dsp                    cic_wfm_gain:    8.009853
    67331.70ns INFO     cocotb.llrf_dsp                    ********************      RX Test       ********************
    67331.70ns INFO     cocotb.llrf_dsp                    LLRFModel RX:
                                                          < DSPCoreRX   :   Amp gain= 3.101,   Phs gain=   -0.00 deg >

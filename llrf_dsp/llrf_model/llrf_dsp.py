@@ -396,9 +396,11 @@ class LLRF_DSP(LLRFModule):
         tx_phase_off_deg: float = 0.0
         rx_dds_omega_deg: float = 0.0  # num / den
         tx_dds_omega_deg: float = 0.0  # tx_num / tx_den
-        mon_gain: float = 1.0
+        cic_wfm_gain: float = 1.0
         inlk_gain: float = 1.0
         inlk_tx_gain: float = 1.0
+        rx_iq_gain: float = 1.0
+        tx_iq_gain: float = 1.0
         max_adc_input: float = (1 << 15) * 0.95  # absolute max ADC input level
         max_dac_drive: float = (1 << 15) * 0.95  # absolute max DAC drive level
         max_amp_setpoint: float = field(init=False)  # max amplitude setpoint
@@ -565,6 +567,7 @@ class LLRFShell(LLRF_DSP):
         self.tx = DSPCoreTX(
             num=self.TX_NUM_DDS, den=self.TX_DEN_DDS,
             dds_amp=self.LO_AMP, upsample=True)
+        self.tx.gain *= self.tx.z**(-self.tx_phase_off_cycles)
         self.cic_inlk = CICWaveRecorder(
             num=self.num, den=self.den,
             cic_base_period=self.CIC_BASE_PERIOD,
@@ -606,13 +609,27 @@ class LLRFShell(LLRF_DSP):
         )
 
     @property
-    def mon_gain(self):
+    def rx_iq_gain(self):
+        """ Digital Down Conversion gain,
+            from ADC to IQ pairs (e.g. ADC IQ waveforms)
+        """
+        return self.rx.gain / self.CORDIC_GAIN
+
+    @property
+    def tx_iq_gain(self):
+        """ Digital Up Conversion gain,
+            from IQ pairs to DAC (e.g. DAC IQ waveforms)
+        """
+        return self.tx.gain / self.CORDIC_GAIN
+
+    @property
+    def cic_wfm_gain(self):
         """ CIC waveform recorder gain for RX,
             from ADC to IQ pairs, including:
             * RX (DDC) gain (excluding CORDIC)
             * CIC wave recorder gain
         """
-        return self.cic_mon.gain * self.rx.gain / self.CORDIC_GAIN
+        return self.cic_mon.gain * self.rx_iq_gain
 
     @property
     def inlk_gain(self):
@@ -635,8 +652,7 @@ class LLRFShell(LLRF_DSP):
             TX (DUC) gain needs to be considered when deriving DAC values.
             Also include pre-compensate by setpoint
         """
-        return self.cic_inlk.gain * self.CORDIC_GAIN**2 / self.tx.gain * \
-            self.tx.z**(self.tx_phase_off_cycles)
+        return self.cic_inlk.gain * self.CORDIC_GAIN / self.tx_iq_gain
 
     @property
     def cal_factors(self):
@@ -647,8 +663,10 @@ class LLRFShell(LLRF_DSP):
             tx_phase_off_deg=self.tx.phase_off_deg,
             rx_dds_omega_deg=np.rad2deg(self.rx.dds.omega),
             tx_dds_omega_deg=np.rad2deg(self.tx.dds.omega),
-            mon_gain=self.mon_gain,
+            cic_wfm_gain=self.cic_wfm_gain,
             inlk_gain=self.inlk_gain,
+            rx_iq_gain=self.rx_iq_gain,
+            tx_iq_gain=self.tx_iq_gain,
             inlk_tx_gain=self.inlk_tx_gain
         )
 

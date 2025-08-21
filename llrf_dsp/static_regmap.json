@@ -172,7 +172,7 @@
         "access": "r",
         "addr_width": 0,
         "base_addr": "0x10801",
-        "data_width": 10,
+        "data_width": 8,
         "sign": "unsigned"
     },
     "sig_iq_buf_ready": {
