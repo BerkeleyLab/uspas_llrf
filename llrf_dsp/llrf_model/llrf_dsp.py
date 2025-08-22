@@ -355,12 +355,10 @@ class DUC(LLRFModule):
         self.gain = self.z**(-self.pipeline)
 
 
-class DSPCoreTX(LLRFModule):
+class TX(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
                  dds_amp=74840,
-                 has_cordic: bool = True,
-                 upsample: bool = True,
-                 dds: DDS = None) -> None:
+                 upsample: bool = True) -> None:
         """Transmitter DSP chain.
             Gateware: tx_cordic.v, cpxmul_fullspeed.v or dac_duc.v
 
@@ -370,17 +368,17 @@ class DSPCoreTX(LLRFModule):
             dds (DDS): external DDS.
         """
         super().__init__(num, den)
-        if dds is None:
-            dds = DDS(amp=dds_amp, num=num, den=den)
-        self.dds = dds
-        self.duc = duc = DUC(num=num, den=den, upsample=upsample)
-        self.submodules += [dds, duc]
-        if has_cordic:  # in dsp_core.v, in dsp_clk domain!
-            self.phase_off_deg = np.angle(self.gain, deg=True)
-            # compensate phase gain of upstream modules
-            self.tx_cordic = CORDIC(
-                num=num, den=den, phase_shift_deg=-self.phase_off_deg)
-            self.submodules += [self.tx_cordic]
+        self.dds = DDS(amp=dds_amp, num=num, den=den)
+        self.duc = DUC(num=num, den=den, upsample=upsample)
+        self.submodules += [self.dds, self.duc]
+
+    def add_tx_cordic(self, phase_shift_deg=0):
+        """ Include tx_cordic in dsp_core.v,
+            with compensation for phase gain of downstream modules
+        """
+        self.cordic = CORDIC(
+            num=self.num, den=self.den, phase_shift_deg=phase_shift_deg)
+        self.submodules += [self.cordic]
 
 
 class LLRF_DSP(LLRFModule):
@@ -427,9 +425,10 @@ class LLRF_DSP(LLRFModule):
             num=self.num, den=self.den, dds_amp=self.LO_AMP)
         # compensate RX phase gain by rx_cordic
         self.rx.add_rx_cordic(-np.angle(self.rx.gain, deg=True))
-        self.tx = DSPCoreTX(
+        self.tx = TX(
             num=self.TX_NUM_DDS, den=self.TX_DEN_DDS,
             dds_amp=self.LO_AMP, upsample=False)
+        self.tx.add_tx_cordic(-np.angle(self.tx.gain, deg=True))
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
 
@@ -439,7 +438,7 @@ class LLRF_DSP(LLRFModule):
             rx_gain=np.abs(self.rx.gain),
             tx_gain=np.abs(self.tx.gain),
             rx_phase_off_deg=self.rx.cordic.phase_shift_deg,
-            tx_phase_off_deg=self.tx.phase_off_deg,
+            tx_phase_off_deg=self.tx.cordic.phase_shift_deg,
             rx_dds_omega_deg=np.rad2deg(self.rx.dds.omega),
             tx_dds_omega_deg=np.rad2deg(self.tx.dds.omega)
         )
@@ -573,18 +572,19 @@ class LLRFShell(LLRF_DSP):
 
     def init_modules(self):
         """ Assemble DSP modules """
-        # pre-compensate TX phase to match DAC IF phase, applied to tx_cordic
-        # very tricky to understand!
-        self.tx_phase_off_cycles = self.TX_DEN_DDS - self.CORDIC_NSTG
-        self.rx = RX(
-            num=self.num, den=self.den, dds_amp=self.LO_AMP)
+        self.rx = RX(num=self.num, den=self.den, dds_amp=self.LO_AMP)
         # compensate RX phase gain by rx.dds
         self.rx.dds.phase_shift_deg = -np.angle(self.rx.gain, deg=True)
         self.rx.add_rx_cordic()
-        self.tx = DSPCoreTX(
-            num=self.TX_NUM_DDS, den=self.TX_DEN_DDS,
-            dds_amp=self.LO_AMP)
-        self.tx.gain *= self.tx.z**(-self.tx_phase_off_cycles)
+
+        self.tx = TX(num=self.TX_NUM_DDS, den=self.TX_DEN_DDS,
+                     dds_amp=self.LO_AMP)
+        self.tx.dds.phase_shift_deg = -np.angle(self.tx.gain, deg=True)
+        # pre-compensate TX phase to match DAC IF phase, applied to tx_cordic
+        # very tricky to understand!
+        tx_phase_off_cycles = self.TX_DEN_DDS - self.CORDIC_NSTG
+        self.tx.add_tx_cordic(
+            -tx_phase_off_cycles * np.rad2deg(self.tx.omega))
         self.cic_inlk = CICWaveRecorder(
             num=self.num, den=self.den,
             cic_base_period=self.CIC_BASE_PERIOD,
@@ -608,13 +608,12 @@ class LLRFShell(LLRF_DSP):
             dds_phase_step=self.rx.dds.phase_step,
             dds_modulo=self.rx.dds.modulo,
             tx_dds_amplitude=self.tx.dds.amp,
-            tx_dds_phase_shift=self.encode_phase(-self.tx.phase_off_deg),
+            tx_dds_phase_shift=self.encode_phase(self.tx.dds.phase_shift_deg),
             tx_dds_phase_step=self.tx.dds.phase_step,
             tx_dds_modulo=self.tx.dds.modulo,
             duc_spectral_flip=False,
             rx_phase_offset=0,
-            tx_phase_offset=self.encode_phase(
-                self.tx_phase_off_cycles * np.rad2deg(self.tx.omega)),
+            tx_phase_offset=self.encode_phase(-self.tx.cordic.phase_shift_deg),
             prl_adc_chan=self.PRL_ADC_CHAN,
             fdbk_adc_chan=self.FDBK_ADC_CHAN,
             wave_samp_per=self.wave_samp_per,
@@ -677,7 +676,7 @@ class LLRFShell(LLRF_DSP):
             rx_gain=np.abs(self.rx.gain),
             tx_gain=np.abs(self.tx.gain),
             rx_phase_off_deg=-self.rx.dds.phase_shift_deg,
-            tx_phase_off_deg=self.tx.phase_off_deg,
+            tx_phase_off_deg=self.tx.dds.phase_shift_deg,
             rx_dds_omega_deg=np.rad2deg(self.rx.dds.omega),
             tx_dds_omega_deg=np.rad2deg(self.tx.dds.omega),
             cic_wfm_gain=self.cic_wfm_gain,

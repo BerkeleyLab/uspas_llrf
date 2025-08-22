@@ -2,7 +2,7 @@ import cocotb
 import random
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, ClockCycles
-from llrf_model.llrf_dsp import DSPCoreTX, wrap_phase
+from llrf_model.llrf_dsp import TX, wrap_phase
 import logging
 import numpy as np
 import itertools
@@ -15,7 +15,7 @@ class TB:
         self.dut = dut
         assert num > 0 and den > 0, "num and den must be positive integers"
         self.spectral_flip = spectral_flip
-        self.model = DSPCoreTX(num=num, den=den, has_cordic=False)
+        self.model = TX(num=num, den=den)
         self.dds_omega_deg = np.rad2deg(self.model.omega)
         if self.spectral_flip:
             self.dds_omega_deg *= -1
