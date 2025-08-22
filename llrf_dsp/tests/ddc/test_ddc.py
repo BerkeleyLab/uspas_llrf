@@ -2,7 +2,7 @@ import cocotb
 import random
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, ClockCycles
-from llrf_model.llrf_dsp import DSPCoreRX, wrap_phase, clip_int
+from llrf_model.llrf_dsp import RX, wrap_phase, clip_int
 import logging
 import numpy as np
 import itertools
@@ -12,7 +12,7 @@ class TB:
     def __init__(self, dut, num: int = 4, den: int = 11):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
-        self.model = DSPCoreRX(num, den, has_cordic=False)
+        self.model = RX(num, den)
         cocotb.start_soon(Clock(dut.clk, 8, units="ns").start())
 
     def log_banner(self, str):

@@ -26,12 +26,13 @@ class TB:
             conf=f_config, settings_fname='cavity.json', llrf=llrf)
         self.log_banner(f'Simulating: {f_config}')
         self.dut._log.info(f'LLRFModel:\n{llrf}')
-        rx_phase_off_reg = self.llrf.encode_phase(-llrf.rx.phase_off_deg)
+        rx_phase_off_reg = self.llrf.encode_phase(
+            llrf.cal_factors.rx_phase_off_deg)
         tx_phase_off_reg = self.llrf.encode_phase(-llrf.tx.phase_off_deg)
         self.dut.rx_phase_offset.value = rx_phase_off_reg
         self.dut.tx_phase_offset.value = tx_phase_off_reg
         self.dut._log.info(
-            f'RX phase off: {llrf.rx.phase_off_deg:8.2f} deg; '
+            f'RX phase off: {llrf.cal_factors.rx_phase_off_deg:8.2f} deg; '
             f'TX phase off: {llrf.tx.phase_off_deg:8.2f} deg')
         self.dut._log.debug(
             f'RX phase off: {rx_phase_off_reg:8d} cnt; '

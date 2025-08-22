@@ -27,7 +27,7 @@ class TB:
     async def init_test(self) -> None:
         self.model.amp = int(
             random.uniform(0.8, 0.95) * self.model.full_scale_amp)
-        self.model.phs_shift_deg = phs_shift = random.randint(-180, 180)
+        self.model.phase_shift_deg = phs_shift = random.randint(-180, 180)
         phase_step_h, phase_step_l, modulo = self.model.calc_dds_config(
             dwh=self.dut.DWH.value, dwl=self.dut.DWL.value)
         self.dut.phase_step_h.value = phase_step_h

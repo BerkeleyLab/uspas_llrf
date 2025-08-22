@@ -274,7 +274,7 @@ class TB:
                     f"{dut.inlk.cmpg_lo.value.integer:8d} "
                     f"{dut.inlk.cmpg_hi.value.integer:8d} "
                     f"{dut.inlk_permit_out.value.integer:8d} "
-                    f"{mon_amp_out / self.llrf.inlk_gain:8.1f} "
+                    f"{mon_amp_out / np.abs(self.llrf.inlk_gain):8.1f} "
                     f"{mon_phs_out:8.1f} ")
         assert dut.inlk_permit_out.value == 1
 

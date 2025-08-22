@@ -86,8 +86,8 @@ class LLRFModule:
 
 class DDS(LLRFModule):
     def __init__(
-            self, amp: int = 74840, phs_shift_deg: float = 0, width: int = 18,
-            num: int = 4,  den: int = 11) -> None:
+            self, amp: int = 74840, phase_shift_deg: float = 0,
+            width: int = 18, num: int = 4,  den: int = 11) -> None:
         """ Direct Digital Synthesizer using a phase accumulator and a CORDIC,
         which is in Polar -> Rect mode.
         Gateware: ph_acc.v and cordicg_b22.v.
@@ -103,7 +103,7 @@ class DDS(LLRFModule):
         self.width = width
         self.phs_shift_width = width + 1
         self._amp = amp
-        self._phs_shift_deg = phs_shift_deg
+        self._phase_shift_deg = phase_shift_deg
         self.update_gain()
         self.dwh = dwh = 20  # high part of phase step
         self.dwl = dwl = 32 - self.dwh  # low part of phase step
@@ -125,17 +125,17 @@ class DDS(LLRFModule):
         self.update_gain()
 
     @property
-    def phs_shift_deg(self) -> int:
-        return self._phs_shift_deg
+    def phase_shift_deg(self) -> int:
+        return self._phase_shift_deg
 
-    @phs_shift_deg.setter
-    def phs_shift_deg(self, val: float) -> None:
-        self._phs_shift_deg = val
+    @phase_shift_deg.setter
+    def phase_shift_deg(self, val: float) -> None:
+        self._phase_shift_deg = val
         self.update_gain()
 
     def update_gain(self):
         self.gain = self._amp / self.full_scale_amp * \
-            np.exp(1j * np.deg2rad(self._phs_shift_deg))
+            np.exp(1j * np.deg2rad(self._phase_shift_deg))
         assert self.gain < 1.0, f"NCO saturates: gain={self.gain}."
 
     def calc_dds_config(self, dwh: int = 20, dwl: int = 12) -> tuple:
@@ -222,17 +222,31 @@ class WashoutFilter(LLRFModule):
 
 class CORDIC(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
-                 phase_off_deg: float = 0) -> None:
+                 phase_shift_deg: float = 0) -> None:
         """Receiver or Transceiver CORDIC.
             Gateware: cordicg_b22.v (rx_cordic or tx_cordic).
 
         Args:
             num (int): numerator of IF / Fs. Defaults to 4.
             den (int): denominator of IF / Fs. Defaults to 11.
-            phase_off_deg (float): Phase offset in degrees.
+            phase_shift_deg (float): Phase offset in degrees.
         """
         super().__init__(num, den)
-        self.gain = self.CORDIC_GAIN * np.exp(1j * np.deg2rad(phase_off_deg))
+        self._phase_shift_deg = phase_shift_deg
+        self.update_gain()
+
+    @property
+    def phase_shift_deg(self) -> int:
+        return self._phase_shift_deg
+
+    @phase_shift_deg.setter
+    def phase_shift_deg(self, val: float) -> None:
+        self._phase_shift_deg = val
+        self.update_gain()
+
+    def update_gain(self):
+        self.gain = self.CORDIC_GAIN * \
+            np.exp(1j * np.deg2rad(self._phase_shift_deg))
 
 
 class CICWaveRecorder(LLRFModule):
@@ -296,13 +310,11 @@ class CICWaveRecorder(LLRFModule):
         self.calc_cic_gain(val)
 
 
-class DSPCoreRX(LLRFModule):
+class RX(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
-                 dds_amp=74840,
-                 has_cordic: bool = True,
-                 dds: DDS = None) -> None:
-        """Receiver DSP chain in dsp_core.v.
-            Gateware: ddc.v, rx_cordic.v
+                 dds_amp=74840) -> None:
+        """ Receiver DSP chain.
+            Gateware: ddc.v, dds.v
 
         Args:
             num (int): numerator of IF / Fs. Defaults to 4.
@@ -310,19 +322,19 @@ class DSPCoreRX(LLRFModule):
             dds (DDS): external dds.
         """
         super().__init__(num, den)
-        if dds is None:
-            dds = DDS(amp=dds_amp, num=num, den=den)
-        self.dds = dds
+        self.dds = DDS(amp=dds_amp, num=num, den=den)
         self.submodules += [
             WashoutFilter(num=num, den=den),
-            dds,
+            self.dds,
             DDC(num=num, den=den)]
-        if has_cordic:  # in dsp_core.v
-            self.phase_off_deg = np.angle(self.gain, deg=True)
-            # compensate phase gain of upstream modules
-            self.rx_cordic = CORDIC(
-                num=num, den=den, phase_off_deg=-self.phase_off_deg)
-            self.submodules += [self.rx_cordic]
+
+    def add_rx_cordic(self, phase_shift_deg=0):
+        """ Include rx_cordic in dsp_core.v,
+            with compensation for phase gain of upstream modules
+        """
+        self.cordic = CORDIC(
+            num=self.num, den=self.den, phase_shift_deg=phase_shift_deg)
+        self.submodules += [self.cordic]
 
 
 class DUC(LLRFModule):
@@ -367,7 +379,7 @@ class DSPCoreTX(LLRFModule):
             self.phase_off_deg = np.angle(self.gain, deg=True)
             # compensate phase gain of upstream modules
             self.tx_cordic = CORDIC(
-                num=num, den=den, phase_off_deg=-self.phase_off_deg)
+                num=num, den=den, phase_shift_deg=-self.phase_off_deg)
             self.submodules += [self.tx_cordic]
 
 
@@ -411,8 +423,10 @@ class LLRF_DSP(LLRFModule):
 
     def init_modules(self):
         """ Assemble DSP modules """
-        self.rx = DSPCoreRX(
+        self.rx = RX(
             num=self.num, den=self.den, dds_amp=self.LO_AMP)
+        # compensate RX phase gain by rx_cordic
+        self.rx.add_rx_cordic(-np.angle(self.rx.gain, deg=True))
         self.tx = DSPCoreTX(
             num=self.TX_NUM_DDS, den=self.TX_DEN_DDS,
             dds_amp=self.LO_AMP, upsample=False)
@@ -424,7 +438,7 @@ class LLRF_DSP(LLRFModule):
         return self.LLRFCalibrations(
             rx_gain=np.abs(self.rx.gain),
             tx_gain=np.abs(self.tx.gain),
-            rx_phase_off_deg=self.rx.phase_off_deg,
+            rx_phase_off_deg=self.rx.cordic.phase_shift_deg,
             tx_phase_off_deg=self.tx.phase_off_deg,
             rx_dds_omega_deg=np.rad2deg(self.rx.dds.omega),
             tx_dds_omega_deg=np.rad2deg(self.tx.dds.omega)
@@ -562,11 +576,14 @@ class LLRFShell(LLRF_DSP):
         # pre-compensate TX phase to match DAC IF phase, applied to tx_cordic
         # very tricky to understand!
         self.tx_phase_off_cycles = self.TX_DEN_DDS - self.CORDIC_NSTG
-        self.rx = DSPCoreRX(
+        self.rx = RX(
             num=self.num, den=self.den, dds_amp=self.LO_AMP)
+        # compensate RX phase gain by rx.dds
+        self.rx.dds.phase_shift_deg = -np.angle(self.rx.gain, deg=True)
+        self.rx.add_rx_cordic()
         self.tx = DSPCoreTX(
             num=self.TX_NUM_DDS, den=self.TX_DEN_DDS,
-            dds_amp=self.LO_AMP, upsample=True)
+            dds_amp=self.LO_AMP)
         self.tx.gain *= self.tx.z**(-self.tx_phase_off_cycles)
         self.cic_inlk = CICWaveRecorder(
             num=self.num, den=self.den,
@@ -587,7 +604,7 @@ class LLRFShell(LLRF_DSP):
         """
         self.init_regs = self.LLRFInitRegisters(
             dds_amplitude=self.rx.dds.amp,
-            dds_phase_shift=self.encode_phase(self.rx.phase_off_deg),
+            dds_phase_shift=self.encode_phase(-self.rx.dds.phase_shift_deg),
             dds_phase_step=self.rx.dds.phase_step,
             dds_modulo=self.rx.dds.modulo,
             tx_dds_amplitude=self.tx.dds.amp,
@@ -659,7 +676,7 @@ class LLRFShell(LLRF_DSP):
         return self.LLRFCalibrations(
             rx_gain=np.abs(self.rx.gain),
             tx_gain=np.abs(self.tx.gain),
-            rx_phase_off_deg=self.rx.phase_off_deg,
+            rx_phase_off_deg=-self.rx.dds.phase_shift_deg,
             tx_phase_off_deg=self.tx.phase_off_deg,
             rx_dds_omega_deg=np.rad2deg(self.rx.dds.omega),
             tx_dds_omega_deg=np.rad2deg(self.tx.dds.omega),
