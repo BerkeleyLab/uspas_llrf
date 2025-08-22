@@ -297,6 +297,14 @@ Three functions are integrated in the [llrf_dsp/cic_waves.v](llrf_dsp/cic_waves.
   * Fast interlock protection logic and RF permit latching;
   * Trigger logic;
 
+* Calibration
+
+  The numerical DSP transfer function of each building element in `llrf_shell.v` are modeled in [llrf_dsp/llrf_model/llrf_dsp.py](llrf_dsp/llrf_model/llrf_dsp.py).
+
+  The DSP models are used in both `cocotb` simulaiton, and the Python driver in [python/llrf_app](python/llrf_app), where the calibration factors are illustrated in the following diagram:
+
+  ![llrf_shell_cal](./fig/llrf_shell_cal.drawio.svg)
+
 ## Software
 
 ### Python IO
