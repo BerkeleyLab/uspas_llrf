@@ -160,11 +160,11 @@ class TB:
         self.llrf.init_regs.chan_keep = \
             (1 << self.phaseref_adc | 1 << self.loopback_adc)
         self.cic_chans = [
-            int(b) for b in f'{self.llrf.init_regs.chan_keep:010b}']
+            int(b) for b in f'{self.llrf.init_regs.chan_keep:010b}'][::-1]
         self.cic_n_chan = self.cic_chans.count(1)
         self.cic_names = [
-            self.sig_names[9-idx] for idx, enabled in enumerate(self.cic_chans)
-            if enabled][::-1]  # lsb_mask==1: first chan is LSB
+            self.sig_names[idx] for idx, enabled in enumerate(self.cic_chans)
+            if enabled]  # lsb_mask==1: first chan is LSB
         self.dut._log.debug(f'cic chans: {self.cic_chans}')
         self.dut._log.debug(f'cic names: {self.cic_names}')
         self.llrf.init_regs.dac_permit = True

@@ -13,6 +13,7 @@ class LLRFApp(LEEPDevice):
     def __init__(self, addr='192.168.19.42:803', conf='LEMP',
                  settings_fname='../llrf_dsp/settings.json',
                  chan_keep=0x3ff, wfm_len=4096,
+                 wave_samp_per=1,
                  timeout=0.1, **kwargs):
         self.init_rom_addr = 0x04000
         super().__init__(addr, timeout, **kwargs)
@@ -20,17 +21,19 @@ class LLRFApp(LEEPDevice):
         with open(settings_fname) as f:
             configs = json.load(f)
         dsp_config = configs[conf]
-        self.wave_samp_per = wave_samp_per = 1
         self.model = model = LLRFShell(dsp_config, wave_samp_per=wave_samp_per)
         self.wfm_len = wfm_len
         assert self.wfm_len <= 2**15  # cbuf size / 2
-        self.cic_ts = model.DSP_CLK_CYCLE * model.CIC_BASE_PERIOD
-        self.cic_ts *= self.wave_samp_per
+        self.cic_ts = model.DSP_CLK_CYCLE * model.CIC_BASE_PERIOD \
+            * wave_samp_per
         self.n_dac, self.n_adc = 2, 8
-        self.chan_keep = chan_keep & 0x03ff  # 2 dacs, 8 adcs
+        self.chan_keep = chan_keep
         self.cic_n_chan = bin(self.chan_keep).count('1')
         self.signals = [f'adc{n}' for n in range(self.n_adc)] + \
             [f'dac{n}' for n in range(self.n_dac)]
+        self.cic_chans = [int(b) for b in f'{chan_keep:010b}'][::-1]
+        self.cic_names = [self.signals[i] for i, en in
+                          enumerate(self.cic_chans) if en]
         self.marble_info = MarbleDevInfo()
         self.init_demo()
 
@@ -40,20 +43,17 @@ class LLRFApp(LEEPDevice):
         self.reg_write([
             ('amp_setpoint', 30000),
             ('dac_permit', 1),
-            ('wave_samp_per', self.wave_samp_per),
+            ('wave_samp_per', self.model.wave_samp_per),
             ('chan_keep', self.chan_keep)
         ])
         logger.debug(f'chan_keep: {self.chan_keep:#018b}')
-        self.cic_chans = np.where(
-            np.array([int(x) for x in f'{self.chan_keep:b}'[::-1]]) == 1)[0]
-        logger.debug(f'chans selected: {self.cic_chans}')
 
     def read_reg(self, name):
-        """ read single register by given name """
+        """ read a single register by given name """
         return self.reg_read([name])[0]
 
     def write_reg(self, name, val):
-        """ read single register by given name """
+        """ write a single register by given name """
         return self.reg_write([(name, val)])
 
     def get_bsp_info(self):
@@ -68,9 +68,10 @@ class LLRFApp(LEEPDevice):
             index=self.signals, columns=cols)
         inlk_gains = [self.model.inlk_gain] * self.n_adc
         inlk_gains += [self.model.inlk_tx_gain] * self.n_dac
-        df['Amp [cnt]'] = df['mon_amp'] / np.abs(inlk_gains)
-        df['Phs [deg]'] = wrap_phase(
-            df['mon_phs'] * 360 / (1 << 17) - np.angle(inlk_gains, deg=True))
+        phs = self.model.decode_phase(df['mon_phs'], width=17, deg=False)
+        rfmon = df['mon_amp'] * np.exp(1j * phs) / inlk_gains
+        df['Amp [cnt]'] = np.abs(rfmon)
+        df['Phs [deg]'] = np.angle(rfmon, deg=True)
         return df
 
     def read_raw_bufs(self):
@@ -143,11 +144,10 @@ class LLRFApp(LEEPDevice):
     def get_cic_wfm_df(self):
         """Returns a DataFrame of circle buffer data"""
         cic_iq_wfms = self.get_cic_iq_wfms()
-        chans = [self.signals[ch] for ch in self.cic_chans]
-        df = pd.DataFrame(cic_iq_wfms.T, columns=chans)
+        df = pd.DataFrame(cic_iq_wfms.T, columns=self.cic_names)
         df['Time [ns]'] = np.arange(cic_iq_wfms.shape[-1]) * self.cic_ts
         df.set_index('Time [ns]', inplace=True)
-        for ch in chans:
+        for ch in self.cic_names:
             df[f'{ch}_amp'] = np.abs(df[ch])
             df[f'{ch}_phs'] = np.angle(df[ch], deg=True)
         return df
