@@ -26,6 +26,7 @@ soc/marble_zest/*/*.o
 *xvlog.pb
 *pico.trace
 llrf_dsp/cordicg_b22.v
+llrf_dsp/tests/*/cordicg_b22.v
 llrf_dsp/llrf_shell_expand.v
 llrf_dsp/llrf_shell_init_regs.json
 llrf_dsp/llrf_shell_tb
@@ -51,3 +52,4 @@ top/marble_zest/config_romx.v
 top/marble_zest/marble_zest_top.d
 top/marble_zest/marble_zest.json
 top/marble_zest/bit_stamp_mod
+llrf_dsp/tests/llrf/cordicg_b22.v

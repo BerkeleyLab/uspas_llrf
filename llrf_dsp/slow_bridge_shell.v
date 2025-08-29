@@ -2,7 +2,7 @@
 // total n_words = 5 + 2*N_CH must be < 2**AW, address starting from 0x11
 // AW >=6 when N_CH==8
 // content see static_regmap.json, dsp_slow_*
-// {buf_stat1, buf_stat2, buf_count, 8'h0, tag, 8'h0, tag_old, adc_dac_min_max, evr_timestamp, timestamp}
+// {buf_stat1, buf_stat2, buf_count, 8'h0, tag, 8'h0, tag_old, sig_min_max, evr_timestamp, timestamp}
 module slow_bridge_shell #(
     parameter AW    = 7,
     parameter N_CH  = 8,
@@ -56,19 +56,19 @@ module slow_bridge_shell #(
     localparam SR_LEN2 = 2*N_CH*DW;
 
     // Compute raw ADC and DAC min/max
-    wire [N_CH*DW-1:0] adc_dac_min;
-    wire [N_CH*DW-1:0] adc_dac_max;
-    // assign adc_min = {adc_min[0], adc_min[1], ..., adc_min[7], dac_min[0], dac_min[1]};
-    // assign adc_max = {adc_max[0], adc_max[1], ..., adc_max[7], dac_max[0], dac_max[1]};
-    wire [SR_LEN2-1:0] adc_dac_min_max = {adc_dac_min, adc_dac_max};
+    wire [N_CH*DW-1:0] sig_min;
+    wire [N_CH*DW-1:0] sig_max;
+    // assign adc_min = {adc_min[0], adc_min[1], ..., adc_min[7]};
+    // assign adc_max = {adc_max[0], adc_max[1], ..., adc_max[7]};
+    wire [SR_LEN2-1:0] sig_min_max = {sig_min, sig_max};
     genvar ix;
     generate for (ix=0; ix<N_CH; ix=ix+1) begin: gen_minmax
         minmax #(.width(DW)) mm_i (
             .clk    (dsp_clk),
             .xin    (data_in[(DW*ix)+:DW]),
             .reset  (slow_snap),
-            .xmin   (adc_dac_min[DW*(N_CH-ix-1) +: DW]),
-            .xmax   (adc_dac_max[DW*(N_CH-ix-1) +: DW])
+            .xmin   (sig_min[DW*(N_CH-ix-1) +: DW]),
+            .xmax   (sig_max[DW*(N_CH-ix-1) +: DW])
         );
         end
     endgenerate
@@ -112,7 +112,7 @@ module slow_bridge_shell #(
     always @(posedge dsp_clk) begin
         if (slow_op) begin
             slow_sr1 <= slow_snap ? slow_sr_data : {slow_sr1[SR_LEN1-DW-1:0], slow_dsp_data};
-            slow_sr2 <= slow_snap ?  adc_dac_min_max : {slow_sr2[SR_LEN2-DW-1:0], evr_ts_word};
+            slow_sr2 <= slow_snap ?  sig_min_max : {slow_sr2[SR_LEN2-DW-1:0], evr_ts_word};
             if (slow_snap) tag_old <= tag;
         end
     end

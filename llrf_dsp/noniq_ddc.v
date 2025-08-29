@@ -1,5 +1,6 @@
 `timescale 1ns / 1ns
-// Synthesizes to 80 4-LUTs and 2 MULT18X18s at 150 MHz in XC3Sxxx-4 using XST-10.1i
+// Derived from bedrock/dsp/fdownconvert.v
+// Updated using convention y_n = Icos(\theta) - Qsin(\theta)
 
 // Name: Near-IQ Downconverter
 //% Provide LO at cosd and sind ports
@@ -11,7 +12,7 @@
 // http://recycle.lbl.gov/~ldoolitt/llrf/down/reconstruct.pdf
 // Where n and n+1 are consecutive samples in time
 // | I | =  |  sin[n + 1]\theta   -sin n\theta |  X  | a_data[n]   |
-// | Q |    | -cos[n + 1]\theta    cos n\theta |     | a_data[n+1] |
+// | Q |    |  cos[n + 1]\theta   -cos n\theta |     | a_data[n+1] |
 // Larry Doolittle, LBNL, 2014
 module noniq_ddc #(
     parameter integer DWI = 16,
@@ -58,7 +59,7 @@ reg signed [DWO-1:0] iq_out0=0;
 reg signed [DWO:0] sum_i1x=0, sum_q1x=0, sum_q2x=0;
 always @(posedge clk) begin
     sum_i1x <= $signed(mul_i2[DWP-1-:DWO]) - $signed(mul_i1[DWP-1-:DWO]);
-    sum_q1x <= $signed(mul_q1[DWP-1-:DWO]) - $signed(mul_q2[DWP-1-:DWO]);
+    sum_q1x <= $signed(mul_q2[DWP-1-:DWO]) - $signed(mul_q1[DWP-1-:DWO]);
     sum_q2x <= sum_q1x;
 end
 wire signed [DWO:0] iq_mux = i_sel ? sum_i1x : sum_q2x;
