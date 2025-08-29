@@ -40,6 +40,9 @@ IP_JSON += marble_zest_top.json
 $(BSP_DIR)/marble_bsp.json:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
+$(APP_DSP_DIR)/llrf_shell.json:
+	$(MAKE) -C $(dir $@) $(notdir $@)
+
 $(TARGET).json: $(IP_JSON)
 	$(PYTHON) $(BUILD_DIR)/merge_json.py -o $@ -i $^
 
@@ -96,10 +99,7 @@ CLEAN_DIRS += .Xil _xilinx obj_dir bit_stamp_mod.dSYM
 
 include $(BUILD_DIR)/bottom_rules.mk
 clean::
+	$(MAKE) -C $(APP_DSP_DIR) distclean
 	@for d in $(SUB_IP_DIR); do \
 	    $(MAKE) -C $$d clean; \
 	done;
-
-#ifeq (,$(MAKECMDGOALS))
-#    -include $(DEPDIR)/$(TARGET)_top.bit.d
-#endif

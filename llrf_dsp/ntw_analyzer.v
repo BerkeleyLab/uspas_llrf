@@ -25,7 +25,7 @@ module ntw_analyzer #(
 // NCO Local Oscillator
 // Phase accumulator
 wire [18:0] phase;
-ph_acc_alsu #(.dwi(12), .dwh(32)) ph_acc_ntw(.clk(clk), .reset(trig), .phase_acc(phase),
+ph_acc_general #(.DWL(12), .DWH(32)) ph_acc_ntw(.clk(clk), .reset(trig), .phase_acc(phase),
 	.phase_step_h(phase_step_h), .phase_step_l(phase_step_l),
 	.modulo(modulo)
 );

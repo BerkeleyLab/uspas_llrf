@@ -138,6 +138,7 @@ wire        dsp_clk;
 wire [1:0]  clk_div_out;
 wire [16*8-1:0] adc_out_data;
 wire [7:0]  adc_out_clk;
+wire dac_clk_out;
 wire [15:0] dac_a_out;
 wire [15:0] dac_b_out;
 wire gtx_rxclk;
@@ -160,6 +161,7 @@ llrf_shell llrf_inst (
 
     .dsp_clk        (dsp_clk),
     .adc_data_in    (adc_out_data),
+    .dac_clk        (dac_clk_out),
     .dac_data_a_out (dac_a_out),
     .dac_data_b_out (dac_b_out),
 

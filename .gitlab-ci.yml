@@ -4,47 +4,35 @@ stages:
   - run
 
 variables:
-  XILINX_VIVADO: /non-free/Xilinx/Vivado/2020.2
-  CI_REGISTRY: mohs.dhcp.lbl.gov
-  CONTAINER_IMAGE: $CI_REGISTRY/testing_base_bookworm
+  XILINX_VIVADO: /non-free/Xilinx/Vivado_and_Vitis/2022.1/Vivado/2022.1
   DOCKER_HOST: tcp://docker:2375/
   DOCKER_DRIVER: overlay2
   GIT_SUBMODULE_STRATEGY: normal
 
-image: $CONTAINER_IMAGE:master
+image: mohs.dhcp.lbl.gov/xilinx_env_trixie
 
 flake8:
   stage: test
   script:
-   - flake8 python/*.py llrf_dsp/regmap/*.py llrf_dsp/scripts/*.py llrf_dsp/tests/*.py
+   - flake8 python llrf_dsp
 
 llrf_dsp_test:
   before_script:
+    - pip install numpy scipy cocotb==1.9.2 pytest cocotb-bus
     - cd llrf_dsp
   stage: test
   script:
-    - make clean && make FSET=${TARGET}
+    - make FSET=${TARGET}
   parallel:
     matrix:
       - TARGET: [ALSU, USPAS, LEMP, AWA]
-
-cocotb_dsp_test:
-  before_script:
-    - apt-get install verilator
-    - pip install numpy scipy cocotb==1.9.1 pytest
-    - cd llrf_dsp/tests
-  stage: test
-  script:
-    # See https://docs.cocotb.org/en/stable/building.html
-    # and our issue #15
-    - make RANDOM_SEED=1724518460
 
 llrf_cdc_test:
   before_script:
     - cd llrf_dsp
   stage: test
   script:
-    - make clean && make llrf_shell_expand.v && make llrf_shell_cdc.txt
+    - make llrf_shell_expand.v && make llrf_shell_cdc.txt
   artifacts:
     when: always
     paths:
@@ -62,7 +50,7 @@ marble_zest_synth:
     - cd top/marble_zest
   stage: synthesis
   script:
-    - make clean && PATH=$XILINX_VIVADO/bin:$PATH make FSET=${TARGET}
+    - PATH=$XILINX_VIVADO/bin:$PATH make FSET=${TARGET}
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
     expire_in: 2 days
@@ -76,7 +64,7 @@ marble_zest_synth:
 
 .marble_lemp_run:
   before_script:
-    - pip install pandas
+    - pip install pandas git+https://github.com/BerkeleyLab/leep.git
     - cd top/marble_zest
   stage: run
   tags:
@@ -91,7 +79,7 @@ marble_zest_synth:
 
 marble_awa_run:
   before_script:
-    - pip install pandas
+    - pip install pandas git+https://github.com/BerkeleyLab/leep.git
     - cd top/marble_zest
   stage: run
   tags:
@@ -104,9 +92,9 @@ marble_awa_run:
   script:
     - make system_config MARBLE_SERIAL=39 FSET=AWA && sleep 4 && make system_test MARBLE_SERIAL=39
 
-marble_uspas_run:
+.marble_uspas_run:
   before_script:
-    - pip install pandas
+    - pip install pandas git+https://github.com/BerkeleyLab/leep.git
     - cd top/marble_zest
   stage: run
   tags:

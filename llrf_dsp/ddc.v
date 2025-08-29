@@ -1,9 +1,9 @@
+// Non-IQ Digital Down Converter
 module ddc #(
     parameter integer DWI = 16,
     parameter integer DWO = 18,
     parameter integer DWLO = 18
 ) (
-    //DSP clock
     input clk,
     input reset,
 

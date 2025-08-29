@@ -1,0 +1,95 @@
+[timestart] 0
+[size] 1616 1003
+[pos] -2025 43
+*-23.279566 320000 37971240 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[markername] AA
+[treeopen] test_llrf_shell.
+[treeopen] test_llrf_shell.llrf_shell.
+[treeopen] test_llrf_shell.llrf_shell.cic_wave_recorder.
+[treeopen] test_llrf_shell.llrf_shell.cic_wave_recorder.i_circle_buf_serial.
+[treeopen] test_llrf_shell.llrf_shell.cic_wave_recorder.i_circle_buf_serial.i_circle_buf.
+[sst_width] 253
+[signals_width] 233
+[sst_expanded] 1
+[sst_vpaned_height] 372
+@28
+test_llrf_shell.llrf_shell.dsp_clk
+@c00420
+test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+@28
+(0)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(1)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(2)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(3)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(4)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(5)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(6)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(7)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(8)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(9)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(10)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(11)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(12)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(13)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(14)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(15)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(16)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+(17)test_llrf_shell.llrf_shell.amp_setpoint[17:0]
+@1401200
+-group_end
+@420
+test_llrf_shell.llrf_shell.phs_setpoint[17:0]
+@800200
+-local_bus
+@28
+test_llrf_shell.lb_clk
+@24
+test_llrf_shell.lb_addr[17:0]
+@22
+test_llrf_shell.lb_rdata[31:0]
+@24
+test_llrf_shell.lb_wdata[31:0]
+@28
+test_llrf_shell.lb_write
+test_llrf_shell.lb_read
+test_llrf_shell.lb_rvalid
+@1000200
+-local_bus
+@800200
+-cbuf
+@22
+test_llrf_shell.llrf_shell.chan_keep[9:0]
+test_llrf_shell.llrf_shell.chan_keep_iq[19:0]
+test_llrf_shell.llrf_shell.wave_samp_per[6:0]
+@28
+test_llrf_shell.llrf_shell.cbuf_ready
+test_llrf_shell.llrf_shell.cbuf_sync
+test_llrf_shell.llrf_shell.cbuf_transferred
+test_llrf_shell.llrf_shell.cic_wave_recorder.i_circle_buf_serial.wave_gate
+@420
+test_llrf_shell.llrf_shell.cic_wave_recorder.i_circle_buf_serial.wave_data[23:0]
+@28
+test_llrf_shell.llrf_shell.cic_wave_recorder.i_circle_buf_serial.wave_dval
+@1000200
+-cbuf
+@800200
+-inlk
+@420
+test_llrf_shell.llrf_shell.inlk_data[15:0]
+@24
+test_llrf_shell.llrf_shell.inlk_count[8:0]
+@28
+test_llrf_shell.llrf_shell.inlk_dval
+@1000200
+-inlk
+@800200
+-dsp_core
+@8420
+test_llrf_shell.llrf_shell.dsp.amp_measured[17:0]
+test_llrf_shell.llrf_shell.dsp.phs_measured[17:0]
+@22
+test_llrf_shell.llrf_shell.dsp.phs_setpoint[17:0]
+@1000200
+-dsp_core
+[pattern_trace] 1
+[pattern_trace] 0
