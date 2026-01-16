@@ -26,7 +26,6 @@ class TB:
             await RisingEdge(self.dut.clk)
 
     async def drive_i_sel(self) -> None:
-        self.dut.i_sel.value = 0
         while True:
             await RisingEdge(self.dut.clk)
             self.dut.i_sel.value = not self.dut.i_sel.value
@@ -47,14 +46,14 @@ class TB:
             self.dut.adc.value = clip_int(sig.real + noise)
 
     async def init_test(self, noise_amp=3) -> None:
-        await self.cycle_reset()
+        self.dut.i_sel.setimmediatevalue(0)
         amp_exp = (1 << (self.dut.DWI.value - 1)) * 0.95
-        amp_exp /= np.abs(self.model.gain)
         phs_exp = random.randint(-180, 180)
         cocotb.start_soon(self.drive_dds())
         cocotb.start_soon(self.drive_i_sel())
         cocotb.start_soon(self.drive_adc(amp_exp, phs_exp, noise_amp))
         phs_exp = wrap_phase(phs_exp + np.angle(self.model.gain, deg=True))
+        await self.cycle_reset()
         return amp_exp, phs_exp
 
     async def check_sig(self, amp_exp, phs_exp) -> None:

@@ -28,11 +28,11 @@ module test_llrf_shell #(
     output signed [DW-1:0] dac_array_out [N_DAC],
 
     // ---------------------
-    // GTX transceiver interface
+    // GT transceiver interface
     // ---------------------
-    input                gtx_rxclk,
-    input [15:0]         gtx_rxdata,
-    input [1:0]          gtx_rxcharisk
+    input                gt_rxclk,
+    input [15:0]         gt_rxdata,
+    input [1:0]          gt_rxcharisk
 );
 
     logic [N_ADC*DW-1:0] adc_data_in;
@@ -65,9 +65,9 @@ module test_llrf_shell #(
         .slow_permit_in  (1'b1),
         .arc_permit_in   (3'b111),
 
-        .gtx_rxclk,
-        .gtx_rxdata,
-        .gtx_rxcharisk,
+        .gt_rxclk,
+        .gt_rxdata,
+        .gt_rxcharisk,
 
         .etrig_pulse_cnt    (16'd0),
         .etrig_pulse        (1'b0),

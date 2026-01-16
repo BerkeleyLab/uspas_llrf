@@ -12,8 +12,7 @@
         "INLK_SHIFT_BASE":   12,
         "PRL_ADC_CHAN":      7,
         "FDBK_ADC_CHAN":     6,
-        "DSP_EV1":           5,
-        "DSP_EV2":           6
+        "EVCODE":            5
     },
     "USPAS": {
         "DSP_CLK_CYCLE":     8.7,
@@ -28,8 +27,7 @@
         "INLK_SHIFT_BASE":   12,
         "PRL_ADC_CHAN":      0,
         "FDBK_ADC_CHAN":     3,
-        "DSP_EV1":           5,
-        "DSP_EV2":           6
+        "EVCODE":            5
     },
     "LEMP": {
         "DSP_CLK_CYCLE":     8.4,
@@ -44,8 +42,7 @@
         "INLK_SHIFT_BASE":   12,
         "PRL_ADC_CHAN":      3,
         "FDBK_ADC_CHAN":     0,
-        "DSP_EV1":           151,
-        "DSP_EV2":           152
+        "EVCODE":            151
     },
     "AWA": {
         "DSP_CLK_CYCLE":     10.6,
@@ -60,7 +57,6 @@
         "INLK_SHIFT_BASE":   12,
         "PRL_ADC_CHAN":      0,
         "FDBK_ADC_CHAN":     3,
-        "DSP_EV1":           151,
-        "DSP_EV2":           152
+        "EVCODE":            151
     }
 }

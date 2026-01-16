@@ -9,10 +9,12 @@
 ## Development tools
 
 As part of the full-stack open source firmware development in Berkeley Lab, we leverage a collection of open source tools including:
-  * [Icarus Verilog](https://github.com/steveicarus/iverilog): tested version v12.0.
-  * [`verilator`](https://github.com/verilator/verilator): tested version 5.038.
-  * [cocotb](https://github.com/cocotb/cocotb): tested version 1.9.2.
-  * [yosys](https://github.com/YosysHQ/yosys)
+
+* [Icarus Verilog](https://github.com/steveicarus/iverilog): tested version v12.0.
+* [`verilator`](https://github.com/verilator/verilator): tested version 5.038.
+* [cocotb](https://github.com/cocotb/cocotb): tested version 1.9.2.
+* [yosys](https://github.com/YosysHQ/yosys)
+
 and Jupyter notebooks for demonstration and documentation.
 
 * For `conda` users, a python virtual environment can be created as:
@@ -173,11 +175,12 @@ $$
 Solve $I$ and $Q$ using inverse matrix:
 
 $$
+\sin(\omega_d)
 \begin{pmatrix}
     I \\
     Q
 \end{pmatrix}
-= \frac{1}{\sin\omega_d}
+=
 \begin{pmatrix}
     \sin(n\omega_d)    & -\sin((n-1)\omega_d) \\
     \cos(n\omega_d)    & -\cos((n-1)\omega_d)
@@ -190,7 +193,8 @@ $$
 
 * RTL implementation
 
-  RTL implementation is in [`noniq_ddc.v`](llrf_dsp/noniq_ddc.v), where a serialized stream of IQ data is generated.
+  RTL implementation is in [`noniq_ddc.v`](llrf_dsp/noniq_ddc.v), where a serialized stream of IQ data is generated, with a gain of $\sin(\omega_d)$.
+
   An interpolation module `fiq_interp.v` is used to convert to parallel I and Q sample streams. A DC-blocking module `fwashout.v` is inserted before the `noniq_ddc.v`. The full DDC is packaged in [`ddc.v`](llrf_dsp/ddc.v).
 
   ![DDC](./fig/ddc.drawio.svg)
@@ -207,7 +211,7 @@ With the normalized DAC IF frequency $\omega = 2\pi\frac{f_\text{IF\_DAC}}{f_\te
 
 $$
 \begin{align*}
-    y &= (I + jQ_n) \cdot e^{j\omega n + \theta} \\
+    y &= (I + jQ_n) \cdot e^{j(\omega n + \theta)} \\
     &= I\cos(\omega n + \theta) - Q\sin(\omega n + \theta) + j\left( Q\cos(\omega n + \theta) + I\sin(\omega n + \theta) \right) \\
     \Re(y) &= I\cos(\omega n + \theta) - Q\sin(\omega n + \theta) \\
     \Im(y) &= Q\cos(\omega n + \theta) + I\sin(\omega n + \theta)

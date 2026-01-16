@@ -26,18 +26,9 @@
 
 // LOCALBUS registers:
 // marble_bsp.json:
-#define GTX_RX_SLIDE_REQ       0x40000
-#define GTX_SOFT_RESET         0x40001
-#define LB_MARBLE_SPI_MBOX     0x41000
-#define GTX_RX_CLK_FREQUENCY   0x42002
-#define GTX_REFCLK_FREQUENCY   0x42003
-#define GTX_RX_FSM_RESETDONE   0x42004
-#define GTX_RX_ALIGNED         0x42005
-#define EVR_DSP_PHSDIFF        0x42006
-#define GTX_RX_RESET_CNT       0x42007
-#define LB_BSP_INFO_BUF        0x43000
+#include "marble_bsp_regs.h"
 // marble_zest_top.json:
-#define LB_GIT_REV_ID          0x0
+#define LB_GIT_REV_ID         0x0
 
 #define DEBUG_PRINT 0
 #define debug_printf(...) \

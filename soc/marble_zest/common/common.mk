@@ -2,6 +2,7 @@ include $(PICORV_DIR)/rules.mk
 include $(TOP)settings.mk
 APP_COMMON_DIR = $(APP_SOC_DIR)/common
 INC_DIR       += -I$(MARBLE_DIR)/firmware -I$(ZEST_DIR)/firmware
+INC_DIR       += -I$(BSP_DIR)/_autogen
 VIVADO_BASE    = $(dir $(shell which vivado))..
 
 vpath %.c $(APP_COMMON_DIR)
@@ -23,7 +24,7 @@ SRC_V += $(DSP_DIR)/flag_xdomain.v $(DSP_DIR)/freq_gcount.v $(DSP_DIR)/freq_coun
 SRC_V += $(DSP_DIR)/data_xdomain.v $(DSP_DIR)/reg_tech_cdc.v
 SRC_V += $(DSP_DIR)/phaset.v $(DSP_DIR)/phase_diff.v
 
-SRCS   =  system.c print.c i2c_soft.c timer.c console.c evr_gtx_wrapper.c
+SRCS   =  system.c print.c i2c_soft.c timer.c console.c evr_gt_wrapper.c
 SRCS  +=  printf.c iserdes.c
 SRCS  +=  settings.h
 SRCS  +=  $(MARBLE_DIR)/firmware/marble.c

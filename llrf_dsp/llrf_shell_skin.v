@@ -42,9 +42,9 @@ module llrf_skin #(
     // ---------------------
     // to EVR interface
     // ---------------------
-    input                gtx_rxclk,
-    input [15:0]         gtx_rxdata,
-    input [1:0]          gtx_rxcharisk,
+    input                gt_rxclk,
+    input [15:0]         gt_rxdata,
+    input [1:0]          gt_rxcharisk,
 
     input [15:0]         etrig_pulse_cnt,
     input                etrig_pulse,
@@ -76,11 +76,11 @@ assign lb_rdata = lb_rdata_r;
 always @(posedge dsp_clk) adc_data_in_r <= adc_data_in;
 
 // EVR
-(* magic_cdc *) reg [15:0] gtx_rxdata_good_r=0;
-(* magic_cdc *) reg [1:0] gtx_rxcharisk_good_r=0;
-always @(posedge gtx_rxclk) begin
-    gtx_rxdata_good_r <= gtx_rxdata;
-	gtx_rxcharisk_good_r <= gtx_rxcharisk;
+(* magic_cdc *) reg [15:0] gt_rxdata_good_r=0;
+(* magic_cdc *) reg [1:0] gt_rxcharisk_good_r=0;
+always @(posedge gt_rxclk) begin
+    gt_rxdata_good_r <= gt_rxdata;
+	gt_rxcharisk_good_r <= gt_rxcharisk;
 end
 
 (* magic_cdc *) reg drive_permit_in_r=0;
@@ -127,9 +127,9 @@ llrf_shell #(.CBUF_AW(11)) dsp (
     .arc_test_out       (arc_test_out),
     .arc_reset_out      (arc_reset_out),
 
-    .gtx_rxclk (gtx_rxclk),
-    .gtx_rxdata    (gtx_rxdata_good_r),
-    .gtx_rxcharisk (gtx_rxcharisk_good_r),
+    .gt_rxclk           (gt_rxclk),
+    .gt_rxdata          (gt_rxdata_good_r),
+    .gt_rxcharisk       (gt_rxcharisk_good_r),
 
     .etrig_pulse_cnt    (etrig_pulse_cnt_r),
     .etrig_pulse        (etrig_pulse_r),

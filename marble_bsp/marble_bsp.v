@@ -1,14 +1,12 @@
 `define LB_DECODE_marble_bsp
-`include "settings.vams"
 `include "marble_bsp_auto.vh"
 module marble_bsp #(
     parameter IP ={8'd192, 8'd168, 8'd19, 8'd122},
     parameter MAC = 48'h00105ad155b2,
-
+    parameter GT_TYPE = "GT_SIM",
     parameter LB_READ_DELAY = 3,
     parameter DEFAULT_ENABLE_RX = 1,
-    parameter integer EVR_COMMAS_NEEDED = 60,
-    parameter integer EVR_CHECK_TIMEOUT = 125000,  // 125e6 Hz * 1ms
+    parameter real DSP_FREQ_MHZ = 119.0,
     parameter FCNT_WIDTH = 16  // freq_count update rate: 125M / 2**16 = 1.9kHz.
 ) (
     // GMII (ready for simulation with infrastructure demoed in badger/tests)
@@ -38,8 +36,9 @@ module marble_bsp #(
     input           clk_locked,
     input           clk_200,
     input           dsp_clk,
-    input           gtx_refclk,
-    output          gtx_rxclk,
+    input           gt_refclk_p,
+    input           gt_refclk_n,
+    output          gt_rxclk,
 
     // lb controller
     output          m_lb_clk,
@@ -60,11 +59,11 @@ module marble_bsp #(
     input [31:0]    lb_wdata,
     output [31:0]   lb_rdata,
 
-    // GTX related
-    input           evr_gtx_rxn,
-    input           evr_gtx_rxp,
-    output [15:0]   gtx_rxdata,
-    output [1:0]    gtx_rxcharisk,
+    // GT related
+    input           evr_gt_rxn,
+    input           evr_gt_rxp,
+    output [15:0]   gt_rxdata,
+    output [1:0]    gt_rxcharisk,
 
     // diagnostics
     output          in_use,
@@ -83,41 +82,41 @@ module marble_bsp #(
 );
 
 wire [31:0] lb_data = lb_wdata; // for newad.py
-// GTX reset registers are all async
+// GT reset registers are all async
 // newad-force lb domain
-// reg [0:0] gtx_soft_reset; top-level
-// reg [0:0] gtx_rx_slide_req; top-level
+// reg [0:0] gt_soft_reset; top-level
+// reg [0:0] gt_rx_slide_req; top-level
 // reg [1:0] etrig_pmod_sel; top-level
 
 `AUTOMATIC_decode
 
 // in lb_clk domain
-wire gtx_rx_fsm_resetdone, gtx_rx_aligned;
-wire [31:0] gtx_rx_reset_cnt;
+wire [0:0] gt_rx_resetdone, gt_rx_aligned;
+wire [31:0] gt_rx_reset_cnt;
 
-wire [27:0] gtx_rx_clk_frequency;
-wire [27:0] gtx_refclk_frequency;
-// ----------------------------------
-// GTX instance
-// ---------------------------------
-evr_gtx_wrapper #(
-    .COMMAS_NEEDED  (EVR_COMMAS_NEEDED),
-    .CHECK_TIMEOUT  (EVR_CHECK_TIMEOUT)
-) evr_gtx_wrapper_i(
+wire [27:0] gt_rx_clk_frequency;
+wire [27:0] gt_refclk_frequency;
+wire gt_refclk_out;
+wire gt_cplllocked;
+evr_gt_wrapper #(
+    .GT_TYPE(GT_TYPE)
+) evr_gt_wrapper (
+    .gt_refclk_p        (gt_refclk_p),
+    .gt_refclk_n        (gt_refclk_n),
+    .gt_rxp_in          (evr_gt_rxp),
+    .gt_rxn_in          (evr_gt_rxn),
+
+    .gt_refclk_out      (gt_refclk_out),
     .sys_clk            (lb_clk),
-    .gtx_refclk         (gtx_refclk),
-    .evr_gtx_rxn        (evr_gtx_rxn),
-    .evr_gtx_rxp        (evr_gtx_rxp),
+    .soft_reset         (gt_soft_reset),
+    .rx_reset_done_sys  (gt_rx_resetdone),
+    .rx_aligned_sys     (gt_rx_aligned),
+    .rx_fsm_reset_cnt   (gt_rx_reset_cnt),
+    .cplllocked_sys     (gt_cplllocked),
 
-    .soft_reset         (gtx_soft_reset),
-    .rx_fsm_reset_done  (gtx_rx_fsm_resetdone),
-    .rx_aligned_sys     (gtx_rx_aligned),
-    .rx_reset_cnt       (gtx_rx_reset_cnt),
-    .rx_slide_req       (gtx_rx_slide_req),
-
-    .rx_usrclk          (gtx_rxclk),
-    .rxdata             (gtx_rxdata),
-    .rxcharisk          (gtx_rxcharisk)
+    .rx_usrclk          (gt_rxclk),
+    .rxdata             (gt_rxdata),
+    .rxcharisk          (gt_rxcharisk)
 );
 
 // Total miscellaneous
@@ -125,17 +124,17 @@ evr_gtx_wrapper #(
 reg [7:0] mac_status_r=0;  always @(posedge lb_clk) mac_status_r <= mac_status;
 
 // ---------------------
-// Measure and report GTX RX recovered clock
+// Measure and report GT RX recovered clock
 // ---------------------
-freq_count #(.refcnt_width (FCNT_WIDTH)) fcnt_gtx_rx_clk (
+freq_count #(.refcnt_width (FCNT_WIDTH)) fcnt_gt_rx_clk (
     .sysclk     (lb_clk),
-    .f_in       (gtx_rxclk),
-    .frequency  (gtx_rx_clk_frequency)
+    .f_in       (gt_rxclk),
+    .frequency  (gt_rx_clk_frequency)
 );
-freq_count #(.refcnt_width (FCNT_WIDTH)) fcnt_gtx_refclk (
+freq_count #(.refcnt_width (FCNT_WIDTH)) fcnt_gt_refclk (
     .sysclk     (lb_clk),
-    .f_in       (gtx_refclk),
-    .frequency  (gtx_refclk_frequency)
+    .f_in       (gt_refclk_out),
+    .frequency  (gt_refclk_frequency)
 );
 
 // Measure the phase difference between dsp_clk and evr_clk.
@@ -143,13 +142,13 @@ freq_count #(.refcnt_width (FCNT_WIDTH)) fcnt_gtx_refclk (
 // In the LEMP system, theory says this will be quasi-static,
 // just representing divider state and cable drift.
 localparam PH_DIFF_DW = 13;
-localparam integer  PH_DIFF_ADV = $rtoi((1/`DSP_CLK_CYCLE) / 0.200 * (2**PH_DIFF_DW));
+localparam integer  PH_DIFF_ADV = (DSP_FREQ_MHZ / 200.0 * (2**PH_DIFF_DW));
 wire [13:0] ph_diff_adv_ = PH_DIFF_ADV;
 wire signed [PH_DIFF_DW-1:0] evr_dsp_phsdiff;
 phase_diff #(
     .dw             (PH_DIFF_DW+1)
 ) phase_diff_evr (
-    .uclk1          (gtx_rxclk),
+    .uclk1          (gt_rxclk),
     .uclk2          (dsp_clk),
     .uclk2g         (1'b1),
     .adv            (ph_diff_adv_),
@@ -273,12 +272,12 @@ reg [31:0] reg_bank_0=0;
 always @(posedge lb_clk) if(lb_read) begin
     case (lb_addr[3:0])
         4'h1: reg_bank_0 <= mac_status_r;  // alias mac_status
-        4'h2: reg_bank_0 <= gtx_rx_clk_frequency;
-        4'h3: reg_bank_0 <= gtx_refclk_frequency;
-        4'h4: reg_bank_0 <= gtx_rx_fsm_resetdone;
-        4'h5: reg_bank_0 <= gtx_rx_aligned;
+        4'h2: reg_bank_0 <= gt_rx_clk_frequency;
+        4'h3: reg_bank_0 <= gt_refclk_frequency;
+        4'h4: reg_bank_0 <= gt_rx_resetdone;
+        4'h5: reg_bank_0 <= gt_rx_aligned;
         4'h6: reg_bank_0 <= evr_dsp_phsdiff;
-        4'h7: reg_bank_0 <= gtx_rx_reset_cnt;
+        4'h7: reg_bank_0 <= gt_rx_reset_cnt;
         default: reg_bank_0 <= 32'hdeadface;
     endcase
 end

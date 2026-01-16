@@ -1,7 +1,7 @@
-[timestart] 9862000
-[size] 1322 799
-[pos] -1 -1
-*-18.502003 10508000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+[timestart] 0
+[size] 1920 1093
+[pos] -38 -38
+*-20.484007 10508000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 [markername] AA
 [markername] BB
 [markername] CC
@@ -30,13 +30,11 @@
 [markername] ZZ
 [treeopen] marble_bsp_tb.
 [treeopen] marble_bsp_tb.dut.
-[treeopen] marble_bsp_tb.dut.evr_gtx_wrapper_i.
-[treeopen] marble_bsp_tb.dut.evr_gtx_wrapper_i.evr_reset_fsm_i.
 [treeopen] marble_bsp_tb.dut.phase_diff_evr.
 [sst_width] 297
 [signals_width] 305
 [sst_expanded] 1
-[sst_vpaned_height] 285
+[sst_vpaned_height] 422
 @800200
 -mmc_spi
 @28
@@ -68,62 +66,34 @@ marble_bsp_tb.lb_wdata[31:0]
 marble_bsp_tb.lb_prefill
 @1000200
 -localbus
-@29
-marble_bsp_tb.dut.evr_gtx_wrapper_i.rx_aligned_sys
-@28
-marble_bsp_tb.dut.evr_gtx_wrapper_i.gt_soft_reset
-marble_bsp_tb.dut.evr_gtx_wrapper_i.fake_fsm_active
-marble_bsp_tb.dut.evr_gtx_wrapper_i.rx_fsm_reset_done
-@24
-marble_bsp_tb.dut.evr_gtx_wrapper_i.fake_fsm_cnt[7:0]
-@22
-marble_bsp_tb.dut.evr_gtx_wrapper_i.rxdata_out[15:0]
-@28
-marble_bsp_tb.dut.evr_gtx_wrapper_i.rxnotintable_out[1:0]
-marble_bsp_tb.dut.evr_gtx_wrapper_i.data_err_comb
 @800200
 -evr_reset_fsm
+@29
+marble_bsp_tb.dut.evr_gt_wrapper.gt_refclk_out
 @28
-marble_bsp_tb.dut.evr_gtx_wrapper_i.evr_reset_fsm_i.clk
-@820
-marble_bsp_tb.dut.evr_gtx_wrapper_i.evr_reset_fsm_i.state_string[56:1]
-@24
-marble_bsp_tb.dut.evr_gtx_wrapper_i.evr_reset_fsm_i.comma_cnt[7:0]
+marble_bsp_tb.dut.evr_gt_wrapper.sys_clk
+marble_bsp_tb.dut.evr_gt_wrapper.soft_reset
+marble_bsp_tb.dut.evr_gt_wrapper.rx_fsm_reset_out
+@22
+marble_bsp_tb.dut.evr_gt_wrapper.rx_fsm_reset_cnt[31:0]
 @28
-marble_bsp_tb.dut.evr_gtx_wrapper_i.evr_reset_fsm_i.comma_seen
-marble_bsp_tb.dut.evr_gtx_wrapper_i.evr_reset_fsm_i.current_state[1:0]
-marble_bsp_tb.dut.evr_gtx_wrapper_i.evr_reset_fsm_i.error_seen
-marble_bsp_tb.dut.evr_gtx_wrapper_i.evr_reset_fsm_i.next_state[1:0]
-marble_bsp_tb.dut.evr_gtx_wrapper_i.evr_reset_fsm_i.reset_done
-marble_bsp_tb.dut.evr_gtx_wrapper_i.evr_reset_fsm_i.reset_out
-marble_bsp_tb.dut.evr_gtx_wrapper_i.evr_reset_fsm_i.rst
-@24
-marble_bsp_tb.dut.evr_gtx_wrapper_i.evr_reset_fsm_i.check_timeout_cnt[17:0]
-marble_bsp_tb.dut.evr_gtx_wrapper_i.rx_reset_cnt[31:0]
+marble_bsp_tb.dut.evr_gt_wrapper.rx_aligned
 @1000200
 -evr_reset_fsm
 @22
 marble_bsp_tb.rdata[31:0]
-@24
-marble_bsp_tb.dut.gtx_refclk_frequency[27:0]
 @28
 marble_bsp_tb.fail
-@24
-marble_bsp_tb.dut.phase_diff_evr.cnt[10:0]
 @420
 marble_bsp_tb.dut.evr_dsp_phsdiff[12:0]
 @28
 marble_bsp_tb.dut.phase_diff_evr.fault
 @200
 -track1
-@28
-marble_bsp_tb.dut.phase_diff_evr.track1.div
 @8024
 marble_bsp_tb.dut.phase_diff_evr.track1.phase[13:0]
 @200
 -track2
-@28
-marble_bsp_tb.dut.phase_diff_evr.track2.div
 @8024
 marble_bsp_tb.dut.phase_diff_evr.track2.phase[13:0]
 [pattern_trace] 1

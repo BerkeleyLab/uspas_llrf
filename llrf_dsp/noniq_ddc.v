@@ -1,10 +1,9 @@
 `timescale 1ns / 1ns
 // Derived from bedrock/dsp/fdownconvert.v
-// Updated using convention y_n = Icos(\theta) - Qsin(\theta)
 
 // Name: Near-IQ Downconverter
 //% Provide LO at cosd and sind ports
-//% Output is stream of IQ samples
+//% Output is stream of IQ samples, with a gain of sin(\theta)
 // Input cosd and sind are ordinary LO signals, and this module reorders them.
 // N.B.: full-scale negative is an invalid LO value.
 //
@@ -14,6 +13,8 @@
 // | I | =  |  sin[n + 1]\theta   -sin n\theta |  X  | a_data[n]   |
 // | Q |    |  cos[n + 1]\theta   -cos n\theta |     | a_data[n+1] |
 // Larry Doolittle, LBNL, 2014
+// Updated by Q. Du, LBNL, 2025, using convention y_n = Icos(\theta) - Qsin(\theta)
+
 module noniq_ddc #(
     parameter integer DWI = 16,
     parameter integer DWO = 16,

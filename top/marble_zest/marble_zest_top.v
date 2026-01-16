@@ -7,8 +7,8 @@ module marble_zest_top #(
     input           SYSCLK_P,
     input           SYSCLK_N,
 
-    input           GTXREFCLK_P,
-    input           GTXREFCLK_N,
+    input           GTREFCLK_P,
+    input           GTREFCLK_N,
     // QSFP2 channel 1 [second channel]
     // XXX option to change this?
     input           MGT_RX_6_N,
@@ -152,11 +152,6 @@ IDELAYCTRL idelayctrl_inst (
   .RDY        (idelayctrl_ready)
 );
 
-wire gtx_refclk;
-IBUFDS_GTE2 refclk(
-    .I(GTXREFCLK_P), .IB(GTXREFCLK_N), .CEB(1'b0), .O(gtx_refclk)
-);
-
 wire BOOT_CCLK;
 STARTUPE2 set_cclk(.USRCCLKO(BOOT_CCLK), .USRCCLKTS(1'b0));
 
@@ -188,6 +183,10 @@ gmii_to_rgmii #( .in_phase_tx_clk(1)) gmii_to_rgmii_i (
     .idelay_value_in(5'b0)
 );
 
+`ifndef DSP_FREQ_MHZ
+`define DSP_FREQ_MHZ 115.0
+`endif
+
 // ---------------------------------
 // Share code with simulation build
 // Includes instantiation of system, llrf_shell, and marble_bsp.
@@ -197,9 +196,6 @@ gmii_to_rgmii #( .in_phase_tx_clk(1)) gmii_to_rgmii_i (
 // ---------------------------------
 // Zest Digitizer Board Support
 // ---------------------------------
-`ifndef DSP_FREQ_MHZ
-`define DSP_FREQ_MHZ 115.0
-`endif
 
 zest #(
     .DSP_FREQ_MHZ       (`DSP_FREQ_MHZ),
