@@ -12,7 +12,7 @@
 #include "timer.h"
 #include "llrf.h"
 #include "llrf_regs_addr.h"
-#include "evr_gtx_wrapper.h"
+#include "evr_gt_wrapper.h"
 
 extern zest_init_t zest_init_data;
 extern marble_dev_t marble;
@@ -63,11 +63,11 @@ void console(char c) {
                 printf("Freq %d Check: %s", ix, pass ? "PASS\n" : "FAIL\n");
             }
             check_div_clk_phase(2, 0);
-            printf("GTX_RX_FSM_RESETDONE: %s\n", CHECK_BIT(read_lb_reg(GTX_RX_FSM_RESETDONE), 0) ? "OK": "FAIL");
-            printf("GTX_RX_ALIGNED:   %s\n", CHECK_BIT(read_lb_reg(GTX_RX_ALIGNED), 0) ? "OK": "FAIL");
-            check_gtx_freq(read_lb_reg(GTX_REFCLK_FREQUENCY), "GTX REF", GTX_FCNT_EXP);
-            check_gtx_freq(read_lb_reg(GTX_RX_CLK_FREQUENCY), "GTX CDR", GTX_FCNT_EXP);
-            printf("GTX_RESETS:  %d\n", read_lb_reg(GTX_RX_RESET_CNT));
+            printf("GT_RX_RESETDONE: %s\n", CHECK_BIT(read_lb_reg(GT_RX_RESETDONE), 0) ? "OK": "FAIL");
+            printf("GT_RX_ALIGNED:   %s\n", CHECK_BIT(read_lb_reg(GT_RX_ALIGNED), 0) ? "OK": "FAIL");
+            check_gt_freq(read_lb_reg(GT_REFCLK_FREQUENCY), "GT REF", GT_FCNT_EXP);
+            check_gt_freq(read_lb_reg(GT_RX_CLK_FREQUENCY), "GT CDR", GT_FCNT_EXP);
+            printf("GT_RESETS:  %d\n", read_lb_reg(GT_RX_RESET_CNT));
             break;
 
         case 'w':
@@ -76,7 +76,7 @@ void console(char c) {
 
         case 'd':
             for (ix=4*16; ix<4*16+10; ix++) {  // read page 4
-                dval32 = read_lb_reg(LB_MARBLE_SPI_MBOX + ix);
+                dval32 = read_lb_reg(LB_MARBLE_MBOX_BUF + ix);
                 printf("mbox[%u]: %x\n", ix, dval32);
             }
             for (ix=0; ix<10; ix++) {   // sizeof(marble) = 372 bytes
@@ -93,13 +93,13 @@ void console(char c) {
             break;
 
         case 'x':
-            // init_evr_gtx();
-            write_lb_reg(GTX_SOFT_RESET, 1);
-            write_lb_reg(GTX_SOFT_RESET, 0);
+            // init_evr_gt();
+            write_lb_reg(GT_SOFT_RESET, 1);
+            write_lb_reg(GT_SOFT_RESET, 0);
             DELAY_MS(100);
-            printf("GTX software resetting!\n");
-            printf("GTX_ALIGNED: %d\n", read_lb_reg(GTX_RX_ALIGNED));
-            printf("GTX_RESETS:  %d\n", read_lb_reg(GTX_RX_RESET_CNT));
+            printf("GT software resetting!\n");
+            printf("GT_ALIGNED: %d\n", read_lb_reg(GT_RX_ALIGNED));
+            printf("GT_RESETS:  %d\n", read_lb_reg(GT_RX_RESET_CNT));
             break;
 
         // any other key is echoed back

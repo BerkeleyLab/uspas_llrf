@@ -141,9 +141,9 @@ wire [7:0]  adc_out_clk;
 wire dac_clk_out;
 wire [15:0] dac_a_out;
 wire [15:0] dac_b_out;
-wire gtx_rxclk;
-wire [1:0] gtx_rxcharisk;
-wire [15:0] gtx_rxdata;
+wire gt_rxclk;
+wire [1:0] gt_rxcharisk;
+wire [15:0] gt_rxdata;
 wire [2:0] arc_permit_in=0;  // XXX hook me up!
 wire [15:0] etrig_pulse_cnt;
 wire       etrig_pulse;
@@ -169,9 +169,9 @@ llrf_shell llrf_inst (
     .slow_permit_in  (1'b1),
     .arc_permit_in   (arc_permit_in),
     // to EVR
-    .gtx_rxclk       (gtx_rxclk),
-    .gtx_rxdata      (gtx_rxdata),
-    .gtx_rxcharisk   (gtx_rxcharisk),
+    .gt_rxclk       (gt_rxclk),
+    .gt_rxdata      (gt_rxdata),
+    .gt_rxcharisk   (gt_rxcharisk),
     // to wave trigger
     .trig_out         (trig_out),
     .etrig_pulse_cnt  (etrig_pulse_cnt),
@@ -180,10 +180,13 @@ llrf_shell llrf_inst (
 );
 
 // ----------------------------------
-// Marble Board Support (MMC, Badger, GTX, etc.), @ lb_base_1
+// Marble Board Support (MMC, Badger, GT, etc.), @ lb_base_1
 // ---------------------------------
 marble_bsp #(
-    .IP(IP), .MAC(MAC), .LB_READ_DELAY(LB_READ_DELAY)
+    .DSP_FREQ_MHZ       (`DSP_FREQ_MHZ),
+    .IP(IP), .MAC(MAC),
+    .LB_READ_DELAY(LB_READ_DELAY),
+    .GT_TYPE("GTX")
 ) marble_inst (
     .gmii_tx_clk    (gmii_tx_clk  ),
     .gmii_txd       (gmii_txd     ),
@@ -210,10 +213,11 @@ marble_bsp #(
     .dsp_clk        (dsp_clk      ),
     .clk_200        (clk_200      ),
     .clk_locked     (clk_locked   ),
-    .gtx_refclk     (gtx_refclk   ),
-    .gtx_rxclk      (gtx_rxclk    ),
+    .gt_refclk_p    (GTREFCLK_P   ),
+    .gt_refclk_n    (GTREFCLK_N   ),
+    .gt_rxclk       (gt_rxclk     ),
 
-    .m_lb_clk       (m_lb_clk     ),
+    .m_lb_clk       (m_lb_clk      ),
     .m_lb_addr      (m_lb_addr     ),
     .m_lb_write     (m_lb_write    ),
     .m_lb_read      (m_lb_read     ),
@@ -230,10 +234,10 @@ marble_bsp #(
     .lb_rdata       (lb_rdata_1    ),
     .lb_rvalid      (lb_rvalid     ),
 
-    .evr_gtx_rxn    (MGT_RX_6_N    ),
-    .evr_gtx_rxp    (MGT_RX_6_P    ),
-    .gtx_rxdata     (gtx_rxdata    ),
-    .gtx_rxcharisk  (gtx_rxcharisk ),
+    .evr_gt_rxn     (MGT_RX_6_N    ),
+    .evr_gt_rxp     (MGT_RX_6_P    ),
+    .gt_rxdata      (gt_rxdata    ),
+    .gt_rxcharisk   (gt_rxcharisk ),
 
     .in_use         (in_use        ),
     .mac_status     (mac_status    ),

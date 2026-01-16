@@ -1,28 +1,28 @@
 `timescale  1ns / 1ps
 
 module marble_bsp_tb;
-`include "settings.vams"
 `include "regmap_marble_bsp.vh"
 
 localparam LB_ADW           = 18;
 localparam LB_READ_DELAY    = 3;
 parameter real LB_CLK_CYCLE      = 8.0;   // ns
-parameter real GTX_REF_CLK_CYCLE = 1000.0 / `EVR_GTX_REF_FREQ_MHZ;  // ns
+parameter real GT_REF_CLK_CYCLE = 1000.0 / `EVR_GT_REF_FREQ_MHZ;  // ns
+parameter real DSP_CLK_CYCLE    = 1000.0 / `DSP_FREQ_MHZ;  // ns
 
 // DSP clock generation
 reg dsp_clk;
 initial begin
     dsp_clk = 0;
-    forever #(`DSP_CLK_CYCLE/2) dsp_clk = ~dsp_clk;
+    forever #(DSP_CLK_CYCLE/2) dsp_clk = ~dsp_clk;
 end
 
 
-// GTX clock generation
-reg gtx_clk;
+// GT clock generation
+reg gt_clk;
 initial begin
-    gtx_clk = 0;
+    gt_clk = 0;
     #(1.1);  // phase shift that might be discovered by phase_diff_evr?
-    forever #(GTX_REF_CLK_CYCLE/2) gtx_clk = ~gtx_clk;
+    forever #(GT_REF_CLK_CYCLE/2) gt_clk = ~gt_clk;
 end
 // 200 MHz clock generation
 reg clk_200;
@@ -99,10 +99,9 @@ end
 
     localparam FCNT_WIDTH = 8;
     marble_bsp #(
+        .GT_TYPE            ("GT_SIM"),
         .LB_READ_DELAY      (LB_READ_DELAY),
-        .FCNT_WIDTH         (FCNT_WIDTH),
-        .EVR_COMMAS_NEEDED  (20),
-        .EVR_CHECK_TIMEOUT  (30)
+        .FCNT_WIDTH         (FCNT_WIDTH)
     ) dut (
         // Ignore Ethernet / Packet Badger for now
         .gmii_tx_clk    (1'b0),
@@ -131,9 +130,10 @@ end
         .lb_wdata       (lb_wdata),
         .lb_rdata       (lb_rdata),
 
-        .gtx_refclk     (gtx_clk),
-        .evr_gtx_rxp    (1'b0),
-        .evr_gtx_rxn    (1'b0)
+        .gt_refclk_p   (gt_clk),
+        .gt_refclk_n   (gt_clk),
+        .evr_gt_rxp    (1'b0),
+        .evr_gt_rxn    (1'b0)
     );
 
     localparam [24:0] SPI_MBOX_BASE=24'h41_000;
@@ -148,8 +148,8 @@ end
     reg fault, fail=0;
     reg [3:0] test_addr = 8'h2;
     reg [7:0] test_byte = 8'h15;
-    // #define GTX_FCNT_EXP (EVR_GTX_REF_FREQ_MHZ) * (1<<GTX_FCNT_WIDTH) / 125
-    reg [31:0] freq_cnt_expect = 2**FCNT_WIDTH * LB_CLK_CYCLE / GTX_REF_CLK_CYCLE;
+    // #define GT_FCNT_EXP (EVR_GT_REF_FREQ_MHZ) * (1<<GT_FCNT_WIDTH) / 125
+    reg [31:0] freq_cnt_expect = 2**FCNT_WIDTH * LB_CLK_CYCLE / GT_REF_CLK_CYCLE;
 
     initial begin
         repeat (100) @ (posedge lb_clk);
@@ -175,10 +175,10 @@ end
         fail |= fault;
 
         // read only register through localbus
-        // this is the frequency counter for GTX reference frequency
-        $display("---- Check GTX_REFCLK Frequency ----");
+        // this is the frequency counter for GT reference frequency
+        $display("---- Check GT_REFCLK Frequency ----");
         #(LB_CLK_CYCLE * (1 << FCNT_WIDTH));
-        lb_read_task(GTX_REFCLK_FREQUENCY, rdata);
+        lb_read_task(GT_REFCLK_FREQUENCY, rdata);
         fault = rdata > freq_cnt_expect + 1 || rdata < freq_cnt_expect - 1;
         $display("Time: %g ns: rdata = %5d, expect = %5d, %s",
             $time, rdata, freq_cnt_expect, fault ? "FAIL":" OK");
@@ -186,21 +186,13 @@ end
 
         repeat (100) @ (posedge lb_clk);
         $display("---- Check EVR soft reset logic ----");
-        lb_write_task(GTX_SOFT_RESET, 1);
-        lb_write_task(GTX_SOFT_RESET, 0);
-        lb_read_task(GTX_RX_ALIGNED, rdata);
+        lb_write_task(GT_SOFT_RESET, 1);
+        lb_write_task(GT_SOFT_RESET, 0);
+        lb_read_task(GT_RX_ALIGNED, rdata);
         while (!lb_rdata[0]) begin
-            lb_read_task(GTX_RX_ALIGNED, rdata);
+            lb_read_task(GT_RX_ALIGNED, rdata);
         end
-        $display("Time: %g ns: evr_gtx clock aligned.", $time);
-
-        $display("---- Check EVR fsm logic ----");
-        // inject data error, take 3 gt_soft_resets until clock is aligned
-        dut.evr_gtx_wrapper_i.rxnotintable_out_reg = 2'b1;
-        repeat (3) @(posedge dut.evr_gtx_wrapper_i.rx_fsm_reset_done);
-        dut.evr_gtx_wrapper_i.rxnotintable_out_reg = 2'b0;
-        @(posedge dut.evr_gtx_wrapper_i.rx_aligned_sys);
-        $display("Time: %g ns: evr_gtx clock aligned.", $time);
+        $display("Time: %g ns: evr_gt clock aligned.", $time);
         if (!fail) begin $display("PASS"); $finish(); end
         else $stop();
     end

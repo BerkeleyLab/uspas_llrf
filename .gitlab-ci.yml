@@ -62,7 +62,7 @@ marble_zest_synth:
     matrix:
       - TARGET: [ALSU, USPAS, LEMP, AWA]
 
-.marble_lemp_run:
+marble_lemp_run:
   before_script:
     - pip install pandas git+https://github.com/BerkeleyLab/leep.git
     - cd top/marble_zest

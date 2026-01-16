@@ -70,8 +70,8 @@ set_property -dict {PACKAGE_PIN D6} [get_ports SYSCLK_P]
 set_property -dict {PACKAGE_PIN D5} [get_ports SYSCLK_N]
 
 # from SI570, (schematic MGT_CLK_2), U2 output 4
-set_property -dict {PACKAGE_PIN F6} [get_ports GTXREFCLK_P]
-set_property -dict {PACKAGE_PIN F5} [get_ports GTXREFCLK_N]
+set_property -dict {PACKAGE_PIN F6} [get_ports GTREFCLK_P]
+set_property -dict {PACKAGE_PIN F5} [get_ports GTREFCLK_N]
 
 # Special pin properties for RGMII
 # Invalid to flag RGMII_RX_CLK as IOB TRUE

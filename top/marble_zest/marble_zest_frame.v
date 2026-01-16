@@ -41,7 +41,7 @@ module marble_zest_frame #(
     input           b_we,
     input [7:0]     b_di,
     //
-    input   gtx_refclk,
+    input   gt_refclk,
     input   clk_200,
     output  in_use
 );

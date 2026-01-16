@@ -35,7 +35,7 @@ class TB:
 
         # clocks
         cocotb.start_soon(Clock(dut.lb_clk, 8, units="ns").start())
-        cocotb.start_soon(Clock(dut.gtx_rxclk, 8, units="ns").start())
+        cocotb.start_soon(Clock(dut.gt_rxclk, 8, units="ns").start())
         cocotb.start_soon(
             Clock(dut.dsp_clk, llrf.DSP_CLK_CYCLE, units="ns").start())
         cocotb.start_soon(

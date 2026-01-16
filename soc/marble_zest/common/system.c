@@ -12,7 +12,7 @@
 #include "zest.h"
 #include "xadc.h"
 #include "llrf.h"
-#include "evr_gtx_wrapper.h"
+#include "evr_gt_wrapper.h"
 #ifdef SIMULATION
 #include "llrf_regs_addr.h"
 #endif
@@ -97,8 +97,8 @@ int main(void) {
     printf("==== ZEST Init         ==== : %s.\n", pass?"PASS":"FAIL");
     pass &= init_llrf(&llrf_init_data);
     printf("==== LLRF Init         ==== : %s.\n", pass?"PASS":"FAIL");
-    if (marble_init_data.enable_evr_gtx) {
-        pass &= init_evr_gtx();
+    if (marble_init_data.enable_evr_gt) {
+        pass &= init_evr_gt();
         printf("==== EVR Init          ==== : %s.\n", pass?"PASS":"FAIL");
     }
 

@@ -6,11 +6,7 @@ NEWAD_ARGS += -m    # mirror
 NEWAD_ARGS_llrf_shell = -b69632  # 0x11000
 FSET       ?= USPAS
 
-VERILOG_AUTOGEN += settings.vams
 VERILOG_AUTOGEN += $(AUTOGEN_DIR)/llrf_shell_auto.vh $(AUTOGEN_DIR)/addr_map_llrf_shell.vh
-
-settings.vams: settings.json
-	$(PYTHON) llrf_model/llrf_dsp.py -c $(FSET) -f $< --write-verilog-header $@
 
 $(MODULE)_init_regs.json: settings.json
 	$(PYTHON) llrf_model/llrf_dsp.py -c $(FSET) -f $< --write-init-reg $@

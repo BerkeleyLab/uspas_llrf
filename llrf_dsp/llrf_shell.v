@@ -1,5 +1,4 @@
 `define LB_DECODE_llrf_shell
-`include "settings.vams"
 `include "llrf_shell_auto.vh"
 
 // 18-bit (0 to 3ffff) address map
@@ -83,11 +82,11 @@ module llrf_shell #(
 
     output               trig_out,
     // ---------------------
-    // GTX transceiver interface
+    // GT transceiver interface
     // ---------------------
-    input                gtx_rxclk,
-    input [15:0]         gtx_rxdata,
-    input [1:0]          gtx_rxcharisk,
+    input                gt_rxclk,
+    input [15:0]         gt_rxdata,
+    input [1:0]          gt_rxcharisk,
 
     // ---------------------
     // External trigger interface
@@ -143,27 +142,40 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [11:0] tx_dds_modulo; top-level
 // reg [17:0] tx_dds_amplitude; top-level
 // reg [0:0] duc_spectral_flip; top-level
+// newad-force lb3 domain
+// reg [7:0] evcode; top-level
+// reg [6:0] evr_oc_delay; top-level
 // newad-force lb domain
 
 // Transfer local bus to dsp clk domain:
- wire lb1_clk = dsp_clk;
- wire [LB_DW-1:0] lb1_data;
- wire [LB_ADW-1:0] lb1_addr;
- wire lb1_write;
- data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_1x(
-     .clk_in(lb_clk), .gate_in(lb_write), .data_in({lb_addr,lb_data}),
-     .clk_out(lb1_clk), .gate_out(lb1_write), .data_out({lb1_addr,lb1_data})
- );
+wire lb1_clk = dsp_clk;
+wire [LB_DW-1:0] lb1_data;
+wire [LB_ADW-1:0] lb1_addr;
+wire lb1_write;
+data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_1x(
+    .clk_in(lb_clk), .gate_in(lb_write), .data_in({lb_addr,lb_data}),
+    .clk_out(lb1_clk), .gate_out(lb1_write), .data_out({lb1_addr,lb1_data})
+);
 
 // Transfer local bus to dac clk domain:
- wire lb2_clk = dac_clk;
- wire [LB_DW-1:0] lb2_data;
- wire [LB_ADW-1:0] lb2_addr;
- wire lb2_write;
- data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_2x(
-     .clk_in(lb_clk), .gate_in(lb_write), .data_in({lb_addr,lb_data}),
-     .clk_out(lb2_clk), .gate_out(lb2_write), .data_out({lb2_addr,lb2_data})
- );
+wire lb2_clk = dac_clk;
+wire [LB_DW-1:0] lb2_data;
+wire [LB_ADW-1:0] lb2_addr;
+wire lb2_write;
+data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_2x(
+    .clk_in(lb_clk), .gate_in(lb_write), .data_in({lb_addr,lb_data}),
+    .clk_out(lb2_clk), .gate_out(lb2_write), .data_out({lb2_addr,lb2_data})
+);
+
+// Transfer local bus to gt_rxclk domain:
+wire lb3_clk = gt_rxclk;
+wire [LB_DW-1:0] lb3_data;
+wire [LB_ADW-1:0] lb3_addr;
+wire lb3_write;
+data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
+    .clk_in(lb_clk), .gate_in(lb_write), .data_in({lb_addr,lb_data}),
+    .clk_out(lb3_clk), .gate_out(lb3_write), .data_out({lb3_addr,lb3_data})
+);
 
 `AUTOMATIC_decode
 
@@ -281,14 +293,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
         );
     end endgenerate
 
-    // EVR trigger edge detection
-    // XXX redundant logic from timingcore
-    wire [0:0]  dsp_event1, dsp_event2;
-    (* ASYNC_REG="TRUE" *) reg [2:0] evr_trig_d = 0;
-    always @(posedge dsp_clk) begin
-        evr_trig_d <= {evr_trig_d[1:0], dsp_event1};
-    end
-    wire evr_trig = ~evr_trig_d[2] & evr_trig_d[1];
+    wire evr_trig;
 
     // -- Waveform triggering logic
     localparam WAVE_TRIG_ALWAYS = 0,  // internal trigger
@@ -317,7 +322,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire slow_snap = slow_snap_cic ? cbuf_transferred : sig_buf_iq_transferred[0];
 
     wire [15:0] slow_rdata;
-    wire [63:0] evr_live_ts;
+    wire [63:0] evr_live_ts_dsp;
     wire slow_ready;
     wire inlk_permit_in = drive_permit_in & slow_permit_in;
     cic_waves #(
@@ -338,7 +343,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 
         .slow_bridge_data_in(adc_data_in),
         .slow_snap          (slow_snap),
-        .evr_timestamp      (evr_live_ts),
+        .evr_timestamp      (evr_live_ts_dsp),
         .cic_wave_samp_per  (wave_samp_per),
 
         .cic_chan_keep      (chan_keep),
@@ -564,27 +569,39 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     );
 
     // timing module with EVR
-    wire [15:0] evr_evcnt;
-    wire [0:0]  evr_timestamp_valid;
-    wire [0:0]  evr_live_pps_marker;
-    wire [0:0]  evr_live_hb_marker;
-    timing_core #(.DSP_EV1(`DSP_EV1)) timing_evr
-    (
-        .lb_clk              (lb_clk),
-        .evr_clk             (gtx_rxclk),
-        .evr_rxd             (gtx_rxdata),
-        .evr_rxk             (gtx_rxcharisk),
-        .evr_evcnt           (evr_evcnt),
-        .evr_timestamp_valid (evr_timestamp_valid),
+    wire [31:0] evr_evcnt_lb;
+    wire [0:0]  evr_ts_valid_lb;
+    wire [0:0]  hb_valid_lb;
+    wire [0:0]  pps_valid_lb;
+    wire [0:0]  oc_valid_lb;
+    wire [27:0] oc_evr_frequency;
+    // XXX should be used for trigger
+    wire evr_oc_trig_dsp;
+    wire [63:0] evr_oc_ts_dsp;
+    timing_core timing_evr (
+        .evr_clk             (gt_rxclk),
+        .evr_rxd             (gt_rxdata),
+        .evr_rxk             (gt_rxcharisk),
+        .evcode_evr          (evcode),
+        .event_evr           (),
+	.oc_delay_evr        (evr_oc_delay),
+
+        .sys_clk             (lb_clk),
+        .event1_cnt_sys      (evr_evcnt_lb),
+        .ts_valid_sys        (evr_ts_valid_lb),
+        .live_ts_sys         (),
+	.hb_valid_sys        (hb_valid_lb),
+	.pps_valid_sys       (pps_valid_lb),
+	.oc_valid_sys        (oc_valid_lb),
+	.oc_evr_frequency    (oc_evr_frequency),
+
         .dsp_clk             (dsp_clk),
-        .dsp_live_ts         (evr_live_ts),
-        // unused: these markers cannot be seen without stretching
-        .dsp_pps_marker      (evr_live_pps_marker),
-        .dsp_hb_marker       (evr_live_hb_marker),
-        // unused
-        .evr_event1          (),
-        .dsp_event1          (dsp_event1),
-        .dsp_event2          (dsp_event2)
+        .live_ts_dsp         (evr_live_ts_dsp),
+        .pps_strobe_dsp      (),
+        .hb_strobe_dsp       (),
+        .event_dsp           (evr_trig),
+        .oc_trig_dsp         (evr_oc_trig_dsp),
+	.oc_ts_dsp           (evr_oc_ts_dsp)
     );
 
     // ---------------------
@@ -639,21 +656,21 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
     wire lb_error;
     wire xfer_clk, xfer_strobe, xfer_snap;
     wire [3:0] xfer_addr;
-    wire [31:0] lb_reg_bank_1;
+    wire [31:0] lb_reg_bank_2;
     jit_rad_gateway #(.passthrough(0)) xfer_bank_6(
         .lb_clk(lb_clk), .lb_addr(lb_addr[3:0]),
-        .lb_strobe(lb_read), .lb_odata(lb_reg_bank_1),
+        .lb_strobe(lb_read), .lb_odata(lb_reg_bank_2),
         .lb_prefill(lb_prefill), .lb_error(lb_error),
         .app_clk(dsp_clk), .xfer_clk(xfer_clk), .xfer_strobe(xfer_strobe),
-        .xfer_addr(xfer_addr), .xfer_odata(reg_bank_1), .xfer_snap(xfer_snap)
+        .xfer_addr(xfer_addr), .xfer_odata(reg_bank_2), .xfer_snap(xfer_snap)
     );
 
-    // Want self-consistent readout of all 64 bits of evr_live_ts.
+    // Want self-consistent readout of all 64 bits of evr_live_ts_dsp.
     // Depends on evr_live_ts_lo being given the xfer_addr[3:0] == 0 slot.
     // See jit_rad_gateway_demo.v for discussion.
-    wire [31:0] evr_live_ts_lo = evr_live_ts[31:0];
+    wire [31:0] evr_live_ts_lo = evr_live_ts_dsp[31:0];
     reg  [31:0] evr_live_ts_hi = 0;
-    always @(posedge xfer_clk) if (xfer_snap) evr_live_ts_hi = evr_live_ts[63:32];
+    always @(posedge xfer_clk) if (xfer_snap) evr_live_ts_hi = evr_live_ts_dsp[63:32];
     wire [31:0] sig_buf_count = adc_raw_counts[0];
 
     // lb_read: Match READ_DELAY=3 in system.v, check timing in simulation
@@ -669,24 +686,31 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             4'h8: reg_bank_0 <= arc_permit_sum_lb;    // alias: arc_permit_sum
             4'h9: reg_bank_0 <= err_out_amp_lb;       // alias: loop_amp_err
             4'ha: reg_bank_0 <= err_out_phs_lb;       // alias: loop_phs_err
-            4'hb: reg_bank_0 <= evr_evcnt;            // alias: evr_evcnt
-            4'hc: reg_bank_0 <= evr_timestamp_valid;  // alias: evr_timestamp_valid
+            4'hb: reg_bank_0 <= evr_evcnt_lb;         // alias: evr_evcnt
+            4'hc: reg_bank_0 <= evr_ts_valid_lb;      // alias: evr_ts_valid
             default: reg_bank_0 <= 32'hfaceface;
+        endcase
+        case (lb_addr[3:0])
+            4'h1: reg_bank_1 <= hb_valid_lb;          // alias: evr_hb_valid
+            4'h2: reg_bank_1 <= pps_valid_lb;         // alias: evr_pps_valid
+            4'h3: reg_bank_1 <= oc_valid_lb;          // alias: evr_oc_valid
+            4'h4: reg_bank_1 <= oc_evr_frequency;     // alias: evr_oc_frequency
+            default: reg_bank_1 <= 32'hfaceface;
         endcase
     end
     always @(posedge xfer_clk) begin
         case (xfer_addr[3:0])
             // All these signals are in dsp_clk domain
             // (and handled with jit_rad)
-            4'h0: reg_bank_1 <= evr_live_ts_lo;
-            4'h1: reg_bank_1 <= evr_live_ts_hi;
-            4'h2: reg_bank_1 <= amp_setpoint_ntw;
-            4'h3: reg_bank_1 <= phs_setpoint_ntw;
-            4'h4: reg_bank_1 <= sig_buf_count;
-            4'h5: reg_bank_1 <= ntw_cos_debug;
-            4'h6: reg_bank_1 <= ntw_phase_debug;
-            4'h7: reg_bank_1 <= etrig_pulse_cnt;
-            default: reg_bank_1 <= 32'hfaceface;
+            4'h0: reg_bank_2 <= evr_live_ts_lo;
+            4'h1: reg_bank_2 <= evr_live_ts_hi;
+            4'h2: reg_bank_2 <= amp_setpoint_ntw;
+            4'h3: reg_bank_2 <= phs_setpoint_ntw;
+            4'h4: reg_bank_2 <= sig_buf_count;
+            4'h5: reg_bank_2 <= ntw_cos_debug;
+            4'h6: reg_bank_2 <= ntw_phase_debug;
+            4'h7: reg_bank_2 <= etrig_pulse_cnt;
+            default: reg_bank_2 <= 32'hfaceface;
         endcase
     end
     always @(posedge lb_clk) if (lb_read) begin
@@ -730,7 +754,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
             18'h3????: lb_rdata_r <= cbuf_out;
             18'h008??: lb_rdata_r <= 32'h0;  // LEEP old config ROM compatibility
             18'h???0?: lb_rdata_r <= reg_bank_0;
-            18'h???1?: lb_rdata_r <= lb_reg_bank_1;
+            18'h???1?: lb_rdata_r <= reg_bank_1;
+            18'h???2?: lb_rdata_r <= lb_reg_bank_2;
             default:   lb_rdata_r <= 32'hfaceface;
         endcase
     end

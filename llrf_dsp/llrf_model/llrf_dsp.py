@@ -168,11 +168,8 @@ class DDC(LLRFModule):
         self.gain = np.sin(self.omega) * 2 * self.z**(-self.den+2)
 
     def gen_ddc_data(self, adc_data):
-        """Calculate I,Q values from 2 consecutive ADC samples using
-            non-IQ down conversion:
-        | I | = gain * | sin([n + 1] * omega) -sin(n * omega)| X |a_data[n]  |
-        | Q |          | cos([n + 1] * omega) -cos(n * omega)|   |a_data[n+1]|
-        where gain is 1 / sin(omega).
+        """Generate I,Q values from 2 consecutive ADC samples using
+            non-IQ down conversion.
 
         Args:
             adc_data (np.array): time series data samples for down conversion
@@ -185,10 +182,9 @@ class DDC(LLRFModule):
                 [np.sin(omega * (n + 1)), -np.sin(omega * n)],
                 [np.cos(omega * (n + 1)), -np.cos(omega * n)]
             ])
-        gain = 1 / np.sin(self.omega)
         s_pre = adc_data[0]
         for n, s in enumerate(adc_data[1:]):
-            i, q = gain * calc_coefficient_mat(n) @ np.array([s_pre, s])
+            i, q = calc_coefficient_mat(n) @ np.array([s_pre, s])
             s_pre = s
             yield i + 1j * q
 
@@ -560,6 +556,7 @@ class LLRFShell(LLRF_DSP):
         prl_adc_chan: int = 0
         fdbk_adc_chan: int = 0
         wave_trig_sel: int = WaveTrigSel.Internal
+        evcode: int = 0
 
         def __setattr__(self, name, value):
             """Enforce data type casting, e.g. int"""
@@ -621,7 +618,8 @@ class LLRFShell(LLRF_DSP):
             cic_wave_shift=self.cic_mon.wave_shift,
             inlk_wave_shift=self.cic_inlk.wave_shift,
             chan_keep=0b11,
-            Kp_amp=20, Ki_amp=50, Kp_phs=50, Ki_phs=200
+            Kp_amp=20, Ki_amp=50, Kp_phs=50, Ki_phs=200,
+            evcode=self.EVCODE
         )
 
     @property
@@ -708,11 +706,3 @@ if __name__ == "__main__":
         with open(args.write_init_reg, 'w') as f:
             json.dump(llrf_model.init_regs.__dict__, f, indent=4)
         print(f"{args.write_init_reg} wrote with configuration: {args.conf}")
-
-    if args.write_verilog_header:
-        with open(args.write_verilog_header, 'w') as f:
-            for k, v in llrf_model.config.items():
-                # the only 2 macros still being used.
-                # Others are in init registers
-                if k in ['DSP_EV1', 'DSP_CLK_CYCLE']:
-                    f.write(f"`define {k} {v}\n")

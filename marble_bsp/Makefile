@@ -19,6 +19,7 @@ VFLAGS_DEP += -y$(FPGA_FAMILY_DIR)/xilinx
 VFLAGS_DEP += -y$(AUTOGEN_DIR) -I$(AUTOGEN_DIR)
 VFLAGS_DEP += -y$(PICORV_DIR)/gateware  # for spi_engine.v
 VFLAGS_DEP += -I$(BEDROCK_DIR)/localbus -y$(BEDROCK_DIR)/localbus
+VFLAGS_DEP += -I$(SERIAL_IO_DIR)/EVG_EVR -y$(SERIAL_IO_DIR)/EVG_EVR
 VFLAGS_DEP += -y$(PROJECTS_DIR)/test_marble_family -y$(BADGER_DIR)/tests -y$(HOMELESS_DIR)
 VFLAGS_DEP += $(SYNTH_OPT)
 VFLAGS += $(VFLAGS_DEP)
@@ -30,16 +31,11 @@ all: $(TEST_BENCH) $(CHECKS)
 
 ##### build.mk
 TEST_BENCH_D      = $(TEST_BENCH:%_tb=$(DEPDIR)/%_tb.d)
-VERILOG_AUTOGEN  += settings.vams
 VERILOG_AUTOGEN  += $(AUTOGEN_DIR)/$(IP_NAME)_auto.vh $(AUTOGEN_DIR)/addr_map_$(IP_NAME).vh
 VERILOG_AUTOGEN  += $(AUTOGEN_DIR)/regmap_$(IP_NAME).vh
 RTEFI_CLIENT_LIST = hello.v speed_test.v lb_gateway.v spi_flash.v
 include $(BADGER_DIR)/rules.mk
 VERILOG_AUTOGEN  += $(RTEFI_V)
-
-
-settings.vams: $(APP_DSP_DIR)/settings.json
-	$(PYTHON) $(APP_DSP_DIR)/llrf_model/llrf_dsp.py -c $(FSET) -f $< --write-verilog-header $@
 
 $(DEPDIR)/$(IP_NAME)_tb.d: $(VERILOG_AUTOGEN)
 
@@ -63,10 +59,15 @@ $(AUTOGEN_DIR)/scalar_%_regmap.json: $(IP_NAME).v
 $(IP_NAME).json: $(AUTOGEN_DIR)/regmap_$(IP_NAME).json $(AUTOGEN_DIR)/scalar_$(IP_NAME)_regmap.json static_$(IP_NAME).json
 	$(PYTHON) $(BUILD_DIR)/merge_json.py -o $@ -i $^
 
+MARBLE_BSP_REGS_H = $(AUTOGEN_DIR)/marble_bsp_regs.h
+
+$(MARBLE_BSP_REGS_H): $(IP_NAME).json
+	$(PYTHON) autogen_header.py -i $< -o $@
+
 # this is to avoid vivado critical warnings about duplicated / redefination of module since they are already in DSP
 EXCLUDE  = $(wildcard $(FPGA_FAMILY_DIR)/xilinx/*.v)
 EXCLUDE += $(addprefix $(DSP_DIR)/, reg_delay.v dpram.v reg_tech_cdc.v flag_xdomain.v data_xdomain.v freq_gcount.v freq_count.v phase_diff.v phaset.v)
-$(IP_NAME)_expand.v: $(IP_NAME).v #$(DEPDIR)/$(IP_NAME).d
+$(IP_NAME)_expand.v: $(IP_NAME).v $(MARBLE_BSP_REGS_H) #$(DEPDIR)/$(IP_NAME).d
 	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(filter-out $(EXCLUDE),$(filter %.v, $^))
 
 ifneq (,$(findstring _tb,$(MAKECMDGOALS)))
@@ -91,8 +92,5 @@ CLEAN += $(TEST_BENCH)
 CLEAN += $(IP_NAME)_expand.v
 CLEAN += $(RTEFI_CLEAN)
 CLEAN += $(IP_NAME).json
-CLEAN += settings.vams
-CLEAN += evr_gtx/*.v evr_gtx/*.xdc evr_gtx/*.vhdl evr_gtx/*.xml evr_gtx/*.dcp evr_gtx/*.xml evr_gtx/*.veo
-CLEAN_DIRS += evr_gtx/tcl evr_gtx/gtx_init evr_gtx/doc $(AUTOGEN_DIR)
 
 include $(BUILD_DIR)/bottom_rules.mk

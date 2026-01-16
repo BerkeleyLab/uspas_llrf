@@ -2,7 +2,7 @@ set outputDir ./_xilinx
 file mkdir $outputDir
 
 # only source swap_gitid.tcl
-if {[llength $argv] >= 5} {
+if {[llength $argv] >= 6} {
     set aux_tcl [lindex $argv 4]
     puts "Sourcing $aux_tcl"
     source $aux_tcl
@@ -39,13 +39,12 @@ puts "Synthesizing for part $part"
 
 create_project marble_zest_top_$fset $outputDir -part $part -force
 
-# now source gtx_config.tcl
-if {[llength $argv] >= 5} {
+if {[llength $argv] >= 6} {
     set aux_tcl [lindex $argv 5]
-    puts "Sourcing $aux_tcl"
+    set REFCLK_FREQ [lindex $argv 6]   ;# direct global variable
+    puts "Sourcing $aux_tcl with REFCLK_FREQ=$REFCLK_FREQ"
     source $aux_tcl
 }
-
 # Read in sources
 set fp [open $flist r]
 set file_data [read -nonewline $fp]
@@ -96,6 +95,10 @@ puts [get_property verilog_define [current_fileset]]
 
 launch_runs synth_1 -verbose
 wait_on_run synth_1
+open_run synth_1
+# Compress image
+set_property BITSTREAM.GENERAL.COMPRESS  TRUE  [current_design]
+
 set_property STEPS.PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
 launch_runs impl_1 -to_step route_design -verbose
 wait_on_run impl_1

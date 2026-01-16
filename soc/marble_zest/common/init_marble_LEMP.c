@@ -106,6 +106,6 @@ const marble_init_t marble_init_data = {
         .regmap = pca9555_u39_regmap
     },
     .si570_freq_hz = 119000000,
-    .enable_evr_gtx = true,
+    .enable_evr_gt = true,
     .enable_poll_status = true
 };
