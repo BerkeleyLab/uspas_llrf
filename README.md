@@ -65,7 +65,9 @@ The Zest reference clock is MO.
 
 The Zest reference clock is LO.
 
-## LLRF DSP and verification
+## 🚀 Quick Start
+
+### LLRF DSP and verification
 
 See [doc/README.md](doc/README.md).
 
@@ -74,13 +76,21 @@ cd llrf_dsp
 make
 ```
 
-## Synthesize bitstream
+### Synthesize bitstream
 
 ```bash
 cd top/marble_zest
 make FSET={TARGET}
 ```
-Where TARGET is ALSU, AWA, LEMP or USPAS
-## Boot-load soft core program
+Where TARGET is ALSU, AWA, LEMP or USPAS.
+
+### Boot-load soft core program
 
 See [soc/marble_zest](soc/marble_zest/synth/README.md).
+
+## 📖 Citation
+
+If you use this design in your research or projects, please cite our papers.
+
+[1]: [Digital Low-Level RF control system for Accumulator Ring at Advanced Light Source Upgrade Project](https://arxiv.org/abs/2210.05095)
+
