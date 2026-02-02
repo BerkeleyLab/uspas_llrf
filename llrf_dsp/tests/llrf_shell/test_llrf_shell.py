@@ -1,14 +1,15 @@
 import cocotb
 import random
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, FallingEdge, ClockCycles
-from llrf_model.llrf_dsp import LLRFShell, clip_int, wrap_phase
+from cocotb.triggers import RisingEdge, ClockCycles
+from cocotb.handle import Immediate
+from uspas_llrf.llrf_model.llrf_dsp import LLRFShell, clip_int, wrap_phase, \
+    default_configs
 from local_bus import LocalbusAppMaster
 import logging
 import numpy as np
 from dataclasses import asdict
 from pprint import pformat
-import json
 import itertools
 import os
 
@@ -17,10 +18,10 @@ class TB:
     def __init__(self, dut, conf='LEMP', wave_samp_per=1):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
+        self.cbuf_aw = dut.CBUF_AW.value.to_unsigned()
+        self.sig_buf_aw = dut.SIG_BUF_AW.value.to_unsigned()
         self.conf = conf
-        with open('../../settings.json') as f:
-            configs = json.load(f)
-        dsp_config = configs[conf]
+        dsp_config = default_configs[conf]
         # override tx dds setting for loopback test at IF_adc
         dsp_config['TX_NUM_DDS'] = dsp_config['NUM_DDS']
         dsp_config['TX_DEN_DDS'] = dsp_config['DEN_DDS'] * 2
@@ -29,17 +30,17 @@ class TB:
         self.lb = LocalbusAppMaster(
             dut, dut.lb_clk, regmap_json_path='../../llrf_shell.json')
         self.log_banner(f'Simulating: {conf}')
-        self.dut._log.info(f'LLRF RX:\n{llrf.rx}')
-        self.dut._log.info(f'LLRF TX:\n{llrf.tx}')
-        self.dut._log.info(f'Calibrations:\n{pformat(llrf.cal_factors)}')
+        cocotb.log.info(f'LLRF RX:\n{llrf.rx}')
+        cocotb.log.info(f'LLRF TX:\n{llrf.tx}')
+        cocotb.log.info(f'Calibrations:\n{pformat(llrf.cal_factors)}')
 
         # clocks
-        cocotb.start_soon(Clock(dut.lb_clk, 8, units="ns").start())
-        cocotb.start_soon(Clock(dut.gt_rxclk, 8, units="ns").start())
+        cocotb.start_soon(Clock(dut.lb_clk, 8, unit="ns").start())
+        cocotb.start_soon(Clock(dut.gt_rxclk, 8, unit="ns").start())
         cocotb.start_soon(
-            Clock(dut.dsp_clk, llrf.DSP_CLK_CYCLE, units="ns").start())
+            Clock(dut.dsp_clk, llrf.DSP_CLK_CYCLE, unit="ns").start())
         cocotb.start_soon(
-            Clock(dut.dac_clk, llrf.DSP_CLK_CYCLE / 2, units="ns").start())
+            Clock(dut.dac_clk, llrf.DSP_CLK_CYCLE / 2, unit="ns").start())
 
         # test bench setup
         self.loopback_dac, self.feedback_dac = 0, 1
@@ -50,7 +51,7 @@ class TB:
             ch for ch in range(8)
             if ch not in [self.phaseref_adc, self.feedback_adc]]
         self.loopback_adc = random.choice(available_adcs)
-        self.dut._log.warning(
+        cocotb.log.warning(
             f'phaseref_adc: {self.phaseref_adc}, '
             f'loopback_adc: {self.loopback_adc}')
         # flattened signal array of 2 DAC + 8 ADC
@@ -72,16 +73,16 @@ class TB:
             self.loopback(self.feedback_dac, self.feedback_adc))
 
     def log_banner(self, str):
-        self.dut._log.info('*'*20 + f"{str:^20s}" + '*'*20)
+        cocotb.log.info('*'*20 + f"{str:^20s}" + '*'*20)
 
     def check_sig(self, sig_meas, sig_name='signal'):
         """Check the measured signal against expected amplitude and phase."""
         amp_meas = np.abs(sig_meas)
         phs_meas = np.angle(sig_meas, deg=True)
-        self.dut._log.warning(
+        cocotb.log.warning(
             f"expected {sig_name:12s} mag: {self.amp_exp:8.2f} cnt,  "
             f"phs: {self.phs_exp:6.3f} deg")
-        self.dut._log.warning(
+        cocotb.log.warning(
             f"measured {sig_name:12s} mag: {amp_meas:8.2f} cnt,  "
             f"phs: {phs_meas:6.3f} deg")
         amp_err = abs(amp_meas - self.amp_exp) / self.amp_exp
@@ -90,7 +91,13 @@ class TB:
         assert phs_err < 0.1, "phase out-of-bound of 0.1 deg"
 
     async def drive_phaseref_adc(self, ch=0, amp=0, phs=0, noise_amp=3):
-        await FallingEdge(self.dut.llrf_shell.dsp_reset)
+        # wait for dsp_reset
+        dsp_reset = self.dut.llrf_shell.dsp_reset
+        while True:
+            await dsp_reset.value_change
+            if dsp_reset.value == 0:  # falling edge
+                break
+        cocotb.log.warning("dsp_reset done. drive_phaseref_adc started.")
         # truly important but empirical to synchronize with DDS
         t_start = self.llrf.CIC_BASE_PERIOD % 22
         for t in itertools.count(t_start):
@@ -103,8 +110,8 @@ class TB:
         """ loopback dac_chan -> adc_chan with 0 cycle of latency """
         while True:
             await RisingEdge(self.dut.dsp_clk)
-            self.dut.adc_array_in[adc_chan].setimmediatevalue(
-                self.dut.dac_array_out[dac_chan].value.signed_integer)
+            self.dut.adc_array_in[adc_chan].set(Immediate(
+                self.dut.dac_array_out[dac_chan].value.to_signed()))
 
     async def read_inlk_task(self, chan=0):
         """Read inlk amplitude and phase from the local bus. """
@@ -120,7 +127,7 @@ class TB:
         await RisingEdge(self.dut.llrf_shell.cbuf_transferred)
         assert await self.lb.read_reg('llrf_circle_ready')
         wfm = []
-        for idx in range(1 << self.dut.CBUF_AW.value):
+        for idx in range(1 << self.cbuf_aw):
             offset = self.cic_n_chan * idx * 2  # 2 for I/Q
             i = await self.lb.read_reg('circle_data', offset + chan * 2)
             q = await self.lb.read_reg('circle_data', offset + chan * 2 + 1)
@@ -132,7 +139,7 @@ class TB:
         await RisingEdge(self.dut.llrf_shell.slow_snap)
         assert await self.lb.read_reg('sig_buf_ready')
         wfm = []
-        for idx in range(1 << self.dut.SIG_BUF_AW.value):
+        for idx in range(1 << self.sig_buf_aw):
             s = await self.lb.read_reg(name, idx)
             wfm.append(s)
         return np.array(wfm)
@@ -146,7 +153,7 @@ class TB:
         return min, max
 
     async def write_init_regs(self):
-        self.dut._log.info(f'InitRegisters:\n{pformat(self.llrf.init_regs)}')
+        cocotb.log.info(f'InitRegisters:\n{pformat(self.llrf.init_regs)}')
         for name, val in asdict(self.llrf.init_regs).items():
             await self.lb.write_reg(name, val)
         # single cycle, for resetting both up/down DDS
@@ -166,8 +173,8 @@ class TB:
         self.cic_names = [
             self.sig_names[idx] for idx, enabled in enumerate(self.cic_chans)
             if enabled]  # lsb_mask==1: first chan is LSB
-        self.dut._log.debug(f'cic chans: {self.cic_chans}')
-        self.dut._log.debug(f'cic names: {self.cic_names}')
+        cocotb.log.debug(f'cic chans: {self.cic_chans}')
+        cocotb.log.debug(f'cic names: {self.cic_names}')
         self.llrf.init_regs.dac_permit = True
         amp_setp, phs_setp = self.llrf.calc_open_loop_setp(
             self.amp_exp, self.phs_exp)
@@ -197,7 +204,7 @@ class TB:
                 "ADC min out of range"
             assert abs(self.amp_exp - max) / self.amp_exp < 0.1, \
                 "ADC min out of range"
-            self.dut._log.warning(
+            cocotb.log.warning(
                 f"measured {self.sig_names[chan]:12s} min: {min:8.2f} cnt,  "
                 f"max: {max:6.2f} cnt")
 
@@ -240,8 +247,9 @@ class TB:
 
     async def test_fast_interlock(self, wait=30):
         self.log_banner('Fast Interlock Test')
-        amp_lo = self.amp_exp * self.llrf.inlk_gain * 0.99
-        amp_hi = self.amp_exp * self.llrf.inlk_gain * 1.01
+        inlk_gain_abs = np.abs(self.llrf.inlk_gain)
+        amp_lo = self.amp_exp * inlk_gain_abs * 0.99
+        amp_hi = self.amp_exp * inlk_gain_abs * 1.01
         regs = [
             ('inlk_inlk_mode', self.phaseref_adc, 0b10),
             ('inlk_amp_lo', self.phaseref_adc, amp_lo),
@@ -256,26 +264,26 @@ class TB:
         dut = self.dut.llrf_shell
         await RisingEdge(dut.inlk_permit_out)  # wait for inlk permit to reset
         await RisingEdge(dut.inlk.wave_valid)
-        self.dut._log.info("%8s " * 9 % (
+        cocotb.log.info("%8s " * 9 % (
             'chan', 'mon_amp', 'amp_lo', 'amp_hi', '>=lo', '>=hi',
             'permit', 'amp', 'phs'))
         for _ in range(20):
             await RisingEdge(self.dut.dsp_clk)
-            mon_addr = dut.mon_addr_out.value.integer
-            mon_amp_out = dut.mon_amp_out.value.signed_integer
-            mon_phs_cnt = dut.mon_phs_out.value.signed_integer
+            mon_addr = dut.mon_addr_out.value.to_unsigned()
+            mon_amp_out = dut.mon_amp_out.value.to_signed()
+            mon_phs_cnt = dut.mon_phs_out.value.to_signed()
             mon_phs_out = self.llrf.decode_phase(mon_phs_cnt, width=17)
-            amp_valid = dut.inlk.wave_cnt.value % 2 == 1
-            if dut.inlk.wave_valid and amp_valid:
-                self.dut._log.info(
+            amp_valid = dut.inlk.wave_cnt.value.to_unsigned() % 2 == 1
+            if dut.inlk.wave_valid.value == 1 and amp_valid:
+                cocotb.log.info(
                     f"{mon_addr:8d} "
                     f"{mon_amp_out:8d} "
-                    f"{dut.inlk.amp_lo.value.integer:8d} "
-                    f"{dut.inlk.amp_hi.value.integer:8d} "
-                    f"{dut.inlk.cmpg_lo.value.integer:8d} "
-                    f"{dut.inlk.cmpg_hi.value.integer:8d} "
-                    f"{dut.inlk_permit_out.value.integer:8d} "
-                    f"{mon_amp_out / np.abs(self.llrf.inlk_gain):8.1f} "
+                    f"{dut.inlk.amp_lo.value.to_unsigned():8d} "
+                    f"{dut.inlk.amp_hi.value.to_unsigned():8d} "
+                    f"{int(dut.inlk.cmpg_lo.value):8d} "
+                    f"{int(dut.inlk.cmpg_hi.value):8d} "
+                    f"{int(dut.inlk_permit_out.value):8d} "
+                    f"{mon_amp_out / inlk_gain_abs:8.1f} "
                     f"{mon_phs_out:8.1f} ")
         assert dut.inlk_permit_out.value == 1
 

@@ -91,9 +91,8 @@ system_config:
 # check Ethernet and system selftest status
 system_test:
 	ping -v -c 4 -w 20 $(IP_ADDRESS)
-	cd $(TOP)python && \
-       test "$$($(PYTHON) test.py leep://$(IP_ADDRESS):803 gitid)" = "$(GIT_ID)" && echo "gitid OK" && \
-       $(PYTHON) test.py leep://$(IP_ADDRESS):803 reg system_bist_pass | awk ' $$2!=00000001 { exit 1 }'
+	test "$$(leep leep://$(IP_ADDRESS):803 gitid)" = "$(GIT_ID)" && echo "gitid OK" && \
+	leep leep://$(IP_ADDRESS):803 reg system_bist_pass | awk ' $$2!=00000001 { exit 1 }'
 
 CLEAN += system_top.xdc top.xdc *.bin *.bit $(IP_BIT_D)
 CLEAN += config_romx.v $(TARGET).json topsim.d Vmarble_zest_frame

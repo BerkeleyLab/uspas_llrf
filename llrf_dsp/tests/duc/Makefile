@@ -2,8 +2,8 @@ include ../../../dir_list.mk
 include $(TOP)settings.mk
 
 DUT      = dac_duc
-TOPLEVEL = $(DUT)
-MODULE   = test_duc
+COCOTB_TOPLEVEL       = $(DUT)
+COCOTB_TEST_MODULES   = test_duc
 
 VERILOG_SOURCES += $(DSP_DIR)/cpxmul_fullspeed.v \
                    $(DSP_DIR)/data_xdomain.v $(DSP_DIR)/reg_tech_cdc.v $(DSP_DIR)/flag_xdomain.v \

@@ -2,8 +2,8 @@ include ../../../dir_list.mk
 include $(TOP)settings.mk
 
 DUT      = dds
-TOPLEVEL = $(DUT)
-MODULE   = test_$(DUT)
+COCOTB_TOPLEVEL       = $(DUT)
+COCOTB_TEST_MODULES   = test_$(DUT)
 
 VERILOG_SOURCES += $(CORDIC_DIR)/addsubg.v $(CORDIC_DIR)/cstageg.v
 VERILOG_SOURCES += cordicg_b22.v \

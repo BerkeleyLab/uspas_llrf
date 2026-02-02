@@ -1,7 +1,6 @@
 from cocotb_bus.drivers import BusDriver
 from cocotb_bus.monitors import BusMonitor
 from cocotb.triggers import RisingEdge, ClockCycles
-from cocotb.types import LogicArray
 import json
 from pathlib import Path
 from dataclasses import dataclass
@@ -97,8 +96,8 @@ class LocalbusAppMaster(LocalBusMaster):
         if offset > 2**reg.addr_width - 1:
             raise IndexError(f"offset {offset} out of bounds for {reg_name}.")
         data = await self.read(reg.base_addr + offset)
-        v = LogicArray(data.value)[reg.data_width-1:0]
+        v = data.value[reg.data_width-1:0]
         if reg.sign == 'signed':
-            return v.signed_integer
+            return v.to_signed()
         else:
-            return v.integer
+            return v.to_unsigned()

@@ -1,6 +1,6 @@
 from leep.raw import LEEPDevice
-from llrf_model.llrf_dsp import LLRFShell
-from llrf_app.bsp import MarbleDevInfo
+from uspas_llrf.llrf_model.llrf_dsp import LLRFShell
+from uspas_llrf.llrf_app.bsp import MarbleDevInfo
 import numpy as np
 import pandas as pd
 import json

@@ -9,16 +9,16 @@ variables:
   DOCKER_DRIVER: overlay2
   GIT_SUBMODULE_STRATEGY: normal
 
-image: mohs.dhcp.lbl.gov/xilinx_env_trixie
+image: mohs.dhcp.lbl.gov/xilinx_env_trixie_custom_verilator
 
 flake8:
   stage: test
   script:
-   - flake8 python llrf_dsp
+   - flake8 uspas_llrf llrf_dsp
 
 llrf_dsp_test:
   before_script:
-    - pip install numpy scipy cocotb==1.9.2 pytest cocotb-bus
+    - pip install -e .
     - cd llrf_dsp
   stage: test
   script:
@@ -47,6 +47,7 @@ marble_bsp_test:
 
 marble_zest_synth:
   before_script:
+    - pip install -e .
     - cd top/marble_zest
   stage: synthesis
   script:
@@ -64,7 +65,7 @@ marble_zest_synth:
 
 marble_lemp_run:
   before_script:
-    - pip install pandas git+https://github.com/BerkeleyLab/leep.git
+    - pip install -e .
     - cd top/marble_zest
   stage: run
   tags:
@@ -79,7 +80,7 @@ marble_lemp_run:
 
 marble_awa_run:
   before_script:
-    - pip install pandas git+https://github.com/BerkeleyLab/leep.git
+    - pip install -e .
     - cd top/marble_zest
   stage: run
   tags:
@@ -94,7 +95,7 @@ marble_awa_run:
 
 .marble_uspas_run:
   before_script:
-    - pip install pandas git+https://github.com/BerkeleyLab/leep.git
+    - pip install -e .
     - cd top/marble_zest
   stage: run
   tags:
