@@ -2,8 +2,8 @@ include ../../../dir_list.mk
 include $(TOP)settings.mk
 
 DUT      = llrf_shell
-TOPLEVEL = test_$(DUT)
-MODULE   = test_$(DUT)
+COCOTB_TOPLEVEL       = test_$(DUT)
+COCOTB_TEST_MODULES   = test_$(DUT)
 
 VERILOG_SOURCES += $(APP_DSP_DIR)/llrf_shell_expand.v
 VERILOG_SOURCES += test_$(DUT).sv

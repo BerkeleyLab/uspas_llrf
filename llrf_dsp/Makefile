@@ -32,7 +32,6 @@ llrf_shell_yosys.json: llrf_shell_skin.v llrf_shell_expand.v $(SHELL_EXTRA_V) $(
 # exercise with make llrf_shell_expand.v llrf_shell_cdc.txt
 
 CLEAN += llrf_shell_yosys.json llrf_shell_cdc.txt
-CLEAN_DIRS += llrf_model/__pycache__
 
 distclean::
 	$(MAKE) -C tests clean

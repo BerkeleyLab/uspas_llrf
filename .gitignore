@@ -25,6 +25,7 @@ soc/marble_zest/*/*.o
 *xelab.pb
 *xvlog.pb
 *pico.trace
+*.egg-info/
 llrf_dsp/cordicg_b22.v
 llrf_dsp/tests/*/cordicg_b22.v
 llrf_dsp/llrf_shell_expand.v

@@ -1,7 +1,8 @@
+from uspas_llrf.llrf_model.llrf_dsp import LLRF_DSP
+import uspas_llrf.llrf_model as llrf_model
 import json
 import numpy as np
 from scipy import signal
-from .llrf_dsp import LLRF_DSP
 import cocotb
 from cocotb.queue import Queue
 from cocotb.triggers import Timer
@@ -80,7 +81,7 @@ class CAV(Element):
                  llrf: LLRF_DSP = LLRF_DSP(),
                  i_queue: Optional[Queue] = None,
                  o_queue: Optional[Queue] = None, ) -> None:
-        f_path = files('llrf_model').joinpath(settings_fname)
+        f_path = files(llrf_model).joinpath(settings_fname)
         with open(f_path) as f:
             configs = json.load(f)
         for k, v in configs[conf].items():

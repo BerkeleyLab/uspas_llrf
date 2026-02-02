@@ -2,9 +2,8 @@ include ../../../dir_list.mk
 include $(TOP)settings.mk
 
 DUT      = llrf_dsp
-TOPLEVEL = $(DUT)
-MODULE   = test_$(DUT)
-TESTCASE = test_alsu,test_uspas,test_lemp,test_awa
+COCOTB_TOPLEVEL       = $(DUT)
+COCOTB_TEST_MODULES   = test_$(DUT)
 
 VERILOG_SOURCES += $(DSP_DIR)/dpram.v $(DSP_DIR)/fiq_interp.v \
                     $(DSP_DIR)/cpxmul_fullspeed.v \

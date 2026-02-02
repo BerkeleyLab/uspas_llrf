@@ -2,17 +2,40 @@
 
 [[_TOC_]]
 
-## Overall Architecture
+## Architecture
+
+### System Architecture
 
 ![architecture](./fig/architect.drawio.svg)
+
+### DSP Architecture
+
+The core tasks of any LLRF controls are:
+  * RX: Measure RF signal:
+    - Frequency conversion to base-band;
+    - Diagnostics and record waveforms;
+  * Control:
+    - Feedback control
+    - Feed-forward control
+    - System identification
+    - Diagnostics and record waveforms;
+  * TX: Drive RF signal:
+    - Frequency conversion from base-band;
+    - Diagnostics and record waveforms;
+  * Trigger and interlocks
+
+These tasks are abstracted in the following diagram, which highlights the core elements of each building blocks.
+The same concept and architecture applies to other platforms such as the [RFSoC based LLRF System design at ALS][https://arxiv.org/abs/2510.13192].
+
+![dsp architecture](./fig/dsp_arch.drawio.svg)
 
 ## Development tools
 
 As part of the full-stack open source firmware development in Berkeley Lab, we leverage a collection of open source tools including:
 
 * [Icarus Verilog](https://github.com/steveicarus/iverilog): tested version v12.0.
-* [`verilator`](https://github.com/verilator/verilator): tested version 5.038.
-* [cocotb](https://github.com/cocotb/cocotb): tested version 1.9.2.
+* [Verilator](https://github.com/verilator/verilator): tested version 5.038.
+* [cocotb](https://github.com/cocotb/cocotb): tested version 2.0.1.
 * [yosys](https://github.com/YosysHQ/yosys)
 
 and Jupyter notebooks for demonstration and documentation.
@@ -20,8 +43,9 @@ and Jupyter notebooks for demonstration and documentation.
 * For `conda` users, a python virtual environment can be created as:
 
   ```bash
-  conda env create -f python/environment.yml
+  conda create -n uspas_llrf python=3.13
   conda activate uspas_llrf
+  pip install -e .
   ```
 
 * All tools are native to Debian [Trixie](https://www.debian.org/releases/trixie/), where we used it in the `gitlab` Continuous Integration, as defined [.gitlab-ci.yml](.gitlab-ci.yml), including steps of:
@@ -45,9 +69,9 @@ The following of pre-defined LLRF applications are supported, and their frequenc
 Detailed description of settings:
 
 * LLRF DSP:
-  All configurations are contained in [settings.json](../llrf_dsp/settings.json).
+  All configurations are contained in [uspas_llrf/settings.json](uspas_llrf/settings.json).
 * Board Support:
-  For each application, customized hardware settings and LLRF configurations can be found in [../soc/marble_zest/common](../soc/marble_zest/common), where each application's configuration files for FPGA carrier and digitizer are located at.
+  For each application, customized hardware settings and LLRF configurations can be found in [soc/marble_zest/common](soc/marble_zest/common), where each application's configuration files for FPGA carrier and digitizer are located at.
 
 ## System-On-Chip architecture
 
@@ -103,10 +127,10 @@ $$
 
 ### Numerical Models for simulation
 
-  A collection of LLRF DSP numerical models can be found in [llrf_dsp/llrf_model/llrf_dsp.py](llrf_dsp/llrf_model/llrf_dsp.py), which is shared among all simulations.
+  A collection of LLRF DSP numerical models can be found in [uspas_llrf/llrf_model/llrf_dsp.py](uspas_llrf/llrf_model/llrf_dsp.py), which is shared among all simulations.
 
-  The complete feedback controller is modeled, and it can be used for `cocotb` simulation with cavity emulators, whose parameters are defined in [llrf_dsp/llrf_model/cavity.json](llrf_dsp/llrf_model/cavity.json).
-  The detailed cavity model co-simulation with discrete signal process is explained in [llrf_dsp/llrf_model/lti.ipynb](llrf_dsp/llrf_model/lti.ipynb).
+  The complete feedback controller is modeled, and it can be used for `cocotb` simulation with cavity emulators, whose parameters are defined in [uspas_llrf/llrf_model/cavity.json](uspas_llrf/llrf_model/cavity.json).
+  The detailed cavity model co-simulation with discrete signal process is explained in [doc/lti.ipynb](doc/lti.ipynb).
 
 ### IQ representation conventions
 
@@ -308,9 +332,9 @@ Three functions are integrated in the [llrf_dsp/cic_waves.v](llrf_dsp/cic_waves.
 
 * Calibration
 
-  The numerical DSP transfer function of each building element in `llrf_shell.v` are modeled in [llrf_dsp/llrf_model/llrf_dsp.py](llrf_dsp/llrf_model/llrf_dsp.py).
+  The numerical DSP transfer function of each building element in `llrf_shell.v` are modeled in [uspas_llrf/llrf_model/llrf_dsp.py](uspas_llrf/llrf_model/llrf_dsp.py).
 
-  The DSP models are used in both `cocotb` simulaiton, and the Python driver in [python/llrf_app](python/llrf_app), where the calibration factors are illustrated in the following diagram:
+  The DSP models are used in both `cocotb` simulaiton, and the Python driver in [uspas_llrf//llrf_app](uspas_llrf//llrf_app), where the calibration factors are illustrated in the following diagram:
 
   ![llrf_shell_cal](./fig/llrf_shell_cal.drawio.svg)
 
@@ -318,7 +342,7 @@ Three functions are integrated in the [llrf_dsp/cic_waves.v](llrf_dsp/cic_waves.
 
 ### Python IO
 
-An example python class for packaging the LLRF application can be found in [python/llrf_app](python/llrf_app), where a few Jupyter notebook examples are provided as reference use cases.
+An example python class for packaging the LLRF application can be found in [uspas_llrf//llrf_app](uspas_llrf/llrf_app), where a few Jupyter notebook examples are provided as reference use cases.
 
 ### EPICS IOC
 

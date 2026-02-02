@@ -2,22 +2,21 @@ import numpy as np
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, ClockCycles, Timer
+from cocotb.handle import Immediate
 from cocotb.handle import SimHandleBase
-from llrf_model.llrf_dsp import LLRF_DSP, wrap_phase
-from llrf_model.plant import Plant
+from uspas_llrf.llrf_model.llrf_dsp import LLRF_DSP, wrap_phase, \
+    default_configs
+from uspas_llrf.llrf_model.plant import Plant
 import itertools
 import random
 import logging
-import json
 
 
 class TB:
     def __init__(self, dut: SimHandleBase, f_config='USPAS'):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
-        with open('../../settings.json') as f:
-            configs = json.load(f)
-        dsp_config = configs[f_config]
+        dsp_config = default_configs[f_config]
         # override tx dds setting for loopback test at IF_adc, no upsampling
         dsp_config['TX_NUM_DDS'] = dsp_config['NUM_DDS']
         dsp_config['TX_DEN_DDS'] = dsp_config['DEN_DDS']
@@ -26,47 +25,53 @@ class TB:
         self.plant = Plant(
             conf=f_config, settings_fname='cavity.json', llrf=llrf)
         self.log_banner(f'Simulating: {f_config}')
-        self.dut._log.info(f'LLRFModel:\n{llrf}')
+        cocotb.log.info(f'LLRFModel:\n{llrf}')
         rx_phase_off_reg = self.llrf.encode_phase(
             llrf.cal_factors.rx_phase_off_deg)
         tx_phase_off_reg = self.llrf.encode_phase(
             llrf.cal_factors.tx_phase_off_deg)
         self.dut.rx_phase_offset.value = rx_phase_off_reg
         self.dut.tx_phase_offset.value = tx_phase_off_reg
-        self.dut._log.info(
+        cocotb.log.info(
             f'RX phase off: {llrf.cal_factors.rx_phase_off_deg:8.2f} deg; '
             f'TX phase off: {llrf.cal_factors.tx_phase_off_deg:8.2f} deg')
-        self.dut._log.debug(
+        cocotb.log.debug(
             f'RX phase off: {rx_phase_off_reg:8d} cnt; '
             f'TX phase off: {tx_phase_off_reg:8d} cnt')
-        clock = Clock(self.dut.clk, llrf.DSP_CLK_CYCLE, units="ns")
+        clock = Clock(self.dut.clk, llrf.DSP_CLK_CYCLE, unit="ns")
         cocotb.start_soon(clock.start())
 
     def log_banner(self, str):
-        self.dut._log.info('*'*20 + f"{str:^20s}" + '*'*20)
+        cocotb.log.info('*'*20 + f"{str:^20s}" + '*'*20)
 
-    async def init_test(self) -> None:
+    async def init_test(self, amp_exp=None, phs_exp=None):
         await self.reset_dut()
         # scramble internal init states of dut:
         await ClockCycles(self.dut.clk, random.randint(0, 20))
-        amp_exp = self.llrf.cal_factors.max_adc_input
-        phs_exp = wrap_phase(random.random() * 360)
+        if amp_exp is None:
+            amp_exp = self.llrf.cal_factors.max_adc_input
+        else:
+            assert amp_exp < self.llrf.cal_factors.max_adc_input, \
+                f"amp_exp {amp_exp:.3f} too high. " \
+                f"max value : {self.llrf.cal_factors.max_adc_input:.3f}"
+        if phs_exp is None:
+            phs_exp = wrap_phase(random.random() * 360)
         cocotb.start_soon(self.drive_dds())
         return amp_exp, phs_exp
 
-    async def test_rx(self, wait=200) -> None:
+    async def test_rx(self, amp_exp=None, phs_exp=None, wait=200):
         self.log_banner('RX Test')
-        self.dut._log.info(f'LLRFModel RX:\n{self.llrf.rx}')
-        amp_exp, phs_exp = await self.init_test()
+        cocotb.log.info(f'LLRFModel RX:\n{self.llrf.rx}')
+        amp_exp, phs_exp = await self.init_test(amp_exp, phs_exp)
         cocotb.start_soon(self.drive_adc(amp_exp, phs_exp))
         await ClockCycles(self.dut.clk, wait)  # settling time of filters
         await self.check_sig(amp_exp, phs_exp)
 
-    async def test_open_loop(self, wait=320) -> None:
+    async def test_open_loop(self, amp_exp=None, phs_exp=None, wait=320):
         self.log_banner('Open Loop Test')
-        self.dut._log.info(f'LLRFModel TX:\n{self.llrf.tx}')
+        cocotb.log.info(f'LLRFModel TX:\n{self.llrf.tx}')
 
-        amp_exp, phs_exp = await self.init_test()
+        amp_exp, phs_exp = await self.init_test(amp_exp, phs_exp)
         amp_setp, phs_setp = self.llrf.calc_open_loop_setp(amp_exp, phs_exp)
         self.dut.amp_setpoint.value = amp_setp
         self.dut.phs_setpoint.value = phs_setp
@@ -74,15 +79,12 @@ class TB:
         await ClockCycles(self.dut.clk, wait)  # settling time
         await self.check_sig(amp_exp, phs_exp)
 
-    async def test_close_loop(self, wait=2020) -> None:
+    async def test_close_loop(self, amp_exp=None, phs_exp=None, wait=2020):
         self.log_banner('Close Loop Test')
-        self.dut._log.info(f'Cavity Model:\n{self.plant.cav}')
+        cocotb.log.info(f'Cavity Model:\n{self.plant.cav}')
 
-        amp_exp, phs_exp = await self.init_test()
-        amp_exp *= 0.90  # to allow loop headroom
+        amp_exp, phs_exp = await self.init_test(amp_exp, phs_exp)
         amp_setp, phs_setp = self.llrf.calc_close_loop_setp(amp_exp, phs_exp)
-        self.dut.amp_setpoint.value = amp_setp
-        self.dut.phs_setpoint.value = phs_setp
         await self.init_loops(amp_setp, phs_setp)
         cocotb.start_soon(self.feedback())
         await ClockCycles(self.dut.clk, wait)  # settling time of loops
@@ -98,6 +100,8 @@ class TB:
 
     async def init_loops(self, amp_setp, phs_setp) -> None:
         await RisingEdge(self.dut.clk)
+        self.dut.amp_setpoint.value = amp_setp
+        self.dut.phs_setpoint.value = phs_setp
         self.dut.amp_loop_reset.value = 1
         self.dut.phs_loop_reset.value = 1
         self.dut.Kp_amp.value = 20
@@ -128,33 +132,33 @@ class TB:
     async def loopback(self) -> None:
         while True:
             await RisingEdge(self.dut.clk)
-            self.dut.adc_in.setimmediatevalue(
-                self.dut.dac_out.value.signed_integer)
+            self.dut.adc_in.set(Immediate(
+                self.dut.dac_out.value.to_signed()))
 
     async def feedback(self) -> None:
         while True:
-            await self.plant.i_queue.put(self.dut.dac_out.value.signed_integer)
+            await self.plant.i_queue.put(self.dut.dac_out.value.to_signed())
             await Timer(2, 'ns')  # delay by cable
             y = int(await self.plant.o_queue.get())
             self.dut.adc_in.value = min(max(y, -32678), 32767)
 
     async def check_sig(self, amp_exp, phs_exp) -> None:
-        self.dut._log.warning(
+        cocotb.log.warning(
             f"expected mag: {amp_exp:8.2f} cnt,  phs: {phs_exp:6.3f} deg")
         for _ in range(5):
             await RisingEdge(self.dut.clk)
-            i_meas = self.dut.field_i.value.signed_integer
-            q_meas = self.dut.field_q.value.signed_integer
+            i_meas = self.dut.field_i.value.to_signed()
+            q_meas = self.dut.field_q.value.to_signed()
             iq_meas = i_meas + 1j * q_meas
-            amp_meas = self.dut.amp_measured.value.signed_integer
+            amp_meas = self.dut.amp_measured.value.to_signed()
             amp_meas /= np.abs(self.llrf.rx.gain)
             phs_sig = self.dut.phs_measured
             phs_meas = self.llrf.decode_phase(
-                phs_sig.value.signed_integer, width=len(phs_sig))
-            self.dut._log.debug(
+                phs_sig.value.to_signed(), width=len(phs_sig))
+            cocotb.log.debug(
                 f"raw IQ   mag: {np.abs(iq_meas):8.2f} cnt,  "
                 f"phs: {np.angle(iq_meas, deg=True):6.3f} deg")
-            self.dut._log.warning(
+            cocotb.log.warning(
                 f"measured mag: {amp_meas:8.2f} cnt,  "
                 f"phs: {phs_meas:6.3f} deg")
             amp_err = abs(amp_meas - amp_exp) / amp_exp
@@ -164,32 +168,48 @@ class TB:
 
 
 @cocotb.test(timeout_time=30, timeout_unit='us')
-async def test_alsu(dut):
+@cocotb.parametrize(
+    amp_exp=[5000, 15000],
+    phs_exp=[-100, 45, 270]
+)
+async def test_alsu(dut, amp_exp, phs_exp):
     tester = TB(dut, f_config='ALSU')
-    await tester.test_rx()
-    await tester.test_open_loop()
-    await tester.test_close_loop()
+    await tester.test_rx(amp_exp, phs_exp)
+    await tester.test_open_loop(amp_exp, phs_exp)
+    await tester.test_close_loop(amp_exp, phs_exp)
 
 
 @cocotb.test(timeout_time=30, timeout_unit='us')
-async def test_uspas(dut):
+@cocotb.parametrize(
+    amp_exp=[5000, 15000],
+    phs_exp=[-100, 45, 270]
+)
+async def test_uspas(dut, amp_exp, phs_exp):
     tester = TB(dut, f_config='USPAS')
-    await tester.test_rx()
-    await tester.test_open_loop()
-    await tester.test_close_loop()
+    await tester.test_rx(amp_exp, phs_exp)
+    await tester.test_open_loop(amp_exp, phs_exp)
+    await tester.test_close_loop(amp_exp, phs_exp)
 
 
 @cocotb.test(timeout_time=30, timeout_unit='us')
-async def test_lemp(dut):
+@cocotb.parametrize(
+    amp_exp=[5000, 15000],
+    phs_exp=[-100, 45, 270]
+)
+async def test_lemp(dut, amp_exp, phs_exp):
     tester = TB(dut, f_config='LEMP')
-    await tester.test_rx()
-    await tester.test_open_loop()
-    await tester.test_close_loop()
+    await tester.test_rx(amp_exp, phs_exp)
+    await tester.test_open_loop(amp_exp, phs_exp)
+    await tester.test_close_loop(amp_exp, phs_exp)
 
 
 @cocotb.test(timeout_time=30, timeout_unit='us')
-async def test_awa(dut):
+@cocotb.parametrize(
+    amp_exp=[5000, 15000],
+    phs_exp=[-100, 45, 270]
+)
+async def test_awa(dut, amp_exp, phs_exp):
     tester = TB(dut, f_config='AWA')
-    await tester.test_rx()
-    await tester.test_open_loop()
-    await tester.test_close_loop()
+    await tester.test_rx(amp_exp, phs_exp)
+    await tester.test_open_loop(amp_exp, phs_exp)
+    await tester.test_close_loop(amp_exp, phs_exp)

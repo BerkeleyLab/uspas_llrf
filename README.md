@@ -72,6 +72,7 @@ The Zest reference clock is LO.
 See [doc/README.md](doc/README.md).
 
 ```bash
+pip install -e .
 cd llrf_dsp
 make
 ```

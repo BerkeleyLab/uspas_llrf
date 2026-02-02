@@ -1,13 +1,14 @@
 import numpy as np
 import json
 from dataclasses import dataclass, field
-from pathlib import Path
 from enum import IntEnum
 import argparse
 import pprint
+import uspas_llrf
+from importlib.resources import files
 
 
-with open(Path(__file__).resolve().parent.parent / 'settings.json') as f:
+with open(files(uspas_llrf).joinpath('settings.json')) as f:
     default_configs = json.load(f)
 
 
