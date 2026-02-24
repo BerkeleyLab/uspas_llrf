@@ -57,7 +57,7 @@ void align_mo_phase(void);
 void reset_interlock_permit(void);
 
 /***************************************************************************//**
- * @brief  Set DAC permit
+ * @brief  Set permit to both DACs
  * @param   permit -  1 to enable, 0 to disable
 *******************************************************************************/
 void set_llrf_dac_permit(bool permit);

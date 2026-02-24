@@ -24,7 +24,7 @@ module monitor_inlk #(
     input [0:0]     reset_inlk, // external single-cycle
     input [1:0]     inlk_mode, // external
     output [3:0]    inlk_mode_addr, // external address for inlk_mode
-    input [9:0]     permit_mask, // external
+    input [9:0]     permit_mask,
 
     output [N_CH-1:0] cmp_status_hi,
     output [N_CH-1:0] cmp_status_lo,

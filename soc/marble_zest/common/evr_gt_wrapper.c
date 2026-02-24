@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "localbus.h"
+#include "marble_regs_addr.h"
 #include "evr_gt_wrapper.h"
 #include "timer.h"
 #include "printf.h"

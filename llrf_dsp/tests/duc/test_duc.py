@@ -3,7 +3,7 @@ import random
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, ClockCycles
 from cocotb.handle import Immediate
-from uspas_llrf.llrf_model.llrf_dsp import TX, wrap_phase
+from uspas_llrf import TX, wrap_phase
 import logging
 import numpy as np
 import itertools

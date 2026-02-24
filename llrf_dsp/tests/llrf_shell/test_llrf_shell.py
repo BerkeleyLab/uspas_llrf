@@ -1,11 +1,10 @@
+from uspas_llrf import (LLRFShell, DacDriveSel, LocalbusAppMaster,
+                        wrap_phase, clip_int, dsp_config)
 import cocotb
 import random
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, ClockCycles
 from cocotb.handle import Immediate
-from uspas_llrf.llrf_model.llrf_dsp import LLRFShell, clip_int, wrap_phase, \
-    default_configs
-from local_bus import LocalbusAppMaster
 import logging
 import numpy as np
 from dataclasses import asdict
@@ -15,18 +14,21 @@ import os
 
 
 class TB:
-    def __init__(self, dut, conf='LEMP', wave_samp_per=1):
+    def __init__(self, dut, conf='LEMP', wave_samp_per=1,
+                 amp_exp=None, phs_exp=None):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
         self.cbuf_aw = dut.CBUF_AW.value.to_unsigned()
         self.sig_buf_aw = dut.SIG_BUF_AW.value.to_unsigned()
         self.conf = conf
-        dsp_config = default_configs[conf]
-        # override tx dds setting for loopback test at IF_adc
-        dsp_config['TX_NUM_DDS'] = dsp_config['NUM_DDS']
-        dsp_config['TX_DEN_DDS'] = dsp_config['DEN_DDS'] * 2
-        dsp_config['TX_SECOND_NYQUIST'] = False
-        self.llrf = llrf = LLRFShell(dsp_config, wave_samp_per=wave_samp_per)
+        config = dsp_config[conf]
+        # Override tx dds setting for loopback test at IF_adc
+        config['TX_NUM_DDS'] = config['NUM_DDS']
+        config['TX_DEN_DDS'] = config['DEN_DDS'] * 2
+        config['TX_SECOND_NYQUIST'] = False
+        # Force CW mode to allow loop tests
+        config['PULSE_MODES'] = 0
+        self.llrf = llrf = LLRFShell(config, wave_samp_per=wave_samp_per)
         self.lb = LocalbusAppMaster(
             dut, dut.lb_clk, regmap_json_path='../../llrf_shell.json')
         self.log_banner(f'Simulating: {conf}')
@@ -34,7 +36,6 @@ class TB:
         cocotb.log.info(f'LLRF TX:\n{llrf.tx}')
         cocotb.log.info(f'Calibrations:\n{pformat(llrf.cal_factors)}')
 
-        # clocks
         cocotb.start_soon(Clock(dut.lb_clk, 8, unit="ns").start())
         cocotb.start_soon(Clock(dut.gt_rxclk, 8, unit="ns").start())
         cocotb.start_soon(
@@ -61,9 +62,7 @@ class TB:
             self.loopback_adc: 'loopback_adc',
             self.feedback_adc: 'feedback_adc',
             self.phaseref_adc: 'phaseref_adc'}
-
-        self.amp_exp = int(llrf.cal_factors.max_adc_input)
-        self.phs_exp = random.randint(-180, 180)
+        self.amp_exp, self.phs_exp = self.init_test(amp_exp, phs_exp)
         cocotb.start_soon(
             self.drive_phaseref_adc(
                 self.phaseref_adc, self.amp_exp, self.phs_exp))
@@ -74,6 +73,17 @@ class TB:
 
     def log_banner(self, str):
         cocotb.log.info('*'*20 + f"{str:^20s}" + '*'*20)
+
+    def init_test(self, amp_exp=None, phs_exp=None):
+        if amp_exp is None:
+            amp_exp = self.llrf.cal_factors.max_adc_input
+        else:
+            assert amp_exp < self.llrf.cal_factors.max_adc_input, \
+                f"amp_exp {amp_exp:.3f} too high. " \
+                f"max value : {self.llrf.cal_factors.max_adc_input:.3f}"
+        if phs_exp is None:
+            phs_exp = random.randint(-180, 180)
+        return amp_exp, phs_exp
 
     def check_sig(self, sig_meas, sig_name='signal'):
         """Check the measured signal against expected amplitude and phase."""
@@ -164,7 +174,17 @@ class TB:
             r = await self.lb.read_reg(name)
             assert r == val, f"Expected {name}:{val}, got {r}"
 
-    async def test_open_loop(self):
+    def set_dac_drive_sel(self, loop='loop0'):
+        """ drive loopback_dac and feedback_dac by the active loop """
+        if loop == 'loop0':
+            self.llrf.init_regs.dac_drive_sel = DacDriveSel.I0Q0
+        elif loop == 'loop1':
+            self.llrf.init_regs.dac_drive_sel = DacDriveSel.I1Q1
+
+    async def test_open_loop(self, loop='loop0'):
+        """
+        Drive loopback_dac by 'loop' set points, check from loopback_adc
+        """
         self.llrf.init_regs.chan_keep = \
             (1 << self.phaseref_adc | 1 << self.loopback_adc)
         self.cic_chans = [
@@ -175,13 +195,13 @@ class TB:
             if enabled]  # lsb_mask==1: first chan is LSB
         cocotb.log.debug(f'cic chans: {self.cic_chans}')
         cocotb.log.debug(f'cic names: {self.cic_names}')
-        self.llrf.init_regs.dac_permit = True
+        self.log_banner(f'Open Loop Test on {loop}')
         amp_setp, phs_setp = self.llrf.calc_open_loop_setp(
             self.amp_exp, self.phs_exp)
-        self.llrf.init_regs.amp_setpoint = amp_setp
-        self.llrf.init_regs.phs_setpoint = phs_setp
+        setattr(self.llrf.init_regs, loop + '_amp_setpoint', amp_setp)
+        setattr(self.llrf.init_regs, loop + '_phs_setpoint', phs_setp)
+        self.set_dac_drive_sel(loop)
         await self.write_init_regs()
-        self.log_banner('Open Loop Test')
         await self.verify_init_regs()
 
         await self.read_cic_waveform()  # discard 1st waveform
@@ -214,29 +234,46 @@ class TB:
             self.check_sig(inlk_meas / self.llrf.inlk_gain,
                            sig_name=self.sig_names[chan])
 
-        for chan in [8 + self.loopback_dac]:
-            inlk_meas = await self.read_inlk_task(chan)
-            self.check_sig(inlk_meas / self.llrf.inlk_tx_gain,
-                           sig_name=self.sig_names[chan])
+        # check base band loop output, drive_i_out / drive_q_out
+        # assign sig_i_data[N_ADC+ch] = drive_i_out[ch];
+        # assign sig_q_data[N_ADC+ch] = drive_q_out[ch];
+        if loop == 'loop0':
+            chan = 8
+        elif loop == 'loop1':
+            chan = 9
+        inlk_meas = await self.read_inlk_task(chan)
+        self.check_sig(inlk_meas / self.llrf.inlk_tx_gain,
+                       sig_name=self.sig_names[chan])
 
-    async def test_close_loop(self, wait=2000):
-        self.log_banner('Close Loop Test')
+    async def test_close_loop(self, loop='loop0', wait=2000):
+        """
+        Drive feedback_dac by 'loop' set points, check from feedback_adc
+        """
+        self.log_banner(f'Close Loop Test on {loop}')
         amp_setp, phs_setp = self.llrf.calc_close_loop_setp(
             self.amp_exp, self.phs_exp)
-        self.llrf.init_regs.amp_setpoint = amp_setp
-        self.llrf.init_regs.phs_setpoint = phs_setp
-        self.llrf.init_regs.Kp_amp = 2000
-        self.llrf.init_regs.Kp_phs = 5000
-        self.llrf.init_regs.Ki_amp = 100
-        self.llrf.init_regs.Ki_phs = 500
-        await self.write_init_regs()
+        # Setup loop parameters
         regs = [
-            ('amp_loop_reset', 1),
-            ('phs_loop_reset', 1),
-            ('amp_loop_enable', 1),
-            ('phs_loop_enable', 1),
-            ('amp_loop_reset', 0),
-            ('phs_loop_reset', 0),
+            (loop + '_amp_setpoint', amp_setp),
+            (loop + '_phs_setpoint', phs_setp),
+            (loop + '_Kp_amp', 2000),
+            (loop + '_Kp_phs', 5000),
+            (loop + '_Ki_amp', 100),
+            (loop + '_Ki_phs', 500),
+        ]
+        for name, val in regs:
+            setattr(self.llrf.init_regs, name, val)
+        self.set_dac_drive_sel(loop)
+        await self.write_init_regs()
+        await self.verify_init_regs()
+        # Close loop
+        regs = [
+            (loop + '_amp_reset', 1),
+            (loop + '_phs_reset', 1),
+            (loop + '_amp_enable', 1),
+            (loop + '_phs_enable', 1),
+            (loop + '_amp_reset', 0),
+            (loop + '_phs_reset', 0),
         ]
         for name, val in regs:
             await self.lb.write_reg(name, val)
@@ -245,8 +282,9 @@ class TB:
         self.check_sig(inlk_meas / self.llrf.inlk_gain,
                        sig_name='feedback_adc')
 
-    async def test_fast_interlock(self, wait=30):
+    async def test_fast_interlock(self, loop='loop0'):
         self.log_banner('Fast Interlock Test')
+        self.set_dac_drive_sel(loop)
         inlk_gain_abs = np.abs(self.llrf.inlk_gain)
         amp_lo = self.amp_exp * inlk_gain_abs * 0.99
         amp_hi = self.amp_exp * inlk_gain_abs * 1.01
@@ -257,12 +295,11 @@ class TB:
         ]
         for name, offset, val in regs:
             await self.lb.write_reg(name, val, offset)
-        await ClockCycles(self.dut.dsp_clk, wait)  # wait for setting
         await self.lb.write_reg('inlk_permit_mask', 1 << self.phaseref_adc)
         await self.lb.write_reg('inlk_reset_inlk', 1)
 
         dut = self.dut.llrf_shell
-        await RisingEdge(dut.inlk_permit_out)  # wait for inlk permit to reset
+        # await RisingEdge(dut.inlk_permit_out)  # wait for inlk permit reset
         await RisingEdge(dut.inlk.wave_valid)
         cocotb.log.info("%8s " * 9 % (
             'chan', 'mon_amp', 'amp_lo', 'amp_hi', '>=lo', '>=hi',
@@ -288,15 +325,22 @@ class TB:
         assert dut.inlk_permit_out.value == 1
 
     async def test_trigger(self):
+        """XXX TBD"""
         await self.lb.write_reg('wave_trig_sel', 1)
         pass
 
 
 @cocotb.test(timeout_time=400, timeout_unit='us')
-async def test(dut):
+@cocotb.parametrize(
+    amp_exp=[15000, 30000],
+    phs_exp=[-100, 45, 270],
+    loop=['loop0', 'loop1']
+)
+async def test(dut, amp_exp, phs_exp, loop):
     tb = TB(dut,
             conf=os.getenv('FSET', 'USPAS'),
-            wave_samp_per=random.randint(1, 8))
-    await tb.test_open_loop()
-    await tb.test_fast_interlock()
-    await tb.test_close_loop()
+            wave_samp_per=random.randint(1, 8),
+            amp_exp=amp_exp, phs_exp=phs_exp)
+    await tb.test_open_loop(loop)
+    await tb.test_fast_interlock(loop)
+    await tb.test_close_loop(loop)

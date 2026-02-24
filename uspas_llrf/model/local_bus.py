@@ -17,7 +17,7 @@ class Register:
 
 
 class RegisterMap:
-    def __init__(self, json_path='../../llrf_shell.json'):
+    def __init__(self, json_path='../../regmap.json'):
         assert Path(json_path).exists(), \
             f"Register map file {json_path} does not exist."
         with open(json_path, 'r') as f:
@@ -71,7 +71,7 @@ class LocalBusMonitor(BusMonitor):
 
 class LocalbusAppMaster(LocalBusMaster):
     def __init__(self, entity, clock, name='lb', read_latency=3,
-                 regmap_json_path='../../llrf_shell.json', **kwargs):
+                 regmap_json_path='../../regmap.json', **kwargs):
         self.reg_map = RegisterMap(regmap_json_path)
         super().__init__(entity, clock, name, read_latency, **kwargs)
 

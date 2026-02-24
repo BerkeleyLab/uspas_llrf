@@ -19,8 +19,7 @@ VERILOG_SOURCES += cordicg_b22.v \
                     $(APP_DSP_DIR)/pi_scalar.v
 
 # module parameters
-export PARAM_KW                 := 18
-export PARAM_BASEBAND_INPUT     := 0
+export PARAM_KW  := 18
 
 include ../cocotb_inc.mk
 

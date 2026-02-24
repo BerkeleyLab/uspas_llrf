@@ -44,11 +44,11 @@ t_reg32 regmap_lmk01801[] = {
     // CLKout12_13_DDLY ="0000000000"
     { 0x4, 0x0UL },
     // CLKout12_13_DIV  ="00000000001",
-    // CLKout8_11_DIV   ="010",  # J20, J24         @ 1/2  94.28 MHz
+    // CLKout8_11_DIV   ="001",  # J20, J24         @ 1/1  165 MHz
     // CLKout4_7_DIV    ="001",  # FPGA, DAC, J12,  @ 1/1  188.6 MHz
     // CLKout0_3_DIV    ="010"   # ADC1/2, J13      @ 1/2  94.28 MHz
-    // hex(0b0000_00000000001_00_0_0_010_001_010)
-    { 0x5, 0x208aUL },
+    // hex(0b0000_00000000001_00_0_0_001_001_010)
+    { 0x5, 0x204aUL },
     // uWireLock =      ="1"
     // hex(0b101111_1)
     { 0xf, 0x5fUL }  // Lock
@@ -73,7 +73,7 @@ t_reg32 regmap_ad9781[] = {
     {0x03, 0x00},
     {0x04, 0x00},
     {0x05, 0x0c},    // measured SMP
-    {0x0a, 0x00},    // normal mode
+    {0x0a, 0x05},    // Mix Mode: 0b0101
     // {0x0b, 0xff},    // DAC1 FSC, Ifs = 31.66mA
     // {0x0c, 0x03},    // DAC1 FSC, Ifs = 31.66mA
     // {0x0f, 0xff},    // DAC2 FSC, Ifs = 31.66mA

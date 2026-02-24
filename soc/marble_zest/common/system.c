@@ -10,9 +10,11 @@
 #include "localbus.h"
 #include "marble.h"
 #include "zest.h"
+#include "marble_regs_addr.h"
 #include "xadc.h"
 #include "llrf.h"
 #include "evr_gt_wrapper.h"
+#include "string.h"
 #ifdef SIMULATION
 #include "llrf_regs_addr.h"
 #endif
@@ -56,6 +58,14 @@ void init(void) {
     // reset PCA9548
     SET_GPIO1( BASE_GPIO, GPIO_OUT_REG, PIN_PCA9548_RST, 0 );
     SET_GPIO1( BASE_GPIO, GPIO_OUT_REG, PIN_PCA9548_RST, 1 );
+    if (strcmp(USPAS_LLRF_FSET, "AWA") == 0) {
+        // enable 2 up converters in chassis
+        SET_GPIO1( BASE_GPIO, GPIO_OE_REG, PIN_EN_UPCONV_0, 1 );
+        SET_GPIO1( BASE_GPIO, GPIO_OE_REG, PIN_EN_UPCONV_1, 1 );
+
+        SET_GPIO1( BASE_GPIO, GPIO_OUT_REG, PIN_EN_UPCONV_0, 1 );
+        SET_GPIO1( BASE_GPIO, GPIO_OUT_REG, PIN_EN_UPCONV_1, 1 );
+    }
 }
 
 int main(void) {
@@ -89,6 +99,7 @@ int main(void) {
     printf(" \\___/|____/|_| /_/   \\_\\____/  |_____|_____|_| \\_\\_|    \n");
 
     debug_printf("=== VERBOSE MODE ===\n");
+    printf("FSET: %s\n", USPAS_LLRF_FSET);
     printf("GIT_REV_ID: %x\n", (uint32_t)read_lb_reg(LB_GIT_REV_ID));
 
     pass &= init_marble(&marble_init_data);
@@ -118,11 +129,11 @@ int main(void) {
         if (cnt % 20 == 0) {    // update rate 1 Hz
             if (marble_init_data.enable_poll_status) {
                 get_marble_info(&marble);
-                memcpy_lb_dma(LB_BSP_INFO_BUF, (unsigned char *)&marble, sizeof(marble));
+                memcpy_lb_dma(BSP_INFO_BUF, (unsigned char *)&marble, sizeof(marble));
             }
             if (zest_init_data.enable_poll_status) {
                 get_zest_status(&zest);
-                memcpy_lb_dma(LB_BSP_INFO_BUF+sizeof(marble), (unsigned char *)&zest, sizeof(zest));
+                memcpy_lb_dma(BSP_INFO_BUF+sizeof(marble), (unsigned char *)&zest, sizeof(zest));
             }
         }
     }

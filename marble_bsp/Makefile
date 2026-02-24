@@ -31,44 +31,8 @@ all: $(TEST_BENCH) $(CHECKS)
 
 ##### build.mk
 TEST_BENCH_D      = $(TEST_BENCH:%_tb=$(DEPDIR)/%_tb.d)
-VERILOG_AUTOGEN  += $(AUTOGEN_DIR)/$(IP_NAME)_auto.vh $(AUTOGEN_DIR)/addr_map_$(IP_NAME).vh
-VERILOG_AUTOGEN  += $(AUTOGEN_DIR)/regmap_$(IP_NAME).vh
-RTEFI_CLIENT_LIST = hello.v speed_test.v lb_gateway.v spi_flash.v
-include $(BADGER_DIR)/rules.mk
-VERILOG_AUTOGEN  += $(RTEFI_V)
 
-$(DEPDIR)/$(IP_NAME)_tb.d: $(VERILOG_AUTOGEN)
-
-$(DEPDIR)/$(IP_NAME).d: $(IP_NAME).v $(VERILOG_AUTOGEN)
-	set -e; mkdir -p $(DEPDIR); \
-	$(MAKEDEP) && (printf "$(IP_NAME)_expand.v $@: "; \
-	sort -ur $@.$$$$ | tr '\n' ' '; printf "\n" ) > $@ && rm -f $@.$$$$
-
-$(AUTOGEN_DIR)/%_expand.v: %.v $(AUTOGEN_DIR)/%_auto.vh $(AUTOGEN_DIR)/addr_map_%.vh
-	$(VERILOG) $(VFLAGS_DEP) -E -o$@ $^
-	sed -i '/^$$/d' $@
-
-$(AUTOGEN_DIR)/regmap_%.vh: %.json
-	mkdir -p $(AUTOGEN_DIR); \
-	$(PYTHON) $(BEDROCK_DIR)/localbus/gen_regmap.py -i $< -o $@
-
-$(AUTOGEN_DIR)/scalar_%_regmap.json: $(IP_NAME).v
-	mkdir -p $(AUTOGEN_DIR); \
-	$(PYTHON) $(BUILD_DIR)/reverse_json.py $< > $@
-
-$(IP_NAME).json: $(AUTOGEN_DIR)/regmap_$(IP_NAME).json $(AUTOGEN_DIR)/scalar_$(IP_NAME)_regmap.json static_$(IP_NAME).json
-	$(PYTHON) $(BUILD_DIR)/merge_json.py -o $@ -i $^
-
-MARBLE_BSP_REGS_H = $(AUTOGEN_DIR)/marble_bsp_regs.h
-
-$(MARBLE_BSP_REGS_H): $(IP_NAME).json
-	$(PYTHON) autogen_header.py -i $< -o $@
-
-# this is to avoid vivado critical warnings about duplicated / redefination of module since they are already in DSP
-EXCLUDE  = $(wildcard $(FPGA_FAMILY_DIR)/xilinx/*.v)
-EXCLUDE += $(addprefix $(DSP_DIR)/, reg_delay.v dpram.v reg_tech_cdc.v flag_xdomain.v data_xdomain.v freq_gcount.v freq_count.v phase_diff.v phaset.v)
-$(IP_NAME)_expand.v: $(IP_NAME).v $(MARBLE_BSP_REGS_H) #$(DEPDIR)/$(IP_NAME).d
-	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(filter-out $(EXCLUDE),$(filter %.v, $^))
+include build.mk
 
 ifneq (,$(findstring _tb,$(MAKECMDGOALS)))
     -include $(MAKECMDGOALS:%_tb=$(DEPDIR)/%_tb.d)
@@ -89,8 +53,6 @@ ifeq (,$(MAKECMDGOALS))
 endif
 
 CLEAN += $(TEST_BENCH)
-CLEAN += $(IP_NAME)_expand.v
 CLEAN += $(RTEFI_CLEAN)
-CLEAN += $(IP_NAME).json
 
 include $(BUILD_DIR)/bottom_rules.mk

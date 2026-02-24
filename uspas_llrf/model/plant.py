@@ -1,6 +1,4 @@
-from uspas_llrf.llrf_model.llrf_dsp import LLRF_DSP
-import uspas_llrf.llrf_model as llrf_model
-import json
+from uspas_llrf import LLRF_DSP, cav_config
 import numpy as np
 from scipy import signal
 import cocotb
@@ -8,7 +6,6 @@ from cocotb.queue import Queue
 from cocotb.triggers import Timer
 from typing import Optional
 from abc import ABC, abstractmethod
-from importlib.resources import files
 
 
 class Element(ABC):
@@ -77,14 +74,11 @@ class CAV(Element):
 
     def __init__(self,
                  delay_ns: float = 0.1,
-                 conf='LEMP', settings_fname='cavity.json',
+                 conf='LEMP',
                  llrf: LLRF_DSP = LLRF_DSP(),
                  i_queue: Optional[Queue] = None,
                  o_queue: Optional[Queue] = None, ) -> None:
-        f_path = files(llrf_model).joinpath(settings_fname)
-        with open(f_path) as f:
-            configs = json.load(f)
-        for k, v in configs[conf].items():
+        for k, v in cav_config[conf].items():
             setattr(self, k, v)
         super().__init__(delay_ns, i_queue, o_queue)
 
@@ -154,10 +148,7 @@ class CAV(Element):
 class Plant:
     """Model of an RF plant including HPA, cavity
     """
-    def __init__(self,
-                 conf='LEMP', settings_fname='cavity.json',
-                 llrf: LLRF_DSP = LLRF_DSP(),
-                 ) -> None:
+    def __init__(self, conf='LEMP', llrf: LLRF_DSP = LLRF_DSP()):
         self.i_queue = Queue()
         self.o_queue = Queue()
         self.q = Queue()
@@ -165,5 +156,5 @@ class Plant:
             i_queue=self.i_queue, o_queue=self.q,
             gain=10, delay_ns=3)
         self.cav = CAV(
-            conf=conf, settings_fname=settings_fname, llrf=llrf, delay_ns=2,
+            conf=conf, llrf=llrf, delay_ns=2,
             i_queue=self.q, o_queue=self.o_queue)

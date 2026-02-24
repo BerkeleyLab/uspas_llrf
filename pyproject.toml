@@ -12,7 +12,7 @@ authors = [
 ]
 description = "Digital LLRF Firmware Suite for USPAS"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "cocotb==2.0.1",
     "cocotb-bus==0.3.0",
@@ -20,6 +20,7 @@ dependencies = [
     "pandas>=3.0.0",
     "pyserial>=3.5",
     "scipy>=1.15.3",
+    "pytest==9.0.2",
     "leep==1.0.0"
 ]
 license = "LicenseRef-Government-Use"

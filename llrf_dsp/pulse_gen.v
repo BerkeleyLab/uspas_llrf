@@ -3,14 +3,15 @@ module pulse_gen #(
 ) (
     input clk,
     input trigger,
+    input [AW-1:0] start,
     input [AW-1:0] high_len,
     output pulse_out
 );
 
 reg [AW-1:0] len=0;
-reg [AW-1:0] pc=0;
+reg [AW:0] pc=0;
 reg counting=0;
-wire last = (pc==len);
+wire last = (pc==start+len);
 always @(posedge clk) begin
     len <= high_len;
     if (last) counting <= 1'b0;
@@ -18,6 +19,6 @@ always @(posedge clk) begin
     pc <= counting ? pc + 1 : 0;
 end
 
-assign pulse_out = counting & ~last;
+assign pulse_out = counting && (pc >= start) && ~last;
 
 endmodule

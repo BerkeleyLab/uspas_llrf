@@ -127,9 +127,9 @@ $$
 
 ### Numerical Models for simulation
 
-  A collection of LLRF DSP numerical models can be found in [uspas_llrf/llrf_model/llrf_dsp.py](uspas_llrf/llrf_model/llrf_dsp.py), which is shared among all simulations.
+  A collection of LLRF DSP numerical models can be found in [uspas_llrf/model/llrf_dsp.py](uspas_llrf/model/llrf_dsp.py), which is shared among all simulations.
 
-  The complete feedback controller is modeled, and it can be used for `cocotb` simulation with cavity emulators, whose parameters are defined in [uspas_llrf/llrf_model/cavity.json](uspas_llrf/llrf_model/cavity.json).
+  The complete feedback controller is modeled, and it can be used for `cocotb` simulation with cavity emulators, whose parameters are defined in [uspas_llrf/model/cavity.json](uspas_llrf/model/cavity.json).
   The detailed cavity model co-simulation with discrete signal process is explained in [doc/lti.ipynb](doc/lti.ipynb).
 
 ### IQ representation conventions
@@ -231,11 +231,12 @@ $$
 
 A generic digital up-conversion scheme is implemented, in the `dac_clk` domain.
 
-With the normalized DAC IF frequency $\omega = 2\pi\frac{f_\text{IF\_DAC}}{f_\text{S}}$ and phase offset $\theta$, given a complex base band signal $I + jQ_n$, the up-converted signal $y$ is:
+With the normalized DAC IF frequency $\omega = 2\pi\frac{f_\text{IF\_DAC}}{f_\text{S}}$ and phase offset $\theta$, given a complex base band signal $e^{j\alpha}= I + jQ$, the up-converted signal $y$ is:
 
 $$
 \begin{align*}
-    y &= (I + jQ_n) \cdot e^{j(\omega n + \theta)} \\
+    y &= e^{j\alpha} \cdot e^{j(\omega n + \theta)} \\
+    &= (I + jQ) \cdot e^{j(\omega n + \theta)} \\
     &= I\cos(\omega n + \theta) - Q\sin(\omega n + \theta) + j\left( Q\cos(\omega n + \theta) + I\sin(\omega n + \theta) \right) \\
     \Re(y) &= I\cos(\omega n + \theta) - Q\sin(\omega n + \theta) \\
     \Im(y) &= Q\cos(\omega n + \theta) + I\sin(\omega n + \theta)
@@ -332,9 +333,9 @@ Three functions are integrated in the [llrf_dsp/cic_waves.v](llrf_dsp/cic_waves.
 
 * Calibration
 
-  The numerical DSP transfer function of each building element in `llrf_shell.v` are modeled in [uspas_llrf/llrf_model/llrf_dsp.py](uspas_llrf/llrf_model/llrf_dsp.py).
+  The numerical DSP transfer function of each building element in `llrf_shell.v` are modeled in [uspas_llrf/model/llrf_dsp.py](uspas_llrf/model/llrf_dsp.py).
 
-  The DSP models are used in both `cocotb` simulaiton, and the Python driver in [uspas_llrf//llrf_app](uspas_llrf//llrf_app), where the calibration factors are illustrated in the following diagram:
+  The DSP models are used in both `cocotb` simulaiton, and the Python driver in [uspas_llrf//app](uspas_llrf//app), where the calibration factors are illustrated in the following diagram:
 
   ![llrf_shell_cal](./fig/llrf_shell_cal.drawio.svg)
 
@@ -342,7 +343,7 @@ Three functions are integrated in the [llrf_dsp/cic_waves.v](llrf_dsp/cic_waves.
 
 ### Python IO
 
-An example python class for packaging the LLRF application can be found in [uspas_llrf//llrf_app](uspas_llrf/llrf_app), where a few Jupyter notebook examples are provided as reference use cases.
+An example python class for packaging the LLRF application can be found in [uspas_llrf//app](uspas_llrf/app), where a few Jupyter notebook examples are provided as reference use cases.
 
 ### EPICS IOC
 
