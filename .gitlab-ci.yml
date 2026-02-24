@@ -87,6 +87,8 @@ alsu_run:
     - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=ALSU
     - sleep 4
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
+  environment: hw_uspas
+  resource_group: hw_uspas
 
 awa_run:
   variables:
@@ -107,6 +109,8 @@ awa_run:
     - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=AWA
     - sleep 4
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
+  environment: hw_uspas
+  resource_group: hw_uspas
 
 lemp_run:
   variables:
@@ -131,6 +135,8 @@ lemp_run:
     - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=LEMP
     - sleep 4
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
+  environment: hw_uspas
+  resource_group: hw_uspas
 
 uspas_run:
   variables:
@@ -151,3 +157,5 @@ uspas_run:
     - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=USPAS
     - sleep 4
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
+  environment: hw_uspas
+  resource_group: hw_uspas
