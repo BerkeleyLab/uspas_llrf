@@ -78,6 +78,7 @@ alsu_run:
   stage: run
   tags:
     - deploy
+  resource_group: hw_uspas
   needs:
     - job: llrf_synthesis
       parallel:
@@ -85,10 +86,8 @@ alsu_run:
           - TARGET: ALSU
   script:
     - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=ALSU
-    - sleep 4
+    - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
-  environment: hw_uspas
-  resource_group: hw_uspas
 
 awa_run:
   variables:
@@ -100,6 +99,7 @@ awa_run:
   stage: run
   tags:
     - deploy
+  resource_group: hw_uspas
   needs:
     - job: llrf_synthesis
       parallel:
@@ -107,10 +107,8 @@ awa_run:
           - TARGET: AWA
   script:
     - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=AWA
-    - sleep 4
+    - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
-  environment: hw_uspas
-  resource_group: hw_uspas
 
 lemp_run:
   variables:
@@ -126,6 +124,7 @@ lemp_run:
   stage: run
   tags:
     - deploy
+  resource_group: hw_uspas
   needs:
     - job: llrf_synthesis
       parallel:
@@ -133,10 +132,8 @@ lemp_run:
           - TARGET: LEMP
   script:
     - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=LEMP
-    - sleep 4
+    - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
-  environment: hw_uspas
-  resource_group: hw_uspas
 
 uspas_run:
   variables:
@@ -148,6 +145,7 @@ uspas_run:
   stage: run
   tags:
     - deploy
+  resource_group: hw_uspas
   needs:
     - job: llrf_synthesis
       parallel:
@@ -155,7 +153,5 @@ uspas_run:
           - TARGET: USPAS
   script:
     - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=USPAS
-    - sleep 4
+    - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
-  environment: hw_uspas
-  resource_group: hw_uspas
