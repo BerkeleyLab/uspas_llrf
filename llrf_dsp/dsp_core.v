@@ -12,8 +12,8 @@ module dsp_core #(
     output signed [KW-1:0] drive_i,
     output signed [KW-1:0] drive_q,
 
-    input [18:0] rx_phase_offset,
-    input [18:0] tx_phase_offset,
+    input [KW:0] rx_phase_offset,
+    input [KW:0] tx_phase_offset,
 
     output signed [KW-1:0] amp_measured,
     output signed [KW-1:0] phs_measured,

@@ -1,13 +1,39 @@
 import numpy as np
 from scipy import signal
 import matplotlib.pyplot as plt
+import json
+from pathlib import Path
 
-plt.rcParams['figure.figsize'] = [6, 4]
-plt.rcParams['axes.grid'] = True
-plt.rcParams['axes.grid.which'] = "both"
-plt.rcParams['grid.linewidth'] = 0.5
-plt.rcParams['grid.alpha'] = 0.5
-plt.rcParams['font.size'] = 8
+
+with open(Path(__file__).parent.joinpath('settings.json')) as f:
+    settings = json.load(f)
+
+dsp_config = settings['dsp_config']
+cav_config = settings['cav_config']
+
+
+def wrap_phase(phs: float, deg=True):
+    """Wrap phase value to be within [-180, 180] or [-pi, pi].
+    """
+    scale = 180 if deg else np.pi
+    return (phs + scale) % (2 * scale) - scale
+
+
+def clip_int(value, n_bit=16):
+    max_value = (1 << n_bit - 1) - 1
+    min_value = -(1 << n_bit - 1)
+    return max(min_value, min(int(value), max_value))
+
+
+def to_signed(value: int, width: int = 18):
+    """Converts an integer to the signed value from two's compliment format
+        e.g. 0b1000 is -8
+    """
+    v = int(value)
+    if v >= 2**(width - 1):
+        return v - 2**width
+    else:
+        return v
 
 
 def calc_ps(wfm, title='', fullscale=32767, fs_mhz=115):

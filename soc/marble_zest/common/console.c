@@ -12,6 +12,7 @@
 #include "timer.h"
 #include "llrf.h"
 #include "llrf_regs_addr.h"
+#include "marble_regs_addr.h"
 #include "evr_gt_wrapper.h"
 
 extern zest_init_t zest_init_data;
@@ -76,11 +77,11 @@ void console(char c) {
 
         case 'd':
             for (ix=4*16; ix<4*16+10; ix++) {  // read page 4
-                dval32 = read_lb_reg(LB_MARBLE_MBOX_BUF + ix);
+                dval32 = read_lb_reg(MARBLE_MBOX_BUF + ix);
                 printf("mbox[%u]: %x\n", ix, dval32);
             }
             for (ix=0; ix<10; ix++) {   // sizeof(marble) = 372 bytes
-                dval32 = read_lb_reg(LB_BSP_INFO_BUF + ix);
+                dval32 = read_lb_reg(BSP_INFO_BUF + ix);
                 printf("info[%u]: %d\n", ix, dval32);
             }
             break;

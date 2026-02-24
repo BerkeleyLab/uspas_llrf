@@ -2,7 +2,6 @@ include $(PICORV_DIR)/rules.mk
 include $(TOP)settings.mk
 APP_COMMON_DIR = $(APP_SOC_DIR)/common
 INC_DIR       += -I$(MARBLE_DIR)/firmware -I$(ZEST_DIR)/firmware
-INC_DIR       += -I$(BSP_DIR)/_autogen
 VIVADO_BASE    = $(dir $(shell which vivado))..
 
 vpath %.c $(APP_COMMON_DIR)
@@ -41,5 +40,6 @@ CFLAGS += -DBOOTLOADER_BAUDRATE=$(BOOTLOADER_BAUDRATE)
 CFLAGS += -ffunction-sections
 CFLAGS += -nostartfiles
 CFLAGS += -DNONSTD_PRINTF
+CFLAGS += -DUSPAS_LLRF_FSET=\"$(FSET)\"
 
 include $(APP_SOC_DIR)/common/llrf/rules.mk

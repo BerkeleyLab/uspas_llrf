@@ -189,6 +189,7 @@ mmc_mailbox #(
     .spi_pins_debug     () // {MISO, din, sclk_d1, csb_d1};
 );
 
+// XXX simply and implement chassis IO assignments. Hardcoded for AWA for now.
 // matches LCLS-II
 wire de9_dsr, de9_rxd;
 assign de9_rxd = zest_pmod[0];

@@ -2,7 +2,6 @@ module llrf_dsp #(
     parameter integer KW = 18,
     parameter integer EW = 15,
     parameter integer DWI = 16,
-    parameter [0:0] BASEBAND_INPUT = 0,   // select baseband input
     localparam integer DWO = 16,
     localparam integer DWLO = 18
 ) (
@@ -60,8 +59,8 @@ module llrf_dsp #(
     );
 
     wire signed [KW-1:0] field_i, field_q;
-    assign field_i = BASEBAND_INPUT ? i_data_in : ddc_i_out;
-    assign field_q = BASEBAND_INPUT ? q_data_in : ddc_q_out;
+    assign field_i = ddc_i_out;
+    assign field_q = ddc_q_out;
 
     wire signed [KW-1:0] drive_i, drive_q;
     dsp_core #(.KW(KW), .EW(EW)) feedback (

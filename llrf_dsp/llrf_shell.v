@@ -25,7 +25,7 @@
 // ...
 // 2d000 to 2dfff   adc7_q_buf
 // 2e000 to 2efff   dac0_q_buf
-// 2f000 to 2ffff   dac0_q_buf
+// 2f000 to 2ffff   dac1_q_buf
 // 30000 to 3ffff   Circular buffer
 
 module llrf_shell #(
@@ -62,8 +62,8 @@ module llrf_shell #(
     input                dsp_clk,
     input [DW*N_ADC-1:0] adc_data_in,
     input                dac_clk,
-    output [DW-1:0]      dac_data_a_out,
-    output [DW-1:0]      dac_data_b_out,
+    output reg [DW-1:0]  dac_data_a_out,
+    output reg [DW-1:0]  dac_data_b_out,
 
     // ---------------------
     // Interlock interface
@@ -109,6 +109,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [6:0] cic_base_period; top-level
 // reg [3:0] cic_wave_shift; top-level
 // reg [3:0] inlk_wave_shift; top-level
+// reg [9:0] inlk_permit_mask; top-level
+// reg [7:0] arc_permit_mask; top-level
 // reg [31:0] rx_dds_phase_step; top-level
 // reg signed [18:0] rx_dds_phase_shift; top-level
 // reg [11:0] rx_dds_modulo; top-level
@@ -116,27 +118,42 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg signed [18:0] rx_phase_offset; top-level
 // reg signed [18:0] tx_phase_offset; top-level
 // reg [2:0] prl_adc_chan; top-level
-// reg [2:0] fdbk_adc_chan; top-level
-// reg signed [17:0] amp_setpoint; top-level
-// reg signed [17:0] phs_setpoint; top-level
-// reg signed [17:0] Kp_amp; top-level
-// reg signed [17:0] Kp_phs; top-level
-// reg signed [17:0] Ki_amp; top-level
-// reg signed [17:0] Ki_phs; top-level
-// reg [0:0] amp_loop_enable; top-level
-// reg [0:0] phs_loop_enable; top-level
-// reg [0:0] amp_loop_reset; top-level
-// reg [0:0] phs_loop_reset; top-level
+// reg [2:0] loop0_adc_chan; top-level
+// reg [2:0] loop1_adc_chan; top-level
+// reg signed [17:0] loop0_amp_setpoint; top-level
+// reg signed [17:0] loop0_phs_setpoint; top-level
+// reg signed [17:0] loop0_Kp_amp; top-level
+// reg signed [17:0] loop0_Kp_phs; top-level
+// reg signed [17:0] loop0_Ki_amp; top-level
+// reg signed [17:0] loop0_Ki_phs; top-level
+// reg [0:0] loop0_amp_enable; top-level
+// reg [0:0] loop0_phs_enable; top-level
+// reg [0:0] loop0_amp_reset; top-level
+// reg [0:0] loop0_phs_reset; top-level
+// reg signed [17:0] loop1_amp_setpoint; top-level
+// reg signed [17:0] loop1_phs_setpoint; top-level
+// reg signed [17:0] loop1_Kp_amp; top-level
+// reg signed [17:0] loop1_Kp_phs; top-level
+// reg signed [17:0] loop1_Ki_amp; top-level
+// reg signed [17:0] loop1_Ki_phs; top-level
+// reg [0:0] loop1_amp_enable; top-level
+// reg [0:0] loop1_phs_enable; top-level
+// reg [0:0] loop1_amp_reset; top-level
+// reg [0:0] loop1_phs_reset; top-level
 // reg [0:0] dsp_reset; top-level single-cycle
-// reg [31:0] pulse_high_len; top-level
-// reg [0:0] pulse_mode; top-level
-// reg [0:0] dac_permit; top-level
+// reg [17:0] loop0_pulse_start; top-level
+// reg [17:0] loop0_pulse_high_len; top-level
+// reg [17:0] loop1_pulse_start; top-level
+// reg [17:0] loop1_pulse_high_len; top-level
+// reg [1:0] pulse_modes; top-level
+// reg [1:0] dac_permits; top-level
 // reg [0:0] ntw_amp_enable; top-level
 // reg [0:0] ntw_phs_enable; top-level
 // reg [0:0] system_bist_pass; top-level
-// reg [1:0] wave_trig_sel; top-level;
+// reg [1:0] wave_trig_sel; top-level
 // reg [0:0] slow_snap_cic; top-level
 // newad-force lb2 domain
+// reg [1:0] dac_drive_sel; top-level
 // reg [31:0] tx_dds_phase_step; top-level
 // reg signed [18:0] tx_dds_phase_shift; top-level
 // reg [11:0] tx_dds_modulo; top-level
@@ -147,7 +164,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [6:0] evr_oc_delay; top-level
 // newad-force lb domain
 
-// Transfer local bus to dsp clk domain:
+// Transfer local bus to dsp clk domain: lb1
 wire lb1_clk = dsp_clk;
 wire [LB_DW-1:0] lb1_data;
 wire [LB_ADW-1:0] lb1_addr;
@@ -157,7 +174,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_1x(
     .clk_out(lb1_clk), .gate_out(lb1_write), .data_out({lb1_addr,lb1_data})
 );
 
-// Transfer local bus to dac clk domain:
+// Transfer local bus to dac clk domain: lb2
 wire lb2_clk = dac_clk;
 wire [LB_DW-1:0] lb2_data;
 wire [LB_ADW-1:0] lb2_addr;
@@ -167,7 +184,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_2x(
     .clk_out(lb2_clk), .gate_out(lb2_write), .data_out({lb2_addr,lb2_data})
 );
 
-// Transfer local bus to gt_rxclk domain:
+// Transfer local bus to gt_rxclk domain: lb3
 wire lb3_clk = gt_rxclk;
 wire [LB_DW-1:0] lb3_data;
 wire [LB_ADW-1:0] lb3_addr;
@@ -434,73 +451,19 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     reg [1:0] llrf_circle_ready=0;
     always @(posedge lb_clk) llrf_circle_ready <= {slow_ready, cbuf_ready};
 
-    wire signed [17:0] amp_setpoint_ntw;
-    wire signed [17:0] phs_setpoint_ntw;
-    wire signed [14:0] err_out_amp;
-    wire signed [14:0] err_out_phs;
-    wire signed [17:0] phs_setpoint_i =  (ntw_phs_enable && phs_loop_enable) ? phs_setpoint_ntw : phs_setpoint;
-    wire signed [17:0] amp_setpoint_i =  (ntw_amp_enable && amp_loop_enable) ? amp_setpoint_ntw : amp_setpoint;
-
-    // ---------------------
-    // Instantiate feedback controller in baseband
-    // ---------------------
-
-    wire signed [DWBB-1:0] drive_i, drive_q;
-    wire signed [DWBB-1:0] amp_measured, phs_measured;
-
-    dsp_core #(.KW(DWBB), .EW(15)) feedback (
-        .clk              (dsp_clk),
-        .reset            (dsp_reset),
-        .field_i          (sig_i_data[fdbk_adc_chan]),
-        .field_q          (sig_q_data[fdbk_adc_chan]),
-        .drive_i          (drive_i),
-        .drive_q          (drive_q),
-        .rx_phase_offset  (rx_phase_offset),
-        .tx_phase_offset  (tx_phase_offset),
-        .amp_measured     (amp_measured),
-        .phs_measured     (phs_measured),
-        .amp_setpoint     (amp_setpoint_i),
-        .phs_setpoint     (phs_setpoint_i),
-        .Kp_amp           (Kp_amp),
-        .Kp_phs           (Kp_phs),
-        .Ki_amp           (Ki_amp),
-        .Ki_phs           (Ki_phs),
-        .amp_loop_enable  (amp_loop_enable),
-        .phs_loop_enable  (phs_loop_enable),
-        .amp_loop_reset   (amp_loop_reset),
-        .phs_loop_reset   (phs_loop_reset),
-        .err_out_amp      (err_out_amp),
-        .err_out_phs      (err_out_phs)
-    );
+    // Periodically pass the result to lb_clk domain
+    reg [2:0] xcnt=0;
+    wire dsp_tick = &xcnt;
+    always @(posedge dsp_clk) xcnt <= xcnt + 1'b1;
 
     // ----------------------
-    // Pulsing and permit at baseband
+    // Feedback controller and TX path
     // ----------------------
-    wire pulse_val;
-    pulse_gen #(.AW(32)) pulse_gen (
-        .clk        (dsp_clk),
-        .trigger    (cbuf_sync),        // sync with waveform
-        .high_len   (pulse_high_len),   // unit: DSP_CLK_CYCLE
-        .pulse_out  (pulse_val)
-    );
-    wire drive_on2 = pulse_mode ? pulse_val : 1'b1;  // non-interruptible
-    wire drive_on1 = dac_permit ? drive_on2 : 1'b0;  // TBD with interlock
-
-    wire signed [DWBB-1:0] drive_i_out, drive_q_out;
-    assign drive_i_out = drive_on1 ? drive_i : {DWBB{1'b0}};
-    assign drive_q_out = drive_on2 ? drive_q : {DWBB{1'b0}};
-
-    // base-band DAC output for IQ waveform monitoring
-
-    assign sig_i_data[N_ADC] = drive_i_out;
-    assign sig_q_data[N_ADC] = drive_q_out;
-    assign sig_i_data[N_ADC+1] = drive_i_out;
-    assign sig_q_data[N_ADC+1] = drive_q_out;
-
-    // ----------------------
-    // Digital Up Conversion after interpolation and domain crossing to dac_clk
-    // ----------------------
-    // XXX enable dual loop controllers and DAC switches
+    // XXX bypassed for now
+    wire signed [DWBB-1:0] amp_setpoint_ntw;
+    wire signed [DWBB-1:0] phs_setpoint_ntw;
+    // wire signed [DWBB-1:0] phs_setpoint_i = (ntw_phs_enable && loop0_phs_enable) ? phs_setpoint_ntw : loop0_phs_setpoint;
+    // wire signed [DWBB-1:0] amp_setpoint_i = (ntw_amp_enable && loop0_amp_enable) ? amp_setpoint_ntw : loop0_amp_setpoint;
 
     wire tx_dds_reset;
     flag_xdomain dsp_reset_dac (
@@ -523,27 +486,171 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .sin_out      (duc_sin)
     );
 
-    wire signed [DW-1:0] dac_i_out, dac_q_out;
-    dac_duc #(
-        .DWI    (DWBB),
-        .DWO    (DW),
-        .DWLO   (DWLO)
-    ) duc (
-        .dsp_clk        (dsp_clk),
-        .dsp_reset      (dsp_reset),
-        .spectral_flip  (duc_spectral_flip),
-        .i_data_in      (drive_i_out),
-        .i_data_valid   (1'b1),
-        .q_data_in      (drive_q_out),
-        .q_data_valid   (1'b1),
-        .dac_clk        (dac_clk),
-        .cosa           (duc_cos),
-        .sina           (duc_sin),
-        .dac_i_out      (dac_i_out),
-        .dac_q_out      (dac_q_out)
-    );
-    assign dac_data_a_out = dac_i_out;
-    assign dac_data_b_out = dac_q_out;
+    // mapping
+    wire [N_DAC-1:0] drive_on;
+    wire signed [DWBB-1:0] drive_i [0:N_DAC-1];
+    wire signed [DWBB-1:0] drive_q [0:N_DAC-1];
+    wire signed [DWBB-1:0] drive_i_out [0:N_DAC-1];
+    wire signed [DWBB-1:0] drive_q_out [0:N_DAC-1];
+    wire signed [DWBB-1:0] amp_measured [0:N_DAC-1];
+    wire signed [DWBB-1:0] phs_measured [0:N_DAC-1];
+    wire signed [DWBB-1:0] amp_setpoint [0:N_DAC-1];
+    wire signed [DWBB-1:0] phs_setpoint [0:N_DAC-1];
+    wire [N_DAC-1:0] amp_loop_enable;
+    wire [N_DAC-1:0] amp_loop_reset;
+    wire [N_DAC-1:0] phs_loop_enable;
+    wire [N_DAC-1:0] phs_loop_reset;
+    wire signed [DWBB-1:0] Kp_amp [0:N_DAC-1];
+    wire signed [DWBB-1:0] Kp_phs [0:N_DAC-1];
+    wire signed [DWBB-1:0] Ki_amp [0:N_DAC-1];
+    wire signed [DWBB-1:0] Ki_phs [0:N_DAC-1];
+
+    wire signed [DWBB-1:0] field_i_data [0:N_DAC-1];
+    wire signed [DWBB-1:0] field_q_data [0:N_DAC-1];
+    wire signed [DW-1:0] dac_i_out [0:N_DAC-1];
+    wire signed [DW-1:0] dac_q_out [0:N_DAC-1];
+    wire signed [14:0] err_out_amp [0:N_DAC-1];
+    wire signed [14:0] err_out_phs [0:N_DAC-1];
+    wire signed [14:0] err_out_amp_lb [0:N_DAC-1];
+    wire signed [14:0] err_out_phs_lb [0:N_DAC-1];
+    wire [N_DAC-1:0] pulse_val;
+    wire [17:0] pulse_start [0:N_DAC-1];
+    wire [17:0] pulse_high_len [0:N_DAC-1];
+
+    assign pulse_start[0] = loop0_pulse_start;
+    assign pulse_high_len[0] = loop0_pulse_high_len;
+    assign amp_setpoint[0] = loop0_amp_setpoint;
+    assign phs_setpoint[0] = loop0_phs_setpoint;
+    assign Kp_amp[0] = loop0_Kp_amp;
+    assign Kp_phs[0] = loop0_Kp_phs;
+    assign Ki_amp[0] = loop0_Ki_amp;
+    assign Ki_phs[0] = loop0_Ki_phs;
+    assign amp_loop_enable[0] = loop0_amp_enable;
+    assign phs_loop_enable[0] = loop0_phs_enable;
+    assign amp_loop_reset[0] = loop0_amp_reset;
+    assign phs_loop_reset[0] = loop0_phs_reset;
+
+    assign pulse_start[1] = loop1_pulse_start;
+    assign pulse_high_len[1] = loop1_pulse_high_len;
+    assign amp_setpoint[1] = loop1_amp_setpoint;
+    assign phs_setpoint[1] = loop1_phs_setpoint;
+    assign Kp_amp[1] = loop1_Kp_amp;
+    assign Kp_phs[1] = loop1_Kp_phs;
+    assign Ki_amp[1] = loop1_Ki_amp;
+    assign Ki_phs[1] = loop1_Ki_phs;
+    assign amp_loop_enable[1] = loop1_amp_enable;
+    assign phs_loop_enable[1] = loop1_phs_enable;
+    assign amp_loop_reset[1] = loop1_amp_reset;
+    assign phs_loop_reset[1] = loop1_phs_reset;
+
+    assign field_i_data[0] = sig_i_data[loop0_adc_chan];
+    assign field_q_data[0] = sig_q_data[loop0_adc_chan];
+    assign field_i_data[1] = sig_i_data[loop1_adc_chan];
+    assign field_q_data[1] = sig_q_data[loop1_adc_chan];
+
+    generate for (ch=0; ch<N_DAC; ch=ch+1) begin: gen_loops
+        // ---------------------
+        // feedback controller in baseband
+        // ---------------------
+        dsp_core #(.KW(DWBB)) feedback (
+            .clk              (dsp_clk),
+            .reset            (dsp_reset),
+            .field_i          (field_i_data[ch]),
+            .field_q          (field_q_data[ch]),
+            .drive_i          (drive_i[ch]),
+            .drive_q          (drive_q[ch]),
+            .rx_phase_offset  (rx_phase_offset),
+            .tx_phase_offset  (tx_phase_offset),
+            .amp_measured     (amp_measured[ch]),
+            .phs_measured     (phs_measured[ch]),
+            .amp_setpoint     (amp_setpoint[ch]),
+            .phs_setpoint     (phs_setpoint[ch]),
+            .Kp_amp           (Kp_amp[ch]),
+            .Kp_phs           (Kp_phs[ch]),
+            .Ki_amp           (Ki_amp[ch]),
+            .Ki_phs           (Ki_phs[ch]),
+            .amp_loop_enable  (amp_loop_enable[ch]),
+            .phs_loop_enable  (phs_loop_enable[ch]),
+            .amp_loop_reset   (amp_loop_reset[ch]),
+            .phs_loop_reset   (phs_loop_reset[ch]),
+            .err_out_amp      (err_out_amp[ch]),
+            .err_out_phs      (err_out_phs[ch])
+        );
+
+        data_xdomain #(.size(30)) loop_err_xdomain (
+            .clk_in   (dsp_clk),
+            .gate_in  (dsp_tick),
+            .data_in  ({err_out_amp[ch], err_out_phs[ch]}),
+            .clk_out  (lb_clk),
+            .data_out ({err_out_amp_lb[ch], err_out_phs_lb[ch]})
+        );
+
+        // ----------------------
+        // Pulsing and permit at baseband
+        // ----------------------
+        pulse_gen #(.AW(18)) pulse_gen (
+            .clk        (dsp_clk),
+            .start      (pulse_start[ch]),
+            .trigger    (cbuf_sync),        // sync with waveform
+            .high_len   (pulse_high_len[ch]),   // unit: DSP_CLK_CYCLE
+            .pulse_out  (pulse_val[ch])
+        );
+
+        assign drive_on[ch] = dac_permits[ch] && inlk_permit_out && arc_permit_sum && (pulse_modes[ch] ? pulse_val[ch] : 1'b1);
+        assign drive_i_out[ch] = drive_on[ch] ? drive_i[ch] : {DWBB{1'b0}};
+        assign drive_q_out[ch] = drive_on[ch] ? drive_q[ch] : {DWBB{1'b0}};
+
+        // base-band LOOP output for IQ waveform monitoring
+        assign sig_i_data[N_ADC+ch] = drive_i_out[ch];
+        assign sig_q_data[N_ADC+ch] = drive_q_out[ch];
+
+        // ----------------------
+        // Digital Up Conversion after interpolation and domain crossing to dac_clk
+        // ----------------------
+        dac_duc #(
+            .DWI    (DWBB),
+            .DWO    (DW),
+            .DWLO   (DWLO)
+        ) duc (
+            .dsp_clk        (dsp_clk),
+            .dsp_reset      (dsp_reset),
+            .spectral_flip  (duc_spectral_flip),
+            .i_data_in      (drive_i_out[ch]),
+            .i_data_valid   (1'b1),
+            .q_data_in      (drive_q_out[ch]),
+            .q_data_valid   (1'b1),
+            .dac_clk        (dac_clk),
+            .cosa           (duc_cos),
+            .sina           (duc_sin),
+            .dac_i_out      (dac_i_out[ch]),
+            .dac_q_out      (dac_q_out[ch])
+        );
+    end endgenerate
+
+    always @(dac_clk) begin
+        case (dac_drive_sel)
+            2'b00: begin    // loop 0 drives, I0Q0
+                dac_data_a_out <= dac_i_out[0];
+                dac_data_b_out <= dac_q_out[0];
+            end
+            2'b01: begin    // loop 1 drives, I1Q1
+                dac_data_a_out <= dac_i_out[1];
+                dac_data_b_out <= dac_q_out[1];
+            end
+            2'b10: begin    // dual loops I drive, I0I1
+                dac_data_a_out <= dac_i_out[0];
+                dac_data_b_out <= dac_i_out[1];
+            end
+            2'b11: begin    // dual loops Q drive, Q0Q1
+                dac_data_a_out <= dac_q_out[0];
+                dac_data_b_out <= dac_q_out[1];
+            end
+            default: begin
+                dac_data_a_out <= dac_i_out[0];
+                dac_data_b_out <= dac_q_out[0];
+            end
+        endcase
+    end
 
     // ----------------------
     // Network analyzer feature
@@ -559,8 +666,8 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .trig             (ntw_trig_i),
         .ext_amp_enable   (ntw_amp_enable),
         .ext_phs_enable   (ntw_phs_enable),
-        .amp_setpoint     (amp_setpoint),
-        .phs_setpoint     (phs_setpoint),
+        .amp_setpoint     (loop0_amp_setpoint),
+        .phs_setpoint     (loop0_phs_setpoint),
         .ntw_phase_debug  (ntw_phase_debug),
         .ntw_cos_debug    (ntw_cos_debug),
         .amp_stp_ntw      (amp_setpoint_ntw), // final amplitude setpoint after excitation
@@ -584,16 +691,16 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .evr_rxk             (gt_rxcharisk),
         .evcode_evr          (evcode),
         .event_evr           (),
-	.oc_delay_evr        (evr_oc_delay),
+        .oc_delay_evr        (evr_oc_delay),
 
         .sys_clk             (lb_clk),
         .event1_cnt_sys      (evr_evcnt_lb),
         .ts_valid_sys        (evr_ts_valid_lb),
         .live_ts_sys         (),
-	.hb_valid_sys        (hb_valid_lb),
-	.pps_valid_sys       (pps_valid_lb),
-	.oc_valid_sys        (oc_valid_lb),
-	.oc_evr_frequency    (oc_evr_frequency),
+        .hb_valid_sys        (hb_valid_lb),
+        .pps_valid_sys       (pps_valid_lb),
+        .oc_valid_sys        (oc_valid_lb),
+        .oc_evr_frequency    (oc_evr_frequency),
 
         .dsp_clk             (dsp_clk),
         .live_ts_dsp         (evr_live_ts_dsp),
@@ -601,26 +708,12 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .hb_strobe_dsp       (),
         .event_dsp           (evr_trig),
         .oc_trig_dsp         (evr_oc_trig_dsp),
-	.oc_ts_dsp           (evr_oc_ts_dsp)
+        .oc_ts_dsp           (evr_oc_ts_dsp)
     );
 
     // ---------------------
     // Scalar register readback
     // ---------------------
-    // Periodically pass the result to lb_clk domain
-    reg [2:0] xcnt=0;
-    wire dsp_tick = &xcnt;
-    always @(posedge dsp_clk) xcnt <= xcnt + 1'b1;
-
-    wire signed [14:0] err_out_amp_lb;
-    wire signed [14:0] err_out_phs_lb;
-    data_xdomain #(.size(30)) loop_err_xdomain (
-        .clk_in   (dsp_clk),
-        .gate_in  (dsp_tick),
-        .data_in  ({err_out_amp, err_out_phs}),
-        .clk_out  (lb_clk),
-        .data_out ({err_out_amp_lb, err_out_phs_lb})
-    );
 
     wire [N_CH-1:0] inlk_status_lb;
     wire [N_CH-1:0] inlk_latch_lb;
@@ -684,10 +777,12 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             4'h6: reg_bank_0 <= arc_permit_raw_lb;    // alias: arc_permit_raw
             4'h7: reg_bank_0 <= arc_permit_latch_lb;  // alias: arc_permit_latch
             4'h8: reg_bank_0 <= arc_permit_sum_lb;    // alias: arc_permit_sum
-            4'h9: reg_bank_0 <= err_out_amp_lb;       // alias: loop_amp_err
-            4'ha: reg_bank_0 <= err_out_phs_lb;       // alias: loop_phs_err
-            4'hb: reg_bank_0 <= evr_evcnt_lb;         // alias: evr_evcnt
-            4'hc: reg_bank_0 <= evr_ts_valid_lb;      // alias: evr_ts_valid
+            4'h9: reg_bank_0 <= err_out_amp_lb[0];    // alias: loop0_amp_err
+            4'ha: reg_bank_0 <= err_out_phs_lb[0];    // alias: loop0_phs_err
+            4'hb: reg_bank_0 <= err_out_amp_lb[1];    // alias: loop1_amp_err
+            4'hc: reg_bank_0 <= err_out_phs_lb[1];    // alias: loop1_phs_err
+            4'hd: reg_bank_0 <= evr_evcnt_lb;         // alias: evr_evcnt
+            4'he: reg_bank_0 <= evr_ts_valid_lb;      // alias: evr_ts_valid
             default: reg_bank_0 <= 32'hfaceface;
         endcase
         case (lb_addr[3:0])
@@ -731,26 +826,26 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             18'h17???: lb_rdata_r <= adc_raw_out[5];
             18'h18???: lb_rdata_r <= adc_raw_out[6];
             18'h19???: lb_rdata_r <= adc_raw_out[7];
-            18'h1c???: lb_rdata_r <= sig_i_buf_out[0];
+            18'h1c???: lb_rdata_r <= sig_i_buf_out[0];  // adc0_i_buf
             18'h1d???: lb_rdata_r <= sig_i_buf_out[1];
             18'h1e???: lb_rdata_r <= sig_i_buf_out[2];
             18'h1f???: lb_rdata_r <= sig_i_buf_out[3];
             18'h20???: lb_rdata_r <= sig_i_buf_out[4];
             18'h21???: lb_rdata_r <= sig_i_buf_out[5];
             18'h22???: lb_rdata_r <= sig_i_buf_out[6];
-            18'h23???: lb_rdata_r <= sig_i_buf_out[7];
-            18'h24???: lb_rdata_r <= sig_i_buf_out[8];
-            18'h25???: lb_rdata_r <= sig_i_buf_out[9];
-            18'h26???: lb_rdata_r <= sig_q_buf_out[0];
+            18'h23???: lb_rdata_r <= sig_i_buf_out[7];  // adc7_i_buf
+            18'h24???: lb_rdata_r <= sig_i_buf_out[8];  // drv0_i_buf
+            18'h25???: lb_rdata_r <= sig_i_buf_out[9];  // drv1_i_buf
+            18'h26???: lb_rdata_r <= sig_q_buf_out[0];  // adc0_q_buf
             18'h27???: lb_rdata_r <= sig_q_buf_out[1];
             18'h28???: lb_rdata_r <= sig_q_buf_out[2];
             18'h29???: lb_rdata_r <= sig_q_buf_out[3];
             18'h2a???: lb_rdata_r <= sig_q_buf_out[4];
             18'h2b???: lb_rdata_r <= sig_q_buf_out[5];
             18'h2c???: lb_rdata_r <= sig_q_buf_out[6];
-            18'h2d???: lb_rdata_r <= sig_q_buf_out[7];
-            18'h2e???: lb_rdata_r <= sig_q_buf_out[8];
-            18'h2f???: lb_rdata_r <= sig_q_buf_out[9];
+            18'h2d???: lb_rdata_r <= sig_q_buf_out[7];  // adc7_q_buf
+            18'h2e???: lb_rdata_r <= sig_q_buf_out[8];  // drv0_q_buf
+            18'h2f???: lb_rdata_r <= sig_q_buf_out[9];  // drv1_q_buf
             18'h3????: lb_rdata_r <= cbuf_out;
             18'h008??: lb_rdata_r <= 32'h0;  // LEEP old config ROM compatibility
             18'h???0?: lb_rdata_r <= reg_bank_0;

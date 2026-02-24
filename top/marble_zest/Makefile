@@ -54,14 +54,6 @@ SYNTH_OPT += -DGIT_32BIT_ID=32'h$(GIT_32BIT_ID)
 $(APP_SOC_SYN_DIR)/system32.dat:
 	$(MAKE) -C $(APP_SOC_SYN_DIR) system32.dat
 
-MARBLE_BSP_REGS_H = $(BSP_DIR)/_autogen/marble_bsp_regs.h
-
-$(MARBLE_BSP_REGS_H):
-	$(MAKE) -C $(BSP_DIR) _autogen/marble_bsp_regs.h
-
-# Add dependency to your firmware target
-system32.dat: $(MARBLE_BSP_REGS_H)
-
 $(APP_SOC_SYN_DIR)/zest_fmc_dp.xdc:
 	$(MAKE) -C $(APP_SOC_SYN_DIR) zest_fmc_dp.xdc
 
@@ -81,12 +73,13 @@ $(TARGET)_top_$(FSET).bit: $(TARGET)_top.tcl $(GT_TCL) $(GITID_TCL) $(TARGET)_to
 
 IP_ADDRESS = 192.168.19.$(MARBLE_SERIAL)
 
+BITSTREAM = $(TARGET)_top_$(FSET).$(GIT_32BIT_ID).bit
 system_config:
 	@echo "Using Marble with serial number $(MARBLE_SERIAL)"
 	openocd \
 	-c "adapter serial $(MARBLE_SN);" \
 	-f marble.cfg \
-	-c "init; xc7_program xc7.tap; pld load 0 $(TARGET)_top_$(FSET).$(GIT_32BIT_ID).bit; exit"
+	-c "init; xc7_program xc7.tap; pld load 0 $(BITSTREAM); exit"
 
 # check Ethernet and system selftest status
 system_test:
@@ -103,7 +96,6 @@ CLEAN_DIRS += .Xil _xilinx obj_dir bit_stamp_mod.dSYM
 
 include $(BUILD_DIR)/bottom_rules.mk
 clean::
-	$(MAKE) -C $(APP_DSP_DIR) distclean
 	@for d in $(SUB_IP_DIR); do \
 	    $(MAKE) -C $$d clean; \
 	done;

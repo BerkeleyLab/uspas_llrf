@@ -8,6 +8,7 @@ variables:
   DOCKER_HOST: tcp://docker:2375/
   DOCKER_DRIVER: overlay2
   GIT_SUBMODULE_STRATEGY: normal
+  MARBLE_SERIAL: 42
 
 image: mohs.dhcp.lbl.gov/xilinx_env_trixie_custom_verilator
 
@@ -45,7 +46,7 @@ marble_bsp_test:
   script:
     - make
 
-marble_zest_synth:
+llrf_synthesis:
   before_script:
     - pip install -e .
     - cd top/marble_zest
@@ -63,47 +64,90 @@ marble_zest_synth:
     matrix:
       - TARGET: [ALSU, USPAS, LEMP, AWA]
 
-marble_lemp_run:
+alsu_run:
+  variables:
+    EVG_F: 125.1e6
+    CLK_F: 458.7e6
   before_script:
     - pip install -e .
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM2 -f ${EVG_F}  # EVG ref
+    - python3 -m uspas_llrf.tools.dual_evg -r
+    - sleep 10
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM1 -f ${CLK_F}  # CLK ref
     - cd top/marble_zest
   stage: run
   tags:
     - deploy
   needs:
-  - job: marble_zest_synth
-    parallel:
-      matrix:
-        - PLATFORM: LEMP
+    - job: llrf_synthesis
+      parallel:
+        matrix:
+          - TARGET: ALSU
   script:
-    - make system_config MARBLE_SERIAL=42 FSET=LEMP && sleep 4 && make system_test MARBLE_SERIAL=42
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=ALSU
+    - sleep 4
+    - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
-marble_awa_run:
+awa_run:
+  variables:
+    CLK_F: 1320e6
   before_script:
     - pip install -e .
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM1 -f ${CLK_F}  # CLK ref
     - cd top/marble_zest
   stage: run
   tags:
     - deploy
   needs:
-  - job: marble_zest_synth
-    parallel:
-      matrix:
-        - PLATFORM: AWA
+    - job: llrf_synthesis
+      parallel:
+        matrix:
+          - TARGET: AWA
   script:
-    - make system_config MARBLE_SERIAL=39 FSET=AWA && sleep 4 && make system_test MARBLE_SERIAL=39
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=AWA
+    - sleep 4
+    - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
-.marble_uspas_run:
+lemp_run:
+  variables:
+    EVG_F: 119e6
+    CLK_F: 2856e6
   before_script:
     - pip install -e .
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM2 -f ${EVG_F}  # EVG ref
+    - python3 -m uspas_llrf.tools.dual_evg -r
+    - sleep 10
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM1 -f ${CLK_F}  # CLK ref
     - cd top/marble_zest
   stage: run
   tags:
     - deploy
   needs:
-  - job: marble_zest_synth
-    parallel:
-      matrix:
-        - PLATFORM: USPAS
+    - job: llrf_synthesis
+      parallel:
+        matrix:
+          - TARGET: LEMP
   script:
-    - make system_config MARBLE_SERIAL=42 FSET=USPAS && sleep 4 && make system_test MARBLE_SERIAL=42
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=LEMP
+    - sleep 4
+    - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
+
+uspas_run:
+  variables:
+    CLK_F: 460e6
+  before_script:
+    - pip install -e .
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM1 -f ${CLK_F}  # CLK ref
+    - cd top/marble_zest
+  stage: run
+  tags:
+    - deploy
+  needs:
+    - job: llrf_synthesis
+      parallel:
+        matrix:
+          - TARGET: USPAS
+  script:
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=USPAS
+    - sleep 4
+    - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}

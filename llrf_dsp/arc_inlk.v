@@ -4,7 +4,7 @@ module arc_inlk #(
     input               clk,
     input [0:0]         reset_latch, // external single-cycle
     input [0:0]         reset_arc_dev,  // external
-    input [7:0]         permit_mask, // external
+    input [7:0]         permit_mask,
     input [7:0]         test_arc_dev, // external
 
     // status readout

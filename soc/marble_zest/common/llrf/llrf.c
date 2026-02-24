@@ -61,7 +61,7 @@ void align_mo_phase(void) {
     mo_adc_chan = read_lb_reg(PRL_ADC_CHAN);
     write_lb_reg(RX_DDS_PHASE_SHIFT, 0);
     DELAY_MS(1);
-    mo_phs_cnt = read_lb_reg(MON_PHS_0 + mo_adc_chan) >> 1;
+    mo_phs_cnt = read_lb_reg(MON_PHS + mo_adc_chan) >> 1;
     // print_str("Get MON_PHS = ");
     // print_dec_fix(mo_phs_cnt * 360, 16, 3);
     // print_str(" deg.\n");
@@ -70,7 +70,7 @@ void align_mo_phase(void) {
     phase_shift_cnt = mo_phs_cnt << 3;
     write_lb_reg(RX_DDS_PHASE_SHIFT, phase_shift_cnt);
     DELAY_MS(1);
-    mo_phs_cnt = read_lb_reg(MON_PHS_0 + mo_adc_chan) >> 1;
+    mo_phs_cnt = read_lb_reg(MON_PHS + mo_adc_chan) >> 1;
     printf("  %s: MO_PHS = %d\n", __func__, mo_phs_cnt);
     // print_str("Get MON_PHS = ");
     // print_dec_fix(mo_phs_cnt * 360, 15, 3);
@@ -78,7 +78,7 @@ void align_mo_phase(void) {
 }
 
 void set_llrf_dac_permit(bool permit) {
-    write_lb_reg(DAC_PERMIT, permit);
+    write_lb_reg(DAC_PERMITS, permit ? 0b11 :0);
 }
 
 void set_llrf_bist_pass(bool pass) {
@@ -95,14 +95,14 @@ void dbg_read_slowbuf(void) {
     write_lb_reg(CIRCLE_BUF_FLIP, 1);
     wait_cbuf_ready();
     for (size_t ix=0; ix<8; ix++) {
-        dval[0] = read_lb_reg(DSP_SLOW_ADC_MIN_0 + ix);
-        dval[1] = read_lb_reg(DSP_SLOW_ADC_MAX_0 + ix);
+        dval[0] = read_lb_reg(DSP_SLOW_ADC_MIN + ix);
+        dval[1] = read_lb_reg(DSP_SLOW_ADC_MAX + ix);
         printf("ADC %d, Min: %6d,     MAX: %6d\n",
                 ix, dval[0], dval[1]);
     }
     for (size_t ix=0; ix<8; ix++) {
-        dval[0] = read_lb_reg(MON_AMP_0 + ix);
-        dval[1] = read_lb_reg(MON_PHS_0 + ix) >> 1;
+        dval[0] = read_lb_reg(MON_AMP + ix);
+        dval[1] = read_lb_reg(MON_PHS + ix) >> 1;
         printf("ADC %d, AMP: %6d cnt, PHS: %6d deg.\n",
                ix, dval[0], dval[1] * 360 / 0xffff);
     }

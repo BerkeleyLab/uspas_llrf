@@ -38,10 +38,10 @@ cosa[17:0]
 @8420
 cav_field[15:0]
 @28
-amp_loop_enable
-amp_loop_reset
-phs_loop_enable
-phs_loop_reset
+loop0_amp_enable
+loop0_amp_reset
+loop0_phs_enable
+loop0_phs_reset
 @8420
 llrf_dsp.amp_measured[17:0]
 @20000

@@ -8,8 +8,8 @@ FSET       ?= USPAS
 
 VERILOG_AUTOGEN += $(AUTOGEN_DIR)/llrf_shell_auto.vh $(AUTOGEN_DIR)/addr_map_llrf_shell.vh
 
-$(MODULE)_init_regs.json: $(USPAS_LLRF_DIR)/settings.json
-	$(PYTHON) $(USPAS_LLRF_DIR)/llrf_model/llrf_dsp.py -c $(FSET) -f $< --write-init-reg $@
+$(MODULE)_init_regs.json:
+	$(PYTHON) $(USPAS_LLRF_DIR)/model/llrf_shell.py -c $(FSET) --write-init-reg $@
 
 $(DEPDIR)/$(MODULE).d: $(MODULE).v $(VERILOG_AUTOGEN) cordicg_b22.v
 	@set -e; mkdir -p $(DEPDIR); \
@@ -36,7 +36,6 @@ endif
 ifeq (,$(MAKECMDGOALS))
     -include $(DEPDIR)/$(MODULE).d
 endif
-CLEAN += settings.vams
 CLEAN += $(MODULE).json $(MODULE)_init_regs.json
 CLEAN += $(MODULE)_expand.v
 CLEAN += cordicg_b22.v

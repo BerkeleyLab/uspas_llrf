@@ -4,9 +4,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, ClockCycles, Timer
 from cocotb.handle import Immediate
 from cocotb.handle import SimHandleBase
-from uspas_llrf.llrf_model.llrf_dsp import LLRF_DSP, wrap_phase, \
-    default_configs
-from uspas_llrf.llrf_model.plant import Plant
+from uspas_llrf import LLRF_DSP, Plant, wrap_phase, dsp_config
 import itertools
 import random
 import logging
@@ -16,14 +14,13 @@ class TB:
     def __init__(self, dut: SimHandleBase, f_config='USPAS'):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
-        dsp_config = default_configs[f_config]
+        config = dsp_config[f_config]
         # override tx dds setting for loopback test at IF_adc, no upsampling
-        dsp_config['TX_NUM_DDS'] = dsp_config['NUM_DDS']
-        dsp_config['TX_DEN_DDS'] = dsp_config['DEN_DDS']
-        dsp_config['TX_SECOND_NYQUIST'] = False
-        self.llrf = llrf = LLRF_DSP(dsp_config)
-        self.plant = Plant(
-            conf=f_config, settings_fname='cavity.json', llrf=llrf)
+        config['TX_NUM_DDS'] = config['NUM_DDS']
+        config['TX_DEN_DDS'] = config['DEN_DDS']
+        config['TX_SECOND_NYQUIST'] = False
+        self.llrf = llrf = LLRF_DSP(config)
+        self.plant = Plant(conf=f_config, llrf=llrf)
         self.log_banner(f'Simulating: {f_config}')
         cocotb.log.info(f'LLRFModel:\n{llrf}')
         rx_phase_off_reg = self.llrf.encode_phase(
