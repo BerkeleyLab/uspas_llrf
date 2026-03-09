@@ -96,7 +96,7 @@ class LocalbusAppMaster(LocalBusMaster):
         if offset > 2**reg.addr_width - 1:
             raise IndexError(f"offset {offset} out of bounds for {reg_name}.")
         data = await self.read(reg.base_addr + offset)
-        v = data.value[reg.data_width-1:0]
+        v = data.value[reg.data_width - 1:0]
         if reg.sign == 'signed':
             return v.to_signed()
         else:

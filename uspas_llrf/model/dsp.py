@@ -8,7 +8,7 @@ class LLRFModule:
     CORDIC_LATENCY = CORDIC_NSTG + 1
     CORDIC_GAIN = np.prod([np.sqrt(1 + 4**-n) for n in range(CORDIC_NSTG)])
 
-    def __init__(self, num: int = 4,  den: int = 11) -> None:
+    def __init__(self, num: int = 4, den: int = 11) -> None:
         """Base class for LLRF DSP module
 
         Args:
@@ -54,7 +54,7 @@ class LLRFModule:
 class DDS(LLRFModule):
     def __init__(
             self, amp: int = 74840, phase_shift_deg: float = 0,
-            width: int = 18, num: int = 4,  den: int = 11) -> None:
+            width: int = 18, num: int = 4, den: int = 11) -> None:
         """ Direct Digital Synthesizer using a phase accumulator and a CORDIC,
         which is in Polar -> Rect mode.
         Gateware: ph_acc.v and cordicg_b22.v.
@@ -122,7 +122,7 @@ class DDS(LLRFModule):
 
 
 class DDC(LLRFModule):
-    def __init__(self, num: int = 4,  den: int = 11) -> None:
+    def __init__(self, num: int = 4, den: int = 11) -> None:
         """Non-IQ Digital Down-Conversion.
             Gateware: noniq_ddc.v: gain=sin(2 * pi * theta),
                      fiq_interp.v: gain=2.
@@ -132,7 +132,7 @@ class DDC(LLRFModule):
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        self.gain = np.sin(self.omega) * 2 * self.z**(-self.den+2)
+        self.gain = np.sin(self.omega) * 2 * self.z**(-self.den + 2)
 
     def gen_ddc_data(self, adc_data):
         """Generate I,Q values from 2 consecutive ADC samples using
@@ -180,7 +180,7 @@ class WashoutFilter(LLRFModule):
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        self.gain = (self.z - 1) / (self.z * (self.z - 15/16))
+        self.gain = (self.z - 1) / (self.z * (self.z - 15 / 16))
 
 
 class CORDIC(LLRFModule):
@@ -301,7 +301,7 @@ class RX(LLRFModule):
 
 
 class DUC(LLRFModule):
-    def __init__(self, num: int = 4,  den: int = 11, upsample: bool = True):
+    def __init__(self, num: int = 4, den: int = 11, upsample: bool = True):
         """Non-IQ Digital Up-Conversion.
             Gateware:
             upsample = False:

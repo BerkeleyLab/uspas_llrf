@@ -38,7 +38,7 @@ class EraSynthMicro:
     def set_frequency(self, f_hz):
         self.send_command(f'>F{int(f_hz)}')
         if self.verbose:
-            print(f"Wrote Frequency [MHz]: {f_hz/1e6}")
+            print(f"Wrote Frequency [MHz]: {f_hz / 1e6}")
 
     def read_frequency(self):
         """Read back frequency from EEPROM"""
@@ -50,7 +50,7 @@ class EraSynthMicro:
             r = self.read_response()
             if self.verbose:
                 print(f'Addr: {addr}: Value: {r}')
-            f |= int(r) << ix*8
+            f |= int(r) << ix * 8
         return f
 
     def set_amplitude(self, amp_dbm):
@@ -81,7 +81,7 @@ if __name__ == "__main__":
         era_synth.read_temperature()
         if args.read_freq:
             f = era_synth.read_frequency()
-            print(f'Read Frequency [MHz]: {f/1e6}')
+            print(f'Read Frequency [MHz]: {f / 1e6}')
         if args.frequency is not None:
             era_synth.set_frequency(args.frequency)
         if args.amplitude is not None:

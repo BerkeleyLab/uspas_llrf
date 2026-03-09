@@ -94,7 +94,7 @@ class CAV(Element):
         self.zi = np.zeros(len(self.system_z.den) - 1)
 
     def create_sys_z(self):
-        """Model cavity in IF frequency as an IIR digital filter. See lit.ipynb
+        """Model cavity in IF frequency as an IIR digital filter. See lti.ipynb
 
         Returns:
            scipy.signal._ltisys.TransferFunctionDiscrete : digital system

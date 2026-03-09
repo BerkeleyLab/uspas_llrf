@@ -25,7 +25,7 @@ class TB:
         cocotb.start_soon(Clock(dut.dac_clk, 4, unit="ns").start())
 
     def log_banner(self, str):
-        cocotb.log.warning('*'*20 + f"{str:^20s}" + '*'*20)
+        cocotb.log.warning('*' * 20 + f"{str:^20s}" + '*' * 20)
 
     async def cycle_reset(self):
         for val in [0, 1, 0]:
@@ -135,6 +135,6 @@ async def test_lemp(dut, wait):
 async def test_awa(dut, wait):
     # Second Nyquist zone
     # IF / DAC = 203 / 264
-    tb = TB(dut, num=(264-203), den=264, spectral_flip=True)
+    tb = TB(dut, num=(264 - 203), den=264, spectral_flip=True)
     tb.log_banner('AWA DDS Test')
     await tb.test(wait)

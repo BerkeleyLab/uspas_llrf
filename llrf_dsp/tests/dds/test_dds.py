@@ -18,7 +18,7 @@ class TB:
         cocotb.start_soon(Clock(dut.clk, 8, unit="ns").start())
 
     def log_banner(self, str):
-        cocotb.log.warning('*'*20 + f"{str:^20s}" + '*'*20)
+        cocotb.log.warning('*' * 20 + f"{str:^20s}" + '*' * 20)
 
     async def cycle_reset(self):
         for val in [0, 1, 0]:

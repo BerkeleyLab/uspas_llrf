@@ -21,10 +21,8 @@ def write_init(init_dict, ifname, ofname):
 
     for k in sorted(init_dict.keys()):
         cf += "   {{{0:36s} {1:8d}}},\n".format(
-                k.upper() + ',',
-                int(init_dict[k])
-                # np.bitwise_and(init_dict[k], 0xffffffff)
-                )
+            k.upper() + ',',
+            int(init_dict[k]))
     cf += '};\n'
     cf += 'const init_llrf_data_t llrf_init_data = {'
 
