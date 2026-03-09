@@ -204,8 +204,7 @@ $$
     I \\
     Q
 \end{pmatrix}
-=
-\begin{pmatrix}
+=\begin{pmatrix}
     \sin(n\omega_d)    & -\sin((n-1)\omega_d) \\
     \cos(n\omega_d)    & -\cos((n-1)\omega_d)
 \end{pmatrix}
