@@ -6,7 +6,7 @@ from fractions import Fraction
 # reference freq of 114.67375 MHz
 def calc_num_den(f_ref, freq):
     lo_ratio = Fraction(str(f_ref)).limit_denominator(10e9)
-    ref2out_ratio = float(freq)/float(lo_ratio)
+    ref2out_ratio = float(freq) / float(lo_ratio)
     ref2out = Fraction(str(ref2out_ratio)).limit_denominator(1000000000)
     num = ref2out.numerator
     den = ref2out.denominator
@@ -17,7 +17,7 @@ def calc_num_den(f_ref, freq):
 def calc_dds(num_dds, den_dds, dwh=32, dwl=12):
     m, modulo = divmod((1 << dwl), den_dds)
     r = (1 << dwh) * num_dds
-    phase_step_h = int(r/den_dds)
+    phase_step_h = int(r / den_dds)
     phase_step_l = int(r % den_dds * m)
     return phase_step_h, phase_step_l, modulo
 

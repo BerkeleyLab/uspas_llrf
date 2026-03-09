@@ -106,8 +106,8 @@ class LLRFApp(LEEPDevice):
 
     def __repr__(self):
         str = (f"< {self.__class__.__name__:8s}:   {self.app_name} >\n"
-               f"dsp_clk:       {self.fs/1e6:8.3f} MHz, \n"
-               f"dac_clk:       {2*self.fs/1e6:8.3f} MHz, \n"
+               f"dsp_clk:       {self.fs / 1e6:8.3f} MHz, \n"
+               f"dac_clk:       {2 * self.fs / 1e6:8.3f} MHz, \n"
                f"wave_samp_per: {self.wave_samp_per}, \n"
                f"cic_sigs:      {self.cic_names}, \n"
                f"dac_drive_sel: {self.dac_drive_sel}\n")
@@ -212,8 +212,8 @@ class LLRFApp(LEEPDevice):
         while (self.read_reg('sig_iq_buf_ready') != 0xfffff):
             time.sleep(0.001)
         iq_wfms = np.array(self.reg_read(
-            [f'{ch}_i_buf' for ch in self.signals] +
-            [f'{ch}_q_buf' for ch in self.signals]))
+            [f'{ch}_i_buf' for ch in self.signals]
+            + [f'{ch}_q_buf' for ch in self.signals]))
         wfms = iq_wfms[:len(self.signals)] + 1j * iq_wfms[len(self.signals):]
         wfms[:self.n_adc] /= self.model.rx_iq_gain
         wfms[-self.n_dac:] *= self.model.tx_iq_gain
@@ -244,9 +244,9 @@ class LLRFApp(LEEPDevice):
         # return self.calc_mp_traces(iq_traces)
 
     def decode_interleaved_iq_wfm(self, varray):
-        darray = varray.reshape(-1, 2*self.cic_n_chan).T
+        darray = varray.reshape(-1, 2 * self.cic_n_chan).T
         iq_arrays = np.array([
-            (darray[ix*2] + 1j * darray[ix*2+1])
+            (darray[ix * 2] + 1j * darray[ix * 2 + 1])
             for ix in range(self.cic_n_chan)]) / self.model.cic_wfm_gain
         return iq_arrays
 

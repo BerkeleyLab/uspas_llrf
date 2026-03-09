@@ -12,10 +12,10 @@ variables:
 
 image: mohs.dhcp.lbl.gov/xilinx_env_trixie_custom_verilator
 
-flake8:
+flake8_check:
   stage: test
   script:
-   - flake8 uspas_llrf llrf_dsp
+   - flake8
 
 llrf_dsp_test:
   before_script:
@@ -37,7 +37,7 @@ llrf_cdc_test:
   artifacts:
     when: always
     paths:
-      - llrf_dsp/llrf_shell_cdc.txt
+      - llrf_dsp/llrf_shell_cdc.txtuspas_llrf llrf_dsp
 
 marble_bsp_test:
   before_script:

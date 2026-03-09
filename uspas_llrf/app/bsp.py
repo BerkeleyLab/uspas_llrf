@@ -132,10 +132,10 @@ class MarbleDevInfo:
             item = d['ina219'][ix]
             s += (
                 f"INA219 {item['refdes'].decode()}, {item['name'].decode()}:\n"
-                f"  Vshunt     : {item['vshunt']/1e3:8.1f} mV\n"
-                f"  Power      : {item['power']/1e3:8.1f} mW\n"
-                f"  Vbus       : {item['vbus']/1e3:8.1f} V\n"
-                f"  Current    : {item['current']/1e3:8.1f} mA\n"
+                f"  Vshunt     : {item['vshunt'] / 1e3:8.1f} mV\n"
+                f"  Power      : {item['power'] / 1e3:8.1f} mW\n"
+                f"  Vbus       : {item['vbus'] / 1e3:8.1f} V\n"
+                f"  Current    : {item['current'] / 1e3:8.1f} mA\n"
             )
         for ix in range(2):
             item = d['pca9555'][ix]
@@ -149,7 +149,7 @@ class MarbleDevInfo:
             item = d['qsfp'][ix]
             if item['module_present']:
                 s += (
-                    f"QSFP {ix+1} is present:\n"
+                    f"QSFP {ix + 1} is present:\n"
                     f"  Vendor     :    {item['vendor_name'].decode():16s}\n"
                     f"  Part       :    {item['part_num'].decode():16s}\n"
                     f"  Serial     :    {item['serial_num'].decode():16s}\n"
@@ -169,9 +169,9 @@ class MarbleDevInfo:
             f"  regs       :    {item['regs']}\n"
             f"  HSDIV      :    {item['hs_div']}\n"
             f"  N1         :    {item['n1']}\n"
-            f"  f_reset    :    {item['f_reset_hz']/1e6:8.3f} MHz\n"
-            f"  f_xtal_hz  :    {item['f_xtal_hz']/1e6:8.3f} MHz\n"
-            f"  f_out_hz   :    {item['f_out_hz']/1e6:8.3f} MHz\n"
+            f"  f_reset    :    {item['f_reset_hz'] / 1e6:8.3f} MHz\n"
+            f"  f_xtal_hz  :    {item['f_xtal_hz'] / 1e6:8.3f} MHz\n"
+            f"  f_out_hz   :    {item['f_out_hz'] / 1e6:8.3f} MHz\n"
         )
         return s
 

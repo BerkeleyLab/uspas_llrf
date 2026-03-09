@@ -72,7 +72,7 @@ class TB:
             self.loopback(self.feedback_dac, self.feedback_adc))
 
     def log_banner(self, str):
-        cocotb.log.info('*'*20 + f"{str:^20s}" + '*'*20)
+        cocotb.log.info('*' * 20 + f"{str:^20s}" + '*' * 20)
 
     def init_test(self, amp_exp=None, phs_exp=None):
         if amp_exp is None:
