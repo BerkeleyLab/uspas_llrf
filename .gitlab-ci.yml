@@ -37,7 +37,7 @@ llrf_cdc_test:
   artifacts:
     when: always
     paths:
-      - llrf_dsp/llrf_shell_cdc.txtuspas_llrf llrf_dsp
+      - llrf_dsp/llrf_shell_cdc.txt
 
 marble_bsp_test:
   before_script:
