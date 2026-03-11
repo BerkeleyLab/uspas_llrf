@@ -591,7 +591,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         pulse_gen #(.AW(18)) pulse_gen (
             .clk        (dsp_clk),
             .start      (pulse_start[ch]),
-            .trigger    (cbuf_sync),        // sync with waveform
+            .trigger    (wave_trig),
             .high_len   (pulse_high_len[ch]),   // unit: DSP_CLK_CYCLE
             .pulse_out  (pulse_val[ch])
         );
