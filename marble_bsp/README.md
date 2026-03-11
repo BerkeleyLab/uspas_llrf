@@ -1,6 +1,6 @@
 # Waveform trigger logic
 
-Firmware supports three trigger options, internal, external trigger, and delayed external trigger using register `wave_trig_sel`.\
+Firmware supports three trigger optionsi (falling edge), internal, external trigger, and delayed external trigger using register `wave_trig_sel`.\
 External trigger can be either from top row Pmod J18 pins on Zest next to ground pin or top row of Pmod J12 pins on Marble. \
 Module `etrig_bridge.v` is used to select between the two Pmods and individual pins can be selected based in register `etrig_pmod_sel`.
 
