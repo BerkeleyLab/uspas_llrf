@@ -121,6 +121,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [2:0] loop0_adc_chan; top-level
 // reg [2:0] loop1_adc_chan; top-level
 // reg signed [17:0] loop0_amp_setpoint; top-level
+// reg signed [17:0] loop0_max_amp_setpoint; top-level
 // reg signed [17:0] loop0_phs_setpoint; top-level
 // reg signed [17:0] loop0_Kp_amp; top-level
 // reg signed [17:0] loop0_Kp_phs; top-level
@@ -131,6 +132,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [0:0] loop0_amp_reset; top-level
 // reg [0:0] loop0_phs_reset; top-level
 // reg signed [17:0] loop1_amp_setpoint; top-level
+// reg signed [17:0] loop1_max_amp_setpoint; top-level
 // reg signed [17:0] loop1_phs_setpoint; top-level
 // reg signed [17:0] loop1_Kp_amp; top-level
 // reg signed [17:0] loop1_Kp_phs; top-level
@@ -495,6 +497,8 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire signed [DWBB-1:0] amp_measured [0:N_DAC-1];
     wire signed [DWBB-1:0] phs_measured [0:N_DAC-1];
     wire signed [DWBB-1:0] amp_setpoint [0:N_DAC-1];
+    wire signed [DWBB-1:0] amp_setpoint_i [0:N_DAC-1];
+    wire signed [DWBB-1:0] max_amp_setpoint [0:N_DAC-1];
     wire signed [DWBB-1:0] phs_setpoint [0:N_DAC-1];
     wire [N_DAC-1:0] amp_loop_enable;
     wire [N_DAC-1:0] amp_loop_reset;
@@ -520,6 +524,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     assign pulse_start[0] = loop0_pulse_start;
     assign pulse_high_len[0] = loop0_pulse_high_len;
     assign amp_setpoint[0] = loop0_amp_setpoint;
+    assign max_amp_setpoint[0] = loop0_max_amp_setpoint;
     assign phs_setpoint[0] = loop0_phs_setpoint;
     assign Kp_amp[0] = loop0_Kp_amp;
     assign Kp_phs[0] = loop0_Kp_phs;
@@ -533,6 +538,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     assign pulse_start[1] = loop1_pulse_start;
     assign pulse_high_len[1] = loop1_pulse_high_len;
     assign amp_setpoint[1] = loop1_amp_setpoint;
+    assign max_amp_setpoint[1] = loop1_max_amp_setpoint;
     assign phs_setpoint[1] = loop1_phs_setpoint;
     assign Kp_amp[1] = loop1_Kp_amp;
     assign Kp_phs[1] = loop1_Kp_phs;
@@ -552,6 +558,10 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         // ---------------------
         // feedback controller in baseband
         // ---------------------
+        // in open-loop:   apply max limit to amp_setpoint to avoid DAC saturation.
+        // in closed-loop: the amp_setpoint is compared with ADC measurement, so no limit is applied.
+        assign amp_setpoint_i[ch] = amp_loop_enable[ch] ? amp_setpoint[ch] :
+                                        (amp_setpoint[ch] > max_amp_setpoint[ch] ? max_amp_setpoint[ch] : amp_setpoint[ch]);
         dsp_core #(.KW(DWBB)) feedback (
             .clk              (dsp_clk),
             .reset            (dsp_reset),
@@ -563,7 +573,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             .tx_phase_offset  (tx_phase_offset),
             .amp_measured     (amp_measured[ch]),
             .phs_measured     (phs_measured[ch]),
-            .amp_setpoint     (amp_setpoint[ch]),
+            .amp_setpoint     (amp_setpoint_i[ch]),
             .phs_setpoint     (phs_setpoint[ch]),
             .Kp_amp           (Kp_amp[ch]),
             .Kp_phs           (Kp_phs[ch]),

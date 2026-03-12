@@ -66,6 +66,7 @@ class LLRFShell(LLRF_DSP):
         rx_phase_offset: int = 0
         tx_phase_offset: int = 0
         loop0_amp_setpoint: int = 0
+        loop0_max_amp_setpoint: int = 0
         loop0_phs_setpoint: int = 0
         loop0_Kp_amp: int = 0
         loop0_Ki_amp: int = 0
@@ -76,6 +77,7 @@ class LLRFShell(LLRF_DSP):
         loop0_amp_reset: bool = False
         loop0_phs_reset: bool = False
         loop1_amp_setpoint: int = 0
+        loop1_max_amp_setpoint: int = 0
         loop1_phs_setpoint: int = 0
         loop1_Kp_amp: int = 0
         loop1_Ki_amp: int = 0
@@ -162,8 +164,10 @@ class LLRFShell(LLRF_DSP):
             chan_keep=0b11,
             loop0_Kp_amp=20, loop0_Ki_amp=50,
             loop0_Kp_phs=50, loop0_Ki_phs=200,
+            loop0_max_amp_setpoint=self.cal_factors.max_amp_setpoint,
             loop1_Kp_amp=20, loop1_Ki_amp=50,
             loop1_Kp_phs=50, loop1_Ki_phs=200,
+            loop1_max_amp_setpoint=self.cal_factors.max_amp_setpoint,
             loop0_pulse_start=0, loop0_pulse_high_len=10,
             loop1_pulse_start=0, loop1_pulse_high_len=10,
             dac_drive_sel=DacDriveSel(self.DAC_DRIVE_SEL),
