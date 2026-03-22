@@ -67,18 +67,7 @@ module marble_bsp #(
 
     // diagnostics
     output          in_use,
-    output [7:0]    mac_status,
-
-    // external trigger related
-    inout  [3:0]   zest_pmod,  // top row of pins J18 on Zest next to ground pin
-    // top row of pins J12 on Marble used for data
-    // bottom row used to set direction
-    // feature of BNC board
-    inout  [3:0]   pmod_J12,
-    output reg [3:0]   pmod_J12_dir,
-    output [15:0]  etrig_pulse_cnt,
-    output         etrig_pulse,
-    output         etrig_pulse_delay
+    output [7:0]    mac_status
 );
 
 wire [31:0] lb_data = lb_wdata; // for newad.py
@@ -86,7 +75,6 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // newad-force lb domain
 // reg [0:0] gt_soft_reset; top-level
 // reg [0:0] gt_rx_slide_req; top-level
-// reg [1:0] etrig_pmod_sel; top-level
 
 `AUTOMATIC_decode
 
@@ -187,60 +175,6 @@ mmc_mailbox #(
     // Special pins
     .enable_rx          (enable_rx),    // output
     .spi_pins_debug     () // {MISO, din, sclk_d1, csb_d1};
-);
-
-// XXX simply and implement chassis IO assignments. Hardcoded for AWA for now.
-// matches LCLS-II
-wire de9_dsr, de9_rxd;
-assign de9_rxd = zest_pmod[0];
-assign de9_dsr = zest_pmod[1];
-// capture these in dsp_clk domain before doing etrig logic with them
-reg de9_rxd_r=0, de9_dsr_r=0;
-always @(posedge dsp_clk) begin
-  de9_rxd_r <= de9_rxd;
-  de9_dsr_r <= de9_dsr;
-end
-
-reg [1:0] etrig_pmod_sel_x=0, etrig_pmod_sel_r=0;
-always @(posedge dsp_clk) begin
-  etrig_pmod_sel_x <= etrig_pmod_sel;
-  etrig_pmod_sel_r <= etrig_pmod_sel_x;
-end
-// Calculate the direction control pin index
-// check: https://gitlab.lbl.gov/hardware-designs/bnc4x_v1/-/blob/main/README.md?ref_type=heads
-wire [3:0] sel_mask = 4'b1 << etrig_pmod_sel_r;
-reg [1:0] etrig_sel_r=0;
-always @(posedge dsp_clk) begin
-  // Note that etrig_sel is constructed by newad based on the sel port of instance etrig.
-  // Its existence and properties are not explicitly mentioned in this module.
-  etrig_sel_r <= etrig_sel;  // coerce clock domain
-  pmod_J12_dir <= ~((etrig_sel_r == 1) ? sel_mask : 4'b0);
-end
-// create the IOB for input signals from Pmod
-reg [3:0] pmod_J12_capture=0;
-always @(posedge dsp_clk) pmod_J12_capture <= pmod_J12;
-// and choose one of those bits to send to etrig_bridge
-wire pmod_trig = pmod_J12_capture[etrig_pmod_sel_r];
-
-// external trigger selection
-etrig_bridge etrig // auto
-(
-  .lb_clk(lb_clk),
-  .adc_clk(dsp_clk),
-  // Three possible external triggers
-  // unused
-  .trign_0(1'b0),
-  // Connected to one of the PMODs
-  .trign_1(pmod_trig),
-  // DB9 connector used for AWA
-  .trign_2(de9_rxd_r & de9_dsr_r),
-  // Trigger Counter
-  .etrig_pulse_cnt(etrig_pulse_cnt),
-  // Trigger Outputs
-  .etrig_pulse(etrig_pulse),
-  .etrig_pulse_delayed(etrig_pulse_delay),
-  //Control registers
-  `AUTOMATIC_etrig
 );
 
 // ---------------------

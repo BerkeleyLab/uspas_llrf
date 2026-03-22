@@ -42,4 +42,6 @@ CFLAGS += -nostartfiles
 CFLAGS += -DNONSTD_PRINTF
 CFLAGS += -DUSPAS_LLRF_FSET=\"$(FSET)\"
 
+CLEAN += init_zest_$(FSET).o init_marble_$(FSET).o
+
 include $(APP_SOC_DIR)/common/llrf/rules.mk

@@ -42,7 +42,9 @@ module system_tb;
     wire trap;
     wire uart_tx;
     wire uart_rx;
-    wire [31:0] gpio_z;
+    wire i2c_scl, i2c_sda, i2c_rst;
+    wire [7:0] PMOD0, PMOD1, PMOD2, PMOD3;
+    wire trig_from_dsp, trig_to_dsp;
 
     parameter LB_ADW = 18;
     parameter LB_READ_DELAY=3;
@@ -72,7 +74,15 @@ module system_tb;
     ) uut (
         .clk                (clk),
         .cpu_reset          (reset),
-        .gpio_z             (gpio_z),
+        .I2C_SCL            (i2c_scl),
+        .I2C_SDA            (i2c_sda),
+        .I2C_RST            (i2c_rst),
+        .PMOD0              (PMOD0),
+        .PMOD1              (PMOD1),
+        .PMOD2              (PMOD2),
+        .PMOD3              (PMOD3),
+        .trig_from_dsp      (trig_from_dsp),
+        .trig_to_dsp        (trig_to_dsp),
         .uart_tx            (uart_tx),
         .uart_rx            (uart_rx),
         .trap               (trap ),
@@ -162,12 +172,8 @@ module system_tb;
         end
     end
 
-    // XXX matching settings.h
-    wire i2c_scl = gpio_z[1];
-    wire i2c_sda = gpio_z[0];
     pullup (i2c_scl);
     pullup (i2c_sda);
-
     wire [7:0] i2c_ioout;
     i2c_model #(
         .I2C_ADR    ( 7'h74   )
@@ -176,5 +182,16 @@ module system_tb;
         .SCL        ( i2c_scl ),
         .IOout      ( i2c_ioout)
     );
+
+    // simulate an external trigger connected to PMOD0[0] and PMOD3[0]
+    reg [15:0] clk_counter=0;
+    always @(posedge clk) clk_counter <= clk_counter + 1;
+    assign PMOD3[1] = (clk_counter > 10) ? clk_counter[12] : 1'bz;
+    // assign PMOD0[0] = (clk_counter > 10) ? clk_counter[11] : 1'bz;
+    always @(posedge trig_to_dsp) $display("\n ext trigger at time %g ns", $time);
+
+    // simulate an internal trigger
+    assign trig_from_dsp = clk_counter[11];
+    always @(posedge trig_from_dsp) $display("\n int trigger at time %g ns", $time);
 
 endmodule

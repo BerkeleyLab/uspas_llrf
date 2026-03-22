@@ -67,10 +67,6 @@ module test_llrf_shell #(
 
         .gt_rxclk,
         .gt_rxdata,
-        .gt_rxcharisk,
-
-        .etrig_pulse_cnt    (16'd0),
-        .etrig_pulse        (1'b0),
-        .etrig_pulse_delay  (1'b0)
+        .gt_rxcharisk
     );
 endmodule

@@ -18,17 +18,24 @@
 
 #define BOOTLOADER_DELAY    (F_CLK/1000)     // How long to wait in the bootloader
 
-// GPIO PIN assignments (must match top.v)
-#define PIN_I2C_SDA             0
-#define PIN_I2C_SCL             1
-#define PIN_PCA9548_RST         2
-#define PIN_EN_UPCONV_0         3
-#define PIN_EN_UPCONV_1         4
+#ifndef BOOTLOADER_BAUDRATE
+#define BOOTLOADER_BAUDRATE 115200
+#endif
 
 #define I2C_DELAY_US            3            //~half a clock period [us]
 
+// GPIO PIN assignments (must match system.v)
+#define GPIO_PIN_I2C_SDA             0
+#define GPIO_PIN_I2C_SCL             1
+#define GPIO_PIN_PCA9548_RST         2
+#define GPIO_PIN_EN_UPCONV_0         3
+#define GPIO_PIN_EN_UPCONV_1         4
+
+#define GPIO_BYTE_TRIG_INP_SEL       1
+#define GPIO_BYTE_TRIG_OUT_SEL       2
+
 // LOCALBUS register address:
-// marble_zest_top.json:
+//   marble_zest_top.json:
 #define LB_GIT_REV_ID         0x0
 
 #ifndef USPAS_LLRF_FSET

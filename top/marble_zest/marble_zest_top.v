@@ -24,7 +24,7 @@ module marble_zest_top #(
     output          PHY_RSTN,
 
     inout [7:0]     PMOD1,
-    output [7:0]    PMOD2,
+    inout [7:0]     PMOD2,
 
     inout           I2C_SCL,
     inout           I2C_SDA,
@@ -261,24 +261,4 @@ zest #(
     .mem_packed_fwd (mem_packed_fwd),
     .mem_packed_ret (mem_packed_ret)
 );
-
-/// #define PIN_I2C_SDA              0
-/// #define PIN_I2C_SCL              1
-/// #define PIN_PCA9548_RST          2
-/// #define PIN_EN_UPCONV_0          3
-/// #define PIN_EN_UPCONV_1          4
-
-assign I2C_SDA      = gpio_z[0];
-assign I2C_SCL      = gpio_z[1];
-assign I2C_RST      = gpio_z[2]; // to enable I2C mux, set high
-
-// Chassis IO:
-// - LCLS2-LLRF style chassis:
-//   - Up-Converter enable: through ZEST_PMOD1[7:6]
-//   - GPIO trigger input:  through ZEST_PMOD2[1:0]
-// - PIP-II style 1U chassis:
-//   - GPIO trigger input: through Marble PMOD1, using bnc4x_v1 board
-assign ZEST_PMOD1[7:6] = gpio_z[4:3];
-
-assign PMOD2 = {trap, gpio_z[30:24]};
 endmodule

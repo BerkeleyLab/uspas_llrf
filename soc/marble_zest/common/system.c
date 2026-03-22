@@ -52,46 +52,60 @@ void init(void) {
     UART_INIT( BASE_UART0, BOOTLOADER_BAUDRATE );       // Debug print (USB serial)
     _picorv32_irq_enable(1 << IRQ_UART0_RX);
     // GPIO pin config
-    SET_GPIO1( BASE_GPIO, GPIO_OE_REG, PIN_PCA9548_RST, 1 );// Drive PCA9548 RESET pin
-    SET_GPIO8( BASE_GPIO, GPIO_OE_REG, 3, 0xFF );       // Drive LEDs
-    i2c_init( PIN_I2C_SDA, PIN_I2C_SCL );
+    SET_GPIO1( BASE_GPIO, GPIO_OE_REG, GPIO_PIN_PCA9548_RST, 1 );
+    SET_GPIO8( BASE_GPIO, GPIO_OE_REG, GPIO_BYTE_TRIG_INP_SEL, 0x1F );
+    SET_GPIO8( BASE_GPIO, GPIO_OE_REG, GPIO_BYTE_TRIG_OUT_SEL, 0xFF );
+    i2c_init( GPIO_PIN_I2C_SDA, GPIO_PIN_I2C_SCL );
     // reset PCA9548
-    SET_GPIO1( BASE_GPIO, GPIO_OUT_REG, PIN_PCA9548_RST, 0 );
-    SET_GPIO1( BASE_GPIO, GPIO_OUT_REG, PIN_PCA9548_RST, 1 );
+    SET_GPIO1( BASE_GPIO, GPIO_OUT_REG, GPIO_PIN_PCA9548_RST, 0 );
+    SET_GPIO1( BASE_GPIO, GPIO_OUT_REG, GPIO_PIN_PCA9548_RST, 1 );
+
+#ifndef SIMULATION
     if (strcmp(USPAS_LLRF_FSET, "AWA") == 0) {
         // enable 2 up converters in chassis
-        SET_GPIO1( BASE_GPIO, GPIO_OE_REG, PIN_EN_UPCONV_0, 1 );
-        SET_GPIO1( BASE_GPIO, GPIO_OE_REG, PIN_EN_UPCONV_1, 1 );
+        SET_GPIO1( BASE_GPIO, GPIO_OE_REG, GPIO_PIN_EN_UPCONV_0, 1 );
+        SET_GPIO1( BASE_GPIO, GPIO_OE_REG, GPIO_PIN_EN_UPCONV_1, 1 );
+        SET_GPIO1( BASE_GPIO, GPIO_OUT_REG, GPIO_PIN_EN_UPCONV_0, 1 );
+        SET_GPIO1( BASE_GPIO, GPIO_OUT_REG, GPIO_PIN_EN_UPCONV_1, 1 );
 
-        SET_GPIO1( BASE_GPIO, GPIO_OUT_REG, PIN_EN_UPCONV_0, 1 );
-        SET_GPIO1( BASE_GPIO, GPIO_OUT_REG, PIN_EN_UPCONV_1, 1 );
+        // Select ZEST_PMOD2 (J18) pin 1 as external trigger
+        SET_GPIO8( BASE_GPIO, GPIO_OUT_REG, GPIO_BYTE_TRIG_INP_SEL, 25 );
     }
+    else if (strcmp(USPAS_LLRF_FSET, "USPAS") == 0) {
+        // Select Marble_PMOD1 (J12) pin 0 as external trigger input
+        SET_GPIO8( BASE_GPIO, GPIO_OUT_REG, GPIO_BYTE_TRIG_INP_SEL, 0 );
+        // Select Marble_PMOD1 (J12) pin 1 as internal trigger output
+        SET_GPIO8( BASE_GPIO, GPIO_OUT_REG, GPIO_BYTE_TRIG_OUT_SEL, 0b10 );
+    }
+#endif
 }
 
 int main(void) {
     bool pass=true;
     init();
 #ifdef SIMULATION
-#ifdef XSIM_DBG  // top level
-    // printf("# TOP SIM #\n");
+#ifdef XSIM_DBG  // top_sim
     pass = init_zest_dbg(BASE_ZEST);
 #else        // system_tb.v, faster
-    printf("Simulating read XADC...:\n");
     uint32_t xadc_data;
     int temp;
+    // PMOD3[1] as trigger input
+    SET_GPIO8( BASE_GPIO, GPIO_OUT_REG, GPIO_BYTE_TRIG_INP_SEL, 25 );
+    // PMOD0[1] as trigger output
+    SET_GPIO8( BASE_GPIO, GPIO_OUT_REG, GPIO_BYTE_TRIG_OUT_SEL, 0b10 );
+
     SET_SFR1(BASE_XADC + XADC_BASE2_SFR, 0, SFR_BIT_XADC_RESET, 1);
     xadc_data = GET_REG(BASE_XADC + (XADC_CHAN_TEMP<<2));
     temp = (xadc_data>>4) * 503.975 / 4096 - 273.15;
+    printf("Simulating read XADC...:\n");
     printf("Temp reg: %#lx, %d degC\n", xadc_data, temp);
-    pass &= (xadc_data == 0x9772);
+    pass &= xadc_data == 0x9772;
 
     printf("Simulating LLRF init...:\n");
     pass &= init_llrf(&llrf_init_data);
-
+#endif  // #ifdef XSIM_DBG
     printf(pass ? "PASS\n":"FAIL\n");
-#endif
-    return 0;
-#else   // not SIMULATION
+#else   // #ifdef SIMULATION
     printf(" _   _ ____  ____   _    ____    _     _     ____  _____ \n");
     printf("| | | / ___||  _ \\ / \\  / ___|  | |   | |   |  _ \\|  ___|\n");
     printf("| | | \\___ \\| |_) / _ \\ \\___ \\  | |   | |   | |_) | |_   \n");
@@ -138,5 +152,6 @@ int main(void) {
         }
     }
 
-#endif
+#endif   // #ifdef SIMULATION
+    return 0;
 }

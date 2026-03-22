@@ -43,6 +43,5 @@ CLEAN += $(TARGET)_top.bin $(TARGET)_top.bit $(TARGET)_top.xdc
 CLEAN += zest_pinmap.txt zest_fmc_dp.xdc
 CLEAN += system_expand.v
 CLEAN += xvlog.pb xvlog.log
-CLEAN += init_*.o
 CLEAN_DIRS += .Xil _xilinx xsim.dir
 include $(BUILD_DIR)/bottom_rules.mk

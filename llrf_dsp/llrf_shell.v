@@ -91,10 +91,7 @@ module llrf_shell #(
     // ---------------------
     // External trigger interface
     // ---------------------
-    // XXX simplify
-    input [15:0]         etrig_pulse_cnt,
-    input                etrig_pulse,
-    input                etrig_pulse_delay
+    input                ext_trigger
 );
 
 wire [31:0] lb_data = lb_wdata; // for newad.py
@@ -152,7 +149,10 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [0:0] ntw_amp_enable; top-level
 // reg [0:0] ntw_phs_enable; top-level
 // reg [0:0] system_bist_pass; top-level
-// reg [1:0] wave_trig_sel; top-level
+// reg [2:0] wave_trig_sel; top-level
+// reg [15:0] trigger_delay; top-level
+// reg [31:0] int_trigger_period; top-level
+// reg [0:0] soft_trigger; top-level single-cycle
 // reg [0:0] slow_snap_cic; top-level
 // newad-force lb2 domain
 // reg [1:0] dac_drive_sel; top-level
@@ -312,13 +312,60 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         );
     end endgenerate
 
-    wire evr_trig;
+    // ---------------------
+    // Triggering logic
+    // ---------------------
+    localparam [2:0] WAVE_TRIG_ALWAYS= 3'd4,  // internal trigger, cbuf continuous
+                     WAVE_TRIG_INT   = 3'd0,  // internal trigger
+                     WAVE_TRIG_EXT   = 3'd1,  // external trigger
+                     WAVE_TRIG_SOFT  = 3'd2,  // software trigger
+                     WAVE_TRIG_EVR   = 3'd3,  // EVR trigger
+                     WAVE_TRIG_MIXED = 3'd5;  // mixed trigger: external or software
 
-    // -- Waveform triggering logic
-    localparam WAVE_TRIG_ALWAYS = 0,  // internal trigger
-               WAVE_TRIG_EXT    = 1,
-               WAVE_TRIG_EXT_DLY= 2,  // XXX remove
-               WAVE_TRIG_EVR    = 3;
+    // trigger flags in dsp_clk domain
+    wire int_trig, evr_trig, ext_trig;
+    reg [31:0] trig_count = 0;
+
+    // external trigger
+    wire ext_trigger_sync;
+    reg_tech_cdc trigx_0(.I(ext_trigger), .C(dsp_clk), .O(ext_trigger_sync));
+    // rising edge detection of external trigger
+    reg ext_trigger_sync1=0;
+    always @(posedge dsp_clk) ext_trigger_sync1 <= ext_trigger_sync;
+    assign ext_trig = ext_trigger_sync & ~ext_trigger_sync1;
+
+    // internal trigger
+    reg [31:0] int_trig_cnt = 0;
+    assign int_trig = (int_trig_cnt == int_trigger_period - 1);
+    always @(posedge dsp_clk) begin
+        int_trig_cnt <= (dsp_reset || int_trig) ? 0 : int_trig_cnt + 1'b1;
+        trig_count <= dsp_reset ? 0 : trig_count + wave_trig;
+    end
+
+    wire cbuf_sync;
+    reg wave_trig_i=0;
+    always @(dsp_clk) begin
+        case (wave_trig_sel)
+            WAVE_TRIG_INT:  wave_trig_i <= int_trig;
+            WAVE_TRIG_EXT:  wave_trig_i <= ext_trig;
+            WAVE_TRIG_SOFT: wave_trig_i <= soft_trigger;
+            WAVE_TRIG_EVR:  wave_trig_i <= evr_trig;
+            WAVE_TRIG_MIXED: wave_trig_i <= ext_trig | soft_trigger;
+            default: begin
+                wave_trig_i <= cbuf_sync;
+            end
+        endcase
+    end
+
+    // add trigger delay
+    pulse_gen #(.AW(16)) trig_delay_gen (
+        .clk        (dsp_clk),
+        .trigger    (wave_trig_i),
+        .start      (trigger_delay),
+        .high_len   (16'd1),
+        .pulse_out  (wave_trig)
+    );
+    assign trig_out = wave_trig;
 
     // ---------------------
     // Instantiate CBUF
@@ -326,14 +373,6 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire [CBUF_DW-1:0] cbuf_out;
     wire cbuf_ready;
     wire cbuf_transferred;
-    wire cbuf_sync;
-
-    assign wave_trig = wave_trig_sel==WAVE_TRIG_EXT     ? etrig_pulse :
-                       wave_trig_sel==WAVE_TRIG_EXT_DLY ? etrig_pulse_delay :
-                       wave_trig_sel==WAVE_TRIG_EVR     ? evr_trig :
-                       cbuf_sync; // WAVE_TRIG_ALWAYS
-    assign trig_out = wave_trig;
-
     wire signed [15:0] inlk_data;
     wire inlk_dval, inlk_last;
 
@@ -814,7 +853,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             4'h4: reg_bank_2 <= sig_buf_count;
             4'h5: reg_bank_2 <= ntw_cos_debug;
             4'h6: reg_bank_2 <= ntw_phase_debug;
-            4'h7: reg_bank_2 <= etrig_pulse_cnt;
+            4'h7: reg_bank_2 <= trig_count;
             default: reg_bank_2 <= 32'hfaceface;
         endcase
     end

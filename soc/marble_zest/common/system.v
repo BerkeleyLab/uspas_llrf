@@ -8,7 +8,19 @@ module system #(
     input           clk,
     input           cpu_reset,
 
-    inout  [31:0]   gpio_z,
+    inout           I2C_SCL,
+    inout           I2C_SDA,
+    output          I2C_RST,
+
+    // physical pins
+    inout [7:0]     PMOD0,
+    inout [7:0]     PMOD1,
+    inout [7:0]     PMOD2,
+    inout [7:0]     PMOD3,
+
+    // logical pins
+    input           trig_from_dsp,
+    output          trig_to_dsp,
 
     output          uart_tx,
     input           uart_rx,
@@ -147,6 +159,7 @@ memory_pack #(
 // --------------------------------------------------------------
 //  GPIO module
 // --------------------------------------------------------------
+wire [31:0] gpio_z;
 gpioz_pack #(
     .BASE_ADDR   ( BASE_GPIO )
 ) gpio (
@@ -183,8 +196,6 @@ wire [15:0] vaux_n = ~vaux_p;
 // --------------------------------------------------------------
 //  xadc_pack module
 // --------------------------------------------------------------
-`ifndef SIMULATE
-`ifndef YOSYS
 xadc_pack #(
     .SIM_MONITOR_FILE("xadc_sim_data.txt"),
     .BASE_ADDR     (BASE_XADC)
@@ -202,12 +213,6 @@ xadc_pack #(
     .mem_packed_fwd( packed_cpu_fwd ),
     .mem_packed_ret( packed_xadc_ret)
 );
-`else
-assign packed_xadc_ret = 0;
-`endif
-`else
-assign packed_xadc_ret = 0;
-`endif
 
 // --------------------------------------------------------------
 //  LBL local bus cross bar
@@ -272,4 +277,44 @@ assign rst = reset;
 assign mem_packed_fwd = packed_cpu_fwd;
 assign packed_fmc_ret = mem_packed_ret;
 
+// --------------------------------------------------------------
+//  GPIO control
+// --------------------------------------------------------------
+/// #define GPIO_PIN_I2C_SDA             0
+/// #define GPIO_PIN_I2C_SCL             1
+/// #define GPIO_PIN_PCA9548_RST         2
+/// #define GPIO_PIN_EN_UPCONV_0         3
+/// #define GPIO_PIN_EN_UPCONV_1         4
+
+/// #define GPIO_BYTE_TRIG_INP_SEL       1
+/// #define GPIO_BYTE_TRIG_OUT_SEL       2
+
+assign I2C_SDA      = gpio_z[0];
+assign I2C_SCL      = gpio_z[1];
+assign I2C_RST      = gpio_z[2]; // to enable I2C mux, set high
+
+// --------------------------------------------------------------
+//  IO mapping
+// --------------------------------------------------------------
+
+wire [31:0] pmods = {PMOD3, PMOD2, PMOD1, PMOD0};
+
+// external trigger mapping to dsp
+wire [4:0] trig_inp_sel = gpio_z[8 +: 5];
+assign trig_to_dsp = pmods[trig_inp_sel];
+
+// dsp trigger mapping to PMOD0
+wire [7:0] trig_out_sel = gpio_z[16 +: 8];
+generate
+    genvar ix;
+    for (ix=0; ix<8; ix=ix+1) begin
+        assign PMOD0[ix] = trig_out_sel[ix] ? trig_from_dsp : 1'bz;
+    end
+endgenerate
+
+// PMOD1 mapping to GPIO_Z[24:31]
+// assign PMOD1[7:0] = gpio_z[24 +: 8];
+
+// permits output: GPIO_PIN_EN_UPCONV_0, GPIO_PIN_EN_UPCONV_1
+assign PMOD2[7:6] = gpio_z[4:3];
 endmodule
