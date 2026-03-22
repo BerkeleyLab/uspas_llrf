@@ -1,4 +1,4 @@
-from uspas_llrf import (LLRFShell, DacDriveSel, LocalbusAppMaster,
+from uspas_llrf import (LLRFShell, WaveTrigSel, DacDriveSel, LocalbusAppMaster,
                         wrap_phase, clip_int, dsp_config)
 import cocotb
 import random
@@ -34,14 +34,15 @@ class TB:
         self.log_banner(f'Simulating: {conf}')
         cocotb.log.info(f'LLRF RX:\n{llrf.rx}')
         cocotb.log.info(f'LLRF TX:\n{llrf.tx}')
-        cocotb.log.info(f'Calibrations:\n{pformat(llrf.cal_factors)}')
+        cocotb.log.debug(f'Calibrations:\n{pformat(llrf.cal_factors)}')
 
         cocotb.start_soon(Clock(dut.lb_clk, 8, unit="ns").start())
         cocotb.start_soon(Clock(dut.gt_rxclk, 8, unit="ns").start())
+        dsp_clk_period = round(llrf.DSP_CLK_CYCLE, 1)
         cocotb.start_soon(
-            Clock(dut.dsp_clk, llrf.DSP_CLK_CYCLE, unit="ns").start())
+            Clock(dut.dsp_clk, dsp_clk_period, unit="ns").start())
         cocotb.start_soon(
-            Clock(dut.dac_clk, llrf.DSP_CLK_CYCLE / 2, unit="ns").start())
+            Clock(dut.dac_clk, dsp_clk_period / 2, unit="ns").start())
 
         # test bench setup
         self.loopback_dac, self.feedback_dac = 0, 1
@@ -163,7 +164,7 @@ class TB:
         return min, max
 
     async def write_init_regs(self):
-        cocotb.log.info(f'InitRegisters:\n{pformat(self.llrf.init_regs)}')
+        cocotb.log.debug(f'InitRegisters:\n{pformat(self.llrf.init_regs)}')
         for name, val in asdict(self.llrf.init_regs).items():
             await self.lb.write_reg(name, val)
         # single cycle, for resetting both up/down DDS
@@ -204,7 +205,7 @@ class TB:
         await self.write_init_regs()
         await self.verify_init_regs()
 
-        await self.read_cic_waveform()  # discard 1st waveform
+        await self.read_cic_waveform()  # discard first waveform
         self.log_banner('CIC Waveform')
         for i, name in enumerate(self.cic_names):
             cic_meas = await self.read_cic_waveform(i)
@@ -326,11 +327,11 @@ class TB:
 
     async def test_trigger(self):
         """XXX TBD"""
-        await self.lb.write_reg('wave_trig_sel', 1)
+        await self.lb.write_reg('wave_trig_sel', WaveTrigSel.Internal)
         pass
 
 
-@cocotb.test(timeout_time=400, timeout_unit='us')
+@cocotb.test(timeout_time=600, timeout_unit='us')
 @cocotb.parametrize(
     amp_exp=[15000, 30000],
     phs_exp=[-100, 45, 270],

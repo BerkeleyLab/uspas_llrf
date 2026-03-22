@@ -4,11 +4,12 @@ module system_top (
 	input           GTPREFCLK_P,
 	input           GTPREFCLK_N,
 
-    output [7:0]    LED,
+    inout [7:0]     PMOD1,
+    inout [7:0]     PMOD2,
 
-    inout           TWI_SCL,
-    inout           TWI_SDA,
-    output          TWI_RST,
+    inout           I2C_SCL,
+    inout           I2C_SDA,
+    output          I2C_RST,
 
     input           UART_CTS,
     output          UART_TX,
@@ -126,7 +127,6 @@ wire [LB_ADW-1:0] lb_addr;
 wire [31:0] lb_wdata;
 reg [31:0] lb_rdata = 0;
 
-wire [31:0] gpio_z;
 wire rst;
 wire [68:0]       mem_packed_fwd;
 wire [32:0]       mem_packed_ret;
@@ -137,7 +137,14 @@ system #(
 ) system_inst (
     .clk            (clk),
     .cpu_reset      (reset_system),
-    .gpio_z         (gpio_z),
+    .I2C_SCL        (I2C_SCL),
+    .I2C_SDA        (I2C_SDA),
+    .I2C_RST        (I2C_RST),
+    .PMOD0          (PMOD1),
+    .PMOD1          (PMOD2),
+    .PMOD2          (ZEST_PMOD1),
+    .PMOD3          (ZEST_PMOD2),
+    .trig_to_dsp    (),
     .uart_tx        (UART_TX),
     .uart_rx        (UART_RX),
     .trap           (trap ),
@@ -166,6 +173,7 @@ always @(posedge clk) casex(lb_addr[7:0])
 endcase
 
 wire        dsp_clk_out;
+wire        dac_clk_out;
 wire [1:0]  clk_div_out;
 wire [16*8-1:0] adc_out_data;
 wire [7:0]  adc_out_clk;
@@ -174,9 +182,7 @@ wire [13:0] dac_in_data_i;
 wire [13:0] dac_in_data_q;
 
 zest #(
-    .BASE_ADDR      (8'h05),
     .DSP_FREQ_MHZ   (`DSP_FREQ_MHZ),
-    .DAC_INTERP_COEFF_R (`DAC_INTERP_COEFF_R),
     .FCNT_WIDTH     (FCNT_WIDTH),
     .PH_DIFF_DW     (PH_DIFF_DW)
 ) zest_inst (
@@ -230,6 +236,7 @@ zest #(
     .clk_div_out    (clk_div_out),
     .adc_out_clk    (adc_out_clk),
     .adc_out_data   (adc_out_data),
+    .dac_clk_out    (dac_clk_out),
     .dac_in_data_i  (dac_in_data_i),
     .dac_in_data_q  (dac_in_data_q),
 
@@ -239,15 +246,6 @@ zest #(
     .mem_packed_fwd (mem_packed_fwd),
     .mem_packed_ret (mem_packed_ret_0)
 );
-
-/// #define PIN_I2C_SDA              0
-/// #define PIN_I2C_SCL              1
-/// #define PIN_PCA9548_RST          2
-assign TWI_SDA      = gpio_z[0];
-assign TWI_SCL      = gpio_z[1];
-assign TWI_RST      = gpio_z[2]; // to enable I2C mux, set high
-
-assign LED = {trap, gpio_z[30:24]};
 
 assign mem_packed_ret = mem_packed_ret_0;
 endmodule

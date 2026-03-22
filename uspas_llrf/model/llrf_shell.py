@@ -10,7 +10,10 @@ from uspas_llrf import dsp_config, CICWaveRecorder, RX, TX, LLRF_DSP
 class WaveTrigSel(IntEnum):
     Internal = 0
     External = 1
+    Software = 2
     EVR = 3
+    Always = 4
+    Mixed = 5
 
 
 class DacDriveSel(IntEnum):
@@ -97,8 +100,10 @@ class LLRFShell(LLRF_DSP):
         prl_adc_chan: int = 0
         loop0_adc_chan: int = 0
         loop1_adc_chan: int = 0
-        wave_trig_sel: int = WaveTrigSel.Internal
+        wave_trig_sel: int = WaveTrigSel.Always
         dac_drive_sel: int = DacDriveSel.I0Q0
+        trigger_delay: int = 0
+        int_trigger_period: int = 5750000
         evcode: int = 0
 
         def __setattr__(self, name, value):
@@ -138,10 +143,11 @@ class LLRFShell(LLRF_DSP):
         self.submodules += self.tx.submodules
         self.gen_init_regs()
 
-    def gen_init_regs(self):
+    def gen_init_regs(self, int_trig_rate_hz=20):
         """ initialization registers for simulation and SoC integration
             cic and inlk wave_shift values are derived from gain calculations
         """
+        int_trig_period = self.DEN_DDS * round(1e9 / self.DSP_CLK_CYCLE / self.DEN_DDS / int_trig_rate_hz)
         self.init_regs = self.LLRFInitRegisters(
             rx_dds_amplitude=self.rx.dds.amp,
             rx_dds_phase_shift=self.encode_phase(-self.rx.dds.phase_shift_deg),
@@ -172,6 +178,7 @@ class LLRFShell(LLRF_DSP):
             loop1_pulse_start=0, loop1_pulse_high_len=10,
             dac_drive_sel=DacDriveSel(self.DAC_DRIVE_SEL),
             pulse_modes=self.PULSE_MODES,
+            int_trigger_period=int_trig_period,
             evcode=self.EVCODE
         )
 

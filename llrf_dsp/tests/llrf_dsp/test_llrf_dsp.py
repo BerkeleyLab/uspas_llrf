@@ -35,7 +35,7 @@ class TB:
         cocotb.log.debug(
             f'RX phase off: {rx_phase_off_reg:8d} cnt; '
             f'TX phase off: {tx_phase_off_reg:8d} cnt')
-        clock = Clock(self.dut.clk, llrf.DSP_CLK_CYCLE, unit="ns")
+        clock = Clock(self.dut.clk, round(llrf.DSP_CLK_CYCLE, 1), unit="ns")
         cocotb.start_soon(clock.start())
 
     def log_banner(self, str):

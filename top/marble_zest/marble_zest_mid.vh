@@ -33,7 +33,6 @@ wire [21:0] lb_addr;
 wire [31:0] lb_wdata;
 wire [31:0] lb_rdata;
 
-wire [31:0] gpio_z;
 wire rst;
 wire [68:0] mem_packed_fwd;
 wire [32:0] mem_packed_ret;
@@ -54,6 +53,8 @@ wire reset_system = uart_cts_r | ~idelayctrl_ready;
 // 22 bit local bus address width
 // 4 bit msb multiplexing
 // 18 bit peripheral address width
+wire trig_from_dsp;
+wire trig_to_dsp;
 system #(
     .LB_READ_DELAY(LB_READ_DELAY),
     .LB_ADW(22),
@@ -61,7 +62,15 @@ system #(
 ) system_inst (
     .clk            (clk),
     .cpu_reset      (reset_system),
-    .gpio_z         (gpio_z),
+    .I2C_SCL        (I2C_SCL),
+    .I2C_SDA        (I2C_SDA),
+    .I2C_RST        (I2C_RST),
+    .PMOD0          (PMOD1),
+    .PMOD1          (PMOD2),
+    .PMOD2          (ZEST_PMOD1),
+    .PMOD3          (ZEST_PMOD2),
+    .trig_from_dsp    (trig_from_dsp),
+    .trig_to_dsp    (trig_to_dsp),
     .uart_tx        (UART_TX),
     .uart_rx        (UART_RX),
     .trap           (trap ),
@@ -145,10 +154,6 @@ wire gt_rxclk;
 wire [1:0] gt_rxcharisk;
 wire [15:0] gt_rxdata;
 wire [2:0] arc_permit_in=0;  // XXX hook me up!
-wire [15:0] etrig_pulse_cnt;
-wire       etrig_pulse;
-wire       etrig_pulse_delay;
-wire       trig_out;
 llrf_shell llrf_inst (
     .lb_clk         (lb_clk),
     .lb_addr        (lb_addr[17:0]),
@@ -169,14 +174,12 @@ llrf_shell llrf_inst (
     .slow_permit_in  (1'b1),
     .arc_permit_in   (arc_permit_in),
     // to EVR
-    .gt_rxclk       (gt_rxclk),
-    .gt_rxdata      (gt_rxdata),
-    .gt_rxcharisk   (gt_rxcharisk),
+    .gt_rxclk        (gt_rxclk),
+    .gt_rxdata       (gt_rxdata),
+    .gt_rxcharisk    (gt_rxcharisk),
     // to wave trigger
-    .trig_out         (trig_out),
-    .etrig_pulse_cnt  (etrig_pulse_cnt),
-    .etrig_pulse      (etrig_pulse),
-    .etrig_pulse_delay(etrig_pulse_delay)
+    .trig_out        (trig_from_dsp),  // output
+    .ext_trigger     (trig_to_dsp)   // input
 );
 
 // ----------------------------------
@@ -240,12 +243,5 @@ marble_bsp #(
     .gt_rxcharisk   (gt_rxcharisk ),
 
     .in_use         (in_use        ),
-    .mac_status     (mac_status    ),
-
-    .zest_pmod      (ZEST_PMOD2[3:0]),
-    .pmod_J12       (PMOD1[3:0]     ),
-    .pmod_J12_dir   (PMOD1[7:4]     ),
-    .etrig_pulse_cnt(etrig_pulse_cnt),
-    .etrig_pulse    (etrig_pulse   ),
-    .etrig_pulse_delay(etrig_pulse_delay)
+    .mac_status     (mac_status    )
 );

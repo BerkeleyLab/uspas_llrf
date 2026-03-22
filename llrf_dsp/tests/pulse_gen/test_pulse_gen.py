@@ -19,7 +19,7 @@ class TB:
 @cocotb.test(timeout_time=1, timeout_unit='us')
 @cocotb.parametrize(
     start=[0, 3, 8],
-    high_len=[5, 10]
+    high_len=[1, 5, 10]
 )
 async def test(dut, start, high_len):
     tb = TB(dut, start, high_len)

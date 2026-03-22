@@ -102,7 +102,7 @@ The connections of misc. signals to Marble / Zest IO ports are summarized in the
 |    Marble PMOD2 (J13) |                  | Interlock I/O    |                               | Front Panel LED       |
 |     Marble QSFP2 Ch.1 |                  | Timing EVR       | Timing EVR                    |                       |
 |      Zest PMOD1 (J17) |                  | Modbus RTU       |                               | Up Conv. Enable [7:6] |
-|      Zest PMOD2 (J18) |                  |                  |                               | Trigger Input [1:0]   |
+|      Zest PMOD2 (J18) |                  |                  |                               | Trigger Input [1]     |
 |        Zest SMA (J20) |                  |                  |                               | Up Conv. LO helper    |
 |       Zest HDMI (J19) |                  |                  | Rear panel I/O                |                       |
 

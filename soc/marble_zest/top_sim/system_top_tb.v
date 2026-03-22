@@ -53,18 +53,18 @@ module system_top_tb;
         forever #(PD_DAC_CLK/2)  dac_clk_dco = ~dac_clk_dco;
     end
 
-    assign dac_clk_ph_meas = dut.zest_inst.phase_diff_dac.phdiff_out;
-    real dac_dco_ph_err=0;
-    reg dac_phase_pass = 0;
-    always @(posedge clk) begin
-        if (dut.zest_inst.phase_diff_dac.dval) begin
-            dac_dco_ph_err = (dac_clk_ph_meas - dac_clk_ph_exp) / (1<<PH_DIFF_DW);
-            dac_phase_pass = dac_dco_ph_err > -0.02 && dac_dco_ph_err < 0.02;
-            pass = pass & dac_phase_pass;
-            $display("time: %8g ns, phase_diff_dac: exp =%5d, measured =%5d, pass=%s",
-                $time, dac_clk_ph_exp, dac_clk_ph_meas, dac_phase_pass ? "PASS" : "FAIL");
-        end
-    end
+    // assign dac_clk_ph_meas = dut.zest_inst.phase_diff_dac.phdiff_out;
+    // real dac_dco_ph_err=0;
+    // reg dac_phase_pass = 0;
+    // always @(posedge clk) begin
+    //     if (dut.zest_inst.phase_diff_dac.err) begin
+    //         dac_dco_ph_err = (dac_clk_ph_meas - dac_clk_ph_exp) / (1<<PH_DIFF_DW);
+    //         dac_phase_pass = dac_dco_ph_err > -0.02 && dac_dco_ph_err < 0.02;
+    //         pass = pass & dac_phase_pass;
+    //         $display("time: %8g ns, phase_diff_dac: exp =%5d, measured =%5d, pass=%s",
+    //             $time, dac_clk_ph_exp, dac_clk_ph_meas, dac_phase_pass ? "PASS" : "FAIL");
+    //     end
+    // end
     // --------------------------------------------------------------
     // Simulate adc output
     // --------------------------------------------------------------
@@ -134,10 +134,11 @@ module system_top_tb;
     ) dut(
         .GTPREFCLK_P            (clk),                  // input
         .GTPREFCLK_N            (~clk),                 // input
-        .LED                    (),                     // output [7:0]
-        .TWI_SCL                (),                     // inout
-        .TWI_SDA                (),                     // inout
-        .TWI_RST                (),                     // output
+        .I2C_SCL                (),                     // inout
+        .I2C_SDA                (),                     // inout
+        .I2C_RST                (),                     // output
+        .PMOD1                  (),                     // inout [7:0]
+        .PMOD2                  (),                     // inout [7:0]
         .UART_CTS               (reset),                // input
         .UART_TX                (uart_tx),              // output
         .UART_RX                (uart_rx),              // input

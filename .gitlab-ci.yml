@@ -46,6 +46,36 @@ marble_bsp_test:
   script:
     - make
 
+soc_system_test:
+  before_script:
+    - pip install -e .
+    - cd soc/marble_zest/sim
+  stage: test
+  script:
+    - PATH=$XILINX_VIVADO/bin:$PATH make
+
+soc_system_top_test:
+  before_script:
+    - pip install -e .
+    - cd soc/marble_zest/top_sim
+  stage: test
+  script:
+    - PATH=$XILINX_VIVADO/bin:$PATH make
+
+soc_synthesis:
+  before_script:
+    - pip install -e .
+    - cd soc/marble_zest/synth
+  stage: synthesis
+  script:
+    - PATH=$XILINX_VIVADO/bin:$PATH make
+  artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+    expire_in: 2 days
+    paths:
+      - soc/marble_zest/synth/*.bit
+      - soc/marble_zest/synth/_xilinx/*.runs/impl_1/*.rpt
+
 llrf_synthesis:
   before_script:
     - pip install -e .
