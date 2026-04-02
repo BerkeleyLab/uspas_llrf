@@ -239,15 +239,16 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
 
     // create data stream strobes for sig_buf
     // applies to all raw, i, q waveforms
-    wire sig_buf_trig = wave_trig;
-    reg [SIG_BUF_AW-1:0] sig_buf_cnt=0;
-    reg sig_buf_dval=0;
-    wire sig_buf_last = &sig_buf_cnt;
-    always @(posedge dsp_clk) begin
-        if (sig_buf_last) sig_buf_dval <= 0;
-        else if (sig_buf_trig) sig_buf_dval <= 1'b1;
-        sig_buf_cnt <= sig_buf_dval ? sig_buf_cnt + 1'b1 : 0;
-    end
+    wire sig_buf_dval, sig_buf_last;
+    pulse_gen #(.AW(32)) sig_buf_trig_gen (
+        .clk        (dsp_clk),
+        .trigger    (wave_trig),
+        .start      (0),
+        .high_len   (1<<SIG_BUF_AW),
+        .stb_in     (1'b1),
+        .pulse_dval (sig_buf_dval),
+        .pulse_last (sig_buf_last)
+    );
 
     genvar ch;
     generate for (ch=0; ch<N_ADC; ch=ch+1) begin: gen_adc_raw
@@ -344,7 +345,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
 
     wire cbuf_sync;
     reg wave_trig_i=0;
-    always @(dsp_clk) begin
+    always @(posedge dsp_clk) begin
         case (wave_trig_sel)
             WAVE_TRIG_INT:  wave_trig_i <= int_trig;
             WAVE_TRIG_EXT:  wave_trig_i <= ext_trig;
@@ -363,7 +364,8 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .trigger    (wave_trig_i),
         .start      (trigger_delay),
         .high_len   (16'd1),
-        .pulse_out  (wave_trig)
+        .stb_in     (1'b1),
+        .pulse_dval (wave_trig)
     );
     assign trig_out = wave_trig;
 
@@ -445,6 +447,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire [16:0] fault_phs_out;
     monitor_inlk #(.N_CH(N_CH)) inlk // auto lb1
        (.clk            (dsp_clk),
+       .permit_mask     (inlk_permit_mask),
        .mon_data        (inlk_data),
        .mon_valid       (inlk_dval),
        .mon_last        (inlk_last),
@@ -469,6 +472,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire arc_permit_sum;
     arc_inlk #(.N_CH(3)) arc // auto lb1
         (.clk               (dsp_clk),
+        .permit_mask        (arc_permit_mask),
         .dev_permit_in      (arc_permit_in),
         .dev_test_out       (arc_test_out),
         .dev_reset_out      (arc_reset_out),
@@ -556,7 +560,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire signed [14:0] err_out_phs [0:N_DAC-1];
     wire signed [14:0] err_out_amp_lb [0:N_DAC-1];
     wire signed [14:0] err_out_phs_lb [0:N_DAC-1];
-    wire [N_DAC-1:0] pulse_val;
+    wire [N_DAC-1:0] pulse_dval;
     wire [17:0] pulse_start [0:N_DAC-1];
     wire [17:0] pulse_high_len [0:N_DAC-1];
 
@@ -642,10 +646,11 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             .start      (pulse_start[ch]),
             .trigger    (wave_trig),
             .high_len   (pulse_high_len[ch]),   // unit: DSP_CLK_CYCLE
-            .pulse_out  (pulse_val[ch])
+            .stb_in     (1'b1),
+            .pulse_dval (pulse_dval[ch])
         );
 
-        assign drive_on[ch] = dac_permits[ch] && inlk_permit_out && arc_permit_sum && (pulse_modes[ch] ? pulse_val[ch] : 1'b1);
+        assign drive_on[ch] = dac_permits[ch] && inlk_permit_out && arc_permit_sum && (pulse_modes[ch] ? pulse_dval[ch] : 1'b1);
         assign drive_i_out[ch] = drive_on[ch] ? drive_i[ch] : {DWBB{1'b0}};
         assign drive_q_out[ch] = drive_on[ch] ? drive_q[ch] : {DWBB{1'b0}};
 

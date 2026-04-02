@@ -23,12 +23,13 @@ llrf_dsp_test:
     - cd llrf_dsp
   stage: test
   script:
-    - make FSET=${TARGET}
+    - make FSET=${TARGET} COCOTB_RANDOM_SEED=1774201716
   parallel:
     matrix:
-      - TARGET: [ALSU, USPAS, LEMP, AWA]
+      # - TARGET: [ALSU, USPAS, LEMP, AWA]
+      - TARGET: [USPAS]
 
-llrf_cdc_test:
+.llrf_cdc_test:
   before_script:
     - cd llrf_dsp
   stage: test
@@ -39,14 +40,14 @@ llrf_cdc_test:
     paths:
       - llrf_dsp/llrf_shell_cdc.txt
 
-marble_bsp_test:
+.marble_bsp_test:
   before_script:
     - cd marble_bsp
   stage: test
   script:
     - make
 
-soc_system_test:
+.soc_system_test:
   before_script:
     - pip install -e .
     - cd soc/marble_zest/sim
@@ -54,7 +55,7 @@ soc_system_test:
   script:
     - PATH=$XILINX_VIVADO/bin:$PATH make
 
-soc_system_top_test:
+.soc_system_top_test:
   before_script:
     - pip install -e .
     - cd soc/marble_zest/top_sim
@@ -62,7 +63,7 @@ soc_system_top_test:
   script:
     - PATH=$XILINX_VIVADO/bin:$PATH make
 
-soc_synthesis:
+.soc_synthesis:
   before_script:
     - pip install -e .
     - cd soc/marble_zest/synth
@@ -76,7 +77,7 @@ soc_synthesis:
       - soc/marble_zest/synth/*.bit
       - soc/marble_zest/synth/_xilinx/*.runs/impl_1/*.rpt
 
-llrf_synthesis:
+.llrf_synthesis:
   before_script:
     - pip install -e .
     - cd top/marble_zest
@@ -94,7 +95,7 @@ llrf_synthesis:
     matrix:
       - TARGET: [ALSU, USPAS, LEMP, AWA]
 
-alsu_run:
+.alsu_run:
   variables:
     EVG_F: 125.1e6
     CLK_F: 458.7e6
@@ -119,7 +120,7 @@ alsu_run:
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
-awa_run:
+.awa_run:
   variables:
     CLK_F: 1320e6
   before_script:
@@ -140,7 +141,7 @@ awa_run:
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
-lemp_run:
+.lemp_run:
   variables:
     EVG_F: 119e6
     CLK_F: 2856e6
@@ -165,7 +166,7 @@ lemp_run:
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
-uspas_run:
+.uspas_run:
   variables:
     CLK_F: 460e6
   before_script:

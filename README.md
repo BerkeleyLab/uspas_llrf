@@ -67,6 +67,23 @@ The Zest reference clock is MO.
 
 The Zest reference clock is LO.
 
+DAC is in mix-mode for second Nyquist zone sampling.
+
+### FNAL VTS LLRF settings
+
+|    **Signal**    |    **Ratio**   | **Value** |     |
+|:----------------:|:--------------:|:---------:|:---:|
+|        MO        |                | 1295.275  | MHz |
+|      IF_adc      |    MO / 65     |   19.927  | MHz |
+|        LO        | MO / 65 * 66   | 1315.202  | MHz |
+|      dsp_clk     |     LO / 14    |   93.943  | MHz |
+|      dac_clk     |     LO / 7     |  188.6    | MHz |
+|      IF_dac      |     MO / 65    |   19.927  | MHz |
+| IF_adc / dsp_clk |     7 / 33     |           |     |
+| IF_dac / dsp_clk |     7 / 33     |           |     |
+
+The Zest reference clock is LO.
+
 ## 🚀 Quick Start
 
 ### LLRF DSP and verification
