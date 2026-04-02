@@ -78,18 +78,6 @@ module cic_waves #(
         .sample_wave    (cc_sample)
     );
 
-    // XXX needs test
-    reg cbuf_write=1;
-    reg cbuf_start=0;
-    always @(posedge dsp_clk) begin
-        cbuf_start <= 1'b0;
-        if (cbuf_sync) cbuf_write <= 1'b0;
-        if (wave_trig) begin
-            cbuf_write <= 1'b1;
-            if (!cbuf_write || cbuf_sync) cbuf_start <= 1'b1;
-        end
-    end
-
     // -- Waveform freeze logic
     reg [16:0] delay_cnt=0;
     wire       cbuf_delay_stop = (delay_cnt == cbuf_post_delay);
@@ -97,8 +85,15 @@ module cic_waves #(
     wire cbuf_stop = cbuf_delay_stop & ~cbuf_delay_stop1;
     always @(posedge dsp_clk) begin
         cbuf_delay_stop1 <= cbuf_delay_stop;
-        delay_cnt <= inlk_permit_in ? 0 :
-        cbuf_delay_stop ? delay_cnt : delay_cnt + cbuf_sync;
+        delay_cnt <= inlk_permit_in ? 0 : cbuf_delay_stop ? delay_cnt : delay_cnt + cbuf_sync;
+    end
+
+    // stop recording stream after buffer is full if in external trigger mode
+    // allows continuous recording if wired cbuf_sync to wave_trig
+    reg stream_valid=1'b1;
+    always @(posedge dsp_clk) begin
+        if (wave_trig) stream_valid <= 1'b1;
+        else if (cbuf_sync) stream_valid <= 1'b0;
     end
 
     // expand cic_chan_keep channel to IQ masks
@@ -132,7 +127,7 @@ module cic_waves #(
         .reset        (dsp_reset),
         .stb_in       (iq_dval),
         .d_in         (iq_data),   // Flattened array of unprocessed IQ streams. CH0 in LSBs
-        .cic_sample   (cic_sample),
+        .cic_sample   (cic_sample & stream_valid),
 
         // Post-integrator conveyor belt tap
         .di_stb_out   (di_stb_out),
@@ -146,7 +141,7 @@ module cic_waves #(
 
         // Circular Buffer control and statistics
         .oclk         (lb_clk),
-        .buf_write    (cbuf_write),
+        .buf_write    (1'b1),
 
         .buf_sync     (cbuf_sync),            // single-cycle when buffer starts/ends
         .buf_transferred(cbuf_transferred),    // single-cycle when a buffer has been
@@ -202,7 +197,6 @@ module cic_waves #(
         .tag            (dsp_tag),
 
         .dsp_clk        (dsp_clk),
-        .buf_start      (cbuf_start),
         .buf_sync       (cbuf_sync),
         .buf_stat1      (cbuf_stat1),
         .buf_stat2      (cbuf_stat2_lsb),

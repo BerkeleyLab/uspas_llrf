@@ -44,7 +44,7 @@ t_reg32 regmap_lmk01801[] = {
     // CLKout12_13_DDLY ="0000000000"
     { 0x4, 0x0UL },
     // CLKout12_13_DIV  ="00000000001",
-    // CLKout8_11_DIV   ="001",  # J20, J24         @ 1/1  165 MHz
+    // CLKout8_11_DIV   ="001",  # J20, J24         @ 1/1  188.6 MHz
     // CLKout4_7_DIV    ="001",  # FPGA, DAC, J12,  @ 1/1  188.6 MHz
     // CLKout0_3_DIV    ="010"   # ADC1/2, J13      @ 1/2  94.28 MHz
     // hex(0b0000_00000000001_00_0_0_001_001_010)

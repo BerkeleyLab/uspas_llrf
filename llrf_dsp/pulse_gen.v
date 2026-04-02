@@ -5,7 +5,9 @@ module pulse_gen #(
     input trigger,
     input [AW-1:0] start,
     input [AW-1:0] high_len,
-    output pulse_out
+    input stb_in,
+    output pulse_last,
+    output pulse_dval
 );
 
 reg [AW-1:0] len=0;
@@ -16,9 +18,9 @@ always @(posedge clk) begin
     len <= high_len;
     if (last) counting <= 1'b0;
     else if (trigger) counting <= 1'b1;
-    pc <= counting ? pc + 1 : 0;
+    pc <= counting ? pc + stb_in : 0;
 end
 
-assign pulse_out = counting && (pc >= start) && ~last;
-
+assign pulse_dval = counting && (pc >= start) && ~last;
+assign pulse_last = last;
 endmodule

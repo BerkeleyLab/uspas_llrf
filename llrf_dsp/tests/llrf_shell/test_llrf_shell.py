@@ -1,5 +1,5 @@
 from uspas_llrf import (LLRFShell, WaveTrigSel, DacDriveSel, LocalbusAppMaster,
-                        wrap_phase, clip_int, dsp_config)
+                        InlkFaultMode, wrap_phase, clip_int, dsp_config)
 import cocotb
 import random
 from cocotb.clock import Clock
@@ -63,6 +63,16 @@ class TB:
             self.loopback_adc: 'loopback_adc',
             self.feedback_adc: 'feedback_adc',
             self.phaseref_adc: 'phaseref_adc'}
+        self.llrf.init_regs.chan_keep = \
+            (1 << self.phaseref_adc | 1 << self.loopback_adc)
+        self.cic_chans = [
+            int(b) for b in f'{self.llrf.init_regs.chan_keep:010b}'][::-1]
+        self.cic_n_chan = self.cic_chans.count(1)
+        self.cic_names = [
+            self.sig_names[idx] for idx, enabled in enumerate(self.cic_chans)
+            if enabled]  # lsb_mask==1: first chan is LSB
+        cocotb.log.warning(f'cic chans: {self.cic_chans}')
+        cocotb.log.warning(f'cic names: {self.cic_names}')
         self.amp_exp, self.phs_exp = self.init_test(amp_exp, phs_exp)
         cocotb.start_soon(
             self.drive_phaseref_adc(
@@ -138,12 +148,13 @@ class TB:
         await RisingEdge(self.dut.llrf_shell.cbuf_transferred)
         assert await self.lb.read_reg('llrf_circle_ready')
         wfm = []
-        for idx in range(1 << self.cbuf_aw):
+        n_samples = (1 << self.cbuf_aw) // self.cic_n_chan // 2
+        for idx in range(n_samples):
             offset = self.cic_n_chan * idx * 2  # 2 for I/Q
             i = await self.lb.read_reg('circle_data', offset + chan * 2)
             q = await self.lb.read_reg('circle_data', offset + chan * 2 + 1)
             wfm.append(i + 1j * q)
-        return np.array(wfm, dtype=np.complex64).mean()
+        return np.array(wfm, dtype=np.complex64)
 
     async def read_sig_buf(self, name='adc0_buf'):
         await self.lb.write_reg('sig_buf_flip', 1)
@@ -186,16 +197,6 @@ class TB:
         """
         Drive loopback_dac by 'loop' set points, check from loopback_adc
         """
-        self.llrf.init_regs.chan_keep = \
-            (1 << self.phaseref_adc | 1 << self.loopback_adc)
-        self.cic_chans = [
-            int(b) for b in f'{self.llrf.init_regs.chan_keep:010b}'][::-1]
-        self.cic_n_chan = self.cic_chans.count(1)
-        self.cic_names = [
-            self.sig_names[idx] for idx, enabled in enumerate(self.cic_chans)
-            if enabled]  # lsb_mask==1: first chan is LSB
-        cocotb.log.debug(f'cic chans: {self.cic_chans}')
-        cocotb.log.debug(f'cic names: {self.cic_names}')
         self.log_banner(f'Open Loop Test on {loop}')
         amp_setp, phs_setp = self.llrf.calc_open_loop_setp(
             self.amp_exp, self.phs_exp)
@@ -209,7 +210,7 @@ class TB:
         self.log_banner('CIC Waveform')
         for i, name in enumerate(self.cic_names):
             cic_meas = await self.read_cic_waveform(i)
-            self.check_sig(cic_meas / self.llrf.cic_wfm_gain, sig_name=name)
+            self.check_sig(cic_meas.mean() / self.llrf.cic_wfm_gain, sig_name=name)
 
         self.log_banner('IQ Waveform')
         i_buf = await self.read_sig_buf(f'adc{self.phaseref_adc}_i_buf')
@@ -284,13 +285,23 @@ class TB:
                        sig_name='feedback_adc')
 
     async def test_fast_interlock(self, loop='loop0'):
+        """Test monitor_inlk.v
+        - Set threshold window to be between 99% and 101% around the expected
+        reference ADC amplitude value.
+        - Set inlk_mode to trip permit if lo < V < hi
+        - Set inlk_permi_mask to only include reference ADC
+        - Expect inlk_permit_out to be zero at the test condition
+
+        Args:
+            loop (str, optional): loop back drive source. Defaults to 'loop0'.
+        """
         self.log_banner('Fast Interlock Test')
         self.set_dac_drive_sel(loop)
         inlk_gain_abs = np.abs(self.llrf.inlk_gain)
         amp_lo = self.amp_exp * inlk_gain_abs * 0.99
         amp_hi = self.amp_exp * inlk_gain_abs * 1.01
         regs = [
-            ('inlk_inlk_mode', self.phaseref_adc, 0b10),
+            ('inlk_inlk_mode', self.phaseref_adc, InlkFaultMode.LoHi),
             ('inlk_amp_lo', self.phaseref_adc, amp_lo),
             ('inlk_amp_hi', self.phaseref_adc, amp_hi),
         ]
@@ -300,7 +311,6 @@ class TB:
         await self.lb.write_reg('inlk_reset_inlk', 1)
 
         dut = self.dut.llrf_shell
-        # await RisingEdge(dut.inlk_permit_out)  # wait for inlk permit reset
         await RisingEdge(dut.inlk.wave_valid)
         cocotb.log.info("%8s " * 9 % (
             'chan', 'mon_amp', 'amp_lo', 'amp_hi', '>=lo', '>=hi',
@@ -323,7 +333,8 @@ class TB:
                     f"{int(dut.inlk_permit_out.value):8d} "
                     f"{mon_amp_out / inlk_gain_abs:8.1f} "
                     f"{mon_phs_out:8.1f} ")
-        assert dut.inlk_permit_out.value == 1
+        assert dut.inlk_permit_out.value == 0, \
+            "Unexpected inlk_permit_out."
 
     async def test_trigger(self):
         """XXX TBD"""
@@ -345,3 +356,29 @@ async def test(dut, amp_exp, phs_exp, loop):
     await tb.test_open_loop(loop)
     await tb.test_fast_interlock(loop)
     await tb.test_close_loop(loop)
+
+
+@cocotb.test(timeout_time=600, timeout_unit='us')
+@cocotb.parametrize(
+    trig_sel=[WaveTrigSel.Always, WaveTrigSel.Internal]
+)
+async def test_cic_waves(dut, amp_exp=15000, phs_exp=45,
+                         trig_sel=WaveTrigSel.Always):
+    tb = TB(dut,
+            conf=os.getenv('FSET', 'USPAS'),
+            wave_samp_per=random.randint(1, 8),
+            amp_exp=amp_exp, phs_exp=phs_exp)
+    tb.log_banner('CIC waveform test')
+    tb.llrf.init_regs.wave_trig_sel = trig_sel
+    tb.llrf.init_regs.int_trigger_period = 3000
+    await tb.write_init_regs()
+    await tb.verify_init_regs()
+
+    cocotb.log.warning(f'cic_wfm_gain: {tb.llrf.cic_wfm_gain:.3f}')
+    # check phase reference adc only
+    await tb.read_cic_waveform()  # discard first waveform
+    ch = 0 if tb.phaseref_adc < tb.loopback_adc else 1
+    cic_meas = await tb.read_cic_waveform(ch)
+    cic_meas = cic_meas[2:]  # XXX discard first 2 samples due to transient
+    tb.check_sig(cic_meas.mean() / tb.llrf.cic_wfm_gain,
+                 sig_name='phaseref_adc')

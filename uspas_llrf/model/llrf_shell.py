@@ -23,6 +23,13 @@ class DacDriveSel(IntEnum):
     Q0Q1 = 3
 
 
+class InlkFaultMode(IntEnum):
+    LoLo = 0b00  # V < lower_thresh and V < upper_thresh
+    LoHi = 0b01  # lower_thresh <= V < upper_thresh
+    HiLo = 0b10  # upper_thresh <= V < lower_thresh (shouldn't happen)
+    HiHi = 0b11  # V >= lower_thresh and V >= upper_thresh
+
+
 class LLRFShell(LLRF_DSP):
     def __init__(self, dsp_config=dsp_config['USPAS'], wave_samp_per=1):
         """Represent DSP modules in llrf_shell.v, which include separate RX
@@ -63,8 +70,8 @@ class LLRFShell(LLRF_DSP):
         cic_base_period: int = 14
         cic_wave_shift: int = 0
         inlk_wave_shift: int = 0
-        inlk_permit_mask: int = 0x3ff
-        arc_permit_mask: int = 0xff
+        inlk_permit_mask: int = 0x0
+        arc_permit_mask: int = 0x0
         chan_keep: int = 0
         rx_phase_offset: int = 0
         tx_phase_offset: int = 0

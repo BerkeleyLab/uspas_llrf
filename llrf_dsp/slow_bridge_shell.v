@@ -17,8 +17,7 @@ module slow_bridge_shell #(
     // circle buf, dsp_clk domain
     input           dsp_clk,
 
-    input           buf_start, // Start of new buffer
-    input           buf_sync,  // End of current buffer
+    input           buf_sync,  // start / end of current buffer
     input [15:0]    buf_stat1,
     input [15:0]    buf_stat2,
     input [15:0]    buf_count,
@@ -89,7 +88,7 @@ module slow_bridge_shell #(
     reg [63:0] evr_ts_snap1, evr_ts_snap2;
     reg evr_ts_rd=0;
     always @(posedge dsp_clk) begin
-        if (buf_start) begin
+        if (buf_sync) begin
             if (evr_ts_rd^slow_snap) evr_ts_snap2 <= evr_timestamp;
             else                     evr_ts_snap1 <= evr_timestamp;
         end

@@ -8,6 +8,7 @@ class TB:
         self.dut = dut
         dut.start.value = start
         dut.high_len.value = high_len
+        dut.stb_in.value = 1
         cocotb.start_soon(Clock(dut.clk, 8, unit="ns").start())
 
     async def trigger(self):
@@ -25,8 +26,8 @@ async def test(dut, start, high_len):
     tb = TB(dut, start, high_len)
     await tb.trigger()
     for ix in range(start + high_len):
-        v = dut.pulse_out.value
-        cocotb.log.debug(f'pulse_out: {v}, ix {ix}')
+        v = dut.pulse_dval.value
+        cocotb.log.debug(f'pulse_dval: {v}, ix {ix}')
         assert v == (start <= ix)
         await RisingEdge(dut.clk)
-    assert dut.pulse_out.value == 0
+    assert dut.pulse_dval.value == 0

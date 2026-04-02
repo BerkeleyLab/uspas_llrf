@@ -19,12 +19,12 @@ always @(posedge clk) begin
         cic_sample_r <= 0;
         wave_cnt <= 0;
     end else begin
-        cic_state <= cic_state==(base_period-1) ? 0 : cic_state+1;
+        cic_state <= cic_state==(base_period-1) ? 0 : cic_state + 1'b1;
         cic_sample_r <= cic_state==0;
-        if (cic_sample_r) wave_cnt <= sample_wave ? wave_samp_per : wave_cnt-1;
+        if (cic_sample_r) wave_cnt <= sample_wave ? 0 : wave_cnt + 1'b1;
     end
 end
 assign cic_sample = cic_sample_r;
-assign sample_wave = wave_cnt==1;
+assign sample_wave = wave_cnt==wave_samp_per-1;
 
 endmodule
