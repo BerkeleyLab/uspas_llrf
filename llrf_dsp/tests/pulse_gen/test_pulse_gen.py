@@ -25,6 +25,7 @@ class TB:
 async def test(dut, start, high_len):
     tb = TB(dut, start, high_len)
     await tb.trigger()
+    await RisingEdge(dut.clk)
     for ix in range(start + high_len):
         v = dut.pulse_dval.value
         cocotb.log.debug(f'pulse_dval: {v}, ix {ix}')

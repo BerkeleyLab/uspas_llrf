@@ -36,7 +36,7 @@ fwashout wash_filter (
 // Digital Downconverter
 // Downconvert the IF field signal to get interleaved IQ signal
 // gain: sin(2 * pi * theta)
-// delay: 8 cycles
+// delay: 9 cycles
 wire signed [DWO-2:0] iq;
 noniq_ddc #(.DWO(DWO-1), .DWI(DWI), .DWLO(DWLO)) noniq_ddc (
     .clk    (clk),

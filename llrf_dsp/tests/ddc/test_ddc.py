@@ -38,12 +38,12 @@ class TB:
             self.dut.cosa.value = int(nco.real)
             self.dut.sina.value = int(nco.imag)
 
-    async def drive_adc(self, amp, phs, noise_amp=3) -> None:
+    async def drive_adc(self, amp, phs, dc=10, noise_amp=3) -> None:
         for t in itertools.count():
             sig = amp * np.exp(1j * (self.model.omega * t + np.deg2rad(phs)))
             noise = random.randint(-noise_amp, noise_amp)
             await RisingEdge(self.dut.clk)
-            self.dut.adc.value = clip_int(sig.real + noise)
+            self.dut.adc.value = clip_int(sig.real + dc + noise)
 
     async def init_test(self, noise_amp=3) -> None:
         self.dut.i_sel.set(Immediate(0))

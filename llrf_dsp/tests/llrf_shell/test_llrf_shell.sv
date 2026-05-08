@@ -2,7 +2,7 @@ module test_llrf_shell #(
     parameter integer FDBK_ADC = 0,
     parameter integer DW = 16,
     parameter integer N_ADC = 8,
-    parameter integer N_DAC = 2,
+    parameter integer N_DRIVE = 2,
     parameter integer DWLO = 18,
     parameter integer LB_ADW = 18,
     parameter integer CBUF_AW = 6,
@@ -25,7 +25,7 @@ module test_llrf_shell #(
     input                  dsp_clk,
     input signed  [DW-1:0] adc_array_in  [N_ADC],
     input                  dac_clk,
-    output signed [DW-1:0] dac_array_out [N_DAC],
+    output signed [DW-1:0] dac_array_out [N_DRIVE],
 
     // ---------------------
     // GT transceiver interface

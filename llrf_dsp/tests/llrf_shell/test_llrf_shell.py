@@ -14,7 +14,7 @@ import os
 
 
 class TB:
-    def __init__(self, dut, conf='LEMP', wave_samp_per=1,
+    def __init__(self, dut, conf='USPAS', wave_samp_per=1,
                  amp_exp=None, phs_exp=None):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
@@ -335,11 +335,6 @@ class TB:
                     f"{mon_phs_out:8.1f} ")
         assert dut.inlk_permit_out.value == 0, \
             "Unexpected inlk_permit_out."
-
-    async def test_trigger(self):
-        """XXX TBD"""
-        await self.lb.write_reg('wave_trig_sel', WaveTrigSel.Internal)
-        pass
 
 
 @cocotb.test(timeout_time=600, timeout_unit='us')

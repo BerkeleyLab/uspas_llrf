@@ -33,16 +33,16 @@ module llrf_shell #(
     parameter integer CBUF_AW = 16,
     parameter integer SIG_BUF_AW = 12,
     localparam integer CIC_SHIFT_BASE = 7,
-    localparam integer INLK_SHIFT_BASE = 12, // near 2*np.log2(CIC_BASE_PERIOD) + 3
+    localparam integer INLK_SHIFT_BASE = 11, // near 2*np.log2(CIC_BASE_PERIOD) + 2
     localparam integer MON_RW = 44, // must <= 44, see ccfilt.v:51
     localparam integer LB_DW = 32,
     localparam integer LB_ADW = 18,
     localparam integer DW = 16,
     localparam integer DWLO = 18,
     localparam integer DWBB = 18, // base band DW
-    localparam integer N_CH = 10,  // N_ADC + N_DAC
+    localparam integer N_CH = 10,  // N_ADC + N_DRIVE
     localparam integer N_ADC = 8,
-    localparam integer N_DAC = 2
+    localparam integer N_DRIVE = 2
 ) (
     // ---------------------
     // Localbus interface
@@ -62,16 +62,18 @@ module llrf_shell #(
     input                dsp_clk,
     input [DW*N_ADC-1:0] adc_data_in,
     input                dac_clk,
-    output reg [DW-1:0]  dac_data_a_out,
-    output reg [DW-1:0]  dac_data_b_out,
+    output [DW-1:0]      dac_data_a_out,
+    output [DW-1:0]      dac_data_b_out,
 
     // ---------------------
     // Interlock interface
     // ---------------------
-    input                drive_permit_in,  // From RF Drive Control
-    input                slow_permit_in,   // From Master Interlock PLC
-    output               fast_permit_out,  // To Master Interlock PLC, RF Drive Control
-    output               hpa_permit_out,   // To HPA
+    input                drive_permit_in,     // From RF Drive Control
+    input                slow_permit_in,      // From Master Interlock PLC
+    output               fast_permit_out,     // To RF Drive Control
+    output               fast_rf_permit_out,  // To Master Interlock PLC
+    output [0:0]         evg_permit_out,      // To EVG
+    output [0:0]         hpa_permit_out,      // To HPA (Oscillation Protection)
 
     // ---------------------
     // ARC Interlock interface
@@ -140,20 +142,21 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [0:0] loop1_amp_reset; top-level
 // reg [0:0] loop1_phs_reset; top-level
 // reg [0:0] dsp_reset; top-level single-cycle
-// reg [17:0] loop0_pulse_start; top-level
-// reg [17:0] loop0_pulse_high_len; top-level
-// reg [17:0] loop1_pulse_start; top-level
-// reg [17:0] loop1_pulse_high_len; top-level
+// reg [23:0] loop0_pulse_start; top-level
+// reg [23:0] loop0_pulse_high_len; top-level
+// reg [23:0] loop1_pulse_start; top-level
+// reg [23:0] loop1_pulse_high_len; top-level
 // reg [1:0] pulse_modes; top-level
-// reg [1:0] dac_permits; top-level
+// reg [1:0] soft_drive_enable; top-level
 // reg [0:0] ntw_amp_enable; top-level
 // reg [0:0] ntw_phs_enable; top-level
 // reg [0:0] system_bist_pass; top-level
 // reg [2:0] wave_trig_sel; top-level
-// reg [15:0] trigger_delay; top-level
+// reg [23:0] trigger_delay; top-level
 // reg [31:0] int_trigger_period; top-level
 // reg [0:0] soft_trigger; top-level single-cycle
 // reg [0:0] slow_snap_cic; top-level
+// reg [0:0] ext_permit_bypass; top-level
 // newad-force lb2 domain
 // reg [1:0] dac_drive_sel; top-level
 // reg [31:0] tx_dds_phase_step; top-level
@@ -314,6 +317,28 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     end endgenerate
 
     // ---------------------
+    // Interlock IO
+    // ---------------------
+    wire [0:0] drive_permit_sync;
+    wire [0:0] slow_permit_sync;
+    reg_tech_cdc drive_permit_cdc (.C(dsp_clk), .I(drive_permit_in), .O(drive_permit_sync));
+    reg_tech_cdc slow_permit_cdc  (.C(dsp_clk), .I(slow_permit_in), .O(slow_permit_sync));
+
+    wire external_permit_in;    // external permit input
+    wire internal_permit_out;   // internal generated permit output
+    wire [0:0] inlk_arc_permit;       // internal permit from power and arc protection
+    reg hpa_osc_permit=1'b1;    // internal permit from HPA oscillation detection, XXX TODO
+
+    assign external_permit_in = ext_permit_bypass ? 1'b1 : (drive_permit_sync && slow_permit_sync);
+    assign hpa_permit_out = hpa_osc_permit;
+    assign internal_permit_out = hpa_osc_permit && inlk_arc_permit;
+    wire [0:0] sum_drive_enable = internal_permit_out && external_permit_in;
+
+    assign fast_permit_out = internal_permit_out;
+    assign fast_rf_permit_out = internal_permit_out;
+    assign evg_permit_out = soft_drive_enable[0] && sum_drive_enable;  // XXX ALSU specific
+
+    // ---------------------
     // Triggering logic
     // ---------------------
     localparam [2:0] WAVE_TRIG_ALWAYS= 3'd4,  // internal trigger, cbuf continuous
@@ -359,11 +384,11 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     end
 
     // add trigger delay
-    pulse_gen #(.AW(16)) trig_delay_gen (
+    pulse_gen #(.AW(24)) trig_delay_gen (
         .clk        (dsp_clk),
         .trigger    (wave_trig_i),
         .start      (trigger_delay),
-        .high_len   (16'd1),
+        .high_len   (24'd1),
         .stb_in     (1'b1),
         .pulse_dval (wave_trig)
     );
@@ -384,7 +409,6 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire [15:0] slow_rdata;
     wire [63:0] evr_live_ts_dsp;
     wire slow_ready;
-    wire inlk_permit_in = drive_permit_in & slow_permit_in;
     cic_waves #(
         .N_CH               (N_CH),
         .N_ADC              (N_ADC),
@@ -414,7 +438,8 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .dsp_tag            (dsp_tag),
 
         .wave_trig          (wave_trig),
-        .inlk_permit_in     (inlk_permit_in),
+        .record_en          (sum_drive_enable),
+
         .inlk_data          (inlk_data),
         .inlk_dval          (inlk_dval),
         .inlk_last          (inlk_last),
@@ -436,6 +461,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire [15:0] mon_amp_out;
     wire [16:0] mon_phs_out;
     wire [N_CH-1:0] inlk_status;
+    wire [N_CH-1:0] first_fault_status;
     wire [N_CH-1:0] inlk_latch;
     wire [N_CH-1:0] inlk_hi;
     wire [N_CH-1:0] inlk_lo;
@@ -455,15 +481,18 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
        .mon_phs_out     (mon_phs_out),
        .mon_valid_out   (mon_valid_out),
        .mon_addr_out    (mon_addr_out),
+
+       .record_status_en(sum_drive_enable),  // first fault detection
        .fault_valid_out (fault_valid_out),
        .fault_addr_out  (fault_addr_out),
        .fault_amp_out   (fault_amp_out),
        .fault_phs_out   (fault_phs_out),
+
        .cmp_status_hi   (inlk_hi),
        .cmp_status_lo   (inlk_lo),
        .inlk_status     (inlk_status),
+       .first_fault_status(first_fault_status),
        .inlk_latch      (inlk_latch),
-       .inlk_permit_in  (inlk_permit_in),
        .inlk_permit_out (inlk_permit_out),
        `AUTOMATIC_inlk);
 
@@ -480,6 +509,8 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .permit_latch_out   (arc_permit_latch),
         .permit_sum_out     (arc_permit_sum),
         `AUTOMATIC_arc);
+
+    assign inlk_arc_permit = inlk_permit_out & arc_permit_sum;
 
     wire [15:0] mon_amp_lb;
     wire [16:0] mon_phs_lb;
@@ -532,37 +563,37 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     );
 
     // mapping
-    wire [N_DAC-1:0] drive_on;
-    wire signed [DWBB-1:0] drive_i [0:N_DAC-1];
-    wire signed [DWBB-1:0] drive_q [0:N_DAC-1];
-    wire signed [DWBB-1:0] drive_i_out [0:N_DAC-1];
-    wire signed [DWBB-1:0] drive_q_out [0:N_DAC-1];
-    wire signed [DWBB-1:0] amp_measured [0:N_DAC-1];
-    wire signed [DWBB-1:0] phs_measured [0:N_DAC-1];
-    wire signed [DWBB-1:0] amp_setpoint [0:N_DAC-1];
-    wire signed [DWBB-1:0] amp_setpoint_i [0:N_DAC-1];
-    wire signed [DWBB-1:0] max_amp_setpoint [0:N_DAC-1];
-    wire signed [DWBB-1:0] phs_setpoint [0:N_DAC-1];
-    wire [N_DAC-1:0] amp_loop_enable;
-    wire [N_DAC-1:0] amp_loop_reset;
-    wire [N_DAC-1:0] phs_loop_enable;
-    wire [N_DAC-1:0] phs_loop_reset;
-    wire signed [DWBB-1:0] Kp_amp [0:N_DAC-1];
-    wire signed [DWBB-1:0] Kp_phs [0:N_DAC-1];
-    wire signed [DWBB-1:0] Ki_amp [0:N_DAC-1];
-    wire signed [DWBB-1:0] Ki_phs [0:N_DAC-1];
+    wire [N_DRIVE-1:0] drive_on;
+    wire signed [DWBB-1:0] drive_i [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] drive_q [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] drive_i_out [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] drive_q_out [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] amp_measured [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] phs_measured [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] amp_setpoint [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] amp_setpoint_i [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] max_amp_setpoint [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] phs_setpoint [0:N_DRIVE-1];
+    wire [N_DRIVE-1:0] amp_loop_enable;
+    wire [N_DRIVE-1:0] amp_loop_reset;
+    wire [N_DRIVE-1:0] phs_loop_enable;
+    wire [N_DRIVE-1:0] phs_loop_reset;
+    wire signed [DWBB-1:0] Kp_amp [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] Kp_phs [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] Ki_amp [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] Ki_phs [0:N_DRIVE-1];
 
-    wire signed [DWBB-1:0] field_i_data [0:N_DAC-1];
-    wire signed [DWBB-1:0] field_q_data [0:N_DAC-1];
-    wire signed [DW-1:0] dac_i_out [0:N_DAC-1];
-    wire signed [DW-1:0] dac_q_out [0:N_DAC-1];
-    wire signed [14:0] err_out_amp [0:N_DAC-1];
-    wire signed [14:0] err_out_phs [0:N_DAC-1];
-    wire signed [14:0] err_out_amp_lb [0:N_DAC-1];
-    wire signed [14:0] err_out_phs_lb [0:N_DAC-1];
-    wire [N_DAC-1:0] pulse_dval;
-    wire [17:0] pulse_start [0:N_DAC-1];
-    wire [17:0] pulse_high_len [0:N_DAC-1];
+    wire signed [DWBB-1:0] field_i_data [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] field_q_data [0:N_DRIVE-1];
+    wire signed [DW-1:0] dac_i_out [0:N_DRIVE-1];
+    wire signed [DW-1:0] dac_q_out [0:N_DRIVE-1];
+    wire signed [14:0] err_out_amp [0:N_DRIVE-1];
+    wire signed [14:0] err_out_phs [0:N_DRIVE-1];
+    wire signed [14:0] err_out_amp_lb [0:N_DRIVE-1];
+    wire signed [14:0] err_out_phs_lb [0:N_DRIVE-1];
+    wire [N_DRIVE-1:0] pulse_dval;
+    wire [23:0] pulse_start [0:N_DRIVE-1];
+    wire [23:0] pulse_high_len [0:N_DRIVE-1];
 
     assign pulse_start[0] = loop0_pulse_start;
     assign pulse_high_len[0] = loop0_pulse_high_len;
@@ -597,7 +628,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     assign field_i_data[1] = sig_i_data[loop1_adc_chan];
     assign field_q_data[1] = sig_q_data[loop1_adc_chan];
 
-    generate for (ch=0; ch<N_DAC; ch=ch+1) begin: gen_loops
+    generate for (ch=0; ch<N_DRIVE; ch=ch+1) begin: gen_loops
         // ---------------------
         // feedback controller in baseband
         // ---------------------
@@ -641,7 +672,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         // ----------------------
         // Pulsing and permit at baseband
         // ----------------------
-        pulse_gen #(.AW(18)) pulse_gen (
+        pulse_gen #(.AW(24)) pulse_gen (
             .clk        (dsp_clk),
             .start      (pulse_start[ch]),
             .trigger    (wave_trig),
@@ -650,7 +681,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             .pulse_dval (pulse_dval[ch])
         );
 
-        assign drive_on[ch] = dac_permits[ch] && inlk_permit_out && arc_permit_sum && (pulse_modes[ch] ? pulse_dval[ch] : 1'b1);
+        assign drive_on[ch] = soft_drive_enable[ch] && sum_drive_enable && (pulse_modes[ch] ? pulse_dval[ch] : 1'b1);
         assign drive_i_out[ch] = drive_on[ch] ? drive_i[ch] : {DWBB{1'b0}};
         assign drive_q_out[ch] = drive_on[ch] ? drive_q[ch] : {DWBB{1'b0}};
 
@@ -681,30 +712,33 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         );
     end endgenerate
 
+    reg [DW-1:0] dac_data_a=0, dac_data_b=0;
     always @(dac_clk) begin
         case (dac_drive_sel)
             2'b00: begin    // loop 0 drives, I0Q0
-                dac_data_a_out <= dac_i_out[0];
-                dac_data_b_out <= dac_q_out[0];
+                dac_data_a <= dac_i_out[0];
+                dac_data_b <= dac_q_out[0];
             end
             2'b01: begin    // loop 1 drives, I1Q1
-                dac_data_a_out <= dac_i_out[1];
-                dac_data_b_out <= dac_q_out[1];
+                dac_data_a <= dac_i_out[1];
+                dac_data_b <= dac_q_out[1];
             end
             2'b10: begin    // dual loops I drive, I0I1
-                dac_data_a_out <= dac_i_out[0];
-                dac_data_b_out <= dac_i_out[1];
+                dac_data_a <= dac_i_out[0];
+                dac_data_b <= dac_i_out[1];
             end
             2'b11: begin    // dual loops Q drive, Q0Q1
-                dac_data_a_out <= dac_q_out[0];
-                dac_data_b_out <= dac_q_out[1];
+                dac_data_a <= dac_q_out[0];
+                dac_data_b <= dac_q_out[1];
             end
             default: begin
-                dac_data_a_out <= dac_i_out[0];
-                dac_data_b_out <= dac_q_out[0];
+                dac_data_a <= dac_i_out[0];
+                dac_data_b <= dac_q_out[0];
             end
         endcase
     end
+    assign dac_data_a_out = dac_data_a;
+    assign dac_data_b_out = dac_data_b;
 
     // ----------------------
     // Network analyzer feature
@@ -770,16 +804,17 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     // ---------------------
 
     wire [N_CH-1:0] inlk_status_lb;
+    wire [N_CH-1:0] first_fault_status_lb;
     wire [N_CH-1:0] inlk_latch_lb;
     wire [N_CH-1:0] inlk_hi_lb;
     wire [N_CH-1:0] inlk_lo_lb;
     wire [0:0] inlk_permit_out_lb;
-    data_xdomain #(.size(4*N_CH+1)) inlk_stat_xdomain (
+    data_xdomain #(.size(5*N_CH+1)) inlk_stat_xdomain (
         .clk_in   (dsp_clk),
         .gate_in  (dsp_tick),
-        .data_in  ({inlk_permit_out, inlk_latch, inlk_status, inlk_hi, inlk_lo}),
+        .data_in  ({inlk_permit_out, first_fault_status, inlk_latch, inlk_status, inlk_hi, inlk_lo}),
         .clk_out  (lb_clk),
-        .data_out ({inlk_permit_out_lb, inlk_latch_lb, inlk_status_lb, inlk_hi_lb, inlk_lo_lb})
+        .data_out ({inlk_permit_out_lb, first_fault_status_lb, inlk_latch_lb, inlk_status_lb, inlk_hi_lb, inlk_lo_lb})
     );
 
     wire [2:0] arc_permit_raw_lb;
@@ -823,20 +858,21 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     // lb_read: Match READ_DELAY=3 in system.v, check timing in simulation
     always @(posedge lb_clk) if (lb_read) begin
         case (lb_addr[3:0])
-            4'h1: reg_bank_0 <= inlk_hi_lb;           // alias: inlk_hi
-            4'h2: reg_bank_0 <= inlk_lo_lb;           // alias: inlk_lo
-            4'h3: reg_bank_0 <= inlk_status_lb;       // alias: inlk_status
-            4'h4: reg_bank_0 <= inlk_latch_lb;        // alias: inlk_latch
-            4'h5: reg_bank_0 <= inlk_permit_out_lb;   // alias: inlk_permit
-            4'h6: reg_bank_0 <= arc_permit_raw_lb;    // alias: arc_permit_raw
-            4'h7: reg_bank_0 <= arc_permit_latch_lb;  // alias: arc_permit_latch
-            4'h8: reg_bank_0 <= arc_permit_sum_lb;    // alias: arc_permit_sum
-            4'h9: reg_bank_0 <= err_out_amp_lb[0];    // alias: loop0_amp_err
-            4'ha: reg_bank_0 <= err_out_phs_lb[0];    // alias: loop0_phs_err
-            4'hb: reg_bank_0 <= err_out_amp_lb[1];    // alias: loop1_amp_err
-            4'hc: reg_bank_0 <= err_out_phs_lb[1];    // alias: loop1_phs_err
-            4'hd: reg_bank_0 <= evr_evcnt_lb;         // alias: evr_evcnt
-            4'he: reg_bank_0 <= evr_ts_valid_lb;      // alias: evr_ts_valid
+            4'h1: reg_bank_0 <= inlk_hi_lb;           // alias: rf_pwr_hi
+            4'h2: reg_bank_0 <= inlk_lo_lb;           // alias: rf_pwr_lo
+            4'h3: reg_bank_0 <= inlk_status_lb;       // alias: rf_pwr_status
+            4'h4: reg_bank_0 <= first_fault_status_lb;// alias: rf_pwr_first_fault_status
+            4'h5: reg_bank_0 <= inlk_latch_lb;        // alias: rf_pwr_latch
+            4'h6: reg_bank_0 <= inlk_permit_out_lb;   // alias: rf_pwr_permit_sum
+            4'h7: reg_bank_0 <= arc_permit_raw_lb;    // alias: arc_permit_raw
+            4'h8: reg_bank_0 <= arc_permit_latch_lb;  // alias: arc_permit_latch
+            4'h9: reg_bank_0 <= arc_permit_sum_lb;    // alias: arc_permit_sum
+            4'ha: reg_bank_0 <= err_out_amp_lb[0];    // alias: loop0_amp_err
+            4'hb: reg_bank_0 <= err_out_phs_lb[0];    // alias: loop0_phs_err
+            4'hc: reg_bank_0 <= err_out_amp_lb[1];    // alias: loop1_amp_err
+            4'hd: reg_bank_0 <= err_out_phs_lb[1];    // alias: loop1_phs_err
+            4'he: reg_bank_0 <= evr_evcnt_lb;         // alias: evr_evcnt
+            4'hf: reg_bank_0 <= evr_ts_valid_lb;      // alias: evr_ts_valid
             default: reg_bank_0 <= 32'hfaceface;
         endcase
         case (lb_addr[3:0])
@@ -859,6 +895,12 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             4'h5: reg_bank_2 <= ntw_cos_debug;
             4'h6: reg_bank_2 <= ntw_phase_debug;
             4'h7: reg_bank_2 <= trig_count;
+            4'h8: reg_bank_2 <= inlk_arc_permit;      // alias: fast_permit_out
+            4'h9: reg_bank_2 <= drive_permit_sync;    // alias: drive_permit_in
+            4'ha: reg_bank_2 <= slow_permit_sync;     // alias: slow_permit_in
+            4'hb: reg_bank_2 <= evg_permit_out;       // alias: evg_permit_out
+            4'hc: reg_bank_2 <= hpa_permit_out;
+            4'hd: reg_bank_2 <= sum_drive_enable;     // alias: drive_permit_out
             default: reg_bank_2 <= 32'hfaceface;
         endcase
     end
@@ -910,7 +952,4 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     end
 
     assign lb_rdata = lb_rdata_r;
-    assign fast_permit_out = inlk_permit_out & arc_permit_sum;
-    assign hpa_permit_out = fast_permit_out;
-
 endmodule

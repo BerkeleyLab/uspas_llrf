@@ -29,8 +29,9 @@ module monitor_inlk #(
     output [N_CH-1:0] cmp_status_hi,
     output [N_CH-1:0] cmp_status_lo,
     output [N_CH-1:0] inlk_status,
+    output [N_CH-1:0] first_fault_status,
     output [N_CH-1:0] inlk_latch,
-    input           inlk_permit_in,
+    input           record_status_en,  // trigger for latching faults
     output          inlk_permit_out
 );
 
@@ -110,8 +111,8 @@ always @(posedge clk) begin
     end
 
     inlk_latch_r <= inlk_ok & ({N_CH{reset_inlk}} | inlk_latch_r);
-    // latch first fault and values
-    if (inlk_permit_in) begin
+    // stop recording at falling edge, to latch first fault and values
+    if (record_status_en) begin
         first_inlk <= inlk_ok;
         fault_valid_out <= mon_valid_out;
         fault_addr_out <= mon_addr_out;
@@ -122,7 +123,8 @@ end
 assign inlk_latch  = inlk_latch_r;
 assign cmp_status_hi  = high;
 assign cmp_status_lo  = low;
-assign inlk_status = first_inlk;
+assign first_fault_status = first_inlk;
+assign inlk_status = inlk_ok;
 // permit mask: 1 to include, 0 to ignore
 assign inlk_permit_out = & (~permit_mask[N_CH-1:0] | inlk_latch);
 assign mon_valid_out = wave_valid;

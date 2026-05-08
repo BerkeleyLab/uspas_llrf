@@ -19,8 +19,10 @@ module arc_inlk #(
 );
 
 reg [N_CH-1:0] permit_latch_r=0;
+reg [N_CH-1:0] permit_raw_r=0;
 
 always @(posedge clk) begin
+    permit_raw_r <= dev_permit_in;
     permit_latch_r <= dev_permit_in & ({N_CH{reset_latch}} | permit_latch_r);
 end
 
@@ -29,5 +31,5 @@ assign dev_reset_out = reset_arc_dev;
 
 assign permit_latch_out = permit_latch_r;
 assign permit_sum_out = & ( ~permit_mask[N_CH-1:0] | permit_latch_r);
-assign permit_raw_out = {N_CH{1'b0}};  // XXX
+assign permit_raw_out = permit_raw_r;
 endmodule

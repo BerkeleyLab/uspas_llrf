@@ -248,8 +248,6 @@ zest #(
     .DAC_DCO_N      (ZEST_DAC_DCO_N     ),
 
     .dsp_clk_out    (dsp_clk),
-    .clk_div_out    (clk_div_out),
-    .adc_out_clk    (adc_out_clk),
     .adc_out_data   (adc_out_data),
     .dac_clk_out    (dac_clk_out),
     .dac_in_data_i  (dac_a_out[15:2]),

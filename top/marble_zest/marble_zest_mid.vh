@@ -144,9 +144,7 @@ assign lb_rdata = git_rev_id_sel ? git_rev_id :
 // LLRF Subsystem, @ lb_base_0
 // ---------------------------------
 wire        dsp_clk;
-wire [1:0]  clk_div_out;
 wire [16*8-1:0] adc_out_data;
-wire [7:0]  adc_out_clk;
 wire dac_clk_out;
 wire [15:0] dac_a_out;
 wire [15:0] dac_b_out;

@@ -120,8 +120,9 @@ class LLRFApp(LEEPDevice):
         self.reg_write([
             ('inlk_permit_mask', 0),  # bypass interlocks
             ('arc_permit_mask', 0),  # bypass interlocks
+            ('ext_permit_bypass', 1),  # bypass external permits
             ('pulse_modes', 0),
-            ('dac_permits', 3),
+            ('soft_drive_enable', 3),
             ('wave_samp_per', self.wave_samp_per),
             ('chan_keep', self.chan_keep)
         ])
