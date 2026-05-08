@@ -127,7 +127,7 @@ int main(void) {
         printf("==== EVR Init          ==== : %s.\n", pass?"PASS":"FAIL");
     }
 
-    set_llrf_dac_permit(pass);
+    set_llrf_soft_drive_enable(pass);
     set_llrf_bist_pass(pass);
 
     unsigned cnt=0;

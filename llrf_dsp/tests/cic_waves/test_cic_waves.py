@@ -41,7 +41,7 @@ class TB:
         dut.dsp_reset.value = 1
         dut.iq_dval.value = 0
         dut.ext_trig.value = 0
-        dut.inlk_permit_in.value = 1
+        dut.record_en.value = 1
         dut.cbuf_buf_flip.value = 0
         dut.lb_read.value = 0
         dut.lb_addr.value = 0

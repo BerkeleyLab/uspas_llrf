@@ -43,14 +43,21 @@ always @(posedge clk) begin
     sind_r <= i_sel ? sind_d2 : sind;
 end
 
+// Input pipeline stage: register LO and data one extra cycle before the
+// multiplier to pipeline the DSP48 B-port and resolve Vivado DPIP-1.
+reg signed [DWI-1:0]  a_data_p=0;
+always @(posedge clk) begin
+    a_data_p <= a_data;
+end
+
 // downconvert input signal to I and Q
 // an extra pipeline stage has been added to help routing near multiplier
 reg signed [DWP-1:0] mul_i=0, mul_q=0, mul_i1=0, mul_q1=0, mul_i2=0, mul_q2=0;
 always @(posedge clk) begin
-    mul_i  <= a_data * sind_r;
+    mul_i  <= a_data_p * sind_r;
     mul_i1 <= mul_i;
     mul_i2 <= mul_i1;
-    mul_q  <= a_data * cosd_r;
+    mul_q  <= a_data_p * cosd_r;
     mul_q1 <= mul_q;
     mul_q2 <= mul_q1;
 end

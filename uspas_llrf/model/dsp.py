@@ -132,7 +132,7 @@ class DDC(LLRFModule):
             den (int): denominator of IF / Fs. Defaults to 11.
         """
         super().__init__(num, den)
-        self.gain = np.sin(self.omega) * 2 * self.z**(-self.den + 2)
+        self.gain = np.sin(self.omega) * 2 * self.z**(-self.den + 1)
 
     def gen_ddc_data(self, adc_data):
         """Generate I,Q values from 2 consecutive ADC samples using
@@ -216,6 +216,7 @@ class CICWaveRecorder(LLRFModule):
     def __init__(self, num: int = 4, den: int = 11,
                  cic_base_period: int = 22,
                  shift_base: int = 7,
+                 shift_add: int = 0,
                  wave_samp_per: int = 1) -> None:
         """Waveform recorder with Cascaded Integrator-Comb Filter.
             Decimation factor = cic_period * wave_samp_per.
@@ -231,10 +232,13 @@ class CICWaveRecorder(LLRFModule):
               Must be multiple of den. Defaults to 22.
             shift_base (int): scaling factor as cc_shift_base parameter.
                 number of bits to discard to avoid saturation.
+            shift_add (int): additional shift to be added on register wave_shift.
+                This is to allow headroom for various FSETS.
             wave_samp_per (int): wave sample period.
         """
         super().__init__(num, den)
         self.shift_base = shift_base
+        self.shift_add = shift_add
         self.cic_base_period = cic_base_period
         assert self.cic_base_period % self.den == 0, \
             "CIC base period must be multiple of DEN."
@@ -252,7 +256,7 @@ class CICWaveRecorder(LLRFModule):
         cic_bit_growth = 2 * np.log2(cic_R)
         cic_snr_bit_growth = np.log2(cic_R / 2) / 2
         full_shift = np.floor(cic_bit_growth - cic_snr_bit_growth)
-        self._wave_shift = int(max((full_shift - self.shift_base), 0))
+        self._wave_shift = int(max((full_shift - self.shift_base), 0)) + self.shift_add
         self._gain = 2**(cic_bit_growth - self.shift_base - self._wave_shift)
 
     @property

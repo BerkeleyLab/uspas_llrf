@@ -60,7 +60,7 @@ void reset_interlock_permit(void);
  * @brief  Set permit to both DACs
  * @param   permit -  1 to enable, 0 to disable
 *******************************************************************************/
-void set_llrf_dac_permit(bool permit);
+void set_llrf_soft_drive_enable(bool permit);
 
 /***************************************************************************//**
  * @brief  For CPU to set built-in self test result after boot

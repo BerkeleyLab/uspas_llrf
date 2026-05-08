@@ -38,7 +38,7 @@ module cic_waves #(
 
     // triggers
     input                      wave_trig,
-    input                      inlk_permit_in,
+    input                      record_en,
 
     output signed [15:0]       inlk_data,
     output                     inlk_dval,
@@ -85,7 +85,7 @@ module cic_waves #(
     wire cbuf_stop = cbuf_delay_stop & ~cbuf_delay_stop1;
     always @(posedge dsp_clk) begin
         cbuf_delay_stop1 <= cbuf_delay_stop;
-        delay_cnt <= inlk_permit_in ? 0 : cbuf_delay_stop ? delay_cnt : delay_cnt + cbuf_sync;
+        delay_cnt <= record_en ? 0 : cbuf_delay_stop ? delay_cnt : delay_cnt + cbuf_sync;
     end
 
     // stop recording stream after buffer is full if in external trigger mode
@@ -127,7 +127,8 @@ module cic_waves #(
         .reset        (dsp_reset),
         .stb_in       (iq_dval),
         .d_in         (iq_data),   // Flattened array of unprocessed IQ streams. CH0 in LSBs
-        .cic_sample   (cic_sample & stream_valid),
+        // .cic_sample   (cic_sample & stream_valid),  // XXX will interrupt inlk stream
+        .cic_sample   (cic_sample),
 
         // Post-integrator conveyor belt tap
         .di_stb_out   (di_stb_out),

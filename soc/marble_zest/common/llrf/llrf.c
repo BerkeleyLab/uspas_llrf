@@ -77,8 +77,8 @@ void align_mo_phase(void) {
     // print_str(" deg.\n");
 }
 
-void set_llrf_dac_permit(bool permit) {
-    write_lb_reg(DAC_PERMITS, permit ? 0b11 :0);
+void set_llrf_soft_drive_enable(bool permit) {
+    write_lb_reg(SOFT_DRIVE_ENABLE, permit ? 0b11 :0);
 }
 
 void set_llrf_bist_pass(bool pass) {

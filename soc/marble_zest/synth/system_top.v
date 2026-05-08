@@ -174,9 +174,7 @@ endcase
 
 wire        dsp_clk_out;
 wire        dac_clk_out;
-wire [1:0]  clk_div_out;
 wire [16*8-1:0] adc_out_data;
-wire [7:0]  adc_out_clk;
 wire [32:0] mem_packed_ret_0;
 wire [13:0] dac_in_data_i;
 wire [13:0] dac_in_data_q;
@@ -233,8 +231,6 @@ zest #(
     .DAC_DCO_N      (ZEST_DAC_DCO_N     ),
 
     .dsp_clk_out    (dsp_clk_out),
-    .clk_div_out    (clk_div_out),
-    .adc_out_clk    (adc_out_clk),
     .adc_out_data   (adc_out_data),
     .dac_clk_out    (dac_clk_out),
     .dac_in_data_i  (dac_in_data_i),

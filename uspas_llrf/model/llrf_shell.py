@@ -102,7 +102,7 @@ class LLRFShell(LLRF_DSP):
         loop0_pulse_high_len: int = 10
         loop1_pulse_start: int = 0
         loop1_pulse_high_len: int = 10
-        dac_permits: int = 0b11
+        soft_drive_enable: int = 0b11
         slow_snap_cic: bool = False
         prl_adc_chan: int = 0
         loop0_adc_chan: int = 0
@@ -140,7 +140,7 @@ class LLRFShell(LLRF_DSP):
         self.cic_inlk = CICWaveRecorder(
             num=self.num, den=self.den,
             cic_base_period=self.CIC_BASE_PERIOD,
-            shift_base=self.INLK_SHIFT_BASE)
+            shift_base=self.INLK_SHIFT_BASE, shift_add=self.INLK_SHIFT_ADD)
         self.cic_mon = CICWaveRecorder(
             num=self.num, den=self.den,
             cic_base_period=self.CIC_BASE_PERIOD,

@@ -40,7 +40,7 @@ module test_cic_waves
     input      [2:0]           wave_trig_sel,
 
     input                      ext_trig,
-    input                      inlk_permit_in,
+    input                      record_en,
 
     output signed [15:0]       inlk_data,
     output                     inlk_dval,
@@ -143,7 +143,7 @@ module test_cic_waves
         .dsp_tag            (dsp_tag),
 
         .wave_trig          (wave_trig_i),
-        .inlk_permit_in     (inlk_permit_in),
+        .record_en     (record_en),
 
         .inlk_data          (inlk_data),
         .inlk_dval          (inlk_dval),
