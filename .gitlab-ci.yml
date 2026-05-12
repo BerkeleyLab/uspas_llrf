@@ -101,10 +101,10 @@ alsu_run:
     CLK_F: 458.7e6
   before_script:
     - pip install -e .
-    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM2 -f ${EVG_F}  # EVG ref
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM4 -f ${EVG_F}  # EVG ref
     - python3 -m uspas_llrf.tools.dual_evg -r
     - sleep 10
-    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM1 -f ${CLK_F}  # CLK ref
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
     - cd top/marble_zest
   stage: run
   tags:
@@ -125,7 +125,7 @@ awa_run:
     CLK_F: 1320e6
   before_script:
     - pip install -e .
-    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM1 -f ${CLK_F}  # CLK ref
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
     - cd top/marble_zest
   stage: run
   tags:
@@ -147,10 +147,10 @@ lemp_run:
     CLK_F: 2856e6
   before_script:
     - pip install -e .
-    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM2 -f ${EVG_F}  # EVG ref
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM4 -f ${EVG_F}  # EVG ref
     - python3 -m uspas_llrf.tools.dual_evg -r
     - sleep 10
-    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM1 -f ${CLK_F}  # CLK ref
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
     - cd top/marble_zest
   stage: run
   tags:
@@ -171,7 +171,7 @@ uspas_run:
     CLK_F: 460e6
   before_script:
     - pip install -e .
-    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM1 -f ${CLK_F}  # CLK ref
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
     - cd top/marble_zest
   stage: run
   tags:
