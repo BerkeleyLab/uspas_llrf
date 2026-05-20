@@ -25,23 +25,23 @@ software without specific prior written permission of Berkeley Lab.
 (4) Use of the software, in source or binary form is for NON-COMMERCIAL USE purposes ONLY.
 All commercial use rights for the software are reserved by Berkeley Lab. A separate commercial
 use license is available from Berkeley Lab at IPO@lbl.gov
+
 (5) User agrees to indemnify, defend, and hold harmless Berkeley Lab, the U.S. Government,
 the software developers, the software sponsors, and their agents, officers, and employees,
 against any and all claims, suits, losses, damage, costs, fees, and expenses arising out of or in
 connection with this Agreement.  User agrees to pay all costs incurred by Berkeley Lab in
 enforcing this provision, including reasonable attorney fees.
+
 (6) In the event User creates any bug fixes, patches, upgrades, updates, modifications,
 derivative works or enhancements to the source code or binary code of the software
 (&quot;Enhancements&quot;) User hereby grants Berkeley Lab and the U.S. Government a paid-up, non-
 exclusive, irrevocable, worldwide license in the Enhancements to reproduce, prepare derivative
 works, distribute copies to the public, perform publicly and display publicly, and to permit
 others to do so.
+
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &quot;AS IS&quot; AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-
-102025 v2.0
-
 DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
 ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
@@ -49,14 +49,17 @@ OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 *** Copyright Notice ***
 
 USPAS Digital Low-Level RF firmware and software suite (uspas_llrf) Copyright (c) 2024, The
 Regents of the University of California, through Lawrence Berkeley National Laboratory
 ("Berkeley Lab") subject to receipt of any required approvals from the U.S. Dept. of Energy.  All
 rights reserved.
+
 If you have questions about your rights to use, distribute this software, or use for commercial
 purposes, please contact Berkeley Lab&#39;s Intellectual Property Office at IPO@lbl.gov.
+
 NOTICE: This Software was developed under Contract No. DE-AC02-05CH11231 with the
 Department of Energy ("DOE"). During the period of commercialization or such other time
 period specified by DOE, the U.S. Government is granted for itself and others acting on its
