@@ -15,7 +15,7 @@ image: mohs.dhcp.lbl.gov/xilinx_env_trixie_custom_verilator
 flake8_check:
   stage: test
   script:
-   - flake8
+   - flake8 uspas_llrf llrf_dsp/tests
 
 llrf_dsp_test:
   before_script:
@@ -23,11 +23,7 @@ llrf_dsp_test:
     - cd llrf_dsp
   stage: test
   script:
-    - make FSET=${TARGET} COCOTB_RANDOM_SEED=1774201716
-  parallel:
-    matrix:
-      # - TARGET: [ALSU, USPAS, LEMP, AWA]
-      - TARGET: [USPAS]
+    - make
 
 llrf_cdc_test:
   before_script:

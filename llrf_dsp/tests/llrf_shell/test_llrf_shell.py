@@ -10,18 +10,17 @@ import numpy as np
 from dataclasses import asdict
 from pprint import pformat
 import itertools
-import os
 
 
 class TB:
-    def __init__(self, dut, conf='USPAS', wave_samp_per=1,
+    def __init__(self, dut, f_config='USPAS', wave_samp_per=1,
                  amp_exp=None, phs_exp=None):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
         self.cbuf_aw = dut.CBUF_AW.value.to_unsigned()
         self.sig_buf_aw = dut.SIG_BUF_AW.value.to_unsigned()
-        self.conf = conf
-        config = dsp_config[conf]
+        self.f_config = f_config
+        config = dsp_config[f_config]
         # Override tx dds setting for loopback test at IF_adc
         config['TX_NUM_DDS'] = config['NUM_DDS']
         config['TX_DEN_DDS'] = config['DEN_DDS'] * 2
@@ -31,7 +30,7 @@ class TB:
         self.llrf = llrf = LLRFShell(config, wave_samp_per=wave_samp_per)
         self.lb = LocalbusAppMaster(
             dut, dut.lb_clk, regmap_json_path='../../llrf_shell.json')
-        self.log_banner(f'Simulating: {conf}')
+        self.log_banner(f'Simulating: {f_config}')
         cocotb.log.info(f'LLRF RX:\n{llrf.rx}')
         cocotb.log.info(f'LLRF TX:\n{llrf.tx}')
         cocotb.log.debug(f'Calibrations:\n{pformat(llrf.cal_factors)}')
@@ -230,7 +229,7 @@ class TB:
                 f"measured {self.sig_names[chan]:12s} min: {min:8.2f} cnt,  "
                 f"max: {max:6.2f} cnt")
 
-        self.log_banner('Interlock')
+        self.log_banner('RF Monitors for Interlock')
         for chan in [self.phaseref_adc, self.loopback_adc]:
             inlk_meas = await self.read_inlk_task(chan)
             self.check_sig(inlk_meas / self.llrf.inlk_gain,
@@ -339,13 +338,14 @@ class TB:
 
 @cocotb.test(timeout_time=600, timeout_unit='us')
 @cocotb.parametrize(
+    f_config=['USPAS', 'ALSU', 'LEMP', 'AWA'],
     amp_exp=[15000, 30000],
     phs_exp=[-100, 45, 270],
     loop=['loop0', 'loop1']
 )
-async def test(dut, amp_exp, phs_exp, loop):
+async def test(dut, f_config, amp_exp, phs_exp, loop):
     tb = TB(dut,
-            conf=os.getenv('FSET', 'USPAS'),
+            f_config=f_config,
             wave_samp_per=random.randint(1, 8),
             amp_exp=amp_exp, phs_exp=phs_exp)
     await tb.test_open_loop(loop)
@@ -355,12 +355,13 @@ async def test(dut, amp_exp, phs_exp, loop):
 
 @cocotb.test(timeout_time=600, timeout_unit='us')
 @cocotb.parametrize(
+    f_config=['USPAS', 'ALSU', 'LEMP', 'AWA'],
     trig_sel=[WaveTrigSel.Always, WaveTrigSel.Internal]
 )
-async def test_cic_waves(dut, amp_exp=15000, phs_exp=45,
+async def test_cic_waves(dut, f_config, amp_exp=15000, phs_exp=45,
                          trig_sel=WaveTrigSel.Always):
     tb = TB(dut,
-            conf=os.getenv('FSET', 'USPAS'),
+            f_config=f_config,
             wave_samp_per=random.randint(1, 8),
             amp_exp=amp_exp, phs_exp=phs_exp)
     tb.log_banner('CIC waveform test')
