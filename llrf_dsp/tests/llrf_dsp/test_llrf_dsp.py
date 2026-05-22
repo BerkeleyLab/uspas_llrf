@@ -166,47 +166,12 @@ class TB:
 
 @cocotb.test(timeout_time=30, timeout_unit='us')
 @cocotb.parametrize(
+    f_config=['USPAS', 'ALSU', 'LEMP', 'AWA'],
     amp_exp=[5000, 15000],
     phs_exp=[-100, 45, 270]
 )
-async def test_alsu(dut, amp_exp, phs_exp):
-    tester = TB(dut, f_config='ALSU')
-    await tester.test_rx(amp_exp, phs_exp)
-    await tester.test_open_loop(amp_exp, phs_exp)
-    await tester.test_close_loop(amp_exp, phs_exp)
-
-
-@cocotb.test(timeout_time=30, timeout_unit='us')
-@cocotb.parametrize(
-    amp_exp=[5000, 15000],
-    phs_exp=[-100, 45, 270]
-)
-async def test_uspas(dut, amp_exp, phs_exp):
-    tester = TB(dut, f_config='USPAS')
-    await tester.test_rx(amp_exp, phs_exp)
-    await tester.test_open_loop(amp_exp, phs_exp)
-    await tester.test_close_loop(amp_exp, phs_exp)
-
-
-@cocotb.test(timeout_time=30, timeout_unit='us')
-@cocotb.parametrize(
-    amp_exp=[5000, 15000],
-    phs_exp=[-100, 45, 270]
-)
-async def test_lemp(dut, amp_exp, phs_exp):
-    tester = TB(dut, f_config='LEMP')
-    await tester.test_rx(amp_exp, phs_exp)
-    await tester.test_open_loop(amp_exp, phs_exp)
-    await tester.test_close_loop(amp_exp, phs_exp)
-
-
-@cocotb.test(timeout_time=30, timeout_unit='us')
-@cocotb.parametrize(
-    amp_exp=[5000, 15000],
-    phs_exp=[-100, 45, 270]
-)
-async def test_awa(dut, amp_exp, phs_exp):
-    tester = TB(dut, f_config='AWA')
+async def test(dut, f_config, amp_exp, phs_exp):
+    tester = TB(dut, f_config)
     await tester.test_rx(amp_exp, phs_exp)
     await tester.test_open_loop(amp_exp, phs_exp)
     await tester.test_close_loop(amp_exp, phs_exp)

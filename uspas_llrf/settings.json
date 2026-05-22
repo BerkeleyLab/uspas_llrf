@@ -71,7 +71,7 @@
             "CIC_BASE_PERIOD":   28,
             "CIC_SHIFT_BASE":    7,
             "INLK_SHIFT_BASE":   11,
-            "INLK_SHIFT_ADD":    0,
+            "INLK_SHIFT_ADD":    1,
             "PRL_ADC_CHAN":      3,
             "LOOP0_ADC_CHAN":    0,
             "LOOP1_ADC_CHAN":    0,

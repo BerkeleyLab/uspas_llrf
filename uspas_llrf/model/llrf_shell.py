@@ -219,8 +219,11 @@ class LLRFShell(LLRF_DSP):
             which include
               * RX (DDC) gain, including CORDIC in monitor_inlk.v
               * CIC filter (inlk) gain
+            Ensure the gain is less than 1 to avoid saturation.
         """
-        return self.cic_inlk.gain * self.rx.gain
+        inlk_gain = self.cic_inlk.gain * self.rx.gain
+        assert np.abs(inlk_gain) <= 1, f"inlk_gain {inlk_gain} > 1"
+        return inlk_gain
 
     @property
     def inlk_tx_gain(self):

@@ -1,6 +1,7 @@
 *.pyc
 *.vcd
 *.fst
+*.DS_Store
 *results.xml
 *sim_build/
 *.ipynb_checkpoints/
