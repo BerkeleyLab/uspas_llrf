@@ -58,7 +58,21 @@
     "adc7_buf": {
         "base_addr": "0x19000",
         "addr_width": 12,
-        "access": "r",
+        "access": "rw",
+        "data_width": 16,
+        "sign": "signed"
+    },
+    "pulse0_buf": {
+        "base_addr": "0x1a000",
+        "addr_width": 12,
+        "access": "rw",
+        "data_width": 16,
+        "sign": "signed"
+    },
+    "pulse1_buf": {
+        "base_addr": "0x1b000",
+        "addr_width": 12,
+        "access": "rw",
         "data_width": 16,
         "sign": "signed"
     },
@@ -234,7 +248,7 @@
     "adc7_i_buf": {
         "base_addr": "0x23000",
         "addr_width": 12,
-        "access": "r",
+        "access": "rw",
         "data_width": 18,
         "sign": "signed"
     },
@@ -290,7 +304,7 @@
     "adc7_q_buf": {
         "base_addr": "0x2d000",
         "addr_width": 12,
-        "access": "r",
+        "access": "rw",
         "data_width": 18,
         "sign": "signed"
     },
@@ -300,5 +314,20 @@
         "access": "r",
         "data_width": 18,
         "sign": "signed"
-    }
+    },
+    "pulse_res_shift": {
+        "base_addr": "0x10803",
+        "addr_width": 0,
+        "access": "rw",
+        "data_width": 5,
+        "sign": "unsigned"
+    },
+	"amp_table_enable": {
+	  "base_addr": "0x10804",
+        "addr_width": 0,
+        "access": "rw",
+        "data_width": 2,
+        "sign": "unsigned"
+	}    
+    
 }
