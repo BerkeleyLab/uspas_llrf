@@ -323,8 +323,8 @@ wire [DWBB-1:0] amp_lut_rdata[0:1];
 wire [SIG_BUF_AW-1:0] amp_lut_addr[0:1];
 reg  [DWBB-1:0] lb_sigbuf_readback[0:1];
 
-localparam [17-SIG_BUF_AW:0] LB_SIGBUF0_PAGE = (18'h1a000 >> SIG_BUF_AW);
-localparam [17-SIG_BUF_AW:0] LB_SIGBUF1_PAGE = (18'h1b000 >> SIG_BUF_AW);
+localparam [17-SIG_BUF_AW:0] LB_SIGBUF0_PAGE = (18'h2e000 >> SIG_BUF_AW);
+localparam [17-SIG_BUF_AW:0] LB_SIGBUF1_PAGE = (18'h2f000 >> SIG_BUF_AW);
 
 wire we_lb_sigbuf0 = lb_write && (lb_addr[17:SIG_BUF_AW] == LB_SIGBUF0_PAGE);
 wire we_lb_sigbuf1 = lb_write && (lb_addr[17:SIG_BUF_AW] == LB_SIGBUF1_PAGE);
@@ -707,8 +707,8 @@ end
     assign phs_loop_enable[1] = loop1_phs_enable;
     assign amp_loop_reset[1] = loop1_amp_reset;
     assign phs_loop_reset[1] = loop1_phs_reset;
-	assign amp_setpoint_src[0] = amp_table_enable[0] ? $signed(amp_lut_rdata[0]) : amp_setpoint[0];
-	assign amp_setpoint_src[1] = amp_table_enable[1] ? $signed(amp_lut_rdata[1]) : amp_setpoint[1];
+	assign amp_setpoint_src[0] = amp_table_enable[0] ? $signed(amp_lut_rdata[0])+amp_setpoint[0] : amp_setpoint[0];
+	assign amp_setpoint_src[1] = amp_table_enable[1] ? $signed(amp_lut_rdata[1])+amp_setpoint[1] : amp_setpoint[1];
     assign field_i_data[0] = sig_i_data[loop0_adc_chan];
     assign field_q_data[0] = sig_q_data[loop0_adc_chan];
     assign field_i_data[1] = sig_i_data[loop1_adc_chan];
@@ -769,7 +769,7 @@ end
             .pulse_last (),
             .mod_ticks  (pulse_mod_ticks[ch])
         );
-        assign drive_on[ch] = soft_drive_enable[ch] && sum_drive_enable && (pulse_modes[ch] ? pulse_dval[ch] : 1'b1);
+        assign drive_on[ch] = soft_drive_enable[ch] && sum_drive_enable && ((pulse_modes[ch] ? pulse_dval[ch] : 1'b1) || amp_table_enable[ch]);
         assign drive_i_out[ch] = drive_on[ch] ? drive_i[ch] : {DWBB{1'b0}};
         assign drive_q_out[ch] = drive_on[ch] ? drive_q[ch] : {DWBB{1'b0}};
 
@@ -1012,28 +1012,30 @@ end
             18'h17???: lb_rdata_r <= adc_raw_out[5];
             18'h18???: lb_rdata_r <= adc_raw_out[6];
             18'h19???: lb_rdata_r <= adc_raw_out[7];
-			18'h1a???: lb_rdata_r <= lb_sigbuf_readback[0];
-			18'h1b???: lb_rdata_r <= lb_sigbuf_readback[1];
-            18'h1c???: lb_rdata_r <= sig_i_buf_out[0];  // adc0_i_buf
-            18'h1d???: lb_rdata_r <= sig_i_buf_out[1];
-            18'h1e???: lb_rdata_r <= sig_i_buf_out[2];
-            18'h1f???: lb_rdata_r <= sig_i_buf_out[3];
-            18'h20???: lb_rdata_r <= sig_i_buf_out[4];
-            18'h21???: lb_rdata_r <= sig_i_buf_out[5];
-            18'h22???: lb_rdata_r <= sig_i_buf_out[6];
-            18'h23???: lb_rdata_r <= sig_i_buf_out[7];  // adc7_i_buf
-            18'h24???: lb_rdata_r <= sig_i_buf_out[8];  // drv0_i_buf
-            18'h25???: lb_rdata_r <= sig_i_buf_out[9];  // drv1_i_buf
-            18'h26???: lb_rdata_r <= sig_q_buf_out[0];  // adc0_q_buf
-            18'h27???: lb_rdata_r <= sig_q_buf_out[1];
-            18'h28???: lb_rdata_r <= sig_q_buf_out[2];
-            18'h29???: lb_rdata_r <= sig_q_buf_out[3];
-            18'h2a???: lb_rdata_r <= sig_q_buf_out[4];
-            18'h2b???: lb_rdata_r <= sig_q_buf_out[5];
-            18'h2c???: lb_rdata_r <= sig_q_buf_out[6];
-            18'h2d???: lb_rdata_r <= sig_q_buf_out[7];  // adc7_q_buf
-            18'h2e???: lb_rdata_r <= sig_q_buf_out[8];  // drv0_q_buf
-            18'h2f???: lb_rdata_r <= sig_q_buf_out[9];  // drv1_q_buf
+            18'h1a???: lb_rdata_r <= sig_i_buf_out[0];
+            18'h1b???: lb_rdata_r <= sig_i_buf_out[1];
+            18'h1c???: lb_rdata_r <= sig_i_buf_out[2];
+            18'h1d???: lb_rdata_r <= sig_i_buf_out[3];
+            18'h1e???: lb_rdata_r <= sig_i_buf_out[4];
+            18'h1f???: lb_rdata_r <= sig_i_buf_out[5];
+            18'h20???: lb_rdata_r <= sig_i_buf_out[6];
+            18'h21???: lb_rdata_r <= sig_i_buf_out[7];
+            18'h22???: lb_rdata_r <= sig_i_buf_out[8];
+            18'h23???: lb_rdata_r <= sig_i_buf_out[9];
+
+            18'h24???: lb_rdata_r <= sig_q_buf_out[0];
+            18'h25???: lb_rdata_r <= sig_q_buf_out[1];
+            18'h26???: lb_rdata_r <= sig_q_buf_out[2];
+            18'h27???: lb_rdata_r <= sig_q_buf_out[3];
+            18'h28???: lb_rdata_r <= sig_q_buf_out[4];
+            18'h29???: lb_rdata_r <= sig_q_buf_out[5];
+            18'h2a???: lb_rdata_r <= sig_q_buf_out[6];
+            18'h2b???: lb_rdata_r <= sig_q_buf_out[7];
+            18'h2c???: lb_rdata_r <= sig_q_buf_out[8];
+            18'h2d???: lb_rdata_r <= sig_q_buf_out[9];
+
+            18'h2e???: lb_rdata_r <= lb_sigbuf_readback[0];
+            18'h2f???: lb_rdata_r <= lb_sigbuf_readback[1];
             18'h3????: lb_rdata_r <= cbuf_out;
             18'h008??: lb_rdata_r <= 32'h0;  // LEEP old config ROM compatibility
             18'h???0?: lb_rdata_r <= reg_bank_0;
