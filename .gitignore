@@ -34,6 +34,8 @@ llrf_dsp/llrf_shell_init_regs.json
 llrf_dsp/llrf_shell_tb
 llrf_dsp/llrf_shell.json
 llrf_dsp/_autogen/addr_map_llrf_shell.vh
+llrf_dsp/llrf_shell.v
+llrf_dsp/static_regmap.json
 soc/marble_zest/*/init_llrf.c
 soc/marble_zest/*/llrf_regs_addr.h
 soc/marble_zest/*/marble_regs_addr.h

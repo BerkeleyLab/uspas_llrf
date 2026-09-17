@@ -25,6 +25,7 @@ VFLAGS += -g2012
 .DEFAULT_GOAL = all
 .PHONY: all clean
 all: llrf_shell_expand.v
+	cp facilities/uspas/* .
 	cp "$(FACILITY_DIR)"/* .
 	$(MAKE) -C tests FSET=$(FSET)
 
@@ -47,5 +48,4 @@ CLEAN += llrf_shell_yosys.json llrf_shell_cdc.txt
 
 clean::
 	$(MAKE) -C tests clean
-	cp facilities/uspas/* .
 include $(BUILD_DIR)/bottom_rules.mk
