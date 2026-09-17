@@ -164,6 +164,7 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [11:0] tx_dds_modulo; top-level
 // reg [17:0] tx_dds_amplitude; top-level
 // reg [0:0] duc_spectral_flip; top-level
+// reg [0:0] tx_afe_spectral_flip; top-level
 // newad-force lb3 domain
 // reg [7:0] evcode; top-level
 // reg [6:0] evr_oc_delay; top-level
@@ -699,7 +700,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         ) duc (
             .dsp_clk        (dsp_clk),
             .dsp_reset      (dsp_reset),
-            .spectral_flip  (duc_spectral_flip),
+            .spectral_flip  (duc_spectral_flip ^ tx_afe_spectral_flip),
             .i_data_in      (drive_i_out[ch]),
             .i_data_valid   (1'b1),
             .q_data_in      (drive_q_out[ch]),

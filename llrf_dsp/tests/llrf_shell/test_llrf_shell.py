@@ -25,6 +25,7 @@ class TB:
         config['TX_NUM_DDS'] = config['NUM_DDS']
         config['TX_DEN_DDS'] = config['DEN_DDS'] * 2
         config['TX_SECOND_NYQUIST'] = False
+        config['TX_AFE_SPECTRAL_FLIP'] = False
         # Force CW mode to allow loop tests
         config['PULSE_MODES'] = 0
         self.llrf = llrf = LLRFShell(config, wave_samp_per=wave_samp_per)
