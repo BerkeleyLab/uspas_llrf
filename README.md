@@ -100,9 +100,11 @@ make
 
 ```bash
 cd top/marble_zest
-make FSET={TARGET}
+make FSET={TARGET} facility={FACILITY}
 ```
-Where TARGET is ALSU, AWA, LEMP or USPAS.
+Where TARGET is ALSU, AWA, LEMP or USPAS and FACILITY is alsu, awa
+lemp, uspas, pip-ii and vts.  FACILITY will be default to uspas if not
+specified.
 
 ### Boot-load soft core program
 

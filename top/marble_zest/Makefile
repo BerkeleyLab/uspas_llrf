@@ -3,7 +3,7 @@ include $(TOP)settings.mk
 
 include $(APP_SOC_DIR)/common/common.mk
 include $(BUILD_DIR)/top_rules.mk
-
+facility ?= uspas
 TARGET   = marble_zest
 HARDWARE = marble
 # Connection to swap-git-ID feature; see comments in that file
