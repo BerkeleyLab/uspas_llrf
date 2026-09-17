@@ -398,8 +398,8 @@ end
             .lb_flip_buf    (sig_buf_flip            ),
             .lb_addr        (lb_addr[SIG_BUF_AW-1:0] ),
             .lb_rdata       (sig_q_buf_out[ch]       ),
-			.buf_ready		(sig_iq_buf_ready[N_CH+ch]),
-			.buf_count		(sig_iq_buf_counts[N_CH+ch]),
+			.buf_ready      (sig_iq_buf_ready[N_CH+ch]),
+			.buf_count      (sig_iq_buf_counts[N_CH+ch]),
 			.buf_transferred(sig_buf_iq_transferred[N_CH+ch])
         );
     end endgenerate
