@@ -13,25 +13,30 @@
 // 10a00 to 10a07   amp out
 // 10a10 to 10a17   phs out
 // 11000 to 117ff   mirror (`define MIRROR_WIDTH 7)
-// 12000 to 12fff   adc0_buf
+// 12000 to 127ff   adc0_buf
+// 12800 to 12fff   adc1_buf
+// 13000 to 137ff   adc2_buf
+// 13800 to 13fff   adc3_buf
+// 14000 to 147ff   adc4_buf
+// 14800 to 14fff   adc5_buf
+// 15000 to 157ff   adc6_buf
+// 15800 to 15fff   adc7_buf
+// 16000 to 167ff   adc0_i_buf
 // ...
-// 19000 to 19fff   adc7_buf
-// 1c000 to 1cfff   adc0_i_buf
+// 19800 to 19fff   adc7_i_buf
+// 1a000 to 1a7ff   dac0_i_buf
+// 1a800 to 1afff   dac1_i_buf
+// 1b000 to 1b7ff   adc0_q_buf
 // ...
-// 23000 to 23fff   adc7_i_buf
-// 24000 to 24fff   dac0_i_buf
-// 25000 to 25fff   dac1_i_buf
-// 26000 to 26fff   adc0_q_buf
-// ...
-// 2d000 to 2dfff   adc7_q_buf
-// 2e000 to 2efff   dac0_q_buf
-// 2f000 to 2ffff   dac1_q_buf
+// 1e800 to 1efff   adc7_q_buf
+// 1f000 to 1f7ff   dac0_q_buf
+// 1f800 to 1ffff   dac1_q_buf
 // 30000 to 3ffff   Circular buffer
 
 module llrf_shell #(
     parameter integer CBUF_DW = 24,
     parameter integer CBUF_AW = 16,
-    parameter integer SIG_BUF_AW = 12,
+    parameter integer SIG_BUF_AW = 11,
     localparam integer CIC_SHIFT_BASE = 7,
     localparam integer INLK_SHIFT_BASE = 11, // near 2*np.log2(CIC_BASE_PERIOD) + 2
     localparam integer MON_RW = 44, // must <= 44, see ccfilt.v:51
@@ -510,7 +515,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .permit_sum_out     (arc_permit_sum),
         `AUTOMATIC_arc);
 
-    assign inlk_arc_permit = inlk_permit_out & arc_permit_sum;
+    assign inlk_arc_permit = inlk_permit_out && arc_permit_sum;
 
     wire [15:0] mon_amp_lb;
     wire [16:0] mon_phs_lb;
@@ -914,40 +919,47 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             18'h10a0?: lb_rdata_r <= mon_amp_lb;
             18'h10a1?: lb_rdata_r <= mon_phs_lb;
             18'h11???: lb_rdata_r <= mirror_out_0;
-            18'h12???: lb_rdata_r <= adc_raw_out[0];
-            18'h13???: lb_rdata_r <= adc_raw_out[1];
-            18'h14???: lb_rdata_r <= adc_raw_out[2];
-            18'h15???: lb_rdata_r <= adc_raw_out[3];
-            18'h16???: lb_rdata_r <= adc_raw_out[4];
-            18'h17???: lb_rdata_r <= adc_raw_out[5];
-            18'h18???: lb_rdata_r <= adc_raw_out[6];
-            18'h19???: lb_rdata_r <= adc_raw_out[7];
-            18'h1c???: lb_rdata_r <= sig_i_buf_out[0];  // adc0_i_buf
-            18'h1d???: lb_rdata_r <= sig_i_buf_out[1];
-            18'h1e???: lb_rdata_r <= sig_i_buf_out[2];
-            18'h1f???: lb_rdata_r <= sig_i_buf_out[3];
-            18'h20???: lb_rdata_r <= sig_i_buf_out[4];
-            18'h21???: lb_rdata_r <= sig_i_buf_out[5];
-            18'h22???: lb_rdata_r <= sig_i_buf_out[6];
-            18'h23???: lb_rdata_r <= sig_i_buf_out[7];  // adc7_i_buf
-            18'h24???: lb_rdata_r <= sig_i_buf_out[8];  // drv0_i_buf
-            18'h25???: lb_rdata_r <= sig_i_buf_out[9];  // drv1_i_buf
-            18'h26???: lb_rdata_r <= sig_q_buf_out[0];  // adc0_q_buf
-            18'h27???: lb_rdata_r <= sig_q_buf_out[1];
-            18'h28???: lb_rdata_r <= sig_q_buf_out[2];
-            18'h29???: lb_rdata_r <= sig_q_buf_out[3];
-            18'h2a???: lb_rdata_r <= sig_q_buf_out[4];
-            18'h2b???: lb_rdata_r <= sig_q_buf_out[5];
-            18'h2c???: lb_rdata_r <= sig_q_buf_out[6];
-            18'h2d???: lb_rdata_r <= sig_q_buf_out[7];  // adc7_q_buf
-            18'h2e???: lb_rdata_r <= sig_q_buf_out[8];  // drv0_q_buf
-            18'h2f???: lb_rdata_r <= sig_q_buf_out[9];  // drv1_q_buf
             18'h3????: lb_rdata_r <= cbuf_out;
             18'h008??: lb_rdata_r <= 32'h0;  // LEEP old config ROM compatibility
             18'h???0?: lb_rdata_r <= reg_bank_0;
             18'h???1?: lb_rdata_r <= reg_bank_1;
             18'h???2?: lb_rdata_r <= lb_reg_bank_2;
-            default:   lb_rdata_r <= 32'hfaceface;
+            default: begin
+                case (lb_addr_d1[17:11])
+                    7'h24: lb_rdata_r <= adc_raw_out[0]; // 12000-127ff
+                    7'h25: lb_rdata_r <= adc_raw_out[1]; // 12800-12fff
+                    7'h26: lb_rdata_r <= adc_raw_out[2]; // 13000-137ff
+                    7'h27: lb_rdata_r <= adc_raw_out[3]; // 13800-13fff
+                    7'h28: lb_rdata_r <= adc_raw_out[4]; // 14000-147ff
+                    7'h29: lb_rdata_r <= adc_raw_out[5]; // 14800-14fff
+                    7'h2a: lb_rdata_r <= adc_raw_out[6]; // 15000-157ff
+                    7'h2b: lb_rdata_r <= adc_raw_out[7]; // 15800-15fff
+
+                    7'h2c: lb_rdata_r <= sig_i_buf_out[0]; // 16000-167ff
+                    7'h2d: lb_rdata_r <= sig_i_buf_out[1]; // 16800-16fff
+                    7'h2e: lb_rdata_r <= sig_i_buf_out[2]; // 17000-177ff
+                    7'h2f: lb_rdata_r <= sig_i_buf_out[3]; // 17800-17fff
+                    7'h30: lb_rdata_r <= sig_i_buf_out[4]; // 18000-187ff
+                    7'h31: lb_rdata_r <= sig_i_buf_out[5]; // 18800-18fff
+                    7'h32: lb_rdata_r <= sig_i_buf_out[6]; // 19000-197ff
+                    7'h33: lb_rdata_r <= sig_i_buf_out[7]; // 19800-19fff
+                    7'h34: lb_rdata_r <= sig_i_buf_out[8]; // 1a000-1a7ff
+                    7'h35: lb_rdata_r <= sig_i_buf_out[9]; // 1a800-1afff
+
+                    7'h36: lb_rdata_r <= sig_q_buf_out[0]; // 1b000-1b7ff
+                    7'h37: lb_rdata_r <= sig_q_buf_out[1]; // 1b800-1bfff
+                    7'h38: lb_rdata_r <= sig_q_buf_out[2]; // 1c000-1c7ff
+                    7'h39: lb_rdata_r <= sig_q_buf_out[3]; // 1c800-1cfff
+                    7'h3a: lb_rdata_r <= sig_q_buf_out[4]; // 1d000-1d7ff
+                    7'h3b: lb_rdata_r <= sig_q_buf_out[5]; // 1d800-1dfff
+                    7'h3c: lb_rdata_r <= sig_q_buf_out[6]; // 1e000-1e7ff
+                    7'h3d: lb_rdata_r <= sig_q_buf_out[7]; // 1e800-1efff
+                    7'h3e: lb_rdata_r <= sig_q_buf_out[8]; // 1f000-1f7ff
+                    7'h3f: lb_rdata_r <= sig_q_buf_out[9]; // 1f800-1ffff
+
+                    default: lb_rdata_r <= 32'hfaceface;
+                endcase
+            end
         endcase
     end
 
