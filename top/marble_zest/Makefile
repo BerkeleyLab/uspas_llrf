@@ -15,7 +15,7 @@ GT_TCL = $(BEDROCK_DIR)/serial_io/EVG_EVR/gt_tcl/evr_gtx.tcl
 vpath %.c $(BUILD_DIR)
 
 .PHONY: all system_config system_test evr_test clean
-all: $(TARGET)_top_$(FSET).bit
+all: $(TARGET)_top_$(FSET)_$(facility).bit
 
 IP_EXPAND = $(BSP_DIR)/marble_bsp_expand.v
 IP_EXPAND += $(APP_SOC_SYN_DIR)/system_expand.v
@@ -68,12 +68,12 @@ $(TARGET)_top.d: $(TARGET)_top.v config_romx.v $(BEDROCK_DIR)/serial_io/gmii_to_
 	echo $^ | tr ' ' '\n' > $@
 
 #: Build bitstream
-$(TARGET)_top_$(FSET).bit: $(TARGET)_top.tcl $(GT_TCL) $(GITID_TCL) $(TARGET)_top.d bit_stamp_mod
-	$(VIVADO_CMD) -source $< -tclargs $(TARGET)_top.d $(FSET) $(HARDWARE) "$(SYNTH_OPT)" $(GITID_TCL) $(GT_TCL) $(REFCLK_FREQ)
+$(TARGET)_top_$(FSET)_$(facility).bit: $(TARGET)_top.tcl $(GT_TCL) $(GITID_TCL) $(TARGET)_top.d bit_stamp_mod
+	$(VIVADO_CMD) -source $< -tclargs $(TARGET)_top.d $(FSET)_$(facility) $(HARDWARE) "$(SYNTH_OPT)" $(GITID_TCL) $(GT_TCL) $(REFCLK_FREQ)
 
 IP_ADDRESS = 192.168.19.$(MARBLE_SERIAL)
 
-BITSTREAM = $(TARGET)_top_$(FSET).$(GIT_32BIT_ID).bit
+BITSTREAM = $(TARGET)_top_$(FSET)_$(facility).$(GIT_32BIT_ID).bit
 system_config:
 	@echo "Using Marble with serial number $(MARBLE_SERIAL)"
 	openocd \

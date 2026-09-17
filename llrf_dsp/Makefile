@@ -4,6 +4,17 @@ include $(BUILD_DIR)/top_rules.mk
 include $(BUILD_DIR)/newad_top_rules.mk
 include $(CORDIC_DIR)/rules.mk
 
+# Optional:
+#   make facility=<name>
+
+facility ?= uspas
+FACILITY_DIR := facilities/$(facility)
+
+# Resolve a local file to facilities/<facility>/<file> if it exists there
+resolve_local = $(if $(and $(facility),$(wildcard $(FACILITY_DIR)/$(notdir $(1)))),$(FACILITY_DIR)/$(notdir $(1)),$(1))
+resolve_v     = $(call resolve_local,$(1))
+resolve_json  = $(call resolve_local,$(1))
+
 vpath %.v $(DSP_DIR)
 VFLAGS_DEP += -y$(DSP_DIR) -y$(CORDIC_DIR) -y$(SERIAL_IO_DIR)/EVG_EVR -y.
 VFLAGS_DEP += -I$(AUTOGEN_DIR) -y$(AUTOGEN_DIR)
@@ -14,6 +25,7 @@ VFLAGS += -g2012
 .DEFAULT_GOAL = all
 .PHONY: all clean
 all: llrf_shell_expand.v
+	cp "$(FACILITY_DIR)"/* .
 	$(MAKE) -C tests FSET=$(FSET)
 
 llrf_shell_expand.v: cordicg_b22.v
@@ -35,5 +47,5 @@ CLEAN += llrf_shell_yosys.json llrf_shell_cdc.txt
 
 clean::
 	$(MAKE) -C tests clean
-
+	cp facilities/uspas/* .
 include $(BUILD_DIR)/bottom_rules.mk
