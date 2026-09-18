@@ -26,7 +26,7 @@ VFLAGS += -g2012
 .PHONY: all clean
 
 
-update_source: 
+update_source:
 	cp facilities/uspas/*.v .
 	cp "$(FACILITY_DIR)"/*.* .
 

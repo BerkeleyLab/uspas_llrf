@@ -9,7 +9,7 @@ FSET       ?= USPAS
 
 VERILOG_AUTOGEN += $(AUTOGEN_DIR)/llrf_shell_auto.vh $(AUTOGEN_DIR)/addr_map_llrf_shell.vh
 
-$(MODULE)_init_regs.json: update_source
+$(MODULE)_init_regs.json:
 	$(PYTHON) $(USPAS_LLRF_DIR)/model/llrf_shell.py -c $(FSET) --write-init-reg $@
 
 $(DEPDIR)/$(MODULE).d: $(MODULE).v $(VERILOG_AUTOGEN) cordicg_b22.v
