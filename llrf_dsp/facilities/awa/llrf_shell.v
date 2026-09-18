@@ -21,16 +21,18 @@
 // 14800 to 14fff   adc5_buf
 // 15000 to 157ff   adc6_buf
 // 15800 to 15fff   adc7_buf
-// 16000 to 167ff   adc0_i_buf
+// 16000 to 167ff   dac0_raw_out
+// 16800 to 16fff   dac1_raw_out
+// 17000 to 177ff   adc0_i_buf
 // ...
-// 19800 to 19fff   adc7_i_buf
-// 1a000 to 1a7ff   dac0_i_buf
-// 1a800 to 1afff   dac1_i_buf
-// 1b000 to 1b7ff   adc0_q_buf
+// 1a800 to 1afff   adc7_i_buf
+// 1b000 to 1b7ff   dac0_i_buf
+// 1b800 to 1bfff   dac1_i_buf
+// 1c000 to 1c7ff   adc0_q_buf
 // ...
-// 1e800 to 1efff   adc7_q_buf
-// 1f000 to 1f7ff   dac0_q_buf
-// 1f800 to 1ffff   dac1_q_buf
+// 1f800 to 1ffff   adc7_q_buf
+// 20000 to 207ff   dac0_q_buf
+// 20800 to 20fff   dac1_q_buf
 // 30000 to 3ffff   Circular buffer
 
 module llrf_shell #(
@@ -228,9 +230,14 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire signed [31:0] adc_raw_counts [0:N_ADC-1];
     wire [N_ADC-1:0] adc_raw_ready;
 
+    // added to pad raw_out block to N_CH entries
+    wire signed [DW-1:0] dac_raw_out [0:N_DRIVE-1];
+    assign dac_raw_out[0] = {DW{1'b0}};
+    assign dac_raw_out[1] = {DW{1'b0}};
+
     wire signed [31:0] sig_iq_buf_counts [0:2*N_CH-1];
     wire [2*N_CH-1:0] sig_iq_buf_ready;
-    wire [N_CH-1:0] sig_buf_transferred;
+    wire [N_ADC-1:0] sig_buf_transferred;
 
     //    2 DAC + 8 ADC for sig_iq_data in base band
     wire [2*N_CH-1:0] sig_buf_iq_transferred;
@@ -934,28 +941,30 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
                     7'h29: lb_rdata_r <= adc_raw_out[5]; // 14800-14fff
                     7'h2a: lb_rdata_r <= adc_raw_out[6]; // 15000-157ff
                     7'h2b: lb_rdata_r <= adc_raw_out[7]; // 15800-15fff
+                    7'h2c: lb_rdata_r <= dac_raw_out[0]; // 16000-167ff
+                    7'h2d: lb_rdata_r <= dac_raw_out[1]; // 16800-16fff
 
-                    7'h2c: lb_rdata_r <= sig_i_buf_out[0]; // 16000-167ff
-                    7'h2d: lb_rdata_r <= sig_i_buf_out[1]; // 16800-16fff
-                    7'h2e: lb_rdata_r <= sig_i_buf_out[2]; // 17000-177ff
-                    7'h2f: lb_rdata_r <= sig_i_buf_out[3]; // 17800-17fff
-                    7'h30: lb_rdata_r <= sig_i_buf_out[4]; // 18000-187ff
-                    7'h31: lb_rdata_r <= sig_i_buf_out[5]; // 18800-18fff
-                    7'h32: lb_rdata_r <= sig_i_buf_out[6]; // 19000-197ff
-                    7'h33: lb_rdata_r <= sig_i_buf_out[7]; // 19800-19fff
-                    7'h34: lb_rdata_r <= sig_i_buf_out[8]; // 1a000-1a7ff
-                    7'h35: lb_rdata_r <= sig_i_buf_out[9]; // 1a800-1afff
+                    7'h2e: lb_rdata_r <= sig_i_buf_out[0]; // 17000-177ff
+                    7'h2f: lb_rdata_r <= sig_i_buf_out[1]; // 17800-17fff
+                    7'h30: lb_rdata_r <= sig_i_buf_out[2]; // 18000-187ff
+                    7'h31: lb_rdata_r <= sig_i_buf_out[3]; // 18800-18fff
+                    7'h32: lb_rdata_r <= sig_i_buf_out[4]; // 19000-197ff
+                    7'h33: lb_rdata_r <= sig_i_buf_out[5]; // 19800-19fff
+                    7'h34: lb_rdata_r <= sig_i_buf_out[6]; // 1a000-1a7ff
+                    7'h35: lb_rdata_r <= sig_i_buf_out[7]; // 1a800-1afff
+                    7'h36: lb_rdata_r <= sig_i_buf_out[8]; // 1b000-1b7ff
+                    7'h37: lb_rdata_r <= sig_i_buf_out[9]; // 1b800-1bfff
 
-                    7'h36: lb_rdata_r <= sig_q_buf_out[0]; // 1b000-1b7ff
-                    7'h37: lb_rdata_r <= sig_q_buf_out[1]; // 1b800-1bfff
-                    7'h38: lb_rdata_r <= sig_q_buf_out[2]; // 1c000-1c7ff
-                    7'h39: lb_rdata_r <= sig_q_buf_out[3]; // 1c800-1cfff
-                    7'h3a: lb_rdata_r <= sig_q_buf_out[4]; // 1d000-1d7ff
-                    7'h3b: lb_rdata_r <= sig_q_buf_out[5]; // 1d800-1dfff
-                    7'h3c: lb_rdata_r <= sig_q_buf_out[6]; // 1e000-1e7ff
-                    7'h3d: lb_rdata_r <= sig_q_buf_out[7]; // 1e800-1efff
-                    7'h3e: lb_rdata_r <= sig_q_buf_out[8]; // 1f000-1f7ff
-                    7'h3f: lb_rdata_r <= sig_q_buf_out[9]; // 1f800-1ffff
+                    7'h38: lb_rdata_r <= sig_q_buf_out[0]; // 1c000-1c7ff
+                    7'h39: lb_rdata_r <= sig_q_buf_out[1]; // 1c800-1cfff
+                    7'h3a: lb_rdata_r <= sig_q_buf_out[2]; // 1d000-1d7ff
+                    7'h3b: lb_rdata_r <= sig_q_buf_out[3]; // 1d800-1dfff
+                    7'h3c: lb_rdata_r <= sig_q_buf_out[4]; // 1e000-1e7ff
+                    7'h3d: lb_rdata_r <= sig_q_buf_out[5]; // 1e800-1efff
+                    7'h3e: lb_rdata_r <= sig_q_buf_out[6]; // 1f000-1f7ff
+                    7'h3f: lb_rdata_r <= sig_q_buf_out[7]; // 1f800-1ffff
+                    7'h40: lb_rdata_r <= sig_q_buf_out[8]; // 20000-207ff
+                    7'h41: lb_rdata_r <= sig_q_buf_out[9]; // 20800-20fff
 
                     default: lb_rdata_r <= 32'hfaceface;
                 endcase

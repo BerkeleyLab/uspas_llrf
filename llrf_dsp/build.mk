@@ -6,9 +6,10 @@ NEWAD_ARGS += -m    # mirror
 NEWAD_ARGS_llrf_shell = -b69632  # 0x11000
 FSET       ?= USPAS
 
+
 VERILOG_AUTOGEN += $(AUTOGEN_DIR)/llrf_shell_auto.vh $(AUTOGEN_DIR)/addr_map_llrf_shell.vh
 
-$(MODULE)_init_regs.json:
+$(MODULE)_init_regs.json: update_source
 	$(PYTHON) $(USPAS_LLRF_DIR)/model/llrf_shell.py -c $(FSET) --write-init-reg $@
 
 $(DEPDIR)/$(MODULE).d: $(MODULE).v $(VERILOG_AUTOGEN) cordicg_b22.v

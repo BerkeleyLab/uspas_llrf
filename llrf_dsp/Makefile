@@ -24,9 +24,13 @@ VFLAGS += -g2012
 
 .DEFAULT_GOAL = all
 .PHONY: all clean
+
+
+update_source: 
+	cp facilities/uspas/*.v .
+	cp "$(FACILITY_DIR)"/*.* .
+
 all: llrf_shell_expand.v
-	cp facilities/uspas/* .
-	cp "$(FACILITY_DIR)"/* .
 	$(MAKE) -C tests FSET=$(FSET)
 
 llrf_shell_expand.v: cordicg_b22.v

@@ -23,18 +23,20 @@
 // 14800 to 14fff adc5_buf
 // 15000 to 157ff adc6_buf
 // 15800 to 15fff adc7_buf
-// 16000 to 167ff adc0_i_buf
+// 16000 to 167ff dac0_raw_out
+// 16800 to 16fff dac1_raw_out
+// 17000 to 177ff adc0_i_buf
 // ...
-// 19800 to 19fff adc7_i_buf
-// 1a000 to 1a7ff dac0_i_buf
-// 1a800 to 1afff dac1_i_buf
-// 1b000 to 1b7ff adc0_q_buf
+// 1a800 to 1afff adc7_i_buf
+// 1b000 to 1b7ff dac0_i_buf
+// 1b800 to 1bfff dac1_i_buf
+// 1c000 to 1c7ff adc0_q_buf
 // ...
-// 1e800 to 1efff adc7_q_buf
-// 1f000 to 1f7ff dac0_q_buf
-// 1f800 to 1ffff dac1_q_buf
-// 20000 to 27fff lb_sigbuf0
-// 28000 to 2ffff lb_sigbuf1
+// 1f800 to 1ffff adc7_q_buf
+// 20000 to 207ff dac0_q_buf
+// 20800 to 20fff dac1_q_buf
+// 21000 to 28fff lb_sigbuf0
+// 29000 to 2ffff lb_sigbuf1
 // 30000 to 3ffff Circular buffer
 module llrf_shell # (
     parameter integer CBUF_DW = 24,
@@ -259,6 +261,9 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire signed [DW-1:0] adc_raw_out [0:N_ADC-1];
     wire signed [31:0] adc_raw_counts [0:N_ADC-1];
     wire [N_ADC-1:0] adc_raw_ready;
+    wire signed [DW-1:0] dac_raw_out [0:N_DRIVE-1];
+    assign dac_raw_out[0] = {DW{1'b0}};
+    assign dac_raw_out[1] = {DW{1'b0}};
 
     wire signed [31:0] sig_iq_buf_counts [0:2*N_CH-1];
     wire [2*N_CH-1:0] sig_iq_buf_ready;
@@ -329,9 +334,9 @@ wire [LUT_BUF_AW-1:0] amp_lut_addr[0:1];
 reg  [DWBB-1:0] lb_sigbuf_readback[0:1];
 
 localparam [17:0] RAW_BUF_BASE = 18'h12000;
-localparam [17:0] I_BUF_BASE   = 18'h16000;
-localparam [17:0] Q_BUF_BASE   = 18'h1b000;
-localparam [17:0] LUT0_BASE    = 18'h20000;
+localparam [17:0] I_BUF_BASE   = 18'h17000;
+localparam [17:0] Q_BUF_BASE   = 18'h1c000;
+localparam [17:0] LUT0_BASE    = 18'h21000;
 localparam [17:0] LUT1_BASE    = 18'h28000;
 
 localparam [17-LUT_BUF_AW:0] LB_SIGBUF0_PAGE = (LUT0_BASE >> LUT_BUF_AW);
@@ -369,8 +374,6 @@ always @(posedge lb_clk) begin
         lb_sigbuf_readback[1] <= lb_sigbuf_douta[1];
 end
 
-
-
     generate for (ch=0; ch<N_CH; ch=ch+1) begin: gen_sig_iq
         assign sig_iq_flat[DWBB*(2*ch+0) +:DWBB] = sig_i_data[ch];
         assign sig_iq_flat[DWBB*(2*ch+1) +:DWBB] = sig_q_data[ch];
@@ -398,9 +401,9 @@ end
             .lb_flip_buf    (sig_buf_flip            ),
             .lb_addr        (lb_addr[SIG_BUF_AW-1:0] ),
             .lb_rdata       (sig_q_buf_out[ch]       ),
-			.buf_ready      (sig_iq_buf_ready[N_CH+ch]),
-			.buf_count      (sig_iq_buf_counts[N_CH+ch]),
-			.buf_transferred(sig_buf_iq_transferred[N_CH+ch])
+            .buf_ready      (sig_iq_buf_ready[N_CH+ch]),
+            .buf_count      (sig_iq_buf_counts[N_CH+ch]),
+            .buf_transferred(sig_buf_iq_transferred[N_CH+ch])
         );
     end endgenerate
 
@@ -446,7 +449,7 @@ end
     // rising edge detection of external trigger
     reg ext_trigger_sync1=0;
     always @(posedge dsp_clk) ext_trigger_sync1 <= ext_trigger_sync;
-    assign ext_trig = ext_trigger_sync & ~ext_trigger_sync1;
+    assign ext_trig = ext_trigger_sync && ~ext_trigger_sync1;
 
     // internal trigger
     reg [31:0] int_trig_cnt = 0;
@@ -662,9 +665,9 @@ end
     wire signed [DWBB-1:0] drive_q_out [0:N_DRIVE-1];
     wire signed [DWBB-1:0] amp_measured [0:N_DRIVE-1];
     wire signed [DWBB-1:0] phs_measured [0:N_DRIVE-1];
-	wire signed [DWBB-1:0] amp_setpoint [0:N_DRIVE-1];
-	wire signed [DWBB-1:0] amp_setpoint_src [0:N_DRIVE-1];
-	wire signed [DWBB-1:0] amp_setpoint_i [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] amp_setpoint [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] amp_setpoint_src [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] amp_setpoint_i [0:N_DRIVE-1];
     wire signed [DWBB-1:0] max_amp_setpoint [0:N_DRIVE-1];
     wire signed [DWBB-1:0] phs_setpoint [0:N_DRIVE-1];
     wire [N_DRIVE-1:0] amp_loop_enable;
@@ -688,8 +691,8 @@ end
     wire [24:0] pulse_mod_ticks [0:N_DRIVE-1];
     wire [23:0] pulse_start [0:N_DRIVE-1];
     wire [23:0] pulse_high_len [0:N_DRIVE-1];
-	assign amp_lut_addr[0] = pulse_mod_ticks[0][LUT_BUF_AW-1:0];
-	assign amp_lut_addr[1] = pulse_mod_ticks[1][LUT_BUF_AW-1:0];
+    assign amp_lut_addr[0] = pulse_mod_ticks[0][LUT_BUF_AW-1:0];
+    assign amp_lut_addr[1] = pulse_mod_ticks[1][LUT_BUF_AW-1:0];
 
     assign pulse_start[0] = loop0_pulse_start;
     assign pulse_high_len[0] = loop0_pulse_high_len;
@@ -718,8 +721,8 @@ end
     assign phs_loop_enable[1] = loop1_phs_enable;
     assign amp_loop_reset[1] = loop1_amp_reset;
     assign phs_loop_reset[1] = loop1_phs_reset;
-	assign amp_setpoint_src[0] = amp_table_enable[0] ? $signed(amp_lut_rdata[0])+ amp_setpoint[0]: amp_setpoint[0];
-	assign amp_setpoint_src[1] = amp_table_enable[1] ? $signed(amp_lut_rdata[1])+amp_setpoint[1] : amp_setpoint[1];
+    assign amp_setpoint_src[0] = amp_table_enable[0] ? $signed(amp_lut_rdata[0]) + amp_setpoint[0] : amp_setpoint[0];
+    assign amp_setpoint_src[1] = amp_table_enable[1] ? $signed(amp_lut_rdata[1]) + amp_setpoint[1] : amp_setpoint[1];
     assign field_i_data[0] = sig_i_data[loop0_adc_chan];
     assign field_q_data[0] = sig_q_data[loop0_adc_chan];
     assign field_i_data[1] = sig_i_data[loop1_adc_chan];
@@ -731,7 +734,7 @@ end
         // ---------------------
         // in open-loop:   apply max limit to amp_setpoint to avoid DAC saturation.
         // in closed-loop: the amp_setpoint is compared with ADC measurement, so no limit is applied.
-		assign amp_setpoint_i[ch] = amp_loop_enable[ch] ? amp_setpoint_src[ch] :
+        assign amp_setpoint_i[ch] = amp_loop_enable[ch] ? amp_setpoint_src[ch] :
                                 (amp_setpoint_src[ch] > max_amp_setpoint[ch] ? max_amp_setpoint[ch] : amp_setpoint_src[ch]);
         dsp_core #(.KW(DWBB)) feedback (
             .clk              (dsp_clk),
@@ -944,7 +947,7 @@ wire [17:0] raw_buf_off = lb_addr_d1 - RAW_BUF_BASE;
 wire [17:0] i_buf_off   = lb_addr_d1 - I_BUF_BASE;
 wire [17:0] q_buf_off   = lb_addr_d1 - Q_BUF_BASE;
 
-wire [2:0] raw_buf_idx = raw_buf_off[17:SIG_BUF_AW];
+wire [3:0] raw_buf_idx = raw_buf_off[17:SIG_BUF_AW];
 wire [3:0] i_buf_idx   = i_buf_off[17:SIG_BUF_AW];
 wire [3:0] q_buf_idx   = q_buf_off[17:SIG_BUF_AW];
     // jit_rad == Just In Time Readout Across Domains
@@ -1040,14 +1043,16 @@ always @(posedge lb_clk) if (lb_read) begin
 
     if (raw_buf_sel) begin
         case (raw_buf_idx)
-            3'd0: lb_rdata_r <= adc_raw_out[0];
-            3'd1: lb_rdata_r <= adc_raw_out[1];
-            3'd2: lb_rdata_r <= adc_raw_out[2];
-            3'd3: lb_rdata_r <= adc_raw_out[3];
-            3'd4: lb_rdata_r <= adc_raw_out[4];
-            3'd5: lb_rdata_r <= adc_raw_out[5];
-            3'd6: lb_rdata_r <= adc_raw_out[6];
-            3'd7: lb_rdata_r <= adc_raw_out[7];
+            4'd0: lb_rdata_r <= adc_raw_out[0];
+            4'd1: lb_rdata_r <= adc_raw_out[1];
+            4'd2: lb_rdata_r <= adc_raw_out[2];
+            4'd3: lb_rdata_r <= adc_raw_out[3];
+            4'd4: lb_rdata_r <= adc_raw_out[4];
+            4'd5: lb_rdata_r <= adc_raw_out[5];
+            4'd6: lb_rdata_r <= adc_raw_out[6];
+            4'd7: lb_rdata_r <= adc_raw_out[7];
+            4'd8: lb_rdata_r <= dac_raw_out[0];
+            4'd9: lb_rdata_r <= dac_raw_out[1];
             default: lb_rdata_r <= 32'hfaceface;
         endcase
     end
