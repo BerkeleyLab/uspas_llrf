@@ -8,84 +8,84 @@
     },
     "adc0_buf": {
         "base_addr": "0x12000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 16,
         "sign": "signed"
     },
     "adc1_buf": {
         "base_addr": "0x13000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 16,
         "sign": "signed"
     },
     "adc2_buf": {
         "base_addr": "0x14000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 16,
         "sign": "signed"
     },
     "adc3_buf": {
         "base_addr": "0x15000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 16,
         "sign": "signed"
     },
     "adc4_buf": {
         "base_addr": "0x16000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 16,
         "sign": "signed"
     },
     "adc5_buf": {
         "base_addr": "0x17000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 16,
         "sign": "signed"
     },
     "adc6_buf": {
         "base_addr": "0x18000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 16,
         "sign": "signed"
     },
     "adc7_buf": {
         "base_addr": "0x19000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 16,
         "sign": "signed"
     },
     "drv0_i_buf": {
         "base_addr": "0x24000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "drv1_i_buf": {
         "base_addr": "0x25000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "drv0_q_buf": {
         "base_addr": "0x2e000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "drv1_q_buf": {
         "base_addr": "0x2f000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
@@ -184,112 +184,112 @@
     },
     "adc0_i_buf": {
         "base_addr": "0x1c000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc1_i_buf": {
         "base_addr": "0x1d000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc2_i_buf": {
         "base_addr": "0x1e000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc3_i_buf": {
         "base_addr": "0x1f000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc4_i_buf": {
         "base_addr": "0x20000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc5_i_buf": {
         "base_addr": "0x21000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc6_i_buf": {
         "base_addr": "0x22000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc7_i_buf": {
         "base_addr": "0x23000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc0_q_buf": {
         "base_addr": "0x26000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc1_q_buf": {
         "base_addr": "0x27000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc2_q_buf": {
         "base_addr": "0x28000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc3_q_buf": {
         "base_addr": "0x29000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc4_q_buf": {
         "base_addr": "0x2a000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc5_q_buf": {
         "base_addr": "0x2b000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc6_q_buf": {
         "base_addr": "0x2c000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc7_q_buf": {
         "base_addr": "0x2d000",
-        "addr_width": 12,
+        "addr_width": 11,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
