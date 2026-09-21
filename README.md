@@ -93,8 +93,10 @@ See [doc/README.md](doc/README.md).
 ```bash
 pip install -e .
 cd llrf_dsp
+make facility facility={FACILITY}
 make
 ```
+
 
 ### Synthesize bitstream
 
