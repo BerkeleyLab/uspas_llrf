@@ -4,8 +4,8 @@
 // 18-bit (0 to 3ffff) address map
 // write:
 //      0 to 0fff   LLRF controller
-//      21000 to 28fff pulse0_lut
-//      29000 to 2ffff pulse1_lut
+// 21000 to 28fff   pulse0_lut
+// 29000 to 2ffff   pulse1_lut
 // read:
 //      0 to 0fff   LLRF controller
 // 10800            llrf_circle_ready
@@ -35,8 +35,8 @@
 // 1f800 to 1ffff   adc7_q_buf
 // 20000 to 207ff   dac0_q_buf
 // 20800 to 20fff   dac1_q_buf
-// 21000 to 28fff pulse0_lut
-// 29000 to 2ffff pulse1_lut
+// 21000 to 28fff   pulse0_lut
+// 29000 to 2ffff   pulse1_lut
 // 30000 to 3ffff   Circular buffer
 
 module llrf_shell #(
@@ -159,6 +159,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [23:0] loop0_pulse_high_len; top-level
 // reg [23:0] loop1_pulse_start; top-level
 // reg [23:0] loop1_pulse_high_len; top-level
+// reg [15:0] lut1_len; top-level
+// reg [15:0] lut2_len; top-level
 // reg [1:0] pulse_modes; top-level
 // reg [3:0] pulse_res_shift; top-level
 // reg [1:0] pulse_modulation_enable; top-level
@@ -216,6 +218,18 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
 
 `AUTOMATIC_decode
 
+    function signed [DWBB-1:0] sat_dwbb;
+        input signed [DWBB:0] x;
+        begin
+            if (x > $signed({1'b0, {(DWBB-1){1'b1}}}))
+                sat_dwbb = {1'b0, {(DWBB-1){1'b1}}};
+            else if (x < $signed({1'b1, {(DWBB-1){1'b0}}}))
+                sat_dwbb = {1'b1, {(DWBB-1){1'b0}}};
+            else
+                sat_dwbb = x[DWBB-1:0];
+        end
+    endfunction
+
     // ---------------------
     // Pulse LUTs
     // ---------------------
@@ -236,8 +250,16 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire [PULSE_LUT_DW-1:0] pulse0_lut_dsp_rdata;
     wire [PULSE_LUT_DW-1:0] pulse1_lut_dsp_rdata;
 
-    assign pulse0_lut_dsp_addr = {PULSE_LUT_AW{1'b0}};
-    assign pulse1_lut_dsp_addr = {PULSE_LUT_AW{1'b0}};
+    wire signed [PULSE_LUT_DW-1:0] pulse_lut_data [0:N_DRIVE-1];
+    reg  [PULSE_LUT_AW-1:0] pulse_lut_idx [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] amp_setpoint_lut [0:N_DRIVE-1];
+    wire signed [DWBB:0] amp_setpoint_sum [0:N_DRIVE-1];
+
+    assign pulse_lut_data[0] = pulse0_lut_dsp_rdata;
+    assign pulse_lut_data[1] = pulse1_lut_dsp_rdata;
+
+    assign pulse0_lut_dsp_addr = pulse_lut_idx[0];
+    assign pulse1_lut_dsp_addr = pulse_lut_idx[1];
 
     pulse_lut_ram #(.AW(PULSE_LUT_AW), .DW(PULSE_LUT_DW)) pulse0_lut_ram_i (
         .lb_clk    (lb_clk),
@@ -659,7 +681,9 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire [N_DRIVE-1:0] pulse_dval;
     wire [23:0] pulse_start [0:N_DRIVE-1];
     wire [23:0] pulse_high_len [0:N_DRIVE-1];
+    wire [15:0] lut_len [0:N_DRIVE-1];
 
+    assign lut_len[0] = lut1_len;
     assign pulse_start[0] = loop0_pulse_start;
     assign pulse_high_len[0] = loop0_pulse_high_len;
     assign amp_setpoint[0] = loop0_amp_setpoint;
@@ -674,6 +698,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     assign amp_loop_reset[0] = loop0_amp_reset;
     assign phs_loop_reset[0] = loop0_phs_reset;
 
+    assign lut_len[1] = lut2_len;
     assign pulse_start[1] = loop1_pulse_start;
     assign pulse_high_len[1] = loop1_pulse_high_len;
     assign amp_setpoint[1] = loop1_amp_setpoint;
@@ -693,14 +718,41 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     assign field_i_data[1] = sig_i_data[loop1_adc_chan];
     assign field_q_data[1] = sig_q_data[loop1_adc_chan];
 
+    genvar pch;
+    generate for (pch=0; pch<N_DRIVE; pch=pch+1) begin: gen_pulse_lut_mod
+            mod_pulse_gen #(.AW(24)) mod_pulse_gen (
+            .clk        (dsp_clk),
+            .start      (pulse_start[pch]),
+            .trigger    (wave_trig),
+            .high_len   (pulse_high_len[pch]),   // unit: DSP_CLK_CYCLE
+            .res        (pulse_res_shift),
+            .stb_in     (1'b1),
+            .lut_len    (lut_len[pch]),
+            .pulse_dval (),
+            .pulse_last (),
+            .mod_ticks  (pulse_lut_idx[pch])
+        );
+
+
+        assign amp_setpoint_lut[pch] =
+            (pulse_modulation_enable[pch] && pulse_dval[pch]) ?
+            $signed(pulse_lut_data[pch]) : {DWBB{1'b0}};
+
+        assign amp_setpoint_sum[pch] =
+            $signed(amp_setpoint[pch]) + $signed(amp_setpoint_lut[pch]);
+    end endgenerate
+
     generate for (ch=0; ch<N_DRIVE; ch=ch+1) begin: gen_loops
         // ---------------------
         // feedback controller in baseband
         // ---------------------
         // in open-loop:   apply max limit to amp_setpoint to avoid DAC saturation.
         // in closed-loop: the amp_setpoint is compared with ADC measurement, so no limit is applied.
-        assign amp_setpoint_i[ch] = amp_loop_enable[ch] ? amp_setpoint[ch] :
-                                        (amp_setpoint[ch] > max_amp_setpoint[ch] ? max_amp_setpoint[ch] : amp_setpoint[ch]);
+        wire signed [DWBB-1:0] amp_setpoint_mod;
+        assign amp_setpoint_mod = sat_dwbb(amp_setpoint_sum[ch]);
+
+        assign amp_setpoint_i[ch] = amp_loop_enable[ch] ? amp_setpoint_mod :
+                                        (amp_setpoint_mod > max_amp_setpoint[ch] ? max_amp_setpoint[ch] : amp_setpoint_mod);
         dsp_core #(.KW(DWBB)) feedback (
             .clk              (dsp_clk),
             .reset            (dsp_reset),

@@ -308,6 +308,20 @@
     "data_width": 18,
     "sign": "signed"
   },
+  "pulse0_lut": {
+    "access": "rw",
+    "addr_width": 15,
+    "base_addr": "0x21000",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "pulse1_lut": {
+    "access": "rw",
+    "addr_width": 15,
+    "base_addr": "0x28000",
+    "data_width": 18,
+    "sign": "signed"
+  },
   "circle_data": {
     "access": "r",
     "addr_width": 16,

@@ -22,11 +22,11 @@ VFLAGS_DEP += -I$(BEDROCK_DIR)/localbus -y$(BEDROCK_DIR)/localbus
 VFLAGS += $(VFLAGS_DEP)
 VFLAGS += -g2012
 
-.DEFAULT_GOAL = all
-.PHONY: all clean
+.PHONY: clean facility all
 
+.DEFAULT_GOAL := all
 
-update_source:
+facility: clean
 	cp facilities/uspas/*.v .
 	cp "$(FACILITY_DIR)"/*.* .
 
