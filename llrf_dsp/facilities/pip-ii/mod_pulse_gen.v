@@ -1,4 +1,4 @@
-module pulse_gen #(
+module mod_pulse_gen #(
     parameter AW=12
 ) (
     input clk,

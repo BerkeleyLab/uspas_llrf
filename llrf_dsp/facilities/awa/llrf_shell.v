@@ -846,6 +846,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     reg [LB_DW-1:0] lb_rdata_r=0;
     reg [LB_ADW-1:0] lb_addr_d1=0;
     reg [31:0] reg_bank_0=0, reg_bank_1=0, reg_bank_2=0;
+    wire sig_buf_not_sel = ~((lb_addr_d1 >= 18'h12000) && (lb_addr_d1 < 18'h30000));
     // jit_rad == Just In Time Readout Across Domains
     wire lb_error;
     wire xfer_clk, xfer_strobe, xfer_snap;
@@ -918,6 +919,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     end
     always @(posedge lb_clk) if (lb_read) begin
         lb_addr_d1 <= lb_addr;
+        if (sig_buf_not_sel) begin
         casez (lb_addr_d1)
             18'h10800: lb_rdata_r <= llrf_circle_ready;
             18'h10801: lb_rdata_r <= adc_raw_ready;
@@ -926,8 +928,14 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             18'h10a0?: lb_rdata_r <= mon_amp_lb;
             18'h10a1?: lb_rdata_r <= mon_phs_lb;
             18'h11???: lb_rdata_r <= mirror_out_0;
-            
-            18'h1????: begin
+            18'h3????: lb_rdata_r <= cbuf_out;
+            18'h008??: lb_rdata_r <= 32'h0;  // LEEP old config ROM compatibility
+            18'h???0?: lb_rdata_r <= reg_bank_0;
+            18'h???1?: lb_rdata_r <= reg_bank_1;
+            18'h???2?: lb_rdata_r <= lb_reg_bank_2;
+            default:   lb_rdata_r <= 32'hfaceface;
+        endcase
+    end else begin
                 case (lb_addr_d1[17:11])
                     7'h24: lb_rdata_r <= adc_raw_out[0]; // 12000-127ff
                     7'h25: lb_rdata_r <= adc_raw_out[1]; // 12800-12fff
@@ -959,27 +967,11 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
                     7'h3d: lb_rdata_r <= sig_q_buf_out[5]; // 1e800-1efff
                     7'h3e: lb_rdata_r <= sig_q_buf_out[6]; // 1f000-1f7ff
                     7'h3f: lb_rdata_r <= sig_q_buf_out[7]; // 1f800-1ffff
-                    default: lb_rdata_r <= 32'hfaceface;                    
-                endcase
-            end
-            
-            18'h2????: begin
-                case (lb_addr_d1[17:11])
                     7'h40: lb_rdata_r <= sig_q_buf_out[8]; // 20000-207ff
                     7'h41: lb_rdata_r <= sig_q_buf_out[9]; // 20800-20fff
-
                     default: lb_rdata_r <= 32'hfaceface;
                 endcase
             end
-            
-            18'h3????: lb_rdata_r <= cbuf_out;
-            18'h008??: lb_rdata_r <= 32'h0;  // LEEP old config ROM compatibility
-            18'h???0?: lb_rdata_r <= reg_bank_0;
-            18'h???1?: lb_rdata_r <= reg_bank_1;
-            18'h???2?: lb_rdata_r <= lb_reg_bank_2;
-            default:   lb_rdata_r <= 32'hfaceface;
-        endcase
     end
-
     assign lb_rdata = lb_rdata_r;
 endmodule
