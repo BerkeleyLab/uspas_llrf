@@ -4,7 +4,7 @@
 // 18-bit (0 to 3ffff) address map
 // write:
 //      0 to 0fff   LLRF controller
-// 21000 to 27fff   pulse0_lut
+// 20000 to 27fff   pulse0_lut
 // 28000 to 2ffff   pulse1_lut
 // read:
 //      0 to 0fff   LLRF controller
@@ -23,19 +23,27 @@
 // 14800 to 14fff   adc5_buf
 // 15000 to 157ff   adc6_buf
 // 15800 to 15fff   adc7_buf
-// 16000 to 167ff   dac0_raw_out
-// 16800 to 16fff   dac1_raw_out
-// 17000 to 177ff   adc0_i_buf
-// ...
-// 1a800 to 1afff   adc7_i_buf
-// 1b000 to 1b7ff   dac0_i_buf
-// 1b800 to 1bfff   dac1_i_buf
-// 1c000 to 1c7ff   adc0_q_buf
-// ...
-// 1f800 to 1ffff   adc7_q_buf
-// 20000 to 207ff   dac0_q_buf
-// 20800 to 20fff   dac1_q_buf
-// 21000 to 27fff   pulse0_lut
+// 16000 to 167ff   adc0_i_buf
+// 16800 to 16fff   adc1_i_buf
+// 17000 to 177ff   adc2_i_buf
+// 17800 to 17fff   adc3_i_buf
+// 18000 to 187ff   adc4_i_buf
+// 18800 to 18fff   adc5_i_buf
+// 19000 to 197ff   adc6_i_buf
+// 19800 to 19fff   adc7_i_buf
+// 1a000 to 1a7ff   dac0_i_buf
+// 1a800 to 1afff   dac1_i_buf
+// 1b000 to 1b7ff   adc0_q_buf
+// 1b800 to 1bfff   adc1_q_buf
+// 1c000 to 1c7ff   adc2_q_buf
+// 1c800 to 1cfff   adc3_q_buf
+// 1d000 to 1d7ff   adc4_q_buf
+// 1d800 to 1dfff   adc5_q_buf
+// 1e000 to 1e7ff   adc6_q_buf
+// 1e800 to 1efff   adc7_q_buf
+// 1f000 to 1f7ff   dac0_q_buf
+// 1f800 to 1ffff   dac1_q_buf
+// 20000 to 27fff   pulse0_lut
 // 28000 to 2ffff   pulse1_lut
 // 30000 to 3ffff   Circular buffer
 
@@ -55,7 +63,7 @@ module llrf_shell #(
     localparam integer N_ADC = 8,
     localparam integer N_DRIVE = 2,
     localparam integer PULSE_LUT_AW = 15, // 0x8000 deep
-    localparam integer PULSE_LUT_DW = 18
+    localparam integer PULSE_LUT_DW = 16
 ) (
     // ---------------------
     // Localbus interface
@@ -101,7 +109,7 @@ module llrf_shell #(
     // ---------------------
     input                gt_rxclk,
     input [15:0]         gt_rxdata,
-    input [1:0]          gt_rxcharisk,
+    input [1:0]         gt_rxcharisk,
 
     // ---------------------
     // External trigger interface
@@ -159,8 +167,8 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [23:0] loop0_pulse_high_len; top-level
 // reg [23:0] loop1_pulse_start; top-level
 // reg [23:0] loop1_pulse_high_len; top-level
+// reg [15:0] lut0_len; top-level
 // reg [15:0] lut1_len; top-level
-// reg [15:0] lut2_len; top-level
 // reg [1:0] pulse_modes; top-level
 // reg [3:0] pulse_res_shift; top-level
 // reg [1:0] pulse_modulation_enable; top-level
@@ -233,8 +241,8 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     // ---------------------
     // Pulse LUTs
     // ---------------------
-    wire pulse0_lut_sel = (lb_addr >= 18'h21000) && (lb_addr < 18'h29000);
-    wire pulse1_lut_sel = (lb_addr >= 18'h29000) && (lb_addr < 18'h30000);
+    wire pulse0_lut_sel = (lb_addr >= 18'h20000) && (lb_addr < 18'h28000);
+    wire pulse1_lut_sel = (lb_addr >= 18'h28000) && (lb_addr < 18'h30000);
 
     wire [PULSE_LUT_AW-1:0] pulse0_lut_lb_addr = lb_addr[PULSE_LUT_AW-1:0];
     wire [PULSE_LUT_AW-1:0] pulse1_lut_lb_addr = lb_addr[PULSE_LUT_AW-1:0];
@@ -250,7 +258,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire [PULSE_LUT_DW-1:0] pulse0_lut_dsp_rdata;
     wire [PULSE_LUT_DW-1:0] pulse1_lut_dsp_rdata;
 
-    wire signed [PULSE_LUT_DW-1:0] pulse_lut_data [0:N_DRIVE-1];
+    wire [PULSE_LUT_DW-1:0] pulse_lut_data [0:N_DRIVE-1];
     wire [PULSE_LUT_AW-1:0] pulse_lut_idx [0:N_DRIVE-1];
     wire signed [DWBB-1:0] amp_setpoint_lut [0:N_DRIVE-1];
     wire signed [DWBB:0] amp_setpoint_sum [0:N_DRIVE-1];
@@ -305,11 +313,6 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire signed [DW-1:0] adc_raw_out [0:N_ADC-1];
     wire signed [31:0] adc_raw_counts [0:N_ADC-1];
     wire [N_ADC-1:0] adc_raw_ready;
-
-    // added to pad raw_out block to N_CH entries
-    wire signed [DW-1:0] dac_raw_out [0:N_DRIVE-1];
-    assign dac_raw_out[0] = {DW{1'b0}};
-    assign dac_raw_out[1] = {DW{1'b0}};
 
     wire signed [31:0] sig_iq_buf_counts [0:2*N_CH-1];
     wire [2*N_CH-1:0] sig_iq_buf_ready;
@@ -684,7 +687,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire [23:0] pulse_high_len [0:N_DRIVE-1];
     wire [15:0] lut_len [0:N_DRIVE-1];
 
-    assign lut_len[0] = lut1_len;
+    assign lut_len[0] = lut0_len;
     assign pulse_start[0] = loop0_pulse_start;
     assign pulse_high_len[0] = loop0_pulse_high_len;
     assign amp_setpoint[0] = loop0_amp_setpoint;
@@ -699,7 +702,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     assign amp_loop_reset[0] = loop0_amp_reset;
     assign phs_loop_reset[0] = loop0_phs_reset;
 
-    assign lut_len[1] = lut2_len;
+    assign lut_len[1] = lut1_len;
     assign pulse_start[1] = loop1_pulse_start;
     assign pulse_high_len[1] = loop1_pulse_high_len;
     assign amp_setpoint[1] = loop1_amp_setpoint;
@@ -985,7 +988,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     reg [LB_DW-1:0] lb_rdata_r=0;
     reg [LB_ADW-1:0] lb_addr_d1=0;
     reg [31:0] reg_bank_0=0, reg_bank_1=0, reg_bank_2=0;
-    wire sig_buf_sel = ((lb_addr_d1 >= 18'h12000) && (lb_addr_d1 < 18'h21000));
+    wire sig_buf_sel = ((lb_addr_d1 >= 18'h12000) && (lb_addr_d1 < 18'h20000));
     // jit_rad == Just In Time Readout Across Domains
     wire lb_error;
     wire xfer_clk, xfer_strobe, xfer_snap;
@@ -1060,43 +1063,41 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         lb_addr_d1 <= lb_addr;
         if (sig_buf_sel) begin
             case (lb_addr_d1[17:11])
-                7'h24: lb_rdata_r <= adc_raw_out[0]; // 12000-127ff
-                7'h25: lb_rdata_r <= adc_raw_out[1]; // 12800-12fff
-                7'h26: lb_rdata_r <= adc_raw_out[2]; // 13000-137ff
-                7'h27: lb_rdata_r <= adc_raw_out[3]; // 13800-13fff
-                7'h28: lb_rdata_r <= adc_raw_out[4]; // 14000-147ff
-                7'h29: lb_rdata_r <= adc_raw_out[5]; // 14800-14fff
-                7'h2a: lb_rdata_r <= adc_raw_out[6]; // 15000-157ff
-                7'h2b: lb_rdata_r <= adc_raw_out[7]; // 15800-15fff
-                7'h2c: lb_rdata_r <= dac_raw_out[0]; // 16000-167ff
-                7'h2d: lb_rdata_r <= dac_raw_out[1]; // 16800-16fff
+                7'h24: lb_rdata_r <= adc_raw_out[0];   // 12000-127ff
+                7'h25: lb_rdata_r <= adc_raw_out[1];   // 12800-12fff
+                7'h26: lb_rdata_r <= adc_raw_out[2];   // 13000-137ff
+                7'h27: lb_rdata_r <= adc_raw_out[3];   // 13800-13fff
+                7'h28: lb_rdata_r <= adc_raw_out[4];   // 14000-147ff
+                7'h29: lb_rdata_r <= adc_raw_out[5];   // 14800-14fff
+                7'h2a: lb_rdata_r <= adc_raw_out[6];   // 15000-157ff
+                7'h2b: lb_rdata_r <= adc_raw_out[7];   // 15800-15fff
 
-                7'h2e: lb_rdata_r <= sig_i_buf_out[0]; // 17000-177ff
-                7'h2f: lb_rdata_r <= sig_i_buf_out[1]; // 17800-17fff
-                7'h30: lb_rdata_r <= sig_i_buf_out[2]; // 18000-187ff
-                7'h31: lb_rdata_r <= sig_i_buf_out[3]; // 18800-18fff
-                7'h32: lb_rdata_r <= sig_i_buf_out[4]; // 19000-197ff
-                7'h33: lb_rdata_r <= sig_i_buf_out[5]; // 19800-19fff
-                7'h34: lb_rdata_r <= sig_i_buf_out[6]; // 1a000-1a7ff
-                7'h35: lb_rdata_r <= sig_i_buf_out[7]; // 1a800-1afff
-                7'h36: lb_rdata_r <= sig_i_buf_out[8]; // 1b000-1b7ff
-                7'h37: lb_rdata_r <= sig_i_buf_out[9]; // 1b800-1bfff
+                7'h2c: lb_rdata_r <= sig_i_buf_out[0]; // 16000-167ff
+                7'h2d: lb_rdata_r <= sig_i_buf_out[1]; // 16800-16fff
+                7'h2e: lb_rdata_r <= sig_i_buf_out[2]; // 17000-177ff
+                7'h2f: lb_rdata_r <= sig_i_buf_out[3]; // 17800-17fff
+                7'h30: lb_rdata_r <= sig_i_buf_out[4]; // 18000-187ff
+                7'h31: lb_rdata_r <= sig_i_buf_out[5]; // 18800-18fff
+                7'h32: lb_rdata_r <= sig_i_buf_out[6]; // 19000-197ff
+                7'h33: lb_rdata_r <= sig_i_buf_out[7]; // 19800-19fff
+                7'h34: lb_rdata_r <= sig_i_buf_out[8]; // 1a000-1a7ff
+                7'h35: lb_rdata_r <= sig_i_buf_out[9]; // 1a800-1afff
 
-                7'h38: lb_rdata_r <= sig_q_buf_out[0]; // 1c000-1c7ff
-                7'h39: lb_rdata_r <= sig_q_buf_out[1]; // 1c800-1cfff
-                7'h3a: lb_rdata_r <= sig_q_buf_out[2]; // 1d000-1d7ff
-                7'h3b: lb_rdata_r <= sig_q_buf_out[3]; // 1d800-1dfff
-                7'h3c: lb_rdata_r <= sig_q_buf_out[4]; // 1e000-1e7ff
-                7'h3d: lb_rdata_r <= sig_q_buf_out[5]; // 1e800-1efff
-                7'h3e: lb_rdata_r <= sig_q_buf_out[6]; // 1f000-1f7ff
-                7'h3f: lb_rdata_r <= sig_q_buf_out[7]; // 1f800-1ffff
-                7'h40: lb_rdata_r <= sig_q_buf_out[8]; // 20000-207ff
-                7'h41: lb_rdata_r <= sig_q_buf_out[9]; // 20800-20fff
+                7'h36: lb_rdata_r <= sig_q_buf_out[0]; // 1b000-1b7ff
+                7'h37: lb_rdata_r <= sig_q_buf_out[1]; // 1b800-1bfff
+                7'h38: lb_rdata_r <= sig_q_buf_out[2]; // 1c000-1c7ff
+                7'h39: lb_rdata_r <= sig_q_buf_out[3]; // 1c800-1cfff
+                7'h3a: lb_rdata_r <= sig_q_buf_out[4]; // 1d000-1d7ff
+                7'h3b: lb_rdata_r <= sig_q_buf_out[5]; // 1d800-1dfff
+                7'h3c: lb_rdata_r <= sig_q_buf_out[6]; // 1e000-1e7ff
+                7'h3d: lb_rdata_r <= sig_q_buf_out[7]; // 1e800-1efff
+                7'h3e: lb_rdata_r <= sig_q_buf_out[8]; // 1f000-1f7ff
+                7'h3f: lb_rdata_r <= sig_q_buf_out[9]; // 1f800-1ffff
                 default: lb_rdata_r <= 32'hfaceface;
             endcase
-        end else if ((lb_addr_d1 >= 18'h21000) && (lb_addr_d1 < 18'h29000)) begin
+        end else if ((lb_addr_d1 >= 18'h20000) && (lb_addr_d1 < 18'h28000)) begin
             lb_rdata_r <= {{(32-PULSE_LUT_DW){1'b0}}, pulse0_lut_lb_rdata};
-        end else if ((lb_addr_d1 >= 18'h29000) && (lb_addr_d1 < 18'h30000)) begin
+        end else if ((lb_addr_d1 >= 18'h28000) && (lb_addr_d1 < 18'h30000)) begin
             lb_rdata_r <= {{(32-PULSE_LUT_DW){1'b0}}, pulse1_lut_lb_rdata};
         end else begin
             casez (lb_addr_d1)
@@ -1122,7 +1123,7 @@ endmodule
 
 module pulse_lut_ram #(
     parameter integer AW = 15,
-    parameter integer DW = 18
+    parameter integer DW = 16
 ) (
     input               lb_clk,
     input  [AW-1:0]     lb_addr,
