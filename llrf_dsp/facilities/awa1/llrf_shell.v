@@ -4,8 +4,8 @@
 // 18-bit (0 to 3ffff) address map
 // write:
 //      0 to 0fff   LLRF controller
-// 21000 to 28fff   pulse0_lut
-// 29000 to 2ffff   pulse1_lut
+// 21000 to 27fff   pulse0_lut
+// 28000 to 2ffff   pulse1_lut
 // read:
 //      0 to 0fff   LLRF controller
 // 10800            llrf_circle_ready
@@ -35,8 +35,8 @@
 // 1f800 to 1ffff   adc7_q_buf
 // 20000 to 207ff   dac0_q_buf
 // 20800 to 20fff   dac1_q_buf
-// 21000 to 28fff   pulse0_lut
-// 29000 to 2ffff   pulse1_lut
+// 21000 to 27fff   pulse0_lut
+// 28000 to 2ffff   pulse1_lut
 // 30000 to 3ffff   Circular buffer
 
 module llrf_shell #(
