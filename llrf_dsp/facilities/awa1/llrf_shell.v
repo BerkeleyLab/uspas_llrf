@@ -251,9 +251,10 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire [PULSE_LUT_DW-1:0] pulse1_lut_dsp_rdata;
 
     wire signed [PULSE_LUT_DW-1:0] pulse_lut_data [0:N_DRIVE-1];
-    reg  [PULSE_LUT_AW-1:0] pulse_lut_idx [0:N_DRIVE-1];
+    wire [PULSE_LUT_AW-1:0] pulse_lut_idx [0:N_DRIVE-1];
     wire signed [DWBB-1:0] amp_setpoint_lut [0:N_DRIVE-1];
     wire signed [DWBB:0] amp_setpoint_sum [0:N_DRIVE-1];
+    wire [N_DRIVE-1:0] pulse_mod_dval;
 
     assign pulse_lut_data[0] = pulse0_lut_dsp_rdata;
     assign pulse_lut_data[1] = pulse1_lut_dsp_rdata;
@@ -718,29 +719,54 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     assign field_i_data[1] = sig_i_data[loop1_adc_chan];
     assign field_q_data[1] = sig_q_data[loop1_adc_chan];
 
-    genvar pch;
-    generate for (pch=0; pch<N_DRIVE; pch=pch+1) begin: gen_pulse_lut_mod
-            mod_pulse_gen #(.AW(24)) mod_pulse_gen (
-            .clk        (dsp_clk),
-            .start      (pulse_start[pch]),
-            .trigger    (wave_trig),
-            .high_len   (pulse_high_len[pch]),   // unit: DSP_CLK_CYCLE
-            .res        (pulse_res_shift),
-            .stb_in     (1'b1),
-            .lut_len    (lut_len[pch]),
-            .pulse_dval (),
-            .pulse_last (),
-            .mod_ticks  (pulse_lut_idx[pch])
-        );
+    mod_pulse_gen #(
+        .AW(24),
+        .LUT_AW(PULSE_LUT_AW),
+        .LUT_LEN_W(16)
+    ) mod_pulse_gen_0 (
+        .clk        (dsp_clk),
+        .start      (pulse_start[0]),
+        .trigger    (wave_trig),
+        .high_len   (pulse_high_len[0]),   // unit: DSP_CLK_CYCLE
+        .res        (pulse_res_shift),
+        .stb_in     (1'b1),
+        .lut_len    (lut_len[0]),
+        .pulse_dval (pulse_mod_dval[0]),
+        .pulse_last (),
+        .mod_ticks  (pulse_lut_idx[0])
+    );
 
+    assign amp_setpoint_lut[0] =
+        (pulse_modulation_enable[0] && pulse_mod_dval[0]) ?
+        $signed(pulse_lut_data[0]) : {DWBB{1'b0}};
 
-        assign amp_setpoint_lut[pch] =
-            (pulse_modulation_enable[pch] && pulse_dval[pch]) ?
-            $signed(pulse_lut_data[pch]) : {DWBB{1'b0}};
+    assign amp_setpoint_sum[0] =
+        $signed(amp_setpoint[0]) + $signed(amp_setpoint_lut[0]);
 
-        assign amp_setpoint_sum[pch] =
-            $signed(amp_setpoint[pch]) + $signed(amp_setpoint_lut[pch]);
-    end endgenerate
+    mod_pulse_gen #(
+        .AW(24),
+        .LUT_AW(PULSE_LUT_AW),
+        .LUT_LEN_W(16)
+    ) mod_pulse_gen_1 (
+        .clk        (dsp_clk),
+        .start      (pulse_start[1]),
+        .trigger    (wave_trig),
+        .high_len   (pulse_high_len[1]),   // unit: DSP_CLK_CYCLE
+        .res        (pulse_res_shift),
+        .stb_in     (1'b1),
+        .lut_len    (lut_len[1]),
+        .pulse_dval (pulse_mod_dval[1]),
+        .pulse_last (),
+        .mod_ticks  (pulse_lut_idx[1])
+    );
+
+    assign amp_setpoint_lut[1] =
+        (pulse_modulation_enable[1] && pulse_mod_dval[1]) ?
+        $signed(pulse_lut_data[1]) : {DWBB{1'b0}};
+
+    assign amp_setpoint_sum[1] =
+        $signed(amp_setpoint[1]) + $signed(amp_setpoint_lut[1]);
+
 
     generate for (ch=0; ch<N_DRIVE; ch=ch+1) begin: gen_loops
         // ---------------------
@@ -1119,4 +1145,60 @@ module pulse_lut_ram #(
     always @(posedge dsp_clk) begin
         dsp_rdata <= mem[dsp_addr];
     end
+endmodule
+
+module mod_pulse_gen #(
+    parameter AW=12,
+    parameter LUT_AW=15,
+    parameter LUT_LEN_W=16
+) (
+    input clk,
+    input trigger,
+    input [AW-1:0] start,
+    input [AW-1:0] high_len,
+    input [5:0] res,
+    input stb_in,
+    input [LUT_LEN_W-1:0] lut_len,
+    output pulse_last,
+    output reg pulse_dval,
+    output reg [LUT_AW-1:0] mod_ticks
+);
+
+reg [AW-1:0] end_val  = 0;
+reg [AW:0]   pc       = 0;
+reg          counting = 0;
+
+wire [AW:0] pc_shift = pc >> res;
+wire is_last     = (pc == end_val);
+wire is_at_start = (pc >= start);
+
+always @(posedge clk) begin
+    end_val <= start + high_len;
+end
+
+always @(posedge clk) begin
+    if (is_last)
+        counting <= 1'b0;
+    else if (trigger)
+        counting <= 1'b1;
+
+    if (!counting && trigger)
+        pc <= 0;
+    else if (counting)
+        pc <= pc + stb_in;
+    else
+        pc <= 0;
+
+    pulse_dval <= counting && is_at_start && !is_last;
+
+    if (lut_len == 0)
+        mod_ticks <= {LUT_AW{1'b0}};
+    else if (pc_shift >= lut_len)
+        mod_ticks <= lut_len[LUT_AW-1:0] - 1'b1;
+    else
+        mod_ticks <= pc_shift[LUT_AW-1:0];
+end
+
+assign pulse_last = counting && is_last;
+
 endmodule

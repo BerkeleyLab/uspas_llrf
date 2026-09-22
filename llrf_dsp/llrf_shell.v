@@ -4,6 +4,8 @@
 // 18-bit (0 to 3ffff) address map
 // write:
 //      0 to 0fff   LLRF controller
+// 21000 to 28fff   pulse0_lut
+// 29000 to 2ffff   pulse1_lut
 // read:
 //      0 to 0fff   LLRF controller
 // 10800            llrf_circle_ready
@@ -13,25 +15,34 @@
 // 10a00 to 10a07   amp out
 // 10a10 to 10a17   phs out
 // 11000 to 117ff   mirror (`define MIRROR_WIDTH 7)
-// 12000 to 12fff   adc0_buf
+// 12000 to 127ff   adc0_buf
+// 12800 to 12fff   adc1_buf
+// 13000 to 137ff   adc2_buf
+// 13800 to 13fff   adc3_buf
+// 14000 to 147ff   adc4_buf
+// 14800 to 14fff   adc5_buf
+// 15000 to 157ff   adc6_buf
+// 15800 to 15fff   adc7_buf
+// 16000 to 167ff   dac0_raw_out
+// 16800 to 16fff   dac1_raw_out
+// 17000 to 177ff   adc0_i_buf
 // ...
-// 19000 to 19fff   adc7_buf
-// 1c000 to 1cfff   adc0_i_buf
+// 1a800 to 1afff   adc7_i_buf
+// 1b000 to 1b7ff   dac0_i_buf
+// 1b800 to 1bfff   dac1_i_buf
+// 1c000 to 1c7ff   adc0_q_buf
 // ...
-// 23000 to 23fff   adc7_i_buf
-// 24000 to 24fff   dac0_i_buf
-// 25000 to 25fff   dac1_i_buf
-// 26000 to 26fff   adc0_q_buf
-// ...
-// 2d000 to 2dfff   adc7_q_buf
-// 2e000 to 2efff   dac0_q_buf
-// 2f000 to 2ffff   dac1_q_buf
+// 1f800 to 1ffff   adc7_q_buf
+// 20000 to 207ff   dac0_q_buf
+// 20800 to 20fff   dac1_q_buf
+// 21000 to 28fff   pulse0_lut
+// 29000 to 2ffff   pulse1_lut
 // 30000 to 3ffff   Circular buffer
 
 module llrf_shell #(
     parameter integer CBUF_DW = 24,
     parameter integer CBUF_AW = 16,
-    parameter integer SIG_BUF_AW = 12,
+    parameter integer SIG_BUF_AW = 11,
     localparam integer CIC_SHIFT_BASE = 7,
     localparam integer INLK_SHIFT_BASE = 11, // near 2*np.log2(CIC_BASE_PERIOD) + 2
     localparam integer MON_RW = 44, // must <= 44, see ccfilt.v:51
@@ -42,7 +53,9 @@ module llrf_shell #(
     localparam integer DWBB = 18, // base band DW
     localparam integer N_CH = 10,  // N_ADC + N_DRIVE
     localparam integer N_ADC = 8,
-    localparam integer N_DRIVE = 2
+    localparam integer N_DRIVE = 2,
+    localparam integer PULSE_LUT_AW = 15, // 0x8000 deep
+    localparam integer PULSE_LUT_DW = 18
 ) (
     // ---------------------
     // Localbus interface
@@ -146,7 +159,11 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [23:0] loop0_pulse_high_len; top-level
 // reg [23:0] loop1_pulse_start; top-level
 // reg [23:0] loop1_pulse_high_len; top-level
+// reg [15:0] lut1_len; top-level
+// reg [15:0] lut2_len; top-level
 // reg [1:0] pulse_modes; top-level
+// reg [3:0] pulse_res_shift; top-level
+// reg [1:0] pulse_modulation_enable; top-level
 // reg [1:0] soft_drive_enable; top-level
 // reg [0:0] ntw_amp_enable; top-level
 // reg [0:0] ntw_phs_enable; top-level
@@ -201,6 +218,72 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
 
 `AUTOMATIC_decode
 
+    function signed [DWBB-1:0] sat_dwbb;
+        input signed [DWBB:0] x;
+        begin
+            if (x > $signed({1'b0, {(DWBB-1){1'b1}}}))
+                sat_dwbb = {1'b0, {(DWBB-1){1'b1}}};
+            else if (x < $signed({1'b1, {(DWBB-1){1'b0}}}))
+                sat_dwbb = {1'b1, {(DWBB-1){1'b0}}};
+            else
+                sat_dwbb = x[DWBB-1:0];
+        end
+    endfunction
+
+    // ---------------------
+    // Pulse LUTs
+    // ---------------------
+    wire pulse0_lut_sel = (lb_addr >= 18'h21000) && (lb_addr < 18'h29000);
+    wire pulse1_lut_sel = (lb_addr >= 18'h29000) && (lb_addr < 18'h30000);
+
+    wire [PULSE_LUT_AW-1:0] pulse0_lut_lb_addr = lb_addr[PULSE_LUT_AW-1:0];
+    wire [PULSE_LUT_AW-1:0] pulse1_lut_lb_addr = lb_addr[PULSE_LUT_AW-1:0];
+
+    wire pulse0_lut_lb_we = lb_write && pulse0_lut_sel;
+    wire pulse1_lut_lb_we = lb_write && pulse1_lut_sel;
+
+    wire [PULSE_LUT_DW-1:0] pulse0_lut_lb_rdata;
+    wire [PULSE_LUT_DW-1:0] pulse1_lut_lb_rdata;
+
+    wire [PULSE_LUT_AW-1:0] pulse0_lut_dsp_addr;
+    wire [PULSE_LUT_AW-1:0] pulse1_lut_dsp_addr;
+    wire [PULSE_LUT_DW-1:0] pulse0_lut_dsp_rdata;
+    wire [PULSE_LUT_DW-1:0] pulse1_lut_dsp_rdata;
+
+    wire signed [PULSE_LUT_DW-1:0] pulse_lut_data [0:N_DRIVE-1];
+    wire [PULSE_LUT_AW-1:0] pulse_lut_idx [0:N_DRIVE-1];
+    wire signed [DWBB-1:0] amp_setpoint_lut [0:N_DRIVE-1];
+    wire signed [DWBB:0] amp_setpoint_sum [0:N_DRIVE-1];
+    wire [N_DRIVE-1:0] pulse_mod_dval;
+
+    assign pulse_lut_data[0] = pulse0_lut_dsp_rdata;
+    assign pulse_lut_data[1] = pulse1_lut_dsp_rdata;
+
+    assign pulse0_lut_dsp_addr = pulse_lut_idx[0];
+    assign pulse1_lut_dsp_addr = pulse_lut_idx[1];
+
+    pulse_lut_ram #(.AW(PULSE_LUT_AW), .DW(PULSE_LUT_DW)) pulse0_lut_ram_i (
+        .lb_clk    (lb_clk),
+        .lb_addr   (pulse0_lut_lb_addr),
+        .lb_we     (pulse0_lut_lb_we),
+        .lb_wdata  (lb_wdata[PULSE_LUT_DW-1:0]),
+        .lb_rdata  (pulse0_lut_lb_rdata),
+        .dsp_clk   (dsp_clk),
+        .dsp_addr  (pulse0_lut_dsp_addr),
+        .dsp_rdata (pulse0_lut_dsp_rdata)
+    );
+
+    pulse_lut_ram #(.AW(PULSE_LUT_AW), .DW(PULSE_LUT_DW)) pulse1_lut_ram_i (
+        .lb_clk    (lb_clk),
+        .lb_addr   (pulse1_lut_lb_addr),
+        .lb_we     (pulse1_lut_lb_we),
+        .lb_wdata  (lb_wdata[PULSE_LUT_DW-1:0]),
+        .lb_rdata  (pulse1_lut_lb_rdata),
+        .dsp_clk   (dsp_clk),
+        .dsp_addr  (pulse1_lut_dsp_addr),
+        .dsp_rdata (pulse1_lut_dsp_rdata)
+    );
+
     // RX NCO LO
     wire signed [DWLO-1:0] cosd, sind;
     dds #( .DWLO(DWLO) ) rx_dds (
@@ -223,9 +306,14 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire signed [31:0] adc_raw_counts [0:N_ADC-1];
     wire [N_ADC-1:0] adc_raw_ready;
 
+    // added to pad raw_out block to N_CH entries
+    wire signed [DW-1:0] dac_raw_out [0:N_DRIVE-1];
+    assign dac_raw_out[0] = {DW{1'b0}};
+    assign dac_raw_out[1] = {DW{1'b0}};
+
     wire signed [31:0] sig_iq_buf_counts [0:2*N_CH-1];
     wire [2*N_CH-1:0] sig_iq_buf_ready;
-    wire [N_CH-1:0] sig_buf_transferred;
+    wire [N_ADC-1:0] sig_buf_transferred;
 
     //    2 DAC + 8 ADC for sig_iq_data in base band
     wire [2*N_CH-1:0] sig_buf_iq_transferred;
@@ -510,7 +598,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .permit_sum_out     (arc_permit_sum),
         `AUTOMATIC_arc);
 
-    assign inlk_arc_permit = inlk_permit_out & arc_permit_sum;
+    assign inlk_arc_permit = inlk_permit_out && arc_permit_sum;
 
     wire [15:0] mon_amp_lb;
     wire [16:0] mon_phs_lb;
@@ -594,7 +682,9 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire [N_DRIVE-1:0] pulse_dval;
     wire [23:0] pulse_start [0:N_DRIVE-1];
     wire [23:0] pulse_high_len [0:N_DRIVE-1];
+    wire [15:0] lut_len [0:N_DRIVE-1];
 
+    assign lut_len[0] = lut1_len;
     assign pulse_start[0] = loop0_pulse_start;
     assign pulse_high_len[0] = loop0_pulse_high_len;
     assign amp_setpoint[0] = loop0_amp_setpoint;
@@ -609,6 +699,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     assign amp_loop_reset[0] = loop0_amp_reset;
     assign phs_loop_reset[0] = loop0_phs_reset;
 
+    assign lut_len[1] = lut2_len;
     assign pulse_start[1] = loop1_pulse_start;
     assign pulse_high_len[1] = loop1_pulse_high_len;
     assign amp_setpoint[1] = loop1_amp_setpoint;
@@ -628,14 +719,66 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     assign field_i_data[1] = sig_i_data[loop1_adc_chan];
     assign field_q_data[1] = sig_q_data[loop1_adc_chan];
 
+    mod_pulse_gen #(
+        .AW(24),
+        .LUT_AW(PULSE_LUT_AW),
+        .LUT_LEN_W(16)
+    ) mod_pulse_gen_0 (
+        .clk        (dsp_clk),
+        .start      (pulse_start[0]),
+        .trigger    (wave_trig),
+        .high_len   (pulse_high_len[0]),   // unit: DSP_CLK_CYCLE
+        .res        (pulse_res_shift),
+        .stb_in     (1'b1),
+        .lut_len    (lut_len[0]),
+        .pulse_dval (pulse_mod_dval[0]),
+        .pulse_last (),
+        .mod_ticks  (pulse_lut_idx[0])
+    );
+
+    assign amp_setpoint_lut[0] =
+        (pulse_modulation_enable[0] && pulse_mod_dval[0]) ?
+        $signed(pulse_lut_data[0]) : {DWBB{1'b0}};
+
+    assign amp_setpoint_sum[0] =
+        $signed(amp_setpoint[0]) + $signed(amp_setpoint_lut[0]);
+
+    mod_pulse_gen #(
+        .AW(24),
+        .LUT_AW(PULSE_LUT_AW),
+        .LUT_LEN_W(16)
+    ) mod_pulse_gen_1 (
+        .clk        (dsp_clk),
+        .start      (pulse_start[1]),
+        .trigger    (wave_trig),
+        .high_len   (pulse_high_len[1]),   // unit: DSP_CLK_CYCLE
+        .res        (pulse_res_shift),
+        .stb_in     (1'b1),
+        .lut_len    (lut_len[1]),
+        .pulse_dval (pulse_mod_dval[1]),
+        .pulse_last (),
+        .mod_ticks  (pulse_lut_idx[1])
+    );
+
+    assign amp_setpoint_lut[1] =
+        (pulse_modulation_enable[1] && pulse_mod_dval[1]) ?
+        $signed(pulse_lut_data[1]) : {DWBB{1'b0}};
+
+    assign amp_setpoint_sum[1] =
+        $signed(amp_setpoint[1]) + $signed(amp_setpoint_lut[1]);
+
+
     generate for (ch=0; ch<N_DRIVE; ch=ch+1) begin: gen_loops
         // ---------------------
         // feedback controller in baseband
         // ---------------------
         // in open-loop:   apply max limit to amp_setpoint to avoid DAC saturation.
         // in closed-loop: the amp_setpoint is compared with ADC measurement, so no limit is applied.
-        assign amp_setpoint_i[ch] = amp_loop_enable[ch] ? amp_setpoint[ch] :
-                                        (amp_setpoint[ch] > max_amp_setpoint[ch] ? max_amp_setpoint[ch] : amp_setpoint[ch]);
+        wire signed [DWBB-1:0] amp_setpoint_mod;
+        assign amp_setpoint_mod = sat_dwbb(amp_setpoint_sum[ch]);
+
+        assign amp_setpoint_i[ch] = amp_loop_enable[ch] ? amp_setpoint_mod :
+                                        (amp_setpoint_mod > max_amp_setpoint[ch] ? max_amp_setpoint[ch] : amp_setpoint_mod);
         dsp_core #(.KW(DWBB)) feedback (
             .clk              (dsp_clk),
             .reset            (dsp_reset),
@@ -681,7 +824,15 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             .pulse_dval (pulse_dval[ch])
         );
 
-        assign drive_on[ch] = soft_drive_enable[ch] && sum_drive_enable && (pulse_modes[ch] ? pulse_dval[ch] : 1'b1);
+        wire signed [DWBB-1:0] drive_i_mod;
+        wire signed [DWBB-1:0] drive_q_mod;
+
+        assign drive_on[ch] = soft_drive_enable[ch] && sum_drive_enable &&
+                              (pulse_modes[ch] ? pulse_dval[ch] : 1'b1);
+
+        assign drive_i_mod = drive_i[ch] >>> pulse_res_shift;
+        assign drive_q_mod = drive_q[ch] >>> pulse_res_shift;
+
         assign drive_i_out[ch] = drive_on[ch] ? drive_i[ch] : {DWBB{1'b0}};
         assign drive_q_out[ch] = drive_on[ch] ? drive_q[ch] : {DWBB{1'b0}};
 
@@ -834,6 +985,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     reg [LB_DW-1:0] lb_rdata_r=0;
     reg [LB_ADW-1:0] lb_addr_d1=0;
     reg [31:0] reg_bank_0=0, reg_bank_1=0, reg_bank_2=0;
+    wire sig_buf_sel = ((lb_addr_d1 >= 18'h12000) && (lb_addr_d1 < 18'h21000));
     // jit_rad == Just In Time Readout Across Domains
     wire lb_error;
     wire xfer_clk, xfer_strobe, xfer_snap;
@@ -858,28 +1010,28 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     // lb_read: Match READ_DELAY=3 in system.v, check timing in simulation
     always @(posedge lb_clk) if (lb_read) begin
         case (lb_addr[3:0])
-            4'h1: reg_bank_0 <= inlk_hi_lb;           // alias: rf_pwr_hi
-            4'h2: reg_bank_0 <= inlk_lo_lb;           // alias: rf_pwr_lo
-            4'h3: reg_bank_0 <= inlk_status_lb;       // alias: rf_pwr_status
-            4'h4: reg_bank_0 <= first_fault_status_lb;// alias: rf_pwr_first_fault_status
-            4'h5: reg_bank_0 <= inlk_latch_lb;        // alias: rf_pwr_latch
-            4'h6: reg_bank_0 <= inlk_permit_out_lb;   // alias: rf_pwr_permit_sum
-            4'h7: reg_bank_0 <= arc_permit_raw_lb;    // alias: arc_permit_raw
-            4'h8: reg_bank_0 <= arc_permit_latch_lb;  // alias: arc_permit_latch
-            4'h9: reg_bank_0 <= arc_permit_sum_lb;    // alias: arc_permit_sum
-            4'ha: reg_bank_0 <= err_out_amp_lb[0];    // alias: loop0_amp_err
-            4'hb: reg_bank_0 <= err_out_phs_lb[0];    // alias: loop0_phs_err
-            4'hc: reg_bank_0 <= err_out_amp_lb[1];    // alias: loop1_amp_err
-            4'hd: reg_bank_0 <= err_out_phs_lb[1];    // alias: loop1_phs_err
-            4'he: reg_bank_0 <= evr_evcnt_lb;         // alias: evr_evcnt
-            4'hf: reg_bank_0 <= evr_ts_valid_lb;      // alias: evr_ts_valid
+            4'h1: reg_bank_0 <= inlk_hi_lb;            // alias: rf_pwr_hi
+            4'h2: reg_bank_0 <= inlk_lo_lb;            // alias: rf_pwr_lo
+            4'h3: reg_bank_0 <= inlk_status_lb;        // alias: rf_pwr_status
+            4'h4: reg_bank_0 <= first_fault_status_lb; // alias: rf_pwr_first_fault_status
+            4'h5: reg_bank_0 <= inlk_latch_lb;         // alias: rf_pwr_latch
+            4'h6: reg_bank_0 <= inlk_permit_out_lb;    // alias: rf_pwr_permit_sum
+            4'h7: reg_bank_0 <= arc_permit_raw_lb;     // alias: arc_permit_raw
+            4'h8: reg_bank_0 <= arc_permit_latch_lb;   // alias: arc_permit_latch
+            4'h9: reg_bank_0 <= arc_permit_sum_lb;     // alias: arc_permit_sum
+            4'ha: reg_bank_0 <= err_out_amp_lb[0];     // alias: loop0_amp_err
+            4'hb: reg_bank_0 <= err_out_phs_lb[0];     // alias: loop0_phs_err
+            4'hc: reg_bank_0 <= err_out_amp_lb[1];     // alias: loop1_amp_err
+            4'hd: reg_bank_0 <= err_out_phs_lb[1];     // alias: loop1_phs_err
+            4'he: reg_bank_0 <= evr_evcnt_lb;          // alias: evr_evcnt
+            4'hf: reg_bank_0 <= evr_ts_valid_lb;       // alias: evr_ts_valid
             default: reg_bank_0 <= 32'hfaceface;
         endcase
         case (lb_addr[3:0])
-            4'h1: reg_bank_1 <= hb_valid_lb;          // alias: evr_hb_valid
-            4'h2: reg_bank_1 <= pps_valid_lb;         // alias: evr_pps_valid
-            4'h3: reg_bank_1 <= oc_valid_lb;          // alias: evr_oc_valid
-            4'h4: reg_bank_1 <= oc_evr_frequency;     // alias: evr_oc_frequency
+            4'h1: reg_bank_1 <= hb_valid_lb;           // alias: evr_hb_valid
+            4'h2: reg_bank_1 <= pps_valid_lb;          // alias: evr_pps_valid
+            4'h3: reg_bank_1 <= oc_valid_lb;           // alias: evr_oc_valid
+            4'h4: reg_bank_1 <= oc_evr_frequency;      // alias: evr_oc_frequency
             default: reg_bank_1 <= 32'hfaceface;
         endcase
     end
@@ -895,61 +1047,158 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             4'h5: reg_bank_2 <= ntw_cos_debug;
             4'h6: reg_bank_2 <= ntw_phase_debug;
             4'h7: reg_bank_2 <= trig_count;
-            4'h8: reg_bank_2 <= inlk_arc_permit;      // alias: fast_permit_out
-            4'h9: reg_bank_2 <= drive_permit_sync;    // alias: drive_permit_in
-            4'ha: reg_bank_2 <= slow_permit_sync;     // alias: slow_permit_in
-            4'hb: reg_bank_2 <= evg_permit_out;       // alias: evg_permit_out
+            4'h8: reg_bank_2 <= inlk_arc_permit;       // alias: fast_permit_out
+            4'h9: reg_bank_2 <= drive_permit_sync;     // alias: drive_permit_in
+            4'ha: reg_bank_2 <= slow_permit_sync;      // alias: slow_permit_in
+            4'hb: reg_bank_2 <= evg_permit_out;        // alias: evg_permit_out
             4'hc: reg_bank_2 <= hpa_permit_out;
-            4'hd: reg_bank_2 <= sum_drive_enable;     // alias: drive_permit_out
+            4'hd: reg_bank_2 <= sum_drive_enable;      // alias: drive_permit_out
             default: reg_bank_2 <= 32'hfaceface;
         endcase
     end
     always @(posedge lb_clk) if (lb_read) begin
         lb_addr_d1 <= lb_addr;
-        casez (lb_addr_d1)
-            18'h10800: lb_rdata_r <= llrf_circle_ready;
-            18'h10801: lb_rdata_r <= adc_raw_ready;
-            18'h10802: lb_rdata_r <= sig_iq_buf_ready;
-            18'h109??: lb_rdata_r <= slow_rdata;
-            18'h10a0?: lb_rdata_r <= mon_amp_lb;
-            18'h10a1?: lb_rdata_r <= mon_phs_lb;
-            18'h11???: lb_rdata_r <= mirror_out_0;
-            18'h12???: lb_rdata_r <= adc_raw_out[0];
-            18'h13???: lb_rdata_r <= adc_raw_out[1];
-            18'h14???: lb_rdata_r <= adc_raw_out[2];
-            18'h15???: lb_rdata_r <= adc_raw_out[3];
-            18'h16???: lb_rdata_r <= adc_raw_out[4];
-            18'h17???: lb_rdata_r <= adc_raw_out[5];
-            18'h18???: lb_rdata_r <= adc_raw_out[6];
-            18'h19???: lb_rdata_r <= adc_raw_out[7];
-            18'h1c???: lb_rdata_r <= sig_i_buf_out[0];  // adc0_i_buf
-            18'h1d???: lb_rdata_r <= sig_i_buf_out[1];
-            18'h1e???: lb_rdata_r <= sig_i_buf_out[2];
-            18'h1f???: lb_rdata_r <= sig_i_buf_out[3];
-            18'h20???: lb_rdata_r <= sig_i_buf_out[4];
-            18'h21???: lb_rdata_r <= sig_i_buf_out[5];
-            18'h22???: lb_rdata_r <= sig_i_buf_out[6];
-            18'h23???: lb_rdata_r <= sig_i_buf_out[7];  // adc7_i_buf
-            18'h24???: lb_rdata_r <= sig_i_buf_out[8];  // drv0_i_buf
-            18'h25???: lb_rdata_r <= sig_i_buf_out[9];  // drv1_i_buf
-            18'h26???: lb_rdata_r <= sig_q_buf_out[0];  // adc0_q_buf
-            18'h27???: lb_rdata_r <= sig_q_buf_out[1];
-            18'h28???: lb_rdata_r <= sig_q_buf_out[2];
-            18'h29???: lb_rdata_r <= sig_q_buf_out[3];
-            18'h2a???: lb_rdata_r <= sig_q_buf_out[4];
-            18'h2b???: lb_rdata_r <= sig_q_buf_out[5];
-            18'h2c???: lb_rdata_r <= sig_q_buf_out[6];
-            18'h2d???: lb_rdata_r <= sig_q_buf_out[7];  // adc7_q_buf
-            18'h2e???: lb_rdata_r <= sig_q_buf_out[8];  // drv0_q_buf
-            18'h2f???: lb_rdata_r <= sig_q_buf_out[9];  // drv1_q_buf
-            18'h3????: lb_rdata_r <= cbuf_out;
-            18'h008??: lb_rdata_r <= 32'h0;  // LEEP old config ROM compatibility
-            18'h???0?: lb_rdata_r <= reg_bank_0;
-            18'h???1?: lb_rdata_r <= reg_bank_1;
-            18'h???2?: lb_rdata_r <= lb_reg_bank_2;
-            default:   lb_rdata_r <= 32'hfaceface;
-        endcase
+        if (sig_buf_sel) begin
+            case (lb_addr_d1[17:11])
+                7'h24: lb_rdata_r <= adc_raw_out[0]; // 12000-127ff
+                7'h25: lb_rdata_r <= adc_raw_out[1]; // 12800-12fff
+                7'h26: lb_rdata_r <= adc_raw_out[2]; // 13000-137ff
+                7'h27: lb_rdata_r <= adc_raw_out[3]; // 13800-13fff
+                7'h28: lb_rdata_r <= adc_raw_out[4]; // 14000-147ff
+                7'h29: lb_rdata_r <= adc_raw_out[5]; // 14800-14fff
+                7'h2a: lb_rdata_r <= adc_raw_out[6]; // 15000-157ff
+                7'h2b: lb_rdata_r <= adc_raw_out[7]; // 15800-15fff
+                7'h2c: lb_rdata_r <= dac_raw_out[0]; // 16000-167ff
+                7'h2d: lb_rdata_r <= dac_raw_out[1]; // 16800-16fff
+
+                7'h2e: lb_rdata_r <= sig_i_buf_out[0]; // 17000-177ff
+                7'h2f: lb_rdata_r <= sig_i_buf_out[1]; // 17800-17fff
+                7'h30: lb_rdata_r <= sig_i_buf_out[2]; // 18000-187ff
+                7'h31: lb_rdata_r <= sig_i_buf_out[3]; // 18800-18fff
+                7'h32: lb_rdata_r <= sig_i_buf_out[4]; // 19000-197ff
+                7'h33: lb_rdata_r <= sig_i_buf_out[5]; // 19800-19fff
+                7'h34: lb_rdata_r <= sig_i_buf_out[6]; // 1a000-1a7ff
+                7'h35: lb_rdata_r <= sig_i_buf_out[7]; // 1a800-1afff
+                7'h36: lb_rdata_r <= sig_i_buf_out[8]; // 1b000-1b7ff
+                7'h37: lb_rdata_r <= sig_i_buf_out[9]; // 1b800-1bfff
+
+                7'h38: lb_rdata_r <= sig_q_buf_out[0]; // 1c000-1c7ff
+                7'h39: lb_rdata_r <= sig_q_buf_out[1]; // 1c800-1cfff
+                7'h3a: lb_rdata_r <= sig_q_buf_out[2]; // 1d000-1d7ff
+                7'h3b: lb_rdata_r <= sig_q_buf_out[3]; // 1d800-1dfff
+                7'h3c: lb_rdata_r <= sig_q_buf_out[4]; // 1e000-1e7ff
+                7'h3d: lb_rdata_r <= sig_q_buf_out[5]; // 1e800-1efff
+                7'h3e: lb_rdata_r <= sig_q_buf_out[6]; // 1f000-1f7ff
+                7'h3f: lb_rdata_r <= sig_q_buf_out[7]; // 1f800-1ffff
+                7'h40: lb_rdata_r <= sig_q_buf_out[8]; // 20000-207ff
+                7'h41: lb_rdata_r <= sig_q_buf_out[9]; // 20800-20fff
+                default: lb_rdata_r <= 32'hfaceface;
+            endcase
+        end else if ((lb_addr_d1 >= 18'h21000) && (lb_addr_d1 < 18'h29000)) begin
+            lb_rdata_r <= {{(32-PULSE_LUT_DW){1'b0}}, pulse0_lut_lb_rdata};
+        end else if ((lb_addr_d1 >= 18'h29000) && (lb_addr_d1 < 18'h30000)) begin
+            lb_rdata_r <= {{(32-PULSE_LUT_DW){1'b0}}, pulse1_lut_lb_rdata};
+        end else begin
+            casez (lb_addr_d1)
+                18'h10800: lb_rdata_r <= llrf_circle_ready;
+                18'h10801: lb_rdata_r <= adc_raw_ready;
+                18'h10802: lb_rdata_r <= sig_iq_buf_ready;
+                18'h109??: lb_rdata_r <= slow_rdata;
+                18'h10a0?: lb_rdata_r <= mon_amp_lb;
+                18'h10a1?: lb_rdata_r <= mon_phs_lb;
+                18'h11???: lb_rdata_r <= mirror_out_0;
+                18'h3????: lb_rdata_r <= cbuf_out;
+                18'h008??: lb_rdata_r <= 32'h0;  // LEEP old config ROM compatibility
+                18'h???0?: lb_rdata_r <= reg_bank_0;
+                18'h???1?: lb_rdata_r <= reg_bank_1;
+                18'h???2?: lb_rdata_r <= lb_reg_bank_2;
+                default:   lb_rdata_r <= 32'hfaceface;
+            endcase
+        end
+    end
+    assign lb_rdata = lb_rdata_r;
+endmodule
+
+
+module pulse_lut_ram #(
+    parameter integer AW = 15,
+    parameter integer DW = 18
+) (
+    input               lb_clk,
+    input  [AW-1:0]     lb_addr,
+    input               lb_we,
+    input  [DW-1:0]     lb_wdata,
+    output reg [DW-1:0] lb_rdata,
+
+    input               dsp_clk,
+    input  [AW-1:0]     dsp_addr,
+    output reg [DW-1:0] dsp_rdata
+);
+    reg [DW-1:0] mem [0:(1<<AW)-1];
+
+    always @(posedge lb_clk) begin
+        if (lb_we)
+            mem[lb_addr] <= lb_wdata;
+        lb_rdata <= mem[lb_addr];
     end
 
-    assign lb_rdata = lb_rdata_r;
+    always @(posedge dsp_clk) begin
+        dsp_rdata <= mem[dsp_addr];
+    end
+endmodule
+
+module mod_pulse_gen #(
+    parameter AW=16,
+    parameter LUT_AW=16,
+    parameter LUT_LEN_W=16
+) (
+    input clk,
+    input trigger,
+    input [AW-1:0] start,
+    input [AW-1:0] high_len,
+    input [5:0] res,
+    input stb_in,
+    input [LUT_LEN_W-1:0] lut_len,
+    output pulse_last,
+    output reg pulse_dval,
+    output reg [LUT_AW-1:0] mod_ticks
+);
+
+reg [AW-1:0] end_val  = 0;
+reg [AW:0]   pc       = 0;
+reg          counting = 0;
+
+wire [AW:0] pc_shift = pc >> res;
+wire is_last     = (pc == end_val);
+wire is_at_start = (pc >= start);
+
+always @(posedge clk) begin
+    end_val <= start + high_len;
+end
+
+always @(posedge clk) begin
+    if (is_last)
+        counting <= 1'b0;
+    else if (trigger)
+        counting <= 1'b1;
+
+    if (!counting && trigger)
+        pc <= 0;
+    else if (counting)
+        pc <= pc + stb_in;
+    else
+        pc <= 0;
+
+    pulse_dval <= counting && is_at_start && !is_last;
+
+    if (lut_len == 0)
+        mod_ticks <= {LUT_AW{1'b0}};
+    else if (pc_shift >= lut_len)
+        mod_ticks <= lut_len[LUT_AW-1:0] - 1'b1;
+    else
+        mod_ticks <= pc_shift[LUT_AW-1:0];
+end
+
+assign pulse_last = counting && is_last;
+
 endmodule
