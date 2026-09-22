@@ -29,7 +29,7 @@ VFLAGS += -g2012
 facility: clean
 	cp facilities/uspas/*.v .
 	cp "$(FACILITY_DIR)"/*.* .
-update: 
+update:
 	cp facilities/uspas/*.v .
 	cp "$(FACILITY_DIR)"/*.* .
 
