@@ -8,12 +8,7 @@ include $(CORDIC_DIR)/rules.mk
 #   make facility=<name>
 
 facility ?= uspas
-FACILITY_DIR := facilities/$(facility)
-
-# Resolve a local file to facilities/<facility>/<file> if it exists there
-resolve_local = $(if $(and $(facility),$(wildcard $(FACILITY_DIR)/$(notdir $(1)))),$(FACILITY_DIR)/$(notdir $(1)),$(1))
-resolve_v     = $(call resolve_local,$(1))
-resolve_json  = $(call resolve_local,$(1))
+DESIGN_DIR := $(DESIGNS_DIR)/$(facility)
 
 vpath %.v $(DSP_DIR)
 VFLAGS_DEP += -y$(DSP_DIR) -y$(CORDIC_DIR) -y$(SERIAL_IO_DIR)/EVG_EVR -y.
@@ -22,16 +17,9 @@ VFLAGS_DEP += -I$(BEDROCK_DIR)/localbus -y$(BEDROCK_DIR)/localbus
 VFLAGS += $(VFLAGS_DEP)
 VFLAGS += -g2012
 
-.PHONY: clean facility update all
+.PHONY: clean all
 
 .DEFAULT_GOAL := all
-
-facility: clean
-	cp facilities/uspas/*.v .
-	cp "$(FACILITY_DIR)"/*.* .
-update:
-	cp facilities/uspas/*.v .
-	cp "$(FACILITY_DIR)"/*.* .
 
 all: llrf_shell_expand.v
 	$(MAKE) -C tests FSET=$(FSET)

@@ -19,7 +19,7 @@ all: $(TARGET)_top_$(FSET)_$(facility).bit
 
 IP_EXPAND = $(BSP_DIR)/marble_bsp_expand.v
 IP_EXPAND += $(APP_SOC_SYN_DIR)/system_expand.v
-IP_EXPAND += $(APP_DSP_DIR)/llrf_shell_expand.v
+IP_EXPAND += $(DESIGNS_DIR)/$(facility)/llrf_shell_expand.v
 
 SUB_IP_DIR = $(foreach ip, $(IP_EXPAND), $(dir $(ip)))
 
@@ -27,17 +27,17 @@ $(BSP_DIR)/marble_bsp_expand.v:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 $(APP_SOC_SYN_DIR)/system_expand.v:
 	$(MAKE) -C $(dir $@) $(notdir $@)
-$(APP_DSP_DIR)/llrf_shell_expand.v:
+$(DESIGNS_DIR)/$(facility)/llrf_shell_expand.v:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
-IP_JSON  = $(APP_DSP_DIR)/llrf_shell.json
+IP_JSON  = $(DESIGNS_DIR)/$(facility)/llrf_shell.json
 IP_JSON += $(BSP_DIR)/marble_bsp.json
 IP_JSON += marble_zest_top.json
 
 $(BSP_DIR)/marble_bsp.json:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
-$(APP_DSP_DIR)/llrf_shell.json:
+$(DESIGNS_DIR)/$(facility)/llrf_shell.json:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
 $(TARGET).json: $(IP_JSON)

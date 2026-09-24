@@ -32,3 +32,8 @@ Homepage = "https://gitlab.lbl.gov/uspas-llrf/uspas_llrf"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["uspas_llrf"]
+
+[tool.pytest.ini_options]
+testpaths = ["uspas_llrf"]
+norecursedirs = ["submodules", ".venv", "_autogen", "_dep"]
+
