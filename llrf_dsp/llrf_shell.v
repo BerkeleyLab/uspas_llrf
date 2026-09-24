@@ -9,6 +9,8 @@
 // 10800            llrf_circle_ready
 // 10801            adc_raw_ready
 // 10802            sig_iq_buf_ready
+// 10803            pulse_res_shift
+// 10804            amp_table_enable[1:0]
 // 10911 to 109ff   Slow readout, see slow_bridge.v
 // 10a00 to 10a07   amp out
 // 10a10 to 10a17   phs out
@@ -16,6 +18,8 @@
 // 12000 to 12fff   adc0_buf
 // ...
 // 19000 to 19fff   adc7_buf
+// 1a000 to 1afff   lb_sigbuf0
+// 1b000 to 1bfff   lb_sigbuf1
 // 1c000 to 1cfff   adc0_i_buf
 // ...
 // 23000 to 23fff   adc7_i_buf
@@ -98,6 +102,7 @@ module llrf_shell #(
 
 wire [31:0] lb_data = lb_wdata; // for newad.py
 
+
 // reg [0:0] circle_buf_flip; top-level single-cycle
 // reg [0:0] sig_buf_flip; top-level single-cycle
 // newad-force lb1 domain
@@ -169,6 +174,33 @@ wire [31:0] lb_data = lb_wdata; // for newad.py
 // reg [7:0] evcode; top-level
 // reg [6:0] evr_oc_delay; top-level
 // newad-force lb domain
+reg  [5:0] pulse_res_shift_lb = 0;
+wire [5:0] pulse_res_shift;
+
+reg  [1:0] amp_table_enable_lb = 0;
+wire [1:0] amp_table_enable;
+
+always @(posedge lb_clk) begin
+    if (lb_write && (lb_addr == 18'h10803))
+        pulse_res_shift_lb <= lb_wdata[5:0];
+    if (lb_write && (lb_addr == 18'h10804))
+        amp_table_enable_lb <= lb_wdata[1:0];
+end
+data_xdomain #(.size(6)) pulse_res_shift_xdomain (
+    .clk_in   (lb_clk),
+    .gate_in  (lb_write && (lb_addr == 18'h10803)),
+    .data_in  (pulse_res_shift_lb),
+    .clk_out  (dsp_clk),
+    .data_out (pulse_res_shift)
+);
+
+data_xdomain #(.size(2)) amp_table_enable_xdomain (
+    .clk_in   (lb_clk),
+    .gate_in  (lb_write && (lb_addr == 18'h10804)),
+    .data_in  (amp_table_enable_lb),
+    .clk_out  (dsp_clk),
+    .data_out (amp_table_enable)
+);
 
 // Transfer local bus to dsp clk domain: lb1
 wire lb1_clk = dsp_clk;
@@ -244,14 +276,17 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     // create data stream strobes for sig_buf
     // applies to all raw, i, q waveforms
     wire sig_buf_dval, sig_buf_last;
+    wire [32:0] sig_buf_mod_ticks;
     pulse_gen #(.AW(32)) sig_buf_trig_gen (
         .clk        (dsp_clk),
         .trigger    (wave_trig),
         .start      (0),
         .high_len   (1<<SIG_BUF_AW),
+        .res        (pulse_res_shift),
         .stb_in     (1'b1),
         .pulse_dval (sig_buf_dval),
-        .pulse_last (sig_buf_last)
+        .pulse_last (sig_buf_last),
+        .mod_ticks  (sig_buf_mod_ticks)
     );
 
     genvar ch;
@@ -283,6 +318,48 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             .buf_transferred(sig_buf_transferred[ch])
         );
     end endgenerate
+
+wire [DWBB-1:0] lb_sigbuf_douta[0:1];
+wire [DWBB-1:0] amp_lut_rdata[0:1];
+wire [SIG_BUF_AW-1:0] amp_lut_addr[0:1];
+reg  [DWBB-1:0] lb_sigbuf_readback[0:1];
+
+localparam [17-SIG_BUF_AW:0] LB_SIGBUF0_PAGE = (18'h2e000 >> SIG_BUF_AW);
+localparam [17-SIG_BUF_AW:0] LB_SIGBUF1_PAGE = (18'h2f000 >> SIG_BUF_AW);
+
+wire we_lb_sigbuf0 = lb_write && (lb_addr[17:SIG_BUF_AW] == LB_SIGBUF0_PAGE);
+wire we_lb_sigbuf1 = lb_write && (lb_addr[17:SIG_BUF_AW] == LB_SIGBUF1_PAGE);
+
+dpram # (.aw(SIG_BUF_AW), .dw(DWBB)) dp_lb_sigbuf0 (
+    .clka  (lb_clk),
+    .clkb  (dsp_clk),
+    .addra (lb_addr[SIG_BUF_AW-1:0]),
+    .douta (lb_sigbuf_douta[0]),
+    .dina  (lb_data[DWBB-1:0]),
+    .wena  (we_lb_sigbuf0),
+    .addrb (amp_lut_addr[0]),
+    .doutb (amp_lut_rdata[0])
+);
+
+dpram # (.aw(SIG_BUF_AW), .dw(DWBB)) dp_lb_sigbuf1 (
+    .clka  (lb_clk),
+    .clkb  (dsp_clk),
+    .addra (lb_addr[SIG_BUF_AW-1:0]),
+    .douta (lb_sigbuf_douta[1]),
+    .dina  (lb_data[DWBB-1:0]),
+    .wena  (we_lb_sigbuf1),
+    .addrb (amp_lut_addr[1]),
+    .doutb (amp_lut_rdata[1])
+);
+
+always @(posedge lb_clk) begin
+    if (lb_read && (lb_addr[17:SIG_BUF_AW] == LB_SIGBUF0_PAGE))
+        lb_sigbuf_readback[0] <= lb_sigbuf_douta[0];
+    if (lb_read && (lb_addr[17:SIG_BUF_AW] == LB_SIGBUF1_PAGE))
+        lb_sigbuf_readback[1] <= lb_sigbuf_douta[1];
+end
+
+
 
     generate for (ch=0; ch<N_CH; ch=ch+1) begin: gen_sig_iq
         assign sig_iq_flat[DWBB*(2*ch+0) +:DWBB] = sig_i_data[ch];
@@ -385,13 +462,17 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     end
 
     // add trigger delay
+    wire [24:0] trig_delay_mod_ticks;
     pulse_gen #(.AW(24)) trig_delay_gen (
         .clk        (dsp_clk),
         .trigger    (wave_trig_i),
         .start      (trigger_delay),
         .high_len   (24'd1),
+        .res        (pulse_res_shift),
         .stb_in     (1'b1),
-        .pulse_dval (wave_trig)
+        .pulse_dval (wave_trig),
+        .pulse_last (),
+        .mod_ticks  (trig_delay_mod_ticks)
     );
     assign trig_out = wave_trig;
 
@@ -571,8 +652,9 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire signed [DWBB-1:0] drive_q_out [0:N_DRIVE-1];
     wire signed [DWBB-1:0] amp_measured [0:N_DRIVE-1];
     wire signed [DWBB-1:0] phs_measured [0:N_DRIVE-1];
-    wire signed [DWBB-1:0] amp_setpoint [0:N_DRIVE-1];
-    wire signed [DWBB-1:0] amp_setpoint_i [0:N_DRIVE-1];
+	wire signed [DWBB-1:0] amp_setpoint [0:N_DRIVE-1];
+	wire signed [DWBB-1:0] amp_setpoint_src [0:N_DRIVE-1];
+	wire signed [DWBB-1:0] amp_setpoint_i [0:N_DRIVE-1];
     wire signed [DWBB-1:0] max_amp_setpoint [0:N_DRIVE-1];
     wire signed [DWBB-1:0] phs_setpoint [0:N_DRIVE-1];
     wire [N_DRIVE-1:0] amp_loop_enable;
@@ -593,8 +675,11 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire signed [14:0] err_out_amp_lb [0:N_DRIVE-1];
     wire signed [14:0] err_out_phs_lb [0:N_DRIVE-1];
     wire [N_DRIVE-1:0] pulse_dval;
+    wire [24:0] pulse_mod_ticks [0:N_DRIVE-1];
     wire [23:0] pulse_start [0:N_DRIVE-1];
     wire [23:0] pulse_high_len [0:N_DRIVE-1];
+	assign amp_lut_addr[0] = pulse_mod_ticks[0][SIG_BUF_AW-1:0];
+	assign amp_lut_addr[1] = pulse_mod_ticks[1][SIG_BUF_AW-1:0];
 
     assign pulse_start[0] = loop0_pulse_start;
     assign pulse_high_len[0] = loop0_pulse_high_len;
@@ -623,7 +708,8 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     assign phs_loop_enable[1] = loop1_phs_enable;
     assign amp_loop_reset[1] = loop1_amp_reset;
     assign phs_loop_reset[1] = loop1_phs_reset;
-
+	assign amp_setpoint_src[0] = amp_table_enable[0] ? $signed(amp_lut_rdata[0])+amp_setpoint[0] : amp_setpoint[0];
+	assign amp_setpoint_src[1] = amp_table_enable[1] ? $signed(amp_lut_rdata[1])+amp_setpoint[1] : amp_setpoint[1];
     assign field_i_data[0] = sig_i_data[loop0_adc_chan];
     assign field_q_data[0] = sig_q_data[loop0_adc_chan];
     assign field_i_data[1] = sig_i_data[loop1_adc_chan];
@@ -635,8 +721,8 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         // ---------------------
         // in open-loop:   apply max limit to amp_setpoint to avoid DAC saturation.
         // in closed-loop: the amp_setpoint is compared with ADC measurement, so no limit is applied.
-        assign amp_setpoint_i[ch] = amp_loop_enable[ch] ? amp_setpoint[ch] :
-                                        (amp_setpoint[ch] > max_amp_setpoint[ch] ? max_amp_setpoint[ch] : amp_setpoint[ch]);
+		assign amp_setpoint_i[ch] = amp_loop_enable[ch] ? amp_setpoint_src[ch] :
+                                (amp_setpoint_src[ch] > max_amp_setpoint[ch] ? max_amp_setpoint[ch] : amp_setpoint_src[ch]);
         dsp_core #(.KW(DWBB)) feedback (
             .clk              (dsp_clk),
             .reset            (dsp_reset),
@@ -678,11 +764,13 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             .start      (pulse_start[ch]),
             .trigger    (wave_trig),
             .high_len   (pulse_high_len[ch]),   // unit: DSP_CLK_CYCLE
+            .res        (pulse_res_shift),
             .stb_in     (1'b1),
-            .pulse_dval (pulse_dval[ch])
+            .pulse_dval (pulse_dval[ch]),
+            .pulse_last (),
+            .mod_ticks  (pulse_mod_ticks[ch])
         );
-
-        assign drive_on[ch] = soft_drive_enable[ch] && sum_drive_enable && (pulse_modes[ch] ? pulse_dval[ch] : 1'b1);
+        assign drive_on[ch] = soft_drive_enable[ch] && sum_drive_enable && ((pulse_modes[ch] ? pulse_dval[ch] : 1'b1) || amp_table_enable[ch]);
         assign drive_i_out[ch] = drive_on[ch] ? drive_i[ch] : {DWBB{1'b0}};
         assign drive_q_out[ch] = drive_on[ch] ? drive_q[ch] : {DWBB{1'b0}};
 
@@ -714,7 +802,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     end endgenerate
 
     reg [DW-1:0] dac_data_a=0, dac_data_b=0;
-    always @(dac_clk) begin
+    always @(posedge dac_clk) begin
         case (dac_drive_sel)
             2'b00: begin    // loop 0 drives, I0Q0
                 dac_data_a <= dac_i_out[0];
@@ -911,6 +999,8 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             18'h10800: lb_rdata_r <= llrf_circle_ready;
             18'h10801: lb_rdata_r <= adc_raw_ready;
             18'h10802: lb_rdata_r <= sig_iq_buf_ready;
+            18'h10803: lb_rdata_r <= pulse_res_shift_lb; 
+			18'h10804: lb_rdata_r <= amp_table_enable_lb;
             18'h109??: lb_rdata_r <= slow_rdata;
             18'h10a0?: lb_rdata_r <= mon_amp_lb;
             18'h10a1?: lb_rdata_r <= mon_phs_lb;
@@ -923,26 +1013,30 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             18'h17???: lb_rdata_r <= adc_raw_out[5];
             18'h18???: lb_rdata_r <= adc_raw_out[6];
             18'h19???: lb_rdata_r <= adc_raw_out[7];
-            18'h1c???: lb_rdata_r <= sig_i_buf_out[0];  // adc0_i_buf
-            18'h1d???: lb_rdata_r <= sig_i_buf_out[1];
-            18'h1e???: lb_rdata_r <= sig_i_buf_out[2];
-            18'h1f???: lb_rdata_r <= sig_i_buf_out[3];
-            18'h20???: lb_rdata_r <= sig_i_buf_out[4];
-            18'h21???: lb_rdata_r <= sig_i_buf_out[5];
-            18'h22???: lb_rdata_r <= sig_i_buf_out[6];
-            18'h23???: lb_rdata_r <= sig_i_buf_out[7];  // adc7_i_buf
-            18'h24???: lb_rdata_r <= sig_i_buf_out[8];  // drv0_i_buf
-            18'h25???: lb_rdata_r <= sig_i_buf_out[9];  // drv1_i_buf
-            18'h26???: lb_rdata_r <= sig_q_buf_out[0];  // adc0_q_buf
-            18'h27???: lb_rdata_r <= sig_q_buf_out[1];
-            18'h28???: lb_rdata_r <= sig_q_buf_out[2];
-            18'h29???: lb_rdata_r <= sig_q_buf_out[3];
-            18'h2a???: lb_rdata_r <= sig_q_buf_out[4];
-            18'h2b???: lb_rdata_r <= sig_q_buf_out[5];
-            18'h2c???: lb_rdata_r <= sig_q_buf_out[6];
-            18'h2d???: lb_rdata_r <= sig_q_buf_out[7];  // adc7_q_buf
-            18'h2e???: lb_rdata_r <= sig_q_buf_out[8];  // drv0_q_buf
-            18'h2f???: lb_rdata_r <= sig_q_buf_out[9];  // drv1_q_buf
+            18'h1a???: lb_rdata_r <= sig_i_buf_out[0];
+            18'h1b???: lb_rdata_r <= sig_i_buf_out[1];
+            18'h1c???: lb_rdata_r <= sig_i_buf_out[2];
+            18'h1d???: lb_rdata_r <= sig_i_buf_out[3];
+            18'h1e???: lb_rdata_r <= sig_i_buf_out[4];
+            18'h1f???: lb_rdata_r <= sig_i_buf_out[5];
+            18'h20???: lb_rdata_r <= sig_i_buf_out[6];
+            18'h21???: lb_rdata_r <= sig_i_buf_out[7];
+            18'h22???: lb_rdata_r <= sig_i_buf_out[8];
+            18'h23???: lb_rdata_r <= sig_i_buf_out[9];
+
+            18'h24???: lb_rdata_r <= sig_q_buf_out[0];
+            18'h25???: lb_rdata_r <= sig_q_buf_out[1];
+            18'h26???: lb_rdata_r <= sig_q_buf_out[2];
+            18'h27???: lb_rdata_r <= sig_q_buf_out[3];
+            18'h28???: lb_rdata_r <= sig_q_buf_out[4];
+            18'h29???: lb_rdata_r <= sig_q_buf_out[5];
+            18'h2a???: lb_rdata_r <= sig_q_buf_out[6];
+            18'h2b???: lb_rdata_r <= sig_q_buf_out[7];
+            18'h2c???: lb_rdata_r <= sig_q_buf_out[8];
+            18'h2d???: lb_rdata_r <= sig_q_buf_out[9];
+
+            18'h2e???: lb_rdata_r <= lb_sigbuf_readback[0];
+            18'h2f???: lb_rdata_r <= lb_sigbuf_readback[1];
             18'h3????: lb_rdata_r <= cbuf_out;
             18'h008??: lb_rdata_r <= 32'h0;  // LEEP old config ROM compatibility
             18'h???0?: lb_rdata_r <= reg_bank_0;

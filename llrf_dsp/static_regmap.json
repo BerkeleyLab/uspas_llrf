@@ -58,33 +58,47 @@
     "adc7_buf": {
         "base_addr": "0x19000",
         "addr_width": 12,
-        "access": "r",
+        "access": "rw",
+        "data_width": 16,
+        "sign": "signed"
+    },
+    "pulse0_buf": {
+        "base_addr": "0x2e000",
+        "addr_width": 12,
+        "access": "rw",
+        "data_width": 16,
+        "sign": "signed"
+    },
+    "pulse1_buf": {
+        "base_addr": "0x2f000",
+        "addr_width": 12,
+        "access": "rw",
         "data_width": 16,
         "sign": "signed"
     },
     "drv0_i_buf": {
-        "base_addr": "0x24000",
+        "base_addr": "0x22000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "drv1_i_buf": {
-        "base_addr": "0x25000",
+        "base_addr": "0x23000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "drv0_q_buf": {
-        "base_addr": "0x2e000",
+        "base_addr": "0x2c000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "drv1_q_buf": {
-        "base_addr": "0x2f000",
+        "base_addr": "0x2d000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
@@ -183,122 +197,137 @@
         "sign": "unsigned"
     },
     "adc0_i_buf": {
-        "base_addr": "0x1c000",
+        "base_addr": "0x1a000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc1_i_buf": {
-        "base_addr": "0x1d000",
+        "base_addr": "0x1b000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc2_i_buf": {
-        "base_addr": "0x1e000",
+        "base_addr": "0x1c000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc3_i_buf": {
-        "base_addr": "0x1f000",
+        "base_addr": "0x1d000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc4_i_buf": {
-        "base_addr": "0x20000",
+        "base_addr": "0x1e000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc5_i_buf": {
-        "base_addr": "0x21000",
+        "base_addr": "0x1f000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc6_i_buf": {
-        "base_addr": "0x22000",
+        "base_addr": "0x20000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc7_i_buf": {
-        "base_addr": "0x23000",
+        "base_addr": "0x21000",
         "addr_width": 12,
-        "access": "r",
+        "access": "rw",
         "data_width": 18,
         "sign": "signed"
     },
     "adc0_q_buf": {
-        "base_addr": "0x26000",
+        "base_addr": "0x24000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc1_q_buf": {
-        "base_addr": "0x27000",
+        "base_addr": "0x25000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc2_q_buf": {
-        "base_addr": "0x28000",
+        "base_addr": "0x26000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc3_q_buf": {
-        "base_addr": "0x29000",
+        "base_addr": "0x27000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc4_q_buf": {
-        "base_addr": "0x2a000",
+        "base_addr": "0x28000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc5_q_buf": {
-        "base_addr": "0x2b000",
+        "base_addr": "0x29000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc6_q_buf": {
-        "base_addr": "0x2c000",
+        "base_addr": "0x2a000",
         "addr_width": 12,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
     },
     "adc7_q_buf": {
-        "base_addr": "0x2d000",
+        "base_addr": "0x2b000",
         "addr_width": 12,
-        "access": "r",
+        "access": "rw",
         "data_width": 18,
         "sign": "signed"
     },
     "iq_buf": {
-        "base_addr": "0x1c000",
+        "base_addr": "0x1a000",
         "addr_width": 17,
         "access": "r",
         "data_width": 18,
         "sign": "signed"
-    }
+    },
+    "pulse_res_shift": {
+        "base_addr": "0x10803",
+        "addr_width": 0,
+        "access": "rw",
+        "data_width": 5,
+        "sign": "unsigned"
+    },
+	"amp_table_enable": {
+	  "base_addr": "0x10804",
+        "addr_width": 0,
+        "access": "rw",
+        "data_width": 2,
+        "sign": "unsigned"
+	}    
+    
 }
