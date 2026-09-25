@@ -1,6 +1,19 @@
 # details see README.md
-# choice from ALSU, USPAS, LEMP, AWA
-FSET ?= USPAS
+# DESGIN in [uspas, alsu, lemp, awa{0,1}, pip-ii, vts]
+# FSET in [ALSU, USPAS, LEMP, AWA]
+# map from DESIGN to FSET
+DESIGN ?= uspas
+
+FSET_uspas = USPAS
+FSET_alsu  = ALSU
+FSET_lemp  = LEMP
+FSET_awa   = AWA
+FSET_awa0  = AWA
+FSET_awa1  = AWA
+FSET_pip-ii= AWA
+FSET_vts   = AWA
+
+FSET := $(FSET_$(DESIGN))
 
 CFG_ALSU_DSP_FREQ_MHZ  = 114.58
 CFG_USPAS_DSP_FREQ_MHZ = 115.0

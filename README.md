@@ -93,7 +93,6 @@ See [doc/README.md](doc/README.md).
 ```bash
 pip install -e .
 cd llrf_dsp
-make facility facility={FACILITY}
 make
 ```
 
@@ -102,11 +101,9 @@ make
 
 ```bash
 cd top/marble_zest
-make FSET={TARGET} facility={FACILITY}
+make DESIGN={TARGET}
 ```
-Where TARGET is ALSU, AWA, LEMP or USPAS and FACILITY is alsu, awa
-lemp, uspas, pip-ii and vts.  FACILITY will be default to uspas if not
-specified.
+Where TARGET is alsu, awa lemp, uspas, pip-ii and vts.
 
 ### Boot-load soft core program
 

@@ -79,7 +79,7 @@ llrf_synthesis:
     - cd top/marble_zest
   stage: synthesis
   script:
-    - PATH=$XILINX_VIVADO/bin:$PATH make FSET=${TARGET}
+    - PATH=$XILINX_VIVADO/bin:$PATH make DESIGN=${TARGET}
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
     expire_in: 2 days
@@ -89,7 +89,7 @@ llrf_synthesis:
       - top/marble_zest/_xilinx/*.runs/impl_1/*.rpt
   parallel:
     matrix:
-      - TARGET: [ALSU, USPAS, LEMP, AWA]
+      - TARGET: [alsu, uspas, lemp, awa]
 
 alsu_run:
   variables:
@@ -110,9 +110,9 @@ alsu_run:
     - job: llrf_synthesis
       parallel:
         matrix:
-          - TARGET: ALSU
+          - TARGET: alsu
   script:
-    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=ALSU
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=alsu
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
@@ -131,9 +131,9 @@ awa_run:
     - job: llrf_synthesis
       parallel:
         matrix:
-          - TARGET: AWA
+          - TARGET: awa
   script:
-    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=AWA
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=awa
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
@@ -156,9 +156,9 @@ lemp_run:
     - job: llrf_synthesis
       parallel:
         matrix:
-          - TARGET: LEMP
+          - TARGET: lemp
   script:
-    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=LEMP
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=lemp
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
@@ -177,8 +177,8 @@ uspas_run:
     - job: llrf_synthesis
       parallel:
         matrix:
-          - TARGET: USPAS
+          - TARGET: uspas
   script:
-    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} FSET=USPAS
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=uspas
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
