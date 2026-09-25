@@ -1,4 +1,6 @@
 include ../../dir_list.mk
+FSET := USPAS
+
 include $(TOP)settings.mk
 include $(BUILD_DIR)/top_rules.mk
 include $(BUILD_DIR)/newad_top_rules.mk
