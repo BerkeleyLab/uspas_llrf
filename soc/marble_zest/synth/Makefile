@@ -5,6 +5,7 @@ include $(BUILD_DIR)/top_rules.mk
 include $(APP_SOC_DIR)/common/common.mk
 
 TARGET              = system
+HARDWARE            = marble
 BOOTLOADER_SERIAL   = $(shell readlink -f /dev/serial/by-id/usb-LBNL_Marble_$(MARBLE_SN)-if02-port0)
 BOOTLOADER_BAUDRATE = 115200
 ZEST_DIR            = $(BOARD_SUPPORT_DIR)/zest_soc
