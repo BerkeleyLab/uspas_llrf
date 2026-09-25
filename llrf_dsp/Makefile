@@ -3,19 +3,7 @@ include $(TOP)settings.mk
 include $(BUILD_DIR)/top_rules.mk
 include $(BUILD_DIR)/newad_top_rules.mk
 include $(CORDIC_DIR)/rules.mk
-
-# Optional:
-#   make facility=<name>
-
-facility ?= uspas
-DESIGN_DIR := $(DESIGNS_DIR)/$(facility)
-
-vpath %.v $(DSP_DIR)
-VFLAGS_DEP += -y$(DSP_DIR) -y$(CORDIC_DIR) -y$(SERIAL_IO_DIR)/EVG_EVR -y.
-VFLAGS_DEP += -I$(AUTOGEN_DIR) -y$(AUTOGEN_DIR)
-VFLAGS_DEP += -I$(BEDROCK_DIR)/localbus -y$(BEDROCK_DIR)/localbus
-VFLAGS += $(VFLAGS_DEP)
-VFLAGS += -g2012
+include $(APP_DSP_DIR)/rules.mk
 
 .PHONY: clean all
 
@@ -23,11 +11,6 @@ VFLAGS += -g2012
 
 all: llrf_shell_expand.v
 	$(MAKE) -C tests FSET=$(FSET)
-
-llrf_shell_expand.v: cordicg_b22.v
-
-##### others #####
-include build.mk
 
 # =====
 # check of basic CDC-correctness

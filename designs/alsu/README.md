@@ -87,10 +87,10 @@ flowchart LR
 ### Calibration Factors
 - **`rx_gain`**: `2.415648`
 - **`tx_gain`**: `1.548405`
-- **`rx_phase_off_deg`**: `0.8440°`
-- **`tx_phase_off_deg`**: `0.0°`
-- **`rx_dds_omega_deg`**: `130.9091°`
-- **`tx_dds_omega_deg`**: `65.4545°`
+- **`rx_phase_off_deg`**: `0.8440 degree`
+- **`tx_phase_off_deg`**: `0.0 degree`
+- **`rx_dds_omega_deg`**: `130.9091 degree`
+- **`tx_dds_omega_deg`**: `65.4545 degree`
 - **`cic_wfm_gain`**: `5.546751`
 - **`inlk_gain`**: `0.570886`
 - **`inlk_tx_gain`**: `0.171939 + 0.376493j`

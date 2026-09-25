@@ -3,7 +3,7 @@ include $(TOP)settings.mk
 
 include $(APP_SOC_DIR)/common/common.mk
 include $(BUILD_DIR)/top_rules.mk
-facility ?= uspas
+DESIGN ?= uspas
 TARGET   = marble_zest
 HARDWARE = marble
 # Connection to swap-git-ID feature; see comments in that file
@@ -15,11 +15,11 @@ GT_TCL = $(BEDROCK_DIR)/serial_io/EVG_EVR/gt_tcl/evr_gtx.tcl
 vpath %.c $(BUILD_DIR)
 
 .PHONY: all system_config system_test evr_test clean
-all: $(TARGET)_top_$(FSET)_$(facility).bit
+all: $(TARGET)_top_$(FSET)_$(DESIGN).bit
 
 IP_EXPAND = $(BSP_DIR)/marble_bsp_expand.v
 IP_EXPAND += $(APP_SOC_SYN_DIR)/system_expand.v
-IP_EXPAND += $(DESIGNS_DIR)/$(facility)/llrf_shell_expand.v
+IP_EXPAND += $(DESIGNS_DIR)/$(DESIGN)/llrf_shell_expand.v
 
 SUB_IP_DIR = $(foreach ip, $(IP_EXPAND), $(dir $(ip)))
 
@@ -27,17 +27,17 @@ $(BSP_DIR)/marble_bsp_expand.v:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 $(APP_SOC_SYN_DIR)/system_expand.v:
 	$(MAKE) -C $(dir $@) $(notdir $@)
-$(DESIGNS_DIR)/$(facility)/llrf_shell_expand.v:
+$(DESIGNS_DIR)/$(DESIGN)/llrf_shell_expand.v:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
-IP_JSON  = $(DESIGNS_DIR)/$(facility)/llrf_shell.json
+IP_JSON  = $(DESIGNS_DIR)/$(DESIGN)/llrf_shell.json
 IP_JSON += $(BSP_DIR)/marble_bsp.json
 IP_JSON += marble_zest_top.json
 
 $(BSP_DIR)/marble_bsp.json:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
-$(DESIGNS_DIR)/$(facility)/llrf_shell.json:
+$(DESIGNS_DIR)/$(DESIGN)/llrf_shell.json:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
 $(TARGET).json: $(IP_JSON)
@@ -68,12 +68,12 @@ $(TARGET)_top.d: $(TARGET)_top.v config_romx.v $(BEDROCK_DIR)/serial_io/gmii_to_
 	echo $^ | tr ' ' '\n' > $@
 
 #: Build bitstream
-$(TARGET)_top_$(FSET)_$(facility).bit: $(TARGET)_top.tcl $(GT_TCL) $(GITID_TCL) $(TARGET)_top.d bit_stamp_mod
-	$(VIVADO_CMD) -source $< -tclargs $(TARGET)_top.d $(FSET)_$(facility) $(HARDWARE) "$(SYNTH_OPT)" $(GITID_TCL) $(GT_TCL) $(REFCLK_FREQ)
+$(TARGET)_top_$(FSET)_$(DESIGN).bit: $(TARGET)_top.tcl $(GT_TCL) $(GITID_TCL) $(TARGET)_top.d bit_stamp_mod
+	$(VIVADO_CMD) -source $< -tclargs $(TARGET)_top.d $(FSET)_$(DESIGN) $(HARDWARE) "$(SYNTH_OPT)" $(GITID_TCL) $(GT_TCL) $(REFCLK_FREQ)
 
 IP_ADDRESS = 192.168.19.$(MARBLE_SERIAL)
 
-BITSTREAM = $(TARGET)_top_$(FSET)_$(facility).$(GIT_32BIT_ID).bit
+BITSTREAM = $(TARGET)_top_$(FSET)_$(DESIGN).$(GIT_32BIT_ID).bit
 system_config:
 	@echo "Using Marble with serial number $(MARBLE_SERIAL)"
 	openocd \

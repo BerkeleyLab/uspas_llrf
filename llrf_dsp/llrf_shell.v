@@ -1157,7 +1157,7 @@ module mod_pulse_gen #(
     input trigger,
     input [AW-1:0] start,
     input [AW-1:0] high_len,
-    input [5:0] res,
+    input [3:0] res,
     input stb_in,
     input [LUT_LEN_W-1:0] lut_len,
     output pulse_last,
