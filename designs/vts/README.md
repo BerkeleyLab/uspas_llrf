@@ -2,6 +2,15 @@
 
 This directory contains the DSP configuration and static register mapping for the **Fermilab Vertical Test Stand (VTS)** LLRF application.
 
+## Design Architecture & Shell Flavor
+
+- **Frequency Configuration (`FSET`)**: `AWA`
+- **`llrf_shell.v` Flavor**: **Pulse Modulation LUT** (symbolic link to `../awa1/llrf_shell.v`)
+- **`static_regmap.json`**: Symbolic link to `../awa1/static_regmap.json`
+- **Testbench**: Uses unified cocotb test suite based on `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell`.
+
+---
+
 ## Frequency and Clocking Summary
 
 | Signal | Ratio | Frequency | Unit |

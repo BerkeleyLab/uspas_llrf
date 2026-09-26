@@ -40,21 +40,27 @@ The DSP testbenches use cocotb with Verilator (default) or Icarus Verilog.
 ```bash
 cd llrf_dsp
 
-# Run all DSP cocotb tests (dds, ddc, duc, llrf_dsp, cic_waves, llrf_shell, pulse_gen)
+# Run DSP core subsystem cocotb tests (dds, ddc, duc, llrf_dsp, cic_waves, pulse_gen)
 make
 
-# Run a single cocotb test suite (from llrf_dsp/tests/<suite>)
+# Run a single cocotb test suite for DSP submodules (from llrf_dsp/tests/<suite>)
 cd tests/dds && make
 cd tests/ddc && make
 cd tests/duc && make
 cd tests/llrf_dsp && make
 cd tests/cic_waves && make
-cd tests/llrf_shell && make
 cd tests/pulse_gen && make
 
 # Build standalone design package / IP artifacts (e.g., uspas, pip-ii, awa1, etc.)
 cd ../designs/uspas && make
-cd ../designs/pip-ii && make
+cd ../designs/awa1 && make
+# Or build all designs at once
+cd ../designs && make
+
+# Run unified llrf_shell cocotb simulation for a specific design
+cd ../designs/uspas/tb/llrf_shell && make
+cd ../designs/alsu/tb/llrf_shell && make
+cd ../designs/awa1/tb/llrf_shell && make
 
 # Enable waveform tracing (generates FST/VCD)
 make WAVES=1
@@ -62,8 +68,8 @@ make WAVES=1
 # Run with Icarus Verilog instead of Verilator
 make SIM=icarus
 
-# Run Clock Domain Crossing (CDC) check via Yosys
-make llrf_shell_expand.v && make llrf_shell_cdc.txt
+# Run Clock Domain Crossing (CDC) check via Yosys for a specific design
+cd ../designs/uspas && make llrf_shell_expand.v && make llrf_shell_cdc.txt
 ```
 
 ### 3. Board Support Package (BSP) Test
@@ -86,8 +92,10 @@ make
 ### 5. FPGA Bitstream Synthesis
 ```bash
 cd top/marble_zest
-# TARGET choices: USPAS, ALSU, LEMP, AWA; facility choices: uspas, alsu, lemp, awa, pip-ii, vts
-make FSET=USPAS facility=uspas
+# Synthesis entry-level key is DESIGN: [uspas, alsu, lemp, awa, awa0, awa1, pip-ii, vts]
+# (FSET is automatically mapped from DESIGN in settings.mk: USPAS, ALSU, LEMP, AWA)
+make DESIGN=uspas
+make DESIGN=awa1
 ```
 
 ### 6. Hardware Deployment & Testing (LEEP)
@@ -95,7 +103,7 @@ make FSET=USPAS facility=uspas
 cd top/marble_zest
 
 # Program FPGA over OpenOCD (set MARBLE_SERIAL to the board's serial number)
-make system_config MARBLE_SERIAL=122 FSET=USPAS
+make system_config MARBLE_SERIAL=122 DESIGN=uspas
 
 # Test Ethernet and system self-test via LEEP (IP defaults to 192.168.19.<SERIAL>)
 make system_test MARBLE_SERIAL=122
@@ -119,14 +127,21 @@ uspas_llrf/
 │   ├── model/                 # DSP analytical models (llrf_dsp.py, plant.py, cavity.json) used in cocotb & Python drivers
 │   ├── app/                   # High-level Python application interfaces and BSP drivers
 │   ├── tools/                 # Hardware utility scripts (RF synth, EVG generator)
+│   ├── tests/                 # Unified testbench classes (test_llrf_shell.py: TB_llrf_shell)
 │   └── settings.json          # Pre-defined facility LLRF DSP configuration parameters
-├── designs/                   # Standalone facility designs and static register maps (alsu, awa, awa0, awa1, lemp, pip-ii, uspas, vts)
-├── llrf_dsp/                  # Verilog DSP core & subsystems
-│   ├── tests/                 # Cocotb testbenches verifying DSP modules
+├── designs/                   # Standalone facility designs, customized llrf_shell.v, static regmaps, and testbenches
+│   ├── rules.mk               # Centralized make rules for all designs (expansion, JSON merge, CDC checks)
+│   ├── README.md              # Detailed overview of design variants and frequency configuration matrix
+│   ├── uspas/                 # Baseline llrf_shell.v and static register map
+│   ├── alsu/, lemp/, awa0/    # Designs symlinking baseline uspas/llrf_shell.v
+│   ├── awa1/, pip-ii/, vts/   # Designs with arbitrary pulse modulation LUT support (awa1/llrf_shell.v)
+│   └── awa/                   # Design with compact buffer address layout (awa/llrf_shell.v)
+├── llrf_dsp/                  # Verilog DSP core & submodules (DDC, DUC, DDS, PI scalar, CIC filters, interlocks)
+│   ├── tests/                 # Cocotb testbenches verifying individual DSP submodules
 │   ├── dds.v, ddc.v, duc.v    # NCO / Direct Digital Synthesis, Non-IQ Down-Converter, Up-Converter
 │   ├── dsp_core.v             # Baseband PI feedback controller with CORDIC polar/rectangular transforms
 │   ├── cic_waves.v            # CIC decimation filters, multi-channel circular waveform capture buffer & fast interlocks
-│   └── llrf_shell.v           # Top-level DSP integration shell connecting localbus, ADCs, DACs, and feedback loops
+│   └── pulse_gen.v            # Trigger and gating pulse generation
 ├── marble_bsp/                # Marble FPGA board support package (Local Bus, Packet Badger UDP/Ethernet, EVR timing, MMC)
 ├── soc/marble_zest/           # PicoRV32 RISC-V soft-core SoC for configuration, booting, and diagnostics
 ├── top/marble_zest/           # Top-level FPGA integration (`marble_zest_top.v`) and Vivado synthesis flow
@@ -140,4 +155,14 @@ uspas_llrf/
    - $f_{\text{dac\_clk}} = 2 f_{\text{adc\_clk}} = 2 f_{\text{dsp\_clk}}$
    - The reference clock feeds a clock distributor (LMK01801) driving ADCs (AD9653) and DACs (AD9781).
 3. **Control Interface**: Registers and circular buffers are memory-mapped through LBNL Local Bus and exposed over Ethernet UDP using LBNL Packet Badger and the `leep` Python library/CLI.
-4. **Facility Configurations**: Different accelerator facilities (USPAS, ALSU, LEMP, AWA, VTS) have different IF, LO, and RF frequencies defined in [settings.mk](settings.mk) and [uspas_llrf/settings.json](uspas_llrf/settings.json). Use `make facility=<name>` in `llrf_dsp/` or `FSET=<TARGET>` in `top/marble_zest/` to select the target configuration.
+4. **Facility Configurations & Entry Key**:
+   - The top-level entry key for synthesis and build configuration is `DESIGN` (`uspas`, `alsu`, `lemp`, `awa`, `awa0`, `awa1`, `pip-ii`, `vts`).
+   - `DESIGN` automatically maps to `FSET` (`USPAS`, `ALSU`, `LEMP`, `AWA`) in `settings.mk` and `uspas_llrf/settings.json`.
+5. **LLRF Shell Flavors & Consolidation**:
+   - 3 consolidated flavors of `llrf_shell.v` are matrixed across designs:
+     - **Baseline** (`designs/uspas/llrf_shell.v`): Used by `uspas`, `alsu`, `lemp`, `awa0`.
+     - **Pulse Modulation LUT** (`designs/awa1/llrf_shell.v`): Used by `awa1`, `pip-ii`, `vts` with arbitrary pulse LUTs (`pulse0_lut`, `pulse1_lut`).
+     - **Compact Buffer Map** (`designs/awa/llrf_shell.v`): Used by `awa` with compact buffer address stride (`0x800`).
+   - Unified cocotb testbench `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell` verifies all designs in `designs/<design>/tb/llrf_shell/`.
+   - Planned roadmap: Unify all flavors into a single parameterizable `llrf_shell.v` supporting feedforward tables and pulse modulation across all facilities.
+6. **Analog Frontend TX Spectral Flip**: Supports `tx_afe_spectral_flip` XORed with `duc_spectral_flip` for hardware RF mixing polarity compensation.

@@ -2,6 +2,15 @@
 
 This directory contains the legacy / baseline DSP configuration and static register mapping for the **Argonne Wakefield Accelerator (AWA0)** setup.
 
+## Design Architecture & Shell Flavor
+
+- **Frequency Configuration (`FSET`)**: `AWA`
+- **`llrf_shell.v` Flavor**: **Baseline** (symbolic link to `../uspas/llrf_shell.v`)
+- **`static_regmap.json`**: Symbolic link to `../uspas/static_regmap.json`
+- **Testbench**: Uses unified cocotb runner `tb/llrf_shell/` based on `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell`.
+
+---
+
 ## Frequency and Clocking Summary
 
 | Signal | Ratio | Frequency | Unit |

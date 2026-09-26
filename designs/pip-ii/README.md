@@ -2,6 +2,15 @@
 
 This directory contains the DSP configuration and static register mapping for the **Fermilab PIP-II Linac LLRF** application with **Arbitrary Pulse Modulation LUT** support.
 
+## Design Architecture & Shell Flavor
+
+- **Frequency Configuration (`FSET`)**: `AWA`
+- **`llrf_shell.v` Flavor**: **Pulse Modulation LUT** (identical to `designs/awa1/llrf_shell.v`)
+- **`static_regmap.json`**: Direct file in this directory (`0x800` stride mapping + `pulse0_lut`/`pulse1_lut`)
+- **Testbench**: Uses unified cocotb runner `tb/llrf_shell/` based on `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell`.
+
+---
+
 ## Frequency and Clocking Summary
 
 | Signal | Ratio | Frequency | Unit |

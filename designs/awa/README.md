@@ -2,6 +2,15 @@
 
 This directory contains the DSP configuration and static register mapping for the **Argonne Wakefield Accelerator (AWA)** LLRF application.
 
+## Design Architecture & Shell Flavor
+
+- **Frequency Configuration (`FSET`)**: `AWA`
+- **`llrf_shell.v` Flavor**: **Compact Buffer Map** (direct file in this directory; similar to `awa1` buffer mapping but without pulse modulation LUTs)
+- **`static_regmap.json`**: Direct file in this directory (`0x800` stride mapping)
+- **Testbench**: Uses unified cocotb runner `tb/llrf_shell/` based on `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell`.
+
+---
+
 ## Frequency and Clocking Summary
 
 | Signal | Ratio | Frequency | Unit |

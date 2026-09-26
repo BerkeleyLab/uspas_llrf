@@ -2,6 +2,15 @@
 
 This directory contains the DSP configuration and static register mapping for the **SLAC LEMP (Linac Electronics Modernization Project)** application.
 
+## Design Architecture & Shell Flavor
+
+- **Frequency Configuration (`FSET`)**: `LEMP`
+- **`llrf_shell.v` Flavor**: **Baseline** (symbolic link to `../uspas/llrf_shell.v`)
+- **`static_regmap.json`**: Symbolic link to `../uspas/static_regmap.json`
+- **Testbench**: Uses unified cocotb runner `tb/llrf_shell/` based on `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell`.
+
+---
+
 ## Frequency and Clocking Summary
 
 | Signal | Ratio | Frequency | Unit |
