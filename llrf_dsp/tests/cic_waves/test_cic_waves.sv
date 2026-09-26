@@ -14,10 +14,10 @@ module test_cic_waves
     parameter int CBUF_AW = 13,
     parameter int CIC_SHIFT_BASE = 7,
     parameter int INLK_SHIFT_BASE = 12,
-    localparam addr_t P_ADDR_CBUF_DATA_BASE = ADDR_CBUF_DATA_BASE,
-    localparam addr_t P_ADDR_CBUF_READY = ADDR_CBUF_READY,
-    localparam addr_t P_ADDR_CBUF_TRANSFERED = ADDR_CBUF_TRANSFERED,
-    localparam addr_t P_ADDR_CBUF_FLIP = ADDR_CBUF_FLIP
+    localparam test_cic_waves_pkg::addr_t P_ADDR_CBUF_DATA_BASE = ADDR_CBUF_DATA_BASE,
+    localparam test_cic_waves_pkg::addr_t P_ADDR_CBUF_READY = ADDR_CBUF_READY,
+    localparam test_cic_waves_pkg::addr_t P_ADDR_CBUF_TRANSFERED = ADDR_CBUF_TRANSFERED,
+    localparam test_cic_waves_pkg::addr_t P_ADDR_CBUF_FLIP = ADDR_CBUF_FLIP
 ) (
     // DSP domain interface
     input                      dsp_clk,
@@ -163,7 +163,7 @@ module test_cic_waves
         .slow_rdata         (slow_rdata)
     );
 
-    localparam addr_t ADDR_CBUF_DATA_END  = ADDR_CBUF_DATA_BASE + ((1<<CBUF_AW) - 1);
+    localparam test_cic_waves_pkg::addr_t ADDR_CBUF_DATA_END  = ADDR_CBUF_DATA_BASE + ((1<<CBUF_AW) - 1);
     logic [31:0] rd_data;
     logic [17:0] rd_addr;
     logic addr_hit_array;

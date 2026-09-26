@@ -66,6 +66,7 @@ class LLRFShell(LLRF_DSP):
         tx_dds_phase_shift: int = 0
         tx_dds_modulo: int = 0
         duc_spectral_flip: bool = False
+        tx_afe_spectral_flip: bool = False
         wave_samp_per: int = 1
         cic_base_period: int = 14
         cic_wave_shift: int = 0
@@ -167,6 +168,7 @@ class LLRFShell(LLRF_DSP):
             duc_spectral_flip=self.TX_SECOND_NYQUIST,
             rx_phase_offset=0,
             tx_phase_offset=self.encode_phase(-self.tx.cordic.phase_shift_deg),
+            tx_afe_spectral_flip=self.TX_AFE_SPECTRAL_FLIP,
             prl_adc_chan=self.PRL_ADC_CHAN,
             loop0_adc_chan=self.LOOP0_ADC_CHAN,
             loop1_adc_chan=self.LOOP1_ADC_CHAN,

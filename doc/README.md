@@ -273,6 +273,10 @@ The following figure illustrates two cases of modulation at carrier frequency $f
 
   In practice, this spectral inversion is implemented by simply flipping the sign of the $\sin(\omega n + \theta)$ for the LO to rotate in a counter clock wise direction.
 
+  Many applications like LEMP and PIP-II LLRF use single-side-band modulation for analog up conversion from IF to RF. When this modulation
+  is configured as the lower-side band modulation, it will result in a phase sign flip between IF and RF. This can be compensated by an additional register `tx_afe_spectral_flip`.
+  To gurantee the correct phase sign including both digital and analog upconversion, the combined spectral flipping is applied by an XOR between the reigister `duc_spectral_flip` (digital) and `tx_afe_spectral_flip` (analog).
+
   ![digital up conversion](./fig/digital_up_conversion.drawio.svg)
 
 * Simulation
