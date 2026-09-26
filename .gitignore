@@ -27,6 +27,10 @@ soc/marble_zest/*/*.o
 *xvlog.pb
 *pico.trace
 *.egg-info/
+designs/*/cordicg_b22.v
+designs/*/llrf_shell_expand.v
+designs/*/llrf_shell_init_regs.json
+designs/*/llrf_shell.json
 llrf_dsp/cordicg_b22.v
 llrf_dsp/tests/*/cordicg_b22.v
 llrf_dsp/llrf_shell_expand.v
@@ -37,6 +41,7 @@ llrf_dsp/_autogen/addr_map_llrf_shell.vh
 soc/marble_zest/*/init_llrf.c
 soc/marble_zest/*/llrf_regs_addr.h
 soc/marble_zest/*/marble_regs_addr.h
+soc/marble_zest/synth/system_top.xdc
 soc/marble_zest/common/llrf/llrf.o
 marble_bsp/construct_tx_table.v
 marble_bsp/rtefi_blob.v

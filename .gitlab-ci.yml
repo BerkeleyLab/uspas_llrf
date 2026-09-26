@@ -1,5 +1,6 @@
 stages:
   - test
+  - test_designs
   - synthesis
   - run
 
@@ -27,14 +28,14 @@ llrf_dsp_test:
 
 llrf_cdc_test:
   before_script:
-    - cd llrf_dsp
+    - cd designs/uspas
   stage: test
   script:
     - make llrf_shell_expand.v && make llrf_shell_cdc.txt
   artifacts:
     when: always
     paths:
-      - llrf_dsp/llrf_shell_cdc.txt
+      - designs/uspas/llrf_shell_cdc.txt
 
 marble_bsp_test:
   before_script:
@@ -42,6 +43,17 @@ marble_bsp_test:
   stage: test
   script:
     - make
+
+llrf_shell_test:
+  before_script:
+    - pip install -e .
+    - cd designs
+  stage: test_designs
+  script:
+    - make -C ${TARGET}/tb/llrf_shell
+  parallel:
+    matrix:
+      - TARGET: [alsu, uspas, lemp, awa]
 
 soc_system_test:
   before_script:
