@@ -5,11 +5,12 @@ from .model.plant import Plant
 from .model.llrf_shell import LLRFShell, DacDriveSel, WaveTrigSel, InlkFaultMode
 from .model.local_bus import LocalbusAppMaster, LocalBusMaster
 from .app.app import LLRFApp
+from .app.dash import create_dash_app, run_dash
 
 __all__ = [
     'wrap_phase', 'clip_int', 'to_signed', 'dsp_config', 'cav_config',
     'RX', 'TX', 'DUC', 'DDC', 'DDS', 'LLRFModule', 'CICWaveRecorder',
     'LLRF_DSP', 'Plant',
     'LLRFShell', 'DacDriveSel', 'WaveTrigSel', 'InlkFaultMode',
-    'LocalbusAppMaster', 'LocalBusMaster',
-    'LLRFApp']
+    'LocalbusAppMaster', 'LocalBusMaster', 'LLRFApp',
+    'create_dash_app', 'run_dash']

@@ -104,6 +104,26 @@ make FSET={TARGET}
 ```
 Where TARGET is ALSU, AWA, LEMP or USPAS.
 
+### Program bitstream to hardware
+
+Provide the Zest reference clock signal at specified frequency in the above list, at +3dBm.
+
+```bash
+cd top/marble_zest/
+make system_config MARBLE_SERIAL=42 BITSTREAM=<bitstream>.bit
+```
+Note 42 is the Marble serial number.
+
+### Run dashboard
+
+After programming the bitfile, Marble should be reachable by pinging its IP address.
+A web based dashboard is available to show its dashboard:
+
+```bash
+pip install -e . ".[dev]"
+python -m uspas_llrf.app.dash --add 192.168.19.42:803
+```
+
 ### Boot-load soft core program
 
 See [soc/marble_zest](soc/marble_zest/synth/README.md).

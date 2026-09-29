@@ -21,10 +21,17 @@ dependencies = [
     "pyserial>=3.5",
     "scipy>=1.15.3",
     "pytest==9.0.2",
-    "leep==1.0.0"
+    "leep",
+    "dash"
 ]
 license = "LicenseRef-Government-Use"
 license-files = ["LICEN[CS]E*"]
+
+[project.optional-dependencies]
+dev = [
+    "flake8",
+    "Flake8-pyproject",
+]
 
 [project.urls]
 Homepage = "https://gitlab.lbl.gov/uspas-llrf/uspas_llrf"
