@@ -13,24 +13,30 @@ variables:
 
 image: mohs.dhcp.lbl.gov/xilinx_env_trixie_custom_verilator
 
+default:
+  before_script:
+    - export PATH=$XILINX_VIVADO/bin:$PATH
+    - apt update
+    - apt install -y python3-venv
+    - python3 -m venv .venv
+    - source .venv/bin/activate
+    - pip install -e .
+
 flake8_check:
   stage: test
   script:
    - flake8 uspas_llrf llrf_dsp/tests
 
 llrf_dsp_test:
-  before_script:
-    - pip install -e .
-    - cd llrf_dsp
   stage: test
   script:
+    - cd llrf_dsp
     - make
 
 llrf_cdc_test:
-  before_script:
-    - cd designs/uspas
   stage: test
   script:
+    - cd designs/uspas
     - make llrf_shell_expand.v && make llrf_shell_cdc.txt
   artifacts:
     when: always
@@ -38,46 +44,37 @@ llrf_cdc_test:
       - designs/uspas/llrf_shell_cdc.txt
 
 marble_bsp_test:
-  before_script:
-    - cd marble_bsp
   stage: test
   script:
+    - cd marble_bsp
     - make
 
 llrf_shell_test:
-  before_script:
-    - pip install -e .
-    - cd designs
   stage: test_designs
   script:
+    - cd designs
     - make -C ${TARGET}/tb/llrf_shell
   parallel:
     matrix:
       - TARGET: [alsu, uspas, lemp, awa]
 
 soc_system_test:
-  before_script:
-    - pip install -e .
-    - cd soc/marble_zest/sim
   stage: test
   script:
-    - PATH=$XILINX_VIVADO/bin:$PATH make
+    - cd soc/marble_zest/sim
+    - make
 
 soc_system_top_test:
-  before_script:
-    - pip install -e .
-    - cd soc/marble_zest/top_sim
   stage: test
   script:
-    - PATH=$XILINX_VIVADO/bin:$PATH make
+    - cd soc/marble_zest/top_sim
+    - make
 
 soc_synthesis:
-  before_script:
-    - pip install -e .
-    - cd soc/marble_zest/synth
   stage: synthesis
   script:
-    - PATH=$XILINX_VIVADO/bin:$PATH make
+    - cd soc/marble_zest/synth
+    - make
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
     expire_in: 2 days
@@ -86,18 +83,15 @@ soc_synthesis:
       - soc/marble_zest/synth/_xilinx/*.runs/impl_1/*.rpt
 
 llrf_synthesis:
-  before_script:
-    - pip install -e .
-    - cd top/marble_zest
   stage: synthesis
   script:
-    - PATH=$XILINX_VIVADO/bin:$PATH make DESIGN=${TARGET}
+    - cd top/marble_zest
+    - make DESIGN=${TARGET}
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
     expire_in: 2 days
     paths:
       - top/marble_zest/*.bit
-      - top/marble_zest/*.bin
       - top/marble_zest/_xilinx/*.runs/impl_1/*.rpt
   parallel:
     matrix:
@@ -107,13 +101,6 @@ alsu_run:
   variables:
     EVG_F: 125.1e6
     CLK_F: 458.7e6
-  before_script:
-    - pip install -e .
-    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM4 -f ${EVG_F}  # EVG ref
-    - python3 -m uspas_llrf.tools.dual_evg -r
-    - sleep 10
-    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
-    - cd top/marble_zest
   stage: run
   tags:
     - deploy
@@ -124,17 +111,18 @@ alsu_run:
         matrix:
           - TARGET: alsu
   script:
-    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=alsu
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM4 -f ${EVG_F}  # EVG ref
+    - python3 -m uspas_llrf.tools.dual_evg -r
+    - sleep 10
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
+    - cd top/marble_zest
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=ALSU
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
 awa_run:
   variables:
     CLK_F: 1320e6
-  before_script:
-    - pip install -e .
-    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
-    - cd top/marble_zest
   stage: run
   tags:
     - deploy
@@ -145,7 +133,9 @@ awa_run:
         matrix:
           - TARGET: awa
   script:
-    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=awa
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
+    - cd top/marble_zest
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=AWA
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
@@ -153,13 +143,6 @@ lemp_run:
   variables:
     EVG_F: 119e6
     CLK_F: 2856e6
-  before_script:
-    - pip install -e .
-    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM4 -f ${EVG_F}  # EVG ref
-    - python3 -m uspas_llrf.tools.dual_evg -r
-    - sleep 10
-    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
-    - cd top/marble_zest
   stage: run
   tags:
     - deploy
@@ -170,17 +153,18 @@ lemp_run:
         matrix:
           - TARGET: lemp
   script:
-    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=lemp
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM4 -f ${EVG_F}  # EVG ref
+    - python3 -m uspas_llrf.tools.dual_evg -r
+    - sleep 10
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
+    - cd top/marble_zest
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=LEMP
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
 uspas_run:
   variables:
     CLK_F: 460e6
-  before_script:
-    - pip install -e .
-    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
-    - cd top/marble_zest
   stage: run
   tags:
     - deploy
@@ -191,6 +175,8 @@ uspas_run:
         matrix:
           - TARGET: uspas
   script:
-    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=uspas
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
+    - cd top/marble_zest
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=USPAS
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
