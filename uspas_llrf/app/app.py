@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class LLRFApp(LEEPDevice):
     def __init__(self, addr='192.168.19.42:803', conf='LEMP',
-                 chan_keep=0x3ff, wfm_len=4096,
+                 chan_keep=0x3ff, wfm_len=2048,
                  wave_samp_per=1,
                  loopback_test=False,
                  assert_system_bist=True,
@@ -35,8 +35,8 @@ class LLRFApp(LEEPDevice):
 
         self.model = LLRFShell(self.config, wave_samp_per=wave_samp_per)
         self.wfm_len = wfm_len
-        assert self.wfm_len <= 2**15  # cbuf size / 2
-        # self.cic_n_chan = bin(self.chan_keep).count('1')
+        assert self.wfm_len <= 2**15 // self.cic_n_chan, \
+            f"Waveform length {self.wfm_len} * {self.cic_n_chan} exceeds CBUF size"
         self.signals = [f'adc{n}' for n in range(self.n_adc)] + \
             [f'drv{n}' for n in range(self.n_dac)]
 
