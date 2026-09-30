@@ -1,1 +1,318 @@
-../awa1/static_regmap.json
+{
+  "llrf_circle_ready": {
+    "access": "r",
+    "addr_width": 0,
+    "base_addr": "0x10800",
+    "data_width": 2,
+    "sign": "unsigned"
+  },
+  "sig_buf_ready": {
+    "access": "r",
+    "addr_width": 0,
+    "base_addr": "0x10801",
+    "data_width": 8,
+    "sign": "unsigned"
+  },
+  "sig_iq_buf_ready": {
+    "access": "r",
+    "addr_width": 0,
+    "base_addr": "0x10802",
+    "data_width": 20,
+    "sign": "unsigned"
+  },
+  "dsp_slow_data": {
+    "access": "r",
+    "addr_width": 8,
+    "base_addr": "0x10900",
+    "data_width": 16,
+    "sign": "unsigned"
+  },
+  "dsp_slow_cbuf_stat1": {
+    "access": "r",
+    "addr_width": 0,
+    "base_addr": "0x10911",
+    "data_width": 16,
+    "sign": "unsigned"
+  },
+  "dsp_slow_cbuf_stat2": {
+    "access": "r",
+    "addr_width": 0,
+    "base_addr": "0x10912",
+    "data_width": 16,
+    "sign": "unsigned"
+  },
+  "dsp_slow_cbuf_count": {
+    "access": "r",
+    "addr_width": 0,
+    "base_addr": "0x10913",
+    "data_width": 16,
+    "sign": "unsigned"
+  },
+  "dsp_slow_tag": {
+    "access": "r",
+    "addr_width": 0,
+    "base_addr": "0x10914",
+    "data_width": 16,
+    "sign": "unsigned"
+  },
+  "dsp_slow_tag_old": {
+    "access": "r",
+    "addr_width": 0,
+    "base_addr": "0x10915",
+    "data_width": 16,
+    "sign": "unsigned"
+  },
+  "dsp_slow_adc_min": {
+    "access": "r",
+    "addr_width": 3,
+    "base_addr": "0x10916",
+    "data_width": 16,
+    "sign": "signed"
+  },
+  "dsp_slow_adc_max": {
+    "access": "r",
+    "addr_width": 3,
+    "base_addr": "0x1091e",
+    "data_width": 16,
+    "sign": "signed"
+  },
+  "mon_amp": {
+    "access": "r",
+    "addr_width": 4,
+    "base_addr": "0x10a00",
+    "data_width": 16,
+    "description": "",
+    "sign": "signed"
+  },
+  "mon_phs": {
+    "access": "r",
+    "addr_width": 4,
+    "base_addr": "0x10a10",
+    "data_width": 17,
+    "sign": "signed"
+  },
+  "adc0_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x12000",
+    "data_width": 16,
+    "sign": "signed"
+  },
+  "adc1_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x12800",
+    "data_width": 16,
+    "sign": "signed"
+  },
+  "adc2_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x13000",
+    "data_width": 16,
+    "sign": "signed"
+  },
+  "adc3_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x13800",
+    "data_width": 16,
+    "sign": "signed"
+  },
+  "adc4_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x14000",
+    "data_width": 16,
+    "sign": "signed"
+  },
+  "adc5_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x14800",
+    "data_width": 16,
+    "sign": "signed"
+  },
+  "adc6_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x15000",
+    "data_width": 16,
+    "sign": "signed"
+  },
+  "adc7_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x15800",
+    "data_width": 16,
+    "sign": "signed"
+  },
+  "adc0_i_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x16000",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "adc1_i_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x16800",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "adc2_i_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x17000",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "adc3_i_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x17800",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "adc4_i_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x18000",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "adc5_i_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x18800",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "adc6_i_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x19000",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "adc7_i_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x19800",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "drv0_i_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x1a000",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "drv1_i_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x1a800",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "adc0_q_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x1b000",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "adc1_q_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x1b800",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "adc2_q_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x1c000",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "adc3_q_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x1c800",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "adc4_q_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x1d000",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "adc5_q_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x1d800",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "adc6_q_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x1e000",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "adc7_q_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x1e800",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "drv0_q_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x1f000",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "drv1_q_buf": {
+    "access": "r",
+    "addr_width": 11,
+    "base_addr": "0x1f800",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "iq_buf": {
+    "access": "r",
+    "addr_width": 15,
+    "base_addr": "0x16000",
+    "data_width": 18,
+    "sign": "signed"
+  },
+  "pulse0_lut": {
+    "access": "rw",
+    "addr_width": 15,
+    "base_addr": "0x20000",
+    "data_width": 16,
+    "sign": "unsigned"
+  },
+  "pulse1_lut": {
+    "access": "rw",
+    "addr_width": 15,
+    "base_addr": "0x28000",
+    "data_width": 16,
+    "sign": "unsigned"
+  },
+  "circle_data": {
+    "access": "r",
+    "addr_width": 16,
+    "base_addr": "0x30000",
+    "data_width": 24,
+    "sign": "signed"
+  }
+}

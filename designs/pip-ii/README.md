@@ -1,11 +1,11 @@
-# PIP-II Facility DSP Configuration
+# Test design for pulse modulation functions needed by AWA and PIP-II
 
-This directory contains the DSP configuration and static register mapping for the **Fermilab PIP-II Linac LLRF** application with **Arbitrary Pulse Modulation LUT** support.
+This directory contains the advanced DSP configuration and static register mapping that can be applied for the **Argonne Wakefield Accelerator** with **Arbitrary Pulse Modulation LUT** support.
 
 ## Design Architecture & Shell Flavor
 
 - **Frequency Configuration (`FSET`)**: `AWA`
-- **`llrf_shell.v` Flavor**: **Pulse Modulation LUT** (identical to `designs/awa1/llrf_shell.v`)
+- **`llrf_shell.v` Flavor**: **Pulse Modulation LUT** (direct file in this directory; base implementation for `pip-ii`)
 - **`static_regmap.json`**: Direct file in this directory (`0x800` stride mapping + `pulse0_lut`/`pulse1_lut`)
 - **Testbench**: Uses unified cocotb runner `tb/llrf_shell/` based on `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell`.
 
@@ -50,8 +50,8 @@ flowchart LR
     end
 
     subgraph Control_Loops["Dual PI Feedback Loops"]
-        AMP_PHS --> PI0["PI Loop 0<br/>(Pulsed Amp & Phase PI)"]
-        AMP_PHS --> PI1["PI Loop 1<br/>(Pulsed Amp & Phase PI)"]
+        AMP_PHS --> PI0["PI Loop 0<br/>(Pulsed Amp & Phase PI, ADC Ch 3)"]
+        AMP_PHS --> PI1["PI Loop 1<br/>(Pulsed Amp & Phase PI, ADC Ch 3)"]
         PI0 --> DRIVE["Baseband Drive (I0, I1)"]
         PI1 --> DRIVE
     end
@@ -77,7 +77,7 @@ flowchart LR
 
 ## DSP Configuration & Calibration Factors
 
-### `dsp_config` (Derived from 1.3 GHz Linac baseline)
+### `dsp_config['AWA']`
 ```python
 {
     'DSP_CLK_CYCLE': 10.6,          # ns (~94.286 MHz)

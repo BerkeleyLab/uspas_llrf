@@ -35,7 +35,7 @@ class TB:
         cocotb.log.debug(
             f'RX phase off: {rx_phase_off_reg:8d} cnt; '
             f'TX phase off: {tx_phase_off_reg:8d} cnt')
-        clock = Clock(self.dut.clk, round(llrf.DSP_CLK_CYCLE, 1), unit="ns")
+        clock = Clock(self.dut.clk, round(llrf.config['DSP_CLK_CYCLE'], 1), unit="ns")
         cocotb.start_soon(clock.start())
 
     def log_banner(self, str):
@@ -114,7 +114,7 @@ class TB:
 
     async def drive_dds(self) -> None:
         for t in itertools.count():
-            nco = self.llrf.LO_AMP * np.exp(1j * (self.llrf.omega * t))
+            nco = self.llrf.config['LO_AMP'] * np.exp(1j * (self.llrf.omega * t))
             nco *= self.llrf.CORDIC_GAIN
             await RisingEdge(self.dut.clk)
             self.dut.cosa.value = int(nco.real)

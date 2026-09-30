@@ -26,9 +26,9 @@ This directory contains standalone accelerator facility designs, customized `llr
 
 | `llrf_shell.v` Flavor | Base Location | Used By Designs | Key Features |
 | :--- | :--- | :--- | :--- |
-| **Baseline** | `designs/uspas/llrf_shell.v` | `uspas`, `alsu`, `lemp`, `awa0` | Standard dual-loop PI feedback, raw/IQ sample buffers (4k/2k samples with `0x1000` stride), standard pulse gating via `pulse_gen`, circular buffer, fast interlocks. |
-| **Pulse Modulation LUT** | `designs/awa1/llrf_shell.v` | `awa1`, `pip-ii`, `vts` | Dual arbitrary pulse modulation Look-Up Tables (`pulse0_lut`, `pulse1_lut`, 32k x 16-bit each), `mod_pulse_gen` with configurable sample-rate division (`pulse_res_shift`), pulsed drive modulation. |
-| **Compact Buffer Map** | `designs/awa/llrf_shell.v` | `awa` | Similar architecture to `awa1` (compact buffer addresses with `0x800` stride) but without arbitrary pulse modulation LUTs. |
+| **Baseline** | `designs/uspas/llrf_shell.v` | `uspas`, `alsu`, `lemp`, `awa` | Standard dual-loop PI feedback, raw/IQ sample buffers (4k/2k samples with `0x1000` stride), standard pulse gating via `pulse_gen`, circular buffer, fast interlocks. |
+| **Pulse Modulation LUT** | `designs/pip-ii/llrf_shell.v` | `pip-ii`, `vts` | Dual arbitrary pulse modulation Look-Up Tables (`pulse0_lut`, `pulse1_lut`, 32k x 16-bit each), `mod_pulse_gen` with configurable sample-rate division (`pulse_res_shift`), pulsed drive modulation. |
+| **Compact Buffer Map** | `designs/awa/llrf_shell.v` | `awa` | Similar architecture to `pip-ii` (compact buffer addresses with `0x800` stride) but without arbitrary pulse modulation LUTs. |
 
 > **Future Roadmap**: It is planned to unify all flavors of `llrf_shell.v` into a single, parameterizable top-level shell that natively supports feedforward tables, arbitrary pulse modulation, and configurable buffer structures across all facilities.
 
@@ -41,10 +41,8 @@ This directory contains standalone accelerator facility designs, customized `llr
 | **`uspas`** | `USPAS` | `designs/uspas/` | `designs/uspas/` | No | USPAS 2023 educational setup, CW/Gated |
 | **`alsu`** | `ALSU` | Symlink &rarr; `../uspas/` | Symlink &rarr; `../uspas/` | No | ALS-U Accumulator Ring LLRF (500 MHz MO) |
 | **`lemp`** | `LEMP` | Symlink &rarr; `../uspas/` | Symlink &rarr; `../uspas/` | No | SLAC LEMP modernization (2856 MHz MO) |
-| **`awa0`** | `AWA` | Symlink &rarr; `../uspas/` | Symlink &rarr; `../uspas/` | No | AWA baseline pulsed setup |
-| **`awa1`** | `AWA` | `designs/awa1/` | `designs/awa1/` | **Yes** | AWA arbitrary pulse modulation (1300 MHz MO) |
+| **`awa`** | `AWA` | Symlink &rarr; `../uspas/` | Symlink &rarr; `../uspas/` | No | AWA baseline pulsed setup |
 | **`pip-ii`** | `AWA` | `designs/pip-ii/` | `designs/pip-ii/` | **Yes** | Fermilab PIP-II Linac pulse modulation |
-| **`vts`** | `AWA` | Symlink &rarr; `../awa1/` | Symlink &rarr; `../awa1/` | **Yes** | Fermilab VTS cavity testing (1295 MHz MO) |
 | **`awa`** | `AWA` | `designs/awa/` | `designs/awa/` | No | AWA compact buffer addressing without LUT |
 
 ---
@@ -56,7 +54,6 @@ All designs use the centralized `designs/rules.mk` Makefile rules.
 ```bash
 # Build expanded Verilog and merged register map JSON for a single design
 cd designs/uspas && make
-cd designs/awa1 && make
 
 # Build all designs
 cd designs && make
@@ -67,7 +64,7 @@ cd designs/uspas && make llrf_shell_expand.v && make llrf_shell_cdc.txt
 # Run cocotb simulation for a specific design
 cd designs/uspas/tb/llrf_shell && make
 cd designs/alsu/tb/llrf_shell && make
-cd designs/awa1/tb/llrf_shell && make
+cd designs/awa/tb/llrf_shell && make
 
 # Clean build artifacts
 cd designs/uspas && make clean
