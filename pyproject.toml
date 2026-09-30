@@ -21,17 +21,13 @@ dependencies = [
     "pyserial>=3.5",
     "scipy>=1.15.3",
     "pytest==9.0.2",
+    "flake8",
+    "Flake8-pyproject",
     "leep",
     "dash"
 ]
 license = "LicenseRef-Government-Use"
 license-files = ["LICEN[CS]E*"]
-
-[project.optional-dependencies]
-dev = [
-    "flake8",
-    "Flake8-pyproject",
-]
 
 [project.urls]
 Homepage = "https://gitlab.lbl.gov/uspas-llrf/uspas_llrf"
@@ -39,3 +35,14 @@ Homepage = "https://gitlab.lbl.gov/uspas-llrf/uspas_llrf"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["uspas_llrf"]
+
+[tool.pytest.ini_options]
+testpaths = ["uspas_llrf"]
+norecursedirs = ["submodules", ".venv", "_autogen", "_dep"]
+
+[tool.flake8]
+max-line-length = 128
+exclude = [
+    "./submodules/bedrock",
+]
+ignore = ["W503"]

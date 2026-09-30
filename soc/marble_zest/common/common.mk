@@ -1,7 +1,7 @@
 include $(PICORV_DIR)/rules.mk
 include $(TOP)settings.mk
 APP_COMMON_DIR = $(APP_SOC_DIR)/common
-INC_DIR       += -I$(MARBLE_DIR)/firmware -I$(ZEST_DIR)/firmware
+INC_DIR       += -I$(BOARD_SUPPORT_DIR)/marble_soc/firmware -I$(BOARD_SUPPORT_DIR)/zest_soc/firmware
 VIVADO_BASE    = $(dir $(shell which vivado))..
 
 vpath %.c $(APP_COMMON_DIR)
@@ -26,8 +26,8 @@ SRC_V += $(DSP_DIR)/phaset.v $(DSP_DIR)/phase_diff.v
 SRCS   =  system.c print.c i2c_soft.c timer.c console.c evr_gt_wrapper.c
 SRCS  +=  printf.c iserdes.c
 SRCS  +=  settings.h
-SRCS  +=  $(MARBLE_DIR)/firmware/marble.c
-SRCS  +=  $(ZEST_DIR)/firmware/zest.c
+SRCS  +=  $(BOARD_SUPPORT_DIR)/marble_soc/firmware/marble.c
+SRCS  +=  $(BOARD_SUPPORT_DIR)/zest_soc/firmware/zest.c
 SRCS  +=  init_zest_$(FSET).c
 SRCS  +=  init_marble_$(FSET).c
 OBJS  =  $(subst .c,.o,$(filter %.c, $(SRCS))) startup_irq.o

@@ -1,20 +1,6 @@
 set outputDir ./_xilinx
 file mkdir $outputDir
 
-# only source swap_gitid.tcl
-if {[llength $argv] >= 6} {
-    set aux_tcl [lindex $argv 4]
-    puts "Sourcing $aux_tcl"
-    source $aux_tcl
-}
-
-# git context information
-array set git_status [get_git_context]
-
-# this old_commit value matches that in build_rom.py --placeholder_rev
-set old_commit [string toupper "da39a3ee5e6b4b0d3255bfef95601890afd80709"]
-set new_commit $git_status(full_id)
-git_id_print $new_commit
 
 # Read in dependencies file
 set flist [lindex $argv 0]
@@ -24,14 +10,18 @@ puts "Obtaining dependencies from $flist"
 set fset [lindex $argv 1]
 puts "Building for $fset"
 
-# Read in build identifier
-# but unused
-set build_id [lindex $argv 2]
-puts "Building for $build_id"
-
 # Read in defines such as frequency
-set verilog_defines [lindex $argv 3]
+set verilog_defines [lindex $argv 2]
 puts "Obtaining $verilog_defines"
+
+set clean_str [string map {"-D" ""} $verilog_defines]
+set verilog_defines_list [regexp -all -inline {\S+} $clean_str]
+set verilog_defines_list [linsert $verilog_defines_list 0 "REVC_1W"]
+puts "verilog_defines_list: $verilog_defines_list"
+
+# extract REFCLK_FREQ from verilog_defines
+set match [lsearch -inline -glob $verilog_defines_list "EVR_GT_REF_FREQ_MHZ=*"]
+set REFCLK_FREQ [lindex [split $match "="] 1]
 
 # Marble
 set part "xc7k160tffg676-2"
@@ -39,12 +29,23 @@ puts "Synthesizing for part $part"
 
 create_project marble_zest_top_$fset $outputDir -part $part -force
 
-if {[llength $argv] >= 6} {
-    set aux_tcl [lindex $argv 5]
-    set REFCLK_FREQ [lindex $argv 6]   ;# direct global variable
-    puts "Sourcing $aux_tcl with REFCLK_FREQ=$REFCLK_FREQ"
-    source $aux_tcl
+if {[llength $argv] >= 5} {
+    set gitid_tcl [lindex $argv 3]
+    puts "Sourcing $gitid_tcl"
+    source $gitid_tcl
+
+    set gt_tcl [lindex $argv 4]
+    puts "Sourcing $gt_tcl with REFCLK_FREQ=$REFCLK_FREQ"
+    source $gt_tcl
 }
+# git context information
+array set git_status [get_git_context]
+
+# this old_commit value matches that in build_rom.py --placeholder_rev
+set old_commit [string toupper "da39a3ee5e6b4b0d3255bfef95601890afd80709"]
+set new_commit $git_status(full_id)
+git_id_print $new_commit
+
 # Read in sources
 set fp [open $flist r]
 set file_data [read -nonewline $fp]
@@ -75,21 +76,9 @@ add_files $flist_work
 
 # Set design-top
 set_property  top "marble_zest_top" [current_fileset]
-
-# Get shorter git commit ID for bitfile filename
 set gitid_for_filename $git_status(short_id)$git_status(suffix)
-# Disabled at least for now
-# set gitid_v 32'h$gitid
-# set new_defs [list "GIT_32BIT_ID=$gitid_v" "REVC_1W"]
-set new_defs [list "REVC_1W"]
 
-set baz [string map {"-D" ""} $verilog_defines]
-set picorv_list [regexp -all -inline {\S+} $baz]
-# Append to existing defines, if any
-set cur_list [get_property verilog_define [current_fileset]]
-set args [list {*}$new_defs {*}$picorv_list {*}$cur_list]
-
-set_property verilog_define $args [current_fileset]
+set_property verilog_define $verilog_defines_list [current_fileset]
 puts "DEFINES:"
 puts [get_property verilog_define [current_fileset]]
 

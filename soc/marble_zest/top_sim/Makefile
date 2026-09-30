@@ -4,6 +4,7 @@ include $(APP_SOC_DIR)/common/common.mk
 
 TARGET = system
 BOOTLOADER_BAUDRATE = 10416666
+ZEST_DIR            = $(BOARD_SUPPORT_DIR)/zest_soc
 
 SRC_V  += $(APP_SOC_DIR)/synth/system_top.v xilinx7_clocks.v
 SRC_V  += $(ZEST_DIR)/zest_spi_dio_pack.v $(ZEST_DIR)/zest_clk_map.v

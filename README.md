@@ -88,21 +88,21 @@ The Zest reference clock is LO.
 
 ### LLRF DSP and verification
 
-See [doc/README.md](doc/README.md).
+See [doc/README.md](doc/README.md). Run DSP unit tests:
 
 ```bash
 pip install -e .
-cd llrf_dsp
-make
+make -C llrf_dsp/tests
 ```
+
 
 ### Synthesize bitstream
 
 ```bash
 cd top/marble_zest
-make FSET={TARGET}
+make DESIGN={TARGET}
 ```
-Where TARGET is ALSU, AWA, LEMP or USPAS.
+Where TARGET is alsu, awa lemp, uspas, pip-ii and vts.
 
 ### Program bitstream to hardware
 
@@ -116,11 +116,11 @@ Note 42 is the Marble serial number.
 
 ### Run dashboard
 
-After programming the bitfile, Marble should be reachable by pinging its IP address.
+After programming the bitstream file, Marble should be reachable by pinging its IP address [e.g. 192.168.19.42].
 A web based dashboard is available to show its dashboard:
 
 ```bash
-pip install -e . ".[dev]"
+pip install -e .
 python -m uspas_llrf.app.dash --add 192.168.19.42:803
 ```
 

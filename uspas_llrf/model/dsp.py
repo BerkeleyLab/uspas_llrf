@@ -22,7 +22,7 @@ class LLRFModule:
         self._submodules = []
 
     @property
-    def gain(self) -> np.complex128:
+    def gain(self) -> complex:
         return self._gain
 
     @gain.setter
@@ -79,7 +79,7 @@ class DDS(LLRFModule):
         self.phase_step = (self.phase_step_h << dwl) | self.phase_step_l
 
     @property
-    def full_scale_amp(self) -> int:
+    def full_scale_amp(self) -> float:
         return (1 << self.width - 1) / self.CORDIC_GAIN
 
     @property
@@ -92,7 +92,7 @@ class DDS(LLRFModule):
         self.update_gain()
 
     @property
-    def phase_shift_deg(self) -> int:
+    def phase_shift_deg(self) -> float:
         return self._phase_shift_deg
 
     @phase_shift_deg.setter
@@ -199,7 +199,7 @@ class CORDIC(LLRFModule):
         self.update_gain()
 
     @property
-    def phase_shift_deg(self) -> int:
+    def phase_shift_deg(self) -> float:
         return self._phase_shift_deg
 
     @phase_shift_deg.setter
@@ -295,7 +295,7 @@ class RX(LLRFModule):
             self.dds,
             DDC(num=num, den=den)]
 
-    def add_rx_cordic(self, phase_shift_deg=0):
+    def add_rx_cordic(self, phase_shift_deg: float = 0):
         """ Include rx_cordic in dsp_core.v,
             with compensation for phase gain of upstream modules
         """
@@ -339,7 +339,7 @@ class TX(LLRFModule):
         self.duc = DUC(num=num, den=den, upsample=upsample)
         self.submodules += [self.dds, self.duc]
 
-    def add_tx_cordic(self, phase_shift_deg=0):
+    def add_tx_cordic(self, phase_shift_deg: float = 0):
         """ Include tx_cordic in dsp_core.v,
             with compensation for phase gain of downstream modules
         """

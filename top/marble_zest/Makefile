@@ -1,25 +1,25 @@
 include ../../dir_list.mk
 include $(TOP)settings.mk
+APP_SOC_SYN_DIR    = $(APP_SOC_DIR)/synth
 
 include $(APP_SOC_DIR)/common/common.mk
 include $(BUILD_DIR)/top_rules.mk
 
+# TODO parrallel dir for each design
+DESIGN   = uspas
 TARGET   = marble_zest
-HARDWARE = marble
 # Connection to swap-git-ID feature; see comments in that file
 GITID_TCL = $(BUILD_DIR)/vivado_tcl/swap_gitid.tcl
 
-# GT TCL configuration
-REFCLK_FREQ = $(CFG_$(FSET)_EVR_GT_REF_FREQ_MHZ)
 GT_TCL = $(BEDROCK_DIR)/serial_io/EVG_EVR/gt_tcl/evr_gtx.tcl
 vpath %.c $(BUILD_DIR)
 
 .PHONY: all system_config system_test evr_test clean
-all: $(TARGET)_top_$(FSET).bit
+all: $(TARGET)_top_$(DESIGN).bit
 
 IP_EXPAND = $(BSP_DIR)/marble_bsp_expand.v
 IP_EXPAND += $(APP_SOC_SYN_DIR)/system_expand.v
-IP_EXPAND += $(APP_DSP_DIR)/llrf_shell_expand.v
+IP_EXPAND += $(DESIGNS_DIR)/$(DESIGN)/llrf_shell_expand.v
 
 SUB_IP_DIR = $(foreach ip, $(IP_EXPAND), $(dir $(ip)))
 
@@ -27,24 +27,24 @@ $(BSP_DIR)/marble_bsp_expand.v:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 $(APP_SOC_SYN_DIR)/system_expand.v:
 	$(MAKE) -C $(dir $@) $(notdir $@)
-$(APP_DSP_DIR)/llrf_shell_expand.v:
+$(DESIGNS_DIR)/$(DESIGN)/llrf_shell_expand.v:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
-IP_JSON  = $(APP_DSP_DIR)/llrf_shell.json
+IP_JSON  = $(DESIGNS_DIR)/$(DESIGN)/llrf_shell.json
 IP_JSON += $(BSP_DIR)/marble_bsp.json
 IP_JSON += marble_zest_top.json
 
 $(BSP_DIR)/marble_bsp.json:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
-$(APP_DSP_DIR)/llrf_shell.json:
+$(DESIGNS_DIR)/$(DESIGN)/llrf_shell.json:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
 $(TARGET).json: $(IP_JSON)
 	$(PYTHON) $(BUILD_DIR)/merge_json.py -o $@ -i $^
 
 config_romx.v: $(TARGET).json
-	$(PYTHON) -m leep.build_rom -v $@ --placeholder_rev -j $< -d "$(FSET)"
+	$(PYTHON) -m leep.build_rom -v $@ --placeholder_rev -j $< -d "$(DESIGN)"
 
 # Used mostly to verify gitid reported by the LEEP Ethernet
 GIT_ID = $(shell git rev-parse --verify HEAD)
@@ -57,7 +57,7 @@ $(APP_SOC_SYN_DIR)/system32.dat:
 $(APP_SOC_SYN_DIR)/zest_fmc_dp.xdc:
 	$(MAKE) -C $(APP_SOC_SYN_DIR) zest_fmc_dp.xdc
 
-top.xdc: $(BOARD_SUPPORT_DIR)/$(HARDWARE)/Marble.xdc pin_map.csv
+top.xdc: $(BOARD_SUPPORT_DIR)/marble/Marble.xdc pin_map.csv
 	$(PYTHON) $(BADGER_DIR)/tests/meta-xdc.py $^ > $@
 
 system_top.xdc: timing.xdc $(APP_SOC_SYN_DIR)/zest_fmc_dp.xdc top.xdc
@@ -68,12 +68,12 @@ $(TARGET)_top.d: $(TARGET)_top.v config_romx.v $(BEDROCK_DIR)/serial_io/gmii_to_
 	echo $^ | tr ' ' '\n' > $@
 
 #: Build bitstream
-$(TARGET)_top_$(FSET).bit: $(TARGET)_top.tcl $(GT_TCL) $(GITID_TCL) $(TARGET)_top.d bit_stamp_mod
-	$(VIVADO_CMD) -source $< -tclargs $(TARGET)_top.d $(FSET) $(HARDWARE) "$(SYNTH_OPT)" $(GITID_TCL) $(GT_TCL) $(REFCLK_FREQ)
+$(TARGET)_top_$(DESIGN).bit: $(TARGET)_top.tcl $(GT_TCL) $(GITID_TCL) $(TARGET)_top.d bit_stamp_mod
+	$(VIVADO_CMD) -source $< -tclargs $(TARGET)_top.d $(DESIGN) "$(SYNTH_OPT)" $(GITID_TCL) $(GT_TCL)
 
 IP_ADDRESS = 192.168.19.$(MARBLE_SERIAL)
 
-BITSTREAM = $(TARGET)_top_$(FSET).$(GIT_32BIT_ID).bit
+BITSTREAM = $(TARGET)_top_$(DESIGN).$(GIT_32BIT_ID).bit
 system_config:
 	@echo "Using Marble with serial number $(MARBLE_SERIAL)"
 	openocd \

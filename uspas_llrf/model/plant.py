@@ -86,8 +86,8 @@ class CAV(Element):
         self.Ql = self.Q0 / (1 + self.beta)
         self.alpha = np.pi * self.f0 / self.Ql
 
-        self.fs = 1e9 / llrf.DSP_CLK_CYCLE
-        self.f_if = llrf.NUM_DDS / llrf.DEN_DDS * self.fs
+        self.fs = 1e9 / llrf.config['DSP_CLK_CYCLE']
+        self.f_if = llrf.config['NUM_DDS'] / llrf.config['DEN_DDS'] * self.fs
 
         self.system_z = self.create_sys_z()
 
