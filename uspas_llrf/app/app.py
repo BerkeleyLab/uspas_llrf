@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class LLRFApp(LEEPDevice):
     def __init__(self, addr='192.168.19.42:803', conf='LEMP',
-                 chan_keep=0x3ff, wfm_len=2048,
+                 chan_keep=0x3ff,
                  wave_samp_per=1,
                  loopback_test=False,
                  assert_system_bist=True,
@@ -27,16 +27,15 @@ class LLRFApp(LEEPDevice):
             config['TX_DEN_DDS'] = config['DEN_DDS'] * 2
         self.config = config
         self.app_name = f'{conf}_LLRF'
-        self.fs = 1e9 / self.config['DSP_CLK_CYCLE']
         self.n_dac, self.n_adc = 2, 8
 
         self.wave_samp_per = wave_samp_per
         self.chan_keep = chan_keep
 
         self.model = LLRFShell(self.config, wave_samp_per=wave_samp_per)
-        self.wfm_len = wfm_len
-        assert self.wfm_len <= 2**15 // self.cic_n_chan, \
-            f"Waveform length {self.wfm_len} * {self.cic_n_chan} exceeds CBUF size"
+        self.cic_base_period = getattr(self.model, 'CIC_BASE_PERIOD', 22)
+        self.dsp_clk_ns = getattr(self.model, 'DSP_CLK_CYCLE', 8.0)
+        self.fs = 1e9 / self.dsp_clk_ns
         self.signals = [f'adc{n}' for n in range(self.n_adc)] + \
             [f'drv{n}' for n in range(self.n_dac)]
 
@@ -85,8 +84,7 @@ class LLRFApp(LEEPDevice):
     @property
     def cic_ts_ns(self):
         """CIC waveform time period in ns"""
-        return self.model.DSP_CLK_CYCLE * self.model.CIC_BASE_PERIOD \
-            * self.wave_samp_per
+        return self.dsp_clk_ns * self.cic_base_period * self.wave_samp_per
 
     @property
     def cic_names(self):
@@ -183,7 +181,7 @@ class LLRFApp(LEEPDevice):
             index=self.signals, columns=cols)
         inlk_gains = [self.model.inlk_gain] * self.n_adc
         inlk_gains += [self.model.inlk_tx_gain] * self.n_dac
-        phs = self.model.decode_phase(df['mon_phs'], width=17, deg=False)
+        phs = self.model.decode_phase(df['mon_phs'].to_numpy(), width=17, deg=False)
         rfmon = df['mon_amp'] * np.exp(1j * phs) / inlk_gains
         df['Amp [cnt]'] = np.abs(rfmon)
         df['Phs [deg]'] = np.angle(rfmon, deg=True)
@@ -200,14 +198,13 @@ class LLRFApp(LEEPDevice):
         """Returns a DataFrame of raw waveforms for 8 adc channels"""
         sig_wfms = self.read_raw_bufs()
         df = pd.DataFrame(sig_wfms.T, columns=self.signals[:self.n_adc])
-        df['Time [ns]'] = np.arange(sig_wfms.shape[-1]) * \
-            self.model.DSP_CLK_CYCLE
+        df['Time [ns]'] = np.arange(sig_wfms.shape[-1]) * self.dsp_clk_ns
         df.set_index('Time [ns]', inplace=True)
         return df
 
     def read_iq_wfms(self):
         """ Read I, Q waveforms of all waveforms in ADC count unit.
-            Returns a 2D array of shape (n_chan, wfm_len)
+            Returns a 2D array of shape (n_chan, 4096)
         """
         self.write_reg('sig_buf_flip', 1)
         while (self.read_reg('sig_iq_buf_ready') != 0xfffff):
@@ -218,14 +215,14 @@ class LLRFApp(LEEPDevice):
         wfms = iq_wfms[:len(self.signals)] + 1j * iq_wfms[len(self.signals):]
         wfms[:self.n_adc] /= self.model.rx_iq_gain
         wfms[-self.n_dac:] *= self.model.tx_iq_gain
+        logger.debug(f"Read {wfms.shape[0]} IQ waveforms, length {wfms.shape[1]}")
         return wfms
 
     def get_iq_wfms_df(self):
         """returns a DataFrame of all IQ waveforms, in ADC count unit"""
         iq_wfms = self.read_iq_wfms()
         df = pd.DataFrame(iq_wfms.T, columns=self.signals)
-        df['Time [ns]'] = np.arange(iq_wfms.shape[-1]) * \
-            self.model.DSP_CLK_CYCLE
+        df['Time [ns]'] = np.arange(iq_wfms.shape[-1]) * self.dsp_clk_ns
         df.set_index('Time [ns]', inplace=True)
         for ch in self.signals:
             df[f'{ch}_amp'] = np.abs(df[ch])
@@ -237,12 +234,14 @@ class LLRFApp(LEEPDevice):
         while (self.read_reg('llrf_circle_ready') != 3):
             time.sleep(0.01)
         d = np.array(self.read_reg('circle_data'))
-        return d[:self.wfm_len * 2 * self.cic_n_chan]
+        # total 2**16 samples, needs to truncate and reshape to (n_chan, 2**16/n_chan) for decoding
+        max_samples = 2**16 // self.cic_n_chan // 2
+        logger.debug(f"Truncating circle buffer data to {max_samples} samples per channel")
+        return d[:max_samples * 2 * self.cic_n_chan]
 
     def get_cic_iq_wfms(self):
         darray = self.read_cbuf_data()
         return self.decode_interleaved_iq_wfm(darray)
-        # return self.calc_mp_traces(iq_traces)
 
     def decode_interleaved_iq_wfm(self, varray):
         darray = varray.reshape(-1, 2 * self.cic_n_chan).T

@@ -14,10 +14,8 @@ class LLRF_DSP(LLRFModule):
             dsp_config (str): Application configuration key (aka FSET),
               in ['LEMP', 'ALSU', 'USPAS', 'AWA']
         """
-        for k, v in config.items():
-            setattr(self, k, v)
         self.config = config
-        super().__init__(self.NUM_DDS, self.DEN_DDS)
+        super().__init__(config['NUM_DDS'], config['DEN_DDS'])
         self.init_modules()
 
     @dataclass
@@ -32,8 +30,8 @@ class LLRF_DSP(LLRFModule):
         cic_wfm_gain: float = 1.0
         inlk_gain: float = 1.0
         inlk_tx_gain: float = 1.0
-        rx_iq_gain: float = 1.0
-        tx_iq_gain: float = 1.0
+        rx_iq_gain: complex = 1.0 + 0.0j
+        tx_iq_gain: complex = 1.0 + 0.0j
         max_adc_input: float = (1 << 15) * 0.95  # absolute max ADC input level
         max_dac_drive: float = (1 << 15) * 0.95  # absolute max DAC drive level
         max_amp_setpoint: float = field(init=False)  # max amplitude setpoint
@@ -45,12 +43,12 @@ class LLRF_DSP(LLRFModule):
     def init_modules(self):
         """ Assemble DSP modules """
         self.rx = RX(
-            num=self.num, den=self.den, dds_amp=self.LO_AMP)
+            num=self.num, den=self.den, dds_amp=self.config['LO_AMP'])
         # compensate RX phase gain by rx_cordic
         self.rx.add_rx_cordic(-np.angle(self.rx.gain, deg=True))
         self.tx = TX(
-            num=self.TX_NUM_DDS, den=self.TX_DEN_DDS,
-            dds_amp=self.LO_AMP, upsample=False)
+            num=self.config['TX_NUM_DDS'], den=self.config['TX_DEN_DDS'],
+            dds_amp=self.config['LO_AMP'], upsample=False)
         self.tx.add_tx_cordic(-np.angle(self.tx.gain, deg=True))
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
@@ -105,7 +103,7 @@ class LLRF_DSP(LLRFModule):
         wrapped_phase = wrap_phase(phs, deg) / scale * 2**width
         return to_signed(wrapped_phase, width=width)
 
-    def decode_phase(self, phs_cnt: int, width=19, deg=True):
+    def decode_phase(self, phs_cnt: int | np.ndarray, width=19, deg=True):
         """Convert phase value from register
         """
         scale = 360 if deg else (2 * np.pi)

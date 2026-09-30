@@ -1,5 +1,5 @@
 TARGETS := all clean
-SUBDIRS := $(wildcard */.)
+SUBDIRS := ddc dds duc pulse_gen llrf_dsp cic_waves
 
 $(TARGETS): $(SUBDIRS)
 $(SUBDIRS):

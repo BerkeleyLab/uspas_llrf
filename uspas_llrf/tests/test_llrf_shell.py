@@ -39,7 +39,7 @@ class TB_llrf_shell:
 
         cocotb.start_soon(Clock(dut.lb_clk, 8, unit="ns").start())
         cocotb.start_soon(Clock(dut.gt_rxclk, 8, unit="ns").start())
-        dsp_clk_period = round(llrf.DSP_CLK_CYCLE, 1)
+        dsp_clk_period = round(llrf.config['DSP_CLK_CYCLE'], 1)
         cocotb.start_soon(
             Clock(dut.dsp_clk, dsp_clk_period, unit="ns").start())
         cocotb.start_soon(
@@ -112,7 +112,7 @@ class TB_llrf_shell:
         phs_err = abs(wrap_phase(phs_meas - self.phs_exp))
         assert phs_err < 0.1, "phase out-of-bound of 0.1 deg"
 
-    async def drive_phaseref_adc(self, ch=0, amp=0, phs=0, noise_amp=3):
+    async def drive_phaseref_adc(self, ch=0, amp=0.0, phs=0.0, noise_amp=3):
         # wait for dsp_reset
         dsp_reset = self.dut.llrf_shell.dsp_reset
         while True:
@@ -121,7 +121,7 @@ class TB_llrf_shell:
                 break
         cocotb.log.warning("dsp_reset done. drive_phaseref_adc started.")
         # truly important but empirical to synchronize with DDS
-        t_start = self.llrf.CIC_BASE_PERIOD % 22
+        t_start = self.llrf.config['CIC_BASE_PERIOD'] % 22
         for t in itertools.count(t_start):
             await RisingEdge(self.dut.dsp_clk)
             sig = amp * np.exp(1j * (self.llrf.omega * t + np.deg2rad(phs)))

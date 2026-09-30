@@ -51,8 +51,8 @@ class LLRFShell(LLRF_DSP):
         """
         self.wave_samp_per = wave_samp_per
         super().__init__(dsp_config)
-        self.feedback_adc = self.LOOP0_ADC_CHAN
-        self.phaseref_adc = self.PRL_ADC_CHAN
+        self.feedback_adc = self.config['LOOP0_ADC_CHAN']
+        self.phaseref_adc = self.config['PRL_ADC_CHAN']
 
     @dataclass
     class LLRFInitRegisters:
@@ -125,27 +125,27 @@ class LLRFShell(LLRF_DSP):
 
     def init_modules(self):
         """ Assemble DSP modules """
-        self.rx = RX(num=self.num, den=self.den, dds_amp=self.LO_AMP)
+        self.rx = RX(num=self.num, den=self.den, dds_amp=self.config['LO_AMP'])
         # compensate RX phase gain by rx.dds
         self.rx.dds.phase_shift_deg = -np.angle(self.rx.gain, deg=True)
         self.rx.add_rx_cordic()
 
-        self.tx = TX(num=self.TX_NUM_DDS, den=self.TX_DEN_DDS,
-                     dds_amp=self.LO_AMP)
+        self.tx = TX(num=self.config['TX_NUM_DDS'], den=self.config['TX_DEN_DDS'],
+                     dds_amp=self.config['LO_AMP'])
         self.tx.dds.phase_shift_deg = -np.angle(self.tx.gain, deg=True)
         # pre-compensate TX phase to match DAC IF phase, applied to tx_cordic
         # very tricky to understand!
-        tx_phase_off_cycles = self.TX_DEN_DDS - self.CORDIC_NSTG
+        tx_phase_off_cycles = self.config['TX_DEN_DDS'] - self.CORDIC_NSTG
         self.tx.add_tx_cordic(
             -tx_phase_off_cycles * np.rad2deg(self.tx.omega))
         self.cic_inlk = CICWaveRecorder(
             num=self.num, den=self.den,
-            cic_base_period=self.CIC_BASE_PERIOD,
-            shift_base=self.INLK_SHIFT_BASE, shift_add=self.INLK_SHIFT_ADD)
+            cic_base_period=self.config['CIC_BASE_PERIOD'],
+            shift_base=self.config['INLK_SHIFT_BASE'], shift_add=self.config['INLK_SHIFT_ADD'])
         self.cic_mon = CICWaveRecorder(
             num=self.num, den=self.den,
-            cic_base_period=self.CIC_BASE_PERIOD,
-            shift_base=self.CIC_SHIFT_BASE,
+            cic_base_period=self.config['CIC_BASE_PERIOD'],
+            shift_base=self.config['CIC_SHIFT_BASE'],
             wave_samp_per=self.wave_samp_per)
         self.submodules += self.rx.submodules
         self.submodules += self.tx.submodules
@@ -155,7 +155,8 @@ class LLRFShell(LLRF_DSP):
         """ initialization registers for simulation and SoC integration
             cic and inlk wave_shift values are derived from gain calculations
         """
-        int_trig_period = self.DEN_DDS * round(1e9 / self.DSP_CLK_CYCLE / self.DEN_DDS / int_trig_rate_hz)
+        int_trig_period = self.config['DEN_DDS'] * \
+            round(1e9 / self.config['DSP_CLK_CYCLE'] / self.config['DEN_DDS'] / int_trig_rate_hz)
         self.init_regs = self.LLRFInitRegisters(
             rx_dds_amplitude=self.rx.dds.amp,
             rx_dds_phase_shift=self.encode_phase(-self.rx.dds.phase_shift_deg),
@@ -165,30 +166,30 @@ class LLRFShell(LLRF_DSP):
             tx_dds_phase_shift=self.encode_phase(self.tx.dds.phase_shift_deg),
             tx_dds_phase_step=self.tx.dds.phase_step,
             tx_dds_modulo=self.tx.dds.modulo,
-            duc_spectral_flip=self.TX_SECOND_NYQUIST,
+            duc_spectral_flip=self.config['TX_SECOND_NYQUIST'],
             rx_phase_offset=0,
             tx_phase_offset=self.encode_phase(-self.tx.cordic.phase_shift_deg),
-            tx_afe_spectral_flip=self.TX_AFE_SPECTRAL_FLIP,
-            prl_adc_chan=self.PRL_ADC_CHAN,
-            loop0_adc_chan=self.LOOP0_ADC_CHAN,
-            loop1_adc_chan=self.LOOP1_ADC_CHAN,
+            tx_afe_spectral_flip=self.config['TX_AFE_SPECTRAL_FLIP'],
+            prl_adc_chan=self.config['PRL_ADC_CHAN'],
+            loop0_adc_chan=self.config['LOOP0_ADC_CHAN'],
+            loop1_adc_chan=self.config['LOOP1_ADC_CHAN'],
             wave_samp_per=self.wave_samp_per,
-            cic_base_period=self.CIC_BASE_PERIOD,
+            cic_base_period=self.config['CIC_BASE_PERIOD'],
             cic_wave_shift=self.cic_mon.wave_shift,
             inlk_wave_shift=self.cic_inlk.wave_shift,
             chan_keep=0b11,
             loop0_Kp_amp=20, loop0_Ki_amp=50,
             loop0_Kp_phs=50, loop0_Ki_phs=200,
-            loop0_max_amp_setpoint=self.cal_factors.max_amp_setpoint,
+            loop0_max_amp_setpoint=int(self.cal_factors.max_amp_setpoint),
             loop1_Kp_amp=20, loop1_Ki_amp=50,
             loop1_Kp_phs=50, loop1_Ki_phs=200,
-            loop1_max_amp_setpoint=self.cal_factors.max_amp_setpoint,
+            loop1_max_amp_setpoint=int(self.cal_factors.max_amp_setpoint),
             loop0_pulse_start=0, loop0_pulse_high_len=10,
             loop1_pulse_start=0, loop1_pulse_high_len=10,
-            dac_drive_sel=DacDriveSel(self.DAC_DRIVE_SEL),
-            pulse_modes=self.PULSE_MODES,
+            dac_drive_sel=DacDriveSel(self.config['DAC_DRIVE_SEL']),
+            pulse_modes=self.config['PULSE_MODES'],
             int_trigger_period=int_trig_period,
-            evcode=self.EVCODE
+            evcode=self.config['EVCODE']
         )
 
     @property
