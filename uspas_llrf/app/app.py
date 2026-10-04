@@ -1,6 +1,7 @@
 from leep.raw import LEEPDevice
 from uspas_llrf import dsp_config, LLRFShell, DacDriveSel
 from uspas_llrf.app.bsp import MarbleDevInfo
+from uspas_llrf.model.slow_bridge import decode_slow_data, SlowData
 import numpy as np
 from scipy import signal
 import pandas as pd
@@ -33,8 +34,8 @@ class LLRFApp(LEEPDevice):
         self.chan_keep = chan_keep
 
         self.model = LLRFShell(self.config, wave_samp_per=wave_samp_per)
-        self.cic_base_period = getattr(self.model, 'CIC_BASE_PERIOD', 22)
-        self.dsp_clk_ns = getattr(self.model, 'DSP_CLK_CYCLE', 8.0)
+        self.cic_base_period = self.config['CIC_BASE_PERIOD']
+        self.dsp_clk_ns = self.config['DSP_CLK_CYCLE']
         self.fs = 1e9 / self.dsp_clk_ns
         self.signals = [f'adc{n}' for n in range(self.n_adc)] + \
             [f'drv{n}' for n in range(self.n_dac)]
@@ -187,6 +188,68 @@ class LLRFApp(LEEPDevice):
         df['Phs [deg]'] = np.angle(rfmon, deg=True)
         return df
 
+    def get_inlk_status(self):
+        """ Read rf_pwr interlock status bits, amplitude thresholds and the
+        fault record amplitude
+
+        Thresholds and fault_amp are also given in ADC counts, divided by
+        the interlock path gain.
+
+        Bit n of each rf_pwr mask belongs to channel n of self.signals;
+        1 is OK, 0 is tripped (see monitor_inlk.v).
+
+        Returns:
+            (DataFrame indexed by channel, rf_pwr_permit_sum bit)
+        """
+        masks = ['rf_pwr_status', 'rf_pwr_first_fault_status',
+                 'rf_pwr_latch', 'inlk_permit_mask']
+        amps = ['fault_amp', 'inlk_amp_lo', 'inlk_amp_hi']
+        vals = self.reg_read(amps + masks + ['rf_pwr_permit_sum'])
+        n_ch = len(self.signals)
+        df = pd.DataFrame(index=self.signals)
+        inlk_gains = [abs(self.model.inlk_gain)] * self.n_adc
+        inlk_gains += [abs(self.model.inlk_tx_gain)] * self.n_dac
+        for name, val in zip(amps, vals):
+            df[name] = np.array(val)[:n_ch]
+        df['Fault Amp [cnt]'] = df['fault_amp'] / inlk_gains
+        df['Amp Lo [cnt]'] = df['inlk_amp_lo'] / inlk_gains
+        df['Amp Hi [cnt]'] = df['inlk_amp_hi'] / inlk_gains
+        for name, val in zip(masks, vals[len(amps):]):
+            df[name] = [(int(val) >> ch) & 1 for ch in range(n_ch)]
+        return df, int(vals[-1]) & 1
+
+    def get_arc_status(self):
+        """ Read arc detector interlock bits of the 3 arc channels
+
+        1 is OK, 0 is tripped (see arc_inlk.v).
+
+        Returns:
+            (DataFrame indexed by arc channel, arc_permit_sum bit)
+        """
+        masks = ['arc_permit_raw', 'arc_permit_latch', 'arc_permit_mask']
+        vals = self.reg_read(masks + ['arc_permit_sum'])
+        n_arc = 3
+        df = pd.DataFrame(index=[f'arc{n}' for n in range(n_arc)])
+        for name, val in zip(masks, vals):
+            df[name] = [(int(val) >> ch) & 1 for ch in range(n_arc)]
+        return df, int(vals[-1]) & 1
+
+    def get_permit_status(self):
+        """ Read the RF permit chain bits (1 = permit, 0 = trip)
+
+        drive_permit_out = (ext_permit_bypass | drive_permit_in &
+        slow_permit_in) & rf_pwr_permit_sum & arc_permit_sum &
+        hpa_permit_out; drive n is on with soft_drive_enable[n] &
+        drive_permit_out (see llrf_shell.v).
+
+        Returns:
+            dict of register name to int
+        """
+        names = ['drive_permit_in', 'slow_permit_in', 'ext_permit_bypass',
+                 'rf_pwr_permit_sum', 'arc_permit_sum', 'hpa_permit_out',
+                 'drive_permit_out', 'soft_drive_enable']
+        return {n: int(v) for n, v in zip(names, self.reg_read(names))}
+
     def read_raw_bufs(self):
         self.write_reg('sig_buf_flip', 1)
         while (self.read_reg('sig_buf_ready') != 0xff):
@@ -229,18 +292,81 @@ class LLRFApp(LEEPDevice):
             df[f'{ch}_phs'] = np.angle(df[ch], deg=True)
         return df
 
-    def read_cbuf_data(self):
-        self.write_reg('circle_buf_flip', 1)
-        while (self.read_reg('llrf_circle_ready') != 3):
+    def wait_circle_ready(self, mask=0b11, timeout=1.0):
+        """Wait for llrf_circle_ready bits {slow_ready, cbuf_ready}."""
+        t0 = time.monotonic()
+        while (self.read_reg('llrf_circle_ready') & mask) != mask:
+            if time.monotonic() - t0 > timeout:
+                raise TimeoutError(
+                    f'llrf_circle_ready mask {mask:#04b} not set in {timeout} s')
             time.sleep(0.01)
+
+    def read_slow_data(self, flip=False):
+        """Read and decode the slow_bridge diagnostics block.
+
+        The block is snapshot on the buffer transfer selected by
+        slow_snap_cic: cic_waves (CW LLRF) or IQ waveforms (pulsed LLRF).
+        With flip=False it returns the data of the last transferred buffer,
+        so call it right after read_cbuf_data() / read_iq_wfms() to get the
+        status belonging to that waveform. With flip=True a circle buffer
+        flip is issued first (only meaningful when slow_snap_cic=1).
+
+        Returns:
+            SlowData with cbuf status, tags, adc min/max, EVR timestamp,
+            cycle counter and a `fault` flag (record stopped by record_en).
+        """
+        if flip:
+            self.write_reg('circle_buf_flip', 1)
+        self.wait_circle_ready(mask=0b10)
+        words = np.asarray(self.read_reg('dsp_slow_data'))
+        slow = decode_slow_data(words, n_adc=self.n_adc)
+        logger.debug(f'slow data: {slow}')
+        return slow
+
+    def get_slow_data(self, flip=False) -> SlowData:
+        return self.read_slow_data(flip=flip)
+
+    def get_slow_df(self, flip=False):
+        """Returns a DataFrame of ADC min/max from the slow block, with the
+        decoded status words attached in df.attrs['slow']."""
+        slow = self.read_slow_data(flip=flip)
+        df = pd.DataFrame(
+            {'adc_min': slow.adc_min, 'adc_max': slow.adc_max},
+            index=self.signals[:self.n_adc])
+        df['adc_pp'] = df['adc_max'] - df['adc_min']
+        df.attrs['slow'] = {
+            'fault': slow.fault, 'buf_wrap': slow.buf_wrap,
+            'last_addr': slow.last_addr, 'cbuf_count': slow.cbuf_count,
+            'tag': slow.tag, 'tag_old': slow.tag_old,
+            'tag_changed': slow.tag_changed,
+            'evr_seconds': slow.evr_seconds, 'evr_ticks': slow.evr_ticks,
+            'cycles': slow.cycles}
+        return df
+
+    def read_cbuf_data(self, timeout=1.0):
+        """Read the circle buffer, flipping first to request a new one.
+
+        A flip returns the bank read last and arms the hand-over of the
+        next completed buffer. In triggered modes (wave_trig_sel other than
+        Always) a buffer only completes after a trigger, so the wait can
+        time out. The request then stays armed and the next call waits
+        without flipping again, since a second flip would discard a buffer
+        that arrived in between.
+        Raises TimeoutError if no buffer is handed over within timeout.
+        """
+        if not getattr(self, '_cbuf_armed', False):
+            self.write_reg('circle_buf_flip', 1)
+            self._cbuf_armed = True
+        self.wait_circle_ready(mask=0b11, timeout=timeout)
+        self._cbuf_armed = False
         d = np.array(self.read_reg('circle_data'))
         # total 2**16 samples, needs to truncate and reshape to (n_chan, 2**16/n_chan) for decoding
         max_samples = 2**16 // self.cic_n_chan // 2
         logger.debug(f"Truncating circle buffer data to {max_samples} samples per channel")
         return d[:max_samples * 2 * self.cic_n_chan]
 
-    def get_cic_iq_wfms(self):
-        darray = self.read_cbuf_data()
+    def get_cic_iq_wfms(self, timeout=1.0):
+        darray = self.read_cbuf_data(timeout=timeout)
         return self.decode_interleaved_iq_wfm(darray)
 
     def decode_interleaved_iq_wfm(self, varray):
@@ -255,9 +381,9 @@ class LLRFApp(LEEPDevice):
         phs_trace = np.angle(iq_arrays, deg=True)
         return np.vstack((mag_trace, phs_trace))
 
-    def get_cic_wfm_df(self):
+    def get_cic_wfm_df(self, timeout=1.0):
         """Returns a DataFrame of circle buffer data"""
-        cic_iq_wfms = self.get_cic_iq_wfms()
+        cic_iq_wfms = self.get_cic_iq_wfms(timeout=timeout)
         df = pd.DataFrame(cic_iq_wfms.T, columns=self.cic_names)
         df['Time [ns]'] = np.arange(cic_iq_wfms.shape[-1]) * self.cic_ts_ns
         df.set_index('Time [ns]', inplace=True)

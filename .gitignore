@@ -6,6 +6,7 @@
 *sim_build/
 *.ipynb_checkpoints/
 .vscode/
+.claude/
 *_tb
 *__pycache__
 *_dep/

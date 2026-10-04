@@ -45,28 +45,3 @@ This directory contains standalone accelerator facility designs, customized `llr
 | **`pip-ii`** | `AWA` | `designs/pip-ii/` | `designs/pip-ii/` | **Yes** | Fermilab PIP-II Linac pulse modulation |
 | **`awa`** | `AWA` | `designs/awa/` | `designs/awa/` | No | AWA compact buffer addressing without LUT |
 
----
-
-## Build & Verification Commands
-
-All designs use the centralized `designs/rules.mk` Makefile rules.
-
-```bash
-# Build expanded Verilog and merged register map JSON for a single design
-cd designs/uspas && make
-
-# Build all designs
-cd designs && make
-
-# Run CDC (Clock Domain Crossing) check via Yosys
-cd designs/uspas && make llrf_shell_expand.v && make llrf_shell_cdc.txt
-
-# Run cocotb simulation for a specific design
-cd designs/uspas/tb/llrf_shell && make
-cd designs/alsu/tb/llrf_shell && make
-cd designs/awa/tb/llrf_shell && make
-
-# Clean build artifacts
-cd designs/uspas && make clean
-cd designs && make clean
-```

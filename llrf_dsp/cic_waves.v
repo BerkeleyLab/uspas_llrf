@@ -38,6 +38,7 @@ module cic_waves #(
 
     // triggers
     input                      wave_trig,
+    input                      cbuf_free_run,   // record continuously, ignore wave_trig
     input                      record_en,
 
     output signed [15:0]       inlk_data,
@@ -79,20 +80,26 @@ module cic_waves #(
     );
 
     // -- Waveform freeze logic
+    // Stop the circle buffer cbuf_post_delay buffer syncs after record_en
+    // drops; cbuf_post_delay=0 disables the freeze. The stop is gated by
+    // ~record_en and a non-zero delay so cbuf_post_delay writes (and the
+    // power-up default of 0) never produce a spurious fault record.
     reg [16:0] delay_cnt=0;
-    wire       cbuf_delay_stop = (delay_cnt == cbuf_post_delay);
-    reg        cbuf_delay_stop1=0;
-    wire cbuf_stop = cbuf_delay_stop & ~cbuf_delay_stop1;
+    wire       cbuf_delay_stop = (delay_cnt >= cbuf_post_delay);
+    reg        cbuf_delay_stop1=1;
+    wire cbuf_stop = ~record_en & (|cbuf_post_delay) &
+                     cbuf_delay_stop & ~cbuf_delay_stop1;
     always @(posedge dsp_clk) begin
         cbuf_delay_stop1 <= cbuf_delay_stop;
         delay_cnt <= record_en ? 0 : cbuf_delay_stop ? delay_cnt : delay_cnt + cbuf_sync;
     end
 
-    // stop recording stream after buffer is full if in external trigger mode
-    // allows continuous recording if wired cbuf_sync to wave_trig
+    // Stop writing the circle buffer once it is full until the next
+    // wave_trig, so triggered modes record one buffer per trigger.
+    // cbuf_free_run keeps writing;
     reg stream_valid=1'b1;
     always @(posedge dsp_clk) begin
-        if (wave_trig) stream_valid <= 1'b1;
+        if (dsp_reset | cbuf_free_run | wave_trig) stream_valid <= 1'b1;
         else if (cbuf_sync) stream_valid <= 1'b0;
     end
 
@@ -127,7 +134,6 @@ module cic_waves #(
         .reset        (dsp_reset),
         .stb_in       (iq_dval),
         .d_in         (iq_data),   // Flattened array of unprocessed IQ streams. CH0 in LSBs
-        // .cic_sample   (cic_sample & stream_valid),  // XXX will interrupt inlk stream
         .cic_sample   (cic_sample),
 
         // Post-integrator conveyor belt tap
@@ -142,7 +148,9 @@ module cic_waves #(
 
         // Circular Buffer control and statistics
         .oclk         (lb_clk),
-        .buf_write    (1'b1),
+        // gates circle buffer writes on channel burst boundaries only,
+        // the interlock stream (di_sr_out) keeps running
+        .buf_write    (stream_valid),
 
         .buf_sync     (cbuf_sync),            // single-cycle when buffer starts/ends
         .buf_transferred(cbuf_transferred),    // single-cycle when a buffer has been

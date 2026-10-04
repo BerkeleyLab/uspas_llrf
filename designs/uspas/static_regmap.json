@@ -105,6 +105,14 @@
         "data_width": 17,
         "sign": "signed"
     },
+    "fault_amp": {
+        "base_addr": "0x10a20",
+        "addr_width": 4,
+        "access": "r",
+        "data_width": 16,
+        "sign": "signed",
+        "description": "Monitor amplitude latched at the first fault, per channel"
+    },
     "dsp_slow_data": {
         "access": "r",
         "addr_width": 8,

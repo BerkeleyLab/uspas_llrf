@@ -17,7 +17,9 @@ module test_cic_waves
     localparam test_cic_waves_pkg::addr_t P_ADDR_CBUF_DATA_BASE = ADDR_CBUF_DATA_BASE,
     localparam test_cic_waves_pkg::addr_t P_ADDR_CBUF_READY = ADDR_CBUF_READY,
     localparam test_cic_waves_pkg::addr_t P_ADDR_CBUF_TRANSFERED = ADDR_CBUF_TRANSFERED,
-    localparam test_cic_waves_pkg::addr_t P_ADDR_CBUF_FLIP = ADDR_CBUF_FLIP
+    localparam test_cic_waves_pkg::addr_t P_ADDR_CBUF_FLIP = ADDR_CBUF_FLIP,
+    localparam test_cic_waves_pkg::addr_t P_ADDR_SLOW_READY = ADDR_SLOW_READY,
+    localparam test_cic_waves_pkg::addr_t P_ADDR_SLOW_DATA_BASE = ADDR_SLOW_DATA_BASE
 ) (
     // DSP domain interface
     input                      dsp_clk,
@@ -60,6 +62,7 @@ module test_cic_waves
     output                     cbuf_sync,
     output                     cbuf_transferred,
 
+    // debug visibility only; read these through lb_rdata, see lb_read_block
     output                     slow_ready,
     output     [15:0]          slow_rdata
 );
@@ -84,7 +87,7 @@ module test_cic_waves
     logic cbuf_buf_flip;
     logic we_cbuf_buf_flip;
     assign we_cbuf_buf_flip = lb_write & (lb_addr==ADDR_CBUF_FLIP);
-    always_ff @( lb_clk ) begin : lb_write_block
+    always_ff @(posedge lb_clk) begin : lb_write_block
         cbuf_buf_flip <= we_cbuf_buf_flip ? lb_wdata[0] : 1'b0;
     end
 
@@ -143,6 +146,7 @@ module test_cic_waves
         .dsp_tag            (dsp_tag),
 
         .wave_trig          (wave_trig_i),
+        .cbuf_free_run      (wave_trig_sel == WAVE_TRIG_ALWAYS),
         .record_en     (record_en),
 
         .inlk_data          (inlk_data),
@@ -163,20 +167,31 @@ module test_cic_waves
         .slow_rdata         (slow_rdata)
     );
 
+    // ---------------------
+    // Read-only address space decoding
+    // Mirrors designs/uspas/llrf_shell.v: registered address, then a
+    // registered data mux. slow_rdata comes out of the slow_bridge dpram
+    // one lb_clk after lb_addr, same as cbuf_out, so both fit in the
+    // READ_DELAY=3 budget of LocalBusMaster.
+    // ---------------------
     localparam test_cic_waves_pkg::addr_t ADDR_CBUF_DATA_END  = ADDR_CBUF_DATA_BASE + ((1<<CBUF_AW) - 1);
-    logic [31:0] rd_data;
-    logic [17:0] rd_addr;
-    logic addr_hit_array;
-    assign addr_hit_array = addr_in_array(rd_addr, ADDR_CBUF_DATA_BASE, ADDR_CBUF_DATA_END);
+    logic [31:0] rd_data = 0;
+    logic [17:0] rd_addr = 0;
+    logic addr_hit_cbuf, addr_hit_slow;
+    assign addr_hit_cbuf = addr_in_array(rd_addr, ADDR_CBUF_DATA_BASE, ADDR_CBUF_DATA_END);
+    assign addr_hit_slow = addr_in_array(rd_addr, ADDR_SLOW_DATA_BASE, ADDR_SLOW_DATA_END);
 
-    always_ff @( lb_clk ) begin : lb_read_block
+    always_ff @(posedge lb_clk) if (lb_read) begin : lb_read_block
         rd_addr <= lb_addr;
         case (rd_addr)
-            ADDR_CBUF_READY:      rd_data <= cbuf_ready;
-            ADDR_CBUF_TRANSFERED: rd_data<= cbuf_transferred;
+            ADDR_CBUF_READY:      rd_data <= {31'b0, cbuf_ready};
+            ADDR_CBUF_TRANSFERED: rd_data <= {31'b0, cbuf_transferred};
+            ADDR_SLOW_READY:      rd_data <= {31'b0, slow_ready};
             default:  begin
-                if (addr_hit_array) begin
-                    rd_data <= cbuf_out;
+                if (addr_hit_cbuf) begin
+                    rd_data <= {{(32-CBUF_DW){1'b0}}, cbuf_out};
+                end else if (addr_hit_slow) begin
+                    rd_data <= {16'b0, slow_rdata};  // slow_bridge_shell window, see 18'h109?? in llrf_shell.v
                 end else begin
                     rd_data <= 32'hDEAD_BEEF;
                 end

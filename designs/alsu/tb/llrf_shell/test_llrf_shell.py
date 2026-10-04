@@ -41,7 +41,7 @@ async def test_cic_waves(dut, f_config='ALSU', amp_exp=15000, phs_exp=45,
 
     cocotb.log.warning(f'cic_wfm_gain: {tb.llrf.cic_wfm_gain:.3f}')
     # check phase reference adc only
-    await tb.read_cic_waveform()  # discard first waveform
+    await tb.read_cic_waveform()  # flush buffer recorded across reconfiguration
     ch = 0 if tb.phaseref_adc < tb.loopback_adc else 1
     cic_meas = await tb.read_cic_waveform(ch)
     cic_meas = cic_meas[2:]  # XXX discard first 2 samples due to transient

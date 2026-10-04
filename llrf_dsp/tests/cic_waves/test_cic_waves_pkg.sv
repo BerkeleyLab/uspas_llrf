@@ -18,6 +18,12 @@ package test_cic_waves_pkg;
     localparam addr_t ADDR_CBUF_READY       = 18'h00001;
     localparam addr_t ADDR_CBUF_TRANSFERED  = 18'h00002;
     localparam addr_t ADDR_CBUF_FLIP        = 18'h00003;
+    localparam addr_t ADDR_SLOW_READY       = 18'h00004;
+    // slow_bridge readout window, see slow_bridge_shell.v (AW=7, data from 0x11)
+    // mirrors 18'h109?? in designs/uspas/llrf_shell.v
+    parameter int SLOW_AW = 7;
+    localparam addr_t ADDR_SLOW_DATA_BASE   = 18'h00900;
+    localparam addr_t ADDR_SLOW_DATA_END    = ADDR_SLOW_DATA_BASE + ((1<<SLOW_AW) - 1);
 
     //--------------------------------------------------------------------------
     // Helper function: check whether an address falls inside the array window
