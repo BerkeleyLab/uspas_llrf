@@ -40,6 +40,7 @@
             "LOOP1_ADC_CHAN":    6,
             "DAC_DRIVE_SEL":     0,
             "PULSE_MODES":       0,
+            "SLOW_SNAP_CIC":     true,
             "EVCODE":            5
         },
         "USPAS": {
@@ -60,6 +61,7 @@
             "LOOP1_ADC_CHAN":    3,
             "DAC_DRIVE_SEL":     0,
             "PULSE_MODES":       0,
+            "SLOW_SNAP_CIC":     true,
             "EVCODE":            5
         },
         "LEMP": {
@@ -80,6 +82,7 @@
             "LOOP1_ADC_CHAN":    0,
             "DAC_DRIVE_SEL":     2,
             "PULSE_MODES":       3,
+            "SLOW_SNAP_CIC":     false,
             "EVCODE":            151
         },
         "AWA": {
@@ -100,6 +103,7 @@
             "LOOP1_ADC_CHAN":    3,
             "DAC_DRIVE_SEL":     2,
             "PULSE_MODES":       3,
+            "SLOW_SNAP_CIC":     false,
             "EVCODE":            151
         }
     }

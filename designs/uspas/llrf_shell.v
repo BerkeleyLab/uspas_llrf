@@ -12,6 +12,7 @@
 // 10911 to 109ff   Slow readout, see slow_bridge.v
 // 10a00 to 10a07   amp out
 // 10a10 to 10a17   phs out
+// 10a20 to 10a29   fault record amp out
 // 11000 to 117ff   mirror (`define MIRROR_WIDTH 7)
 // 12000 to 12fff   adc0_buf
 // ...
@@ -439,6 +440,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .dsp_tag            (dsp_tag),
 
         .wave_trig          (wave_trig),
+        .cbuf_free_run      (wave_trig_sel == WAVE_TRIG_ALWAYS),
         .record_en          (sum_drive_enable),
 
         .inlk_data          (inlk_data),
@@ -818,6 +820,20 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .data_out ({inlk_permit_out_lb, first_fault_status_lb, inlk_latch_lb, inlk_status_lb, inlk_hi_lb, inlk_lo_lb})
     );
 
+    // Latch fault record amplitude per channel, addressed by fault_addr_out
+    reg [16*N_CH-1:0] fault_amp_r=0;
+    always @(posedge dsp_clk) if (fault_valid_out && fault_addr_out < N_CH)
+        fault_amp_r[16*fault_addr_out +: 16] <= fault_amp_out;
+
+    wire [16*N_CH-1:0] fault_amp_xd;
+    data_xdomain #(.size(16*N_CH)) fault_amp_xdomain (
+        .clk_in   (dsp_clk),
+        .gate_in  (dsp_tick),
+        .data_in  (fault_amp_r),
+        .clk_out  (lb_clk),
+        .data_out (fault_amp_xd)
+    );
+
     wire [2:0] arc_permit_raw_lb;
     wire [2:0] arc_permit_latch_lb;
     wire [0:0] arc_permit_sum_lb;
@@ -834,6 +850,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     // ---------------------
     reg [LB_DW-1:0] lb_rdata_r=0;
     reg [LB_ADW-1:0] lb_addr_d1=0;
+    wire [15:0] fault_amp_lb = lb_addr_d1[3:0] < N_CH ? fault_amp_xd[16*lb_addr_d1[3:0] +: 16] : 16'h0;
     reg [31:0] reg_bank_0=0, reg_bank_1=0, reg_bank_2=0;
     // jit_rad == Just In Time Readout Across Domains
     wire lb_error;
@@ -914,6 +931,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             18'h109??: lb_rdata_r <= slow_rdata;
             18'h10a0?: lb_rdata_r <= mon_amp_lb;
             18'h10a1?: lb_rdata_r <= mon_phs_lb;
+            18'h10a2?: lb_rdata_r <= fault_amp_lb;
             18'h11???: lb_rdata_r <= mirror_out_0;
             18'h12???: lb_rdata_r <= adc_raw_out[0];
             18'h13???: lb_rdata_r <= adc_raw_out[1];

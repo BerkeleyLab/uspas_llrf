@@ -157,10 +157,33 @@ class TB_llrf_shell:
             wfm.append(i + 1j * q)
         return np.array(wfm, dtype=np.complex64)
 
-    async def read_sig_buf(self, name='adc0_buf'):
+    async def flip_sig_buf(self):
+        """Flip the IQ waveform buffers and wait for the write side to hand
+        over a new bank. Waits on sig_buf_iq_transferred[0] directly rather
+        than slow_snap, which only follows it when slow_snap_cic=0.
+        Rely on timeout_time for exceptions.
+        """
         await self.lb.write_reg('sig_buf_flip', 1)
-        await RisingEdge(self.dut.llrf_shell.slow_snap)
+        transferred = self.dut.llrf_shell.sig_buf_iq_transferred
+        while True:
+            await transferred.value_change
+            if transferred.value.to_unsigned() & 1:
+                break
         assert await self.lb.read_reg('sig_buf_ready')
+
+    async def snap_slow_data(self):
+        """Flip the buffer the slow block is synchronized with, then wait
+        for slow_ready. slow_snap_cic selects cbuf_transferred (CW LLRF
+        using cic_waves) or sig_buf transfer (pulsed LLRF using IQ wfms).
+        """
+        if self.llrf.init_regs.slow_snap_cic:
+            await self.read_cic_waveform()
+        else:
+            await self.flip_sig_buf()
+        await self.wait_slow_ready()
+
+    async def read_sig_buf(self, name='adc0_buf'):
+        await self.flip_sig_buf()
         wfm = []
         for idx in range(1 << self.sig_buf_aw):
             s = await self.lb.read_reg(name, idx)
@@ -168,9 +191,7 @@ class TB_llrf_shell:
         return np.array(wfm)
 
     async def read_adc_min_max(self, chan=0):
-        await self.lb.write_reg('sig_buf_flip', 1)
-        await RisingEdge(self.dut.llrf_shell.slow_snap)
-        assert await self.lb.read_reg('sig_buf_ready')
+        await self.snap_slow_data()
         min = await self.lb.read_reg('dsp_slow_adc_min', chan)
         max = await self.lb.read_reg('dsp_slow_adc_max', chan)
         return min, max
@@ -207,7 +228,7 @@ class TB_llrf_shell:
         await self.write_init_regs()
         await self.verify_init_regs()
 
-        await self.read_cic_waveform()  # discard first waveform
+        await self.read_cic_waveform()  # flush buffer recorded across reconfiguration
         self.log_banner('CIC Waveform')
         for i, name in enumerate(self.cic_names):
             cic_meas = await self.read_cic_waveform(i)
@@ -285,6 +306,138 @@ class TB_llrf_shell:
         self.check_sig(inlk_meas / self.llrf.inlk_gain,
                        sig_name='feedback_adc')
 
+    async def trip_fast_interlock(self):
+        """Arm a 99% to 101% window around the reference ADC amplitude
+        with LoHi mode, so the fast interlock trips, inlk_permit_out drops
+        and with it sum_drive_enable (record_en of cic_waves).
+        """
+        inlk_gain_abs = np.abs(self.llrf.inlk_gain)
+        amp_lo = self.amp_exp * inlk_gain_abs * 0.99
+        amp_hi = self.amp_exp * inlk_gain_abs * 1.01
+        regs = [
+            ('inlk_inlk_mode', self.phaseref_adc, InlkFaultMode.LoHi),
+            ('inlk_amp_lo', self.phaseref_adc, amp_lo),
+            ('inlk_amp_hi', self.phaseref_adc, amp_hi),
+        ]
+        for name, offset, val in regs:
+            await self.lb.write_reg(name, val, offset)
+        await self.lb.write_reg('inlk_permit_mask', 1 << self.phaseref_adc)
+        await self.lb.write_reg('inlk_reset_inlk', 1)
+
+    async def release_fast_interlock(self):
+        """Restore inlk_permit_mask from init_regs and clear the latch."""
+        await self.lb.write_reg(
+            'inlk_permit_mask', self.llrf.init_regs.inlk_permit_mask)
+        await self.lb.write_reg('inlk_reset_inlk', 1)
+
+    async def wait_drive_permit(self, expected, max_reads=50):
+        """Poll rf_pwr_permit_sum (inlk_permit_out) until it reads expected.
+
+        drive_permit_out would be the direct readback of sum_drive_enable,
+        but it sits behind jit_rad_gateway and needs lb_prefill, which the
+        test wrapper ties low. test_llrf_shell.sv ties the external and
+        arc permits high, so inlk_permit_out equals sum_drive_enable, the
+        record_en of cic_waves; cross-check that on the internal wire.
+        """
+        for _ in range(max_reads):
+            if await self.lb.read_reg('rf_pwr_permit_sum') == expected:
+                break
+        else:
+            raise AssertionError(f'rf_pwr_permit_sum did not reach {expected}')
+        await RisingEdge(self.dut.dsp_clk)
+        record_en = int(self.dut.llrf_shell.sum_drive_enable.value)
+        assert record_en == expected, \
+            f'sum_drive_enable (record_en) is {record_en}, expected {expected}'
+
+    async def wait_slow_ready(self, max_reads=50):
+        """Poll llrf_circle_ready until slow_ready (bit 1) is set."""
+        for _ in range(max_reads):
+            if await self.lb.read_reg('llrf_circle_ready') & 0b10:
+                return
+        raise AssertionError('slow_ready never set')
+
+    # dsp_slow_cbuf_stat1 = {record_type, buff_wrap, save_addr}, see circle_buf.v
+    # record_type is the MSB of the 16-bit word (bit 16 counting from 1):
+    # 1 = normal comfort display record, 0 = fault record (stopped by buf_stop)
+    CBUF_STAT1_RECORD_TYPE = 1 << 15
+
+    async def read_cbuf_stat1(self):
+        """Flip the circle buffer, wait for the slow block and read stat1.
+
+        Requires slow_snap_cic=1 so the slow block snapshots on
+        cbuf_transferred and the status belongs to the waveform just read.
+        """
+        await self.snap_slow_data()
+        stat1 = await self.lb.read_reg('dsp_slow_cbuf_stat1')
+        stat2 = await self.lb.read_reg('dsp_slow_cbuf_stat2')
+        count = await self.lb.read_reg('dsp_slow_cbuf_count')
+        fault = not (stat1 & self.CBUF_STAT1_RECORD_TYPE)
+        cocotb.log.warning(
+            f'dsp_slow_cbuf_stat1: 0x{stat1:04x} stat2: 0x{stat2:04x} '
+            f'count: {count} fault: {fault}')
+        return stat1
+
+    async def check_fault_amp(self):
+        """Read the fault record amplitude latched by monitor_inlk at the
+        drop of record_status_en and check it against the dsp_clk side
+        latch and the LoHi window that tripped the reference ADC.
+        """
+        n_ch = len(self.dut.adc_array_in) + len(self.dut.dac_array_out)
+        for ch in range(n_ch):
+            amp = await self.lb.read_reg('fault_amp', ch)
+            fault_amp_r = self.dut.llrf_shell.fault_amp_r.value
+            expected = fault_amp_r[16 * ch + 15:16 * ch].to_signed()
+            assert amp == expected, \
+                f'fault_amp[{ch}] reads {amp}, latched {expected}'
+        amp = await self.lb.read_reg('fault_amp', self.phaseref_adc)
+        inlk_gain_abs = np.abs(self.llrf.inlk_gain)
+        amp_lo = self.amp_exp * inlk_gain_abs * 0.99
+        amp_hi = self.amp_exp * inlk_gain_abs * 1.01
+        cocotb.log.warning(
+            f'fault_amp[{self.phaseref_adc}]: {amp}, '
+            f'window: {amp_lo:.0f} to {amp_hi:.0f}')
+        assert amp_lo <= amp <= amp_hi, \
+            f'fault_amp {amp} outside trip window {amp_lo:.0f} to {amp_hi:.0f}'
+
+    async def test_record_stop(self, loop='loop0', post_delay=1):
+        """Test waveform freeze on loss of drive permit.
+
+        record_en of cic_waves is sum_drive_enable. Tripping the fast
+        interlock drops it; after cbuf_post_delay buffer syncs the circle
+        buffer stops writing and the record is flagged as a fault in
+        dsp_slow_cbuf_stat1 (record_type bit cleared). Releasing the
+        interlock and reading the buffer out resumes normal recording.
+        """
+        self.log_banner('Record Stop Test')
+        self.set_dac_drive_sel(loop)
+        assert self.llrf.init_regs.slow_snap_cic, \
+            'test_record_stop needs SLOW_SNAP_CIC=1 (slow block on cbuf_transferred)'
+        # post_delay=0 never generates buf_stop, see cic_waves.v
+        await self.lb.write_reg('cbuf_post_delay', post_delay)
+        # test_fast_interlock may have left the permit tripped
+        await self.release_fast_interlock()
+        await self.wait_drive_permit(1)
+        await self.read_cbuf_stat1()  # discard, may be recorded while tripped
+        stat1 = await self.read_cbuf_stat1()
+        assert stat1 & self.CBUF_STAT1_RECORD_TYPE, \
+            'buffer flagged as fault record while record_en is high'
+
+        await self.trip_fast_interlock()
+        await self.wait_drive_permit(0)  # record_en low
+        cbuf_sync = self.dut.llrf_shell.cbuf_sync
+        for _ in range(post_delay + 2):
+            await RisingEdge(cbuf_sync)
+        stat1 = await self.read_cbuf_stat1()
+        assert not (stat1 & self.CBUF_STAT1_RECORD_TYPE), \
+            'buffer not flagged as fault record after record_en dropped'
+
+        await self.release_fast_interlock()
+        await self.wait_drive_permit(1)
+        await self.read_cbuf_stat1()  # discard, recording resumes on this flip
+        stat1 = await self.read_cbuf_stat1()
+        assert stat1 & self.CBUF_STAT1_RECORD_TYPE, \
+            'buffer still flagged as fault record after record_en restored'
+
     async def test_fast_interlock(self, loop='loop0'):
         """Test monitor_inlk.v
         - Set threshold window to be between 99% and 101% around the expected
@@ -299,17 +452,7 @@ class TB_llrf_shell:
         self.log_banner('Fast Interlock Test')
         self.set_dac_drive_sel(loop)
         inlk_gain_abs = np.abs(self.llrf.inlk_gain)
-        amp_lo = self.amp_exp * inlk_gain_abs * 0.99
-        amp_hi = self.amp_exp * inlk_gain_abs * 1.01
-        regs = [
-            ('inlk_inlk_mode', self.phaseref_adc, InlkFaultMode.LoHi),
-            ('inlk_amp_lo', self.phaseref_adc, amp_lo),
-            ('inlk_amp_hi', self.phaseref_adc, amp_hi),
-        ]
-        for name, offset, val in regs:
-            await self.lb.write_reg(name, val, offset)
-        await self.lb.write_reg('inlk_permit_mask', 1 << self.phaseref_adc)
-        await self.lb.write_reg('inlk_reset_inlk', 1)
+        await self.trip_fast_interlock()
 
         dut = self.dut.llrf_shell
         await RisingEdge(dut.inlk.wave_valid)
@@ -336,3 +479,6 @@ class TB_llrf_shell:
                     f"{mon_phs_out:8.1f} ")
         assert dut.inlk_permit_out.value == 0, \
             "Unexpected inlk_permit_out."
+        if hasattr(self.lb.reg_map, 'fault_amp'):
+            await self.wait_drive_permit(0)  # record_status_en low
+            await self.check_fault_amp()

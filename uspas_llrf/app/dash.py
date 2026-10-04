@@ -14,7 +14,7 @@ import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 
 from uspas_llrf.app.app import LLRFApp
-from uspas_llrf.model.llrf_shell import DacDriveSel
+from uspas_llrf.model.llrf_shell import DacDriveSel, WaveTrigSel
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,23 @@ DAC_DRIVE_OPTIONS = [
     {'label': ' I0I1 (dual loops, I)', 'value': int(DacDriveSel.I0I1)},
     {'label': ' Q0Q1 (dual loops, Q)', 'value': int(DacDriveSel.Q0Q1)},
 ]
+
+# llrf_shell.v wave_trig_sel: trigger source of the cic_waves circle buffer.
+# Except for Always, recording stops once the buffer is full and restarts
+# on the next trigger.
+# cbuf_post_delay powers up as 0, which disables the fault record freeze
+# (cic_waves.v); the dash sets this instead so a permit drop is recorded.
+CBUF_POST_DELAY_DEFAULT = 1
+
+WAVE_TRIG_OPTIONS = [
+    {'label': ' Always', 'value': int(WaveTrigSel.Always)},
+    {'label': ' Internal', 'value': int(WaveTrigSel.Internal)},
+    {'label': ' External', 'value': int(WaveTrigSel.External)},
+    {'label': ' Software', 'value': int(WaveTrigSel.Software)},
+    {'label': ' EVR', 'value': int(WaveTrigSel.EVR)},
+    {'label': ' Mixed (ext | soft)', 'value': int(WaveTrigSel.Mixed)},
+]
+SOFT_TRIG_MODES = (int(WaveTrigSel.Software), int(WaveTrigSel.Mixed))
 
 
 def format_bsp_records(bsp_info):
@@ -133,6 +150,102 @@ def format_bsp_records(bsp_info):
     return records
 
 
+def format_slow_records(slow):
+    """Flatten the status part of a decoded SlowData into Parameter / Value
+    rows for a DataTable."""
+    if slow is None:
+        return []
+    return [
+        {'Parameter': 'Record type',
+         'Value': 'FAULT (stopped by record_en)' if slow.fault else 'normal'},
+        {'Parameter': 'cbuf_stat1', 'Value': f'{slow.cbuf_stat1:#06x}'},
+        {'Parameter': 'Buffer wrap', 'Value': str(slow.buf_wrap)},
+        {'Parameter': 'Last addr (stat2)', 'Value': f'{slow.last_addr:#06x}'},
+        {'Parameter': 'cbuf_count', 'Value': str(slow.cbuf_count)},
+        {'Parameter': 'tag / tag_old',
+         'Value': f'{slow.tag:#04x} / {slow.tag_old:#04x}'
+                  + (' (changed)' if slow.tag_changed else '')},
+        {'Parameter': 'EVR timestamp',
+         'Value': f'{slow.evr_seconds} s + {slow.evr_ticks} ticks'},
+        {'Parameter': 'Cycle counter', 'Value': str(slow.cycles)},
+    ]
+
+
+def format_slow_adc_records(slow, signals):
+    """ADC min/max rows of a decoded SlowData, one per ADC channel."""
+    if slow is None:
+        return []
+    return [{'Channel': ch, 'adc_min': int(lo), 'adc_max': int(hi),
+             'adc_pp': int(hi) - int(lo)}
+            for ch, lo, hi in zip(signals, slow.adc_min, slow.adc_max)]
+
+
+def format_inlk_records(df, permit_sum):
+    """Rows of LLRFApp.get_inlk_status, one per channel, plus a summary
+    row carrying rf_pwr_permit_sum in the rf_pwr_latch column it is
+    derived from."""
+    records = df.reset_index().rename(
+        columns={'index': 'Channel'}).to_dict('records')
+    for r in records:
+        for col in ['Fault Amp [cnt]', 'Amp Lo [cnt]', 'Amp Hi [cnt]']:
+            r[col] = f"{r[col]:.1f}"
+    records.append({'Channel': 'rf_pwr_permit_sum',
+                    'rf_pwr_latch': permit_sum})
+    return records
+
+
+def format_arc_records(df, permit_sum):
+    """Rows of LLRFApp.get_arc_status, one per arc channel, plus a summary
+    row carrying arc_permit_sum in the arc_permit_latch column it is
+    derived from."""
+    records = df.reset_index().rename(
+        columns={'index': 'Channel'}).to_dict('records')
+    records.append({'Channel': 'arc_permit_sum',
+                    'arc_permit_latch': permit_sum})
+    return records
+
+
+def format_permit_records(regs, drive_names):
+    """Rows of the RF permit chain from LLRFApp.get_permit_status, grouped
+    as external, internal and final. Each group ends with its combined
+    permit, derived here except drive_permit_out which is read back."""
+    def row(group, permit, value, source):
+        return {'Group': group, 'Permit': permit, 'Value': value & 1,
+                'Source': source}
+    ext = regs['ext_permit_bypass'] | (
+        regs['drive_permit_in'] & regs['slow_permit_in'])
+    internal = regs['rf_pwr_permit_sum'] & regs['arc_permit_sum'] & (
+        regs['hpa_permit_out'])
+    drive_out = regs['drive_permit_out']
+    records = [
+        row('External', 'drive_permit_in', regs['drive_permit_in'],
+            'RF drive control'),
+        row('External', 'slow_permit_in', regs['slow_permit_in'],
+            'master interlock PLC'),
+        row('External', 'ext_permit_bypass', regs['ext_permit_bypass'],
+            '1 = external permits bypassed'),
+        row('External', 'external_permit', ext,
+            '= bypass | drive & slow'),
+        row('Internal', 'rf_pwr_permit_sum', regs['rf_pwr_permit_sum'],
+            'RF power interlock'),
+        row('Internal', 'arc_permit_sum', regs['arc_permit_sum'],
+            'arc interlock'),
+        row('Internal', 'hpa_osc_permit', regs['hpa_permit_out'],
+            'hpa_permit_out'),
+        row('Internal', 'internal_permit', internal,
+            '= rf_pwr & arc & hpa_osc'),
+        row('Final', 'drive_permit_out', drive_out,
+            'readback of external & internal'),
+    ]
+    for n, name in enumerate(drive_names):
+        soft = (regs['soft_drive_enable'] >> n) & 1
+        records.append(row('Final', f'soft_drive_enable[{n}]', soft,
+                           f'{name} software enable'))
+        records.append(row('Final', f'RF permit {name}', soft & drive_out,
+                           f'= soft_drive_enable[{n}] & drive_permit_out'))
+    return records
+
+
 def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
     """Create and configure a Plotly Dash application for an LLRFApp instance.
 
@@ -142,7 +255,11 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
     Returns:
         dash.Dash: Configured Dash application.
     """
-    app = dash.Dash(__name__, title=f"LLRF Live - {llrf_app.app_name}")
+    # LEEPDevice keeps the UDP destination as (host, port)
+    dest = getattr(llrf_app, 'dest', None)
+    dev_addr = f"{dest[0]}:{dest[1]}" if dest else "unknown"
+    app = dash.Dash(__name__,
+                    title=f"LLRF Live - {llrf_app.app_name} @ {dev_addr}")
 
     # Pulse start/length registers count dsp_clk cycles; the UI works in ns.
     # Slider step is one clk period so every position is an exact clk count.
@@ -159,6 +276,69 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
     except Exception as e:
         logger.warning(f"Could not read dac_drive_sel, defaulting to 0: {e}")
         dac_drive_sel_init = int(DacDriveSel.I0Q0)
+
+    try:
+        cbuf_post_delay_init = int(llrf_app.read_reg('cbuf_post_delay'))
+        # A write while the permit is down lets the stopped post-delay
+        # counter run and fires a late fault record, so only enable the
+        # freeze while drive_permit_out is up.
+        if cbuf_post_delay_init == 0:
+            if int(llrf_app.read_reg('drive_permit_out')):
+                llrf_app.write_reg('cbuf_post_delay', CBUF_POST_DELAY_DEFAULT)
+                cbuf_post_delay_init = CBUF_POST_DELAY_DEFAULT
+                logger.info("cbuf_post_delay was 0 (freeze disabled), "
+                            f"set to {CBUF_POST_DELAY_DEFAULT}")
+            else:
+                logger.warning("cbuf_post_delay is 0 (freeze disabled) and "
+                               "drive_permit_out is 0; clear the permit and "
+                               "set cbuf_post_delay to record faults")
+    except Exception as e:
+        logger.warning(f"Could not read cbuf_post_delay, defaulting to 0: {e}")
+        cbuf_post_delay_init = 0
+
+    try:
+        wave_trig_sel_init = int(llrf_app.read_reg('wave_trig_sel'))
+    except Exception as e:
+        logger.warning(f"Could not read wave_trig_sel, defaulting to Always: {e}")
+        wave_trig_sel_init = int(WaveTrigSel.Always)
+
+    try:
+        wave_samp_per_init = int(llrf_app.wave_samp_per)
+    except Exception as e:
+        logger.warning(f"Could not read wave_samp_per, defaulting to 1: {e}")
+        wave_samp_per_init = 1
+    wave_samp_per_max = 127  # 7-bit register
+    wave_samp_marks = {v: str(v) for v in (1, 16, 32, 64, 96, 127)}
+
+    def fmt_time_ns(ns):
+        for unit, scale in (('s', 1e9), ('ms', 1e6), ('µs', 1e3)):
+            if ns >= scale:
+                return f"{ns / scale:.3g} {unit}"
+        return f"{ns:.3g} ns"
+
+    def time_scale_text():
+        # CIC sample period and circle buffer span per channel, the
+        # oscilloscope time/div equivalent of wave_samp_per.
+        ts_ns = llrf_app.cic_ts_ns
+        n_samples = 2**16 // llrf_app.cic_n_chan // 2
+        cic_mon = llrf_app.model.cic_mon
+        return (f"wave_samp_per={cic_mon.wave_samp_per}, "
+                f"cic_wave_shift={cic_mon.wave_shift}, "
+                f"Ts={fmt_time_ns(ts_ns)}, "
+                f"span={fmt_time_ns(ts_ns * n_samples)} "
+                f"({n_samples} samples/chan)")
+
+    table_header_style = {
+        'backgroundColor': '#34495e',
+        'color': 'white',
+        'fontWeight': 'bold',
+        'textAlign': 'center'
+    }
+    table_cell_style = {
+        'textAlign': 'center',
+        'padding': '6px 8px',
+        'fontSize': '13px'
+    }
 
     def pulse_slider(id_, value_clk):
         return dcc.Slider(
@@ -185,10 +365,22 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
                     'marginBottom': '15px'
                 },
                 children=[
-                    html.H2(
-                        f"LLRF Live Monitor & Control: {llrf_app.app_name}",
-                        style={'color': '#2c3e50', 'margin': '0'}
-                    ),
+                    html.Div([
+                        html.H2(
+                            "LLRF Live Monitor & Control: "
+                            f"{llrf_app.app_name} @ {dev_addr}",
+                            style={'color': '#2c3e50', 'margin': '0'}
+                        ),
+                        # code hash from the LEEP config ROM, as `leep gitid`
+                        html.Div(
+                            "git_rev_id: "
+                            f"{getattr(llrf_app, 'codehash', None) or 'unknown'}",
+                            id='git-rev-id',
+                            style={'fontSize': '12px', 'color': '#7f8c8d',
+                                   'fontFamily': 'monospace',
+                                   'marginTop': '4px'}
+                        )
+                    ]),
                     html.Div(
                         style={'display': 'flex', 'gap': '10px',
                                'alignItems': 'center'},
@@ -627,6 +819,58 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
                     ]),
                     html.Div([
                         html.Label(
+                            "Trigger Mode (wave_trig_sel):",
+                            style={'fontWeight': 'bold', 'display': 'block'}
+                        ),
+                        html.Div(
+                            style={'display': 'flex', 'gap': '10px',
+                                   'alignItems': 'center'},
+                            children=[
+                                dcc.RadioItems(
+                                    id='wave-trig-sel',
+                                    options=WAVE_TRIG_OPTIONS,
+                                    value=wave_trig_sel_init,
+                                    inline=True
+                                ),
+                                html.Button(
+                                    'Soft Trigger',
+                                    id='soft-trigger-btn',
+                                    n_clicks=0,
+                                    disabled=(wave_trig_sel_init
+                                              not in SOFT_TRIG_MODES),
+                                    style={'padding': '4px 10px',
+                                           'cursor': 'pointer'}
+                                )
+                            ]
+                        ),
+                        html.Div(
+                            id='wave-trig-status',
+                            style={'fontSize': '11px', 'color': '#7f8c8d'}
+                        )
+                    ]),
+                    html.Div(
+                        style={'minWidth': '320px', 'flex': '1'},
+                        children=[
+                            html.Label(
+                                "CIC Time Scale (wave_samp_per):",
+                                style={'fontWeight': 'bold',
+                                       'display': 'block'}),
+                            dcc.Slider(
+                                id='wave-samp-per',
+                                min=1, max=wave_samp_per_max, step=1,
+                                value=wave_samp_per_init,
+                                marks=wave_samp_marks,
+                                tooltip={'placement': 'bottom',
+                                         'always_visible': True},
+                                updatemode='mouseup'),
+                            html.Div(
+                                id='wave-samp-status',
+                                style={'fontSize': '11px',
+                                       'color': '#7f8c8d'})
+                        ]
+                    ),
+                    html.Div([
+                        html.Label(
                             "Signals:",
                             style={'fontWeight': 'bold', 'display': 'block'}
                         ),
@@ -677,6 +921,127 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
             ),
             dcc.Graph(id='wfm-graph', style={'height': '550px'}),
             html.Div(
+                id='slow-panel',
+                style={
+                    'marginTop': '25px',
+                    'backgroundColor': '#ffffff',
+                    'padding': '15px',
+                    'borderRadius': '6px',
+                    'boxShadow': '0 2px 4px rgba(0,0,0,0.05)'
+                },
+                children=[
+                    html.Div(
+                        style={'display': 'flex',
+                               'justifyContent': 'space-between',
+                               'alignItems': 'center',
+                               'flexWrap': 'wrap', 'gap': '10px',
+                               'marginBottom': '10px'},
+                        children=[
+                            html.H3(
+                                "Slow Data & Waveform Status (read_slow_data)",
+                                style={'color': '#2c3e50', 'margin': '0'}
+                            ),
+                            html.Div(
+                                id='slow-fault-badge',
+                                style={'fontWeight': 'bold',
+                                       'padding': '4px 10px',
+                                       'borderRadius': '4px'}
+                            ),
+                            html.Div(
+                                style={'display': 'flex', 'gap': '15px',
+                                       'alignItems': 'center'},
+                                children=[
+                                    html.Div([
+                                        html.Label(
+                                            "cbuf_post_delay [buffers]:",
+                                            style={'fontSize': '11px',
+                                                   'fontWeight': 'bold',
+                                                   'display': 'block'}),
+                                        dcc.Input(
+                                            id='cbuf-post-delay',
+                                            type='number', min=0,
+                                            max=0xffff, step=1,
+                                            value=cbuf_post_delay_init,
+                                            debounce=True,
+                                            style={'width': '80px'})
+                                    ]),
+                                    dcc.Checklist(
+                                        id='hold-on-fault',
+                                        options=[{
+                                            'label': ' Stop auto refresh on fault',
+                                            'value': 'on'}],
+                                        value=['on'],
+                                        style={'fontSize': '12px'}
+                                    )
+                                ]
+                            )
+                        ]
+                    ),
+                    html.Div(
+                        id='slow-ctrl-status',
+                        style={'fontSize': '11px', 'color': '#7f8c8d',
+                               'marginBottom': '8px'}
+                    ),
+                    html.Div(
+                        style={'display': 'flex', 'flexWrap': 'wrap',
+                               'gap': '20px'},
+                        children=[
+                            html.Div(
+                                style={'flex': '1', 'minWidth': '320px'},
+                                children=[dash_table.DataTable(
+                                    id='slow-status-table',
+                                    columns=[
+                                        {'name': 'Parameter', 'id': 'Parameter'},
+                                        {'name': 'Value', 'id': 'Value'}
+                                    ],
+                                    data=[],
+                                    style_header=table_header_style,
+                                    style_cell={**table_cell_style,
+                                                'textAlign': 'left'},
+                                    style_cell_conditional=[
+                                        {'if': {'column_id': 'Value'},
+                                         'fontFamily': 'monospace'}
+                                    ],
+                                    style_data_conditional=[
+                                        {'if': {'row_index': 'odd'},
+                                         'backgroundColor': '#f8f9fa'},
+                                        {'if': {'filter_query':
+                                                '{Value} contains "FAULT"'},
+                                         'backgroundColor': '#fdecea',
+                                         'color': '#c0392b',
+                                         'fontWeight': 'bold'}
+                                    ]
+                                )]
+                            ),
+                            html.Div(
+                                style={'flex': '1', 'minWidth': '320px'},
+                                children=[dash_table.DataTable(
+                                    id='slow-adc-table',
+                                    columns=[
+                                        {'name': 'Channel', 'id': 'Channel'},
+                                        {'name': 'ADC min', 'id': 'adc_min'},
+                                        {'name': 'ADC max', 'id': 'adc_max'},
+                                        {'name': 'Peak-peak', 'id': 'adc_pp'}
+                                    ],
+                                    data=[],
+                                    style_header=table_header_style,
+                                    style_cell=table_cell_style,
+                                    style_data_conditional=[
+                                        {'if': {'row_index': 'odd'},
+                                         'backgroundColor': '#f8f9fa'}
+                                    ]
+                                )]
+                            )
+                        ]
+                    ),
+                    html.Div(
+                        id='slow-last-fault',
+                        style={'fontSize': '12px', 'color': '#c0392b',
+                               'marginTop': '8px'}
+                    )
+                ]
+            ),
+            html.Div(
                 style={
                     'marginTop': '25px',
                     'backgroundColor': '#ffffff',
@@ -717,6 +1082,200 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
                                 'if': {'row_index': 'odd'},
                                 'backgroundColor': '#f8f9fa'
                             }
+                        ]
+                    )
+                ]
+            ),
+            html.Div(
+                style={
+                    'marginTop': '25px',
+                    'backgroundColor': '#ffffff',
+                    'padding': '15px',
+                    'borderRadius': '6px',
+                    'boxShadow': '0 2px 4px rgba(0,0,0,0.05)'
+                },
+                children=[
+                    html.H3(
+                        "RF Power Interlock (get_inlk_status)",
+                        style={'color': '#2c3e50', 'marginTop': '0',
+                               'marginBottom': '4px'}
+                    ),
+                    html.Div(
+                        "fault_amp is latched at the drop of the drive "
+                        "permit. Amp Lo/Hi are the inlk_amp_lo/hi "
+                        "thresholds; [cnt] columns are divided by the "
+                        "interlock gain to ADC counts. Status bits: 1 = OK, 0 = tripped. "
+                        "rf_pwr_permit_sum = AND over channels of "
+                        "(rf_pwr_latch | ~inlk_permit_mask).",
+                        style={'fontSize': '11px', 'color': '#7f8c8d',
+                               'marginBottom': '8px'}
+                    ),
+                    dash_table.DataTable(
+                        id='inlk-table',
+                        columns=[
+                            {'name': 'Channel', 'id': 'Channel'},
+                            {'name': 'fault_amp', 'id': 'fault_amp'},
+                            {'name': 'Fault Amp [cnt]',
+                             'id': 'Fault Amp [cnt]'},
+                            {'name': 'Amp Lo [cnt]', 'id': 'Amp Lo [cnt]'},
+                            {'name': 'Amp Hi [cnt]', 'id': 'Amp Hi [cnt]'},
+                            {'name': 'Raw Status', 'id': 'rf_pwr_status'},
+                            {'name': 'First Fault',
+                             'id': 'rf_pwr_first_fault_status'},
+                            {'name': 'Latched Status', 'id': 'rf_pwr_latch'},
+                            {'name': 'Interlocked',
+                             'id': 'inlk_permit_mask'}
+                        ],
+                        data=[],
+                        style_table={'overflowX': 'auto'},
+                        style_header=table_header_style,
+                        style_cell=table_cell_style,
+                        style_data_conditional=[
+                            {'if': {'row_index': 'odd'},
+                             'backgroundColor': '#f8f9fa'},
+                            # tripped channels that are in the permit mask
+                            *[{'if': {'filter_query':
+                                      f'{{{col}}} = 0 && '
+                                      '{inlk_permit_mask} = 1',
+                                      'column_id': col},
+                               'backgroundColor': '#fdecea',
+                               'color': '#c0392b',
+                               'fontWeight': 'bold'}
+                              for col in ['rf_pwr_status',
+                                          'rf_pwr_first_fault_status',
+                                          'rf_pwr_latch']],
+                            {'if': {'filter_query':
+                                    '{Channel} = "rf_pwr_permit_sum"'},
+                             'fontWeight': 'bold',
+                             'borderTop': '2px solid #34495e'},
+                            {'if': {'filter_query':
+                                    '{Channel} = "rf_pwr_permit_sum" && '
+                                    '{rf_pwr_latch} = 0'},
+                             'backgroundColor': '#fdecea',
+                             'color': '#c0392b'}
+                        ]
+                    )
+                ]
+            ),
+            html.Div(
+                style={
+                    'marginTop': '25px',
+                    'backgroundColor': '#ffffff',
+                    'padding': '15px',
+                    'borderRadius': '6px',
+                    'boxShadow': '0 2px 4px rgba(0,0,0,0.05)'
+                },
+                children=[
+                    html.H3(
+                        "Arc Detector Interlock (get_arc_status)",
+                        style={'color': '#2c3e50', 'marginTop': '0',
+                               'marginBottom': '4px'}
+                    ),
+                    html.Div(
+                        "Status bits: 1 = OK, 0 = tripped. "
+                        "arc_permit_sum = AND over channels of "
+                        "(arc_permit_latch | ~arc_permit_mask).",
+                        style={'fontSize': '11px', 'color': '#7f8c8d',
+                               'marginBottom': '8px'}
+                    ),
+                    dash_table.DataTable(
+                        id='arc-table',
+                        columns=[
+                            {'name': 'Channel', 'id': 'Channel'},
+                            {'name': 'Raw Status', 'id': 'arc_permit_raw'},
+                            {'name': 'Latched Status',
+                             'id': 'arc_permit_latch'},
+                            {'name': 'Interlocked',
+                             'id': 'arc_permit_mask'}
+                        ],
+                        data=[],
+                        style_table={'overflowX': 'auto'},
+                        style_header=table_header_style,
+                        style_cell=table_cell_style,
+                        style_data_conditional=[
+                            {'if': {'row_index': 'odd'},
+                             'backgroundColor': '#f8f9fa'},
+                            # tripped channels that are in the permit mask
+                            *[{'if': {'filter_query':
+                                      f'{{{col}}} = 0 && '
+                                      '{arc_permit_mask} = 1',
+                                      'column_id': col},
+                               'backgroundColor': '#fdecea',
+                               'color': '#c0392b',
+                               'fontWeight': 'bold'}
+                              for col in ['arc_permit_raw',
+                                          'arc_permit_latch']],
+                            {'if': {'filter_query':
+                                    '{Channel} = "arc_permit_sum"'},
+                             'fontWeight': 'bold',
+                             'borderTop': '2px solid #34495e'},
+                            {'if': {'filter_query':
+                                    '{Channel} = "arc_permit_sum" && '
+                                    '{arc_permit_latch} = 0'},
+                             'backgroundColor': '#fdecea',
+                             'color': '#c0392b'}
+                        ]
+                    )
+                ]
+            ),
+            html.Div(
+                style={
+                    'marginTop': '25px',
+                    'backgroundColor': '#ffffff',
+                    'padding': '15px',
+                    'borderRadius': '6px',
+                    'boxShadow': '0 2px 4px rgba(0,0,0,0.05)'
+                },
+                children=[
+                    html.H3(
+                        "RF Permit (get_permit_status)",
+                        style={'color': '#2c3e50', 'marginTop': '0',
+                               'marginBottom': '4px'}
+                    ),
+                    html.Div(
+                        "1 = permit, 0 = trip. drive_permit_out = "
+                        "external_permit & internal_permit; each drive "
+                        "is on with its soft_drive_enable bit and "
+                        "drive_permit_out.",
+                        style={'fontSize': '11px', 'color': '#7f8c8d',
+                               'marginBottom': '8px'}
+                    ),
+                    dash_table.DataTable(
+                        id='permit-table',
+                        columns=[
+                            {'name': 'Group', 'id': 'Group'},
+                            {'name': 'Permit', 'id': 'Permit'},
+                            {'name': 'Value', 'id': 'Value'},
+                            {'name': 'Source', 'id': 'Source'}
+                        ],
+                        data=[],
+                        style_table={'overflowX': 'auto'},
+                        style_header=table_header_style,
+                        style_cell=table_cell_style,
+                        style_data_conditional=[
+                            {'if': {'row_index': 'odd'},
+                             'backgroundColor': '#f8f9fa'},
+                            # combined permits close each group
+                            {'if': {'filter_query':
+                                    '{Permit} = "external_permit" || '
+                                    '{Permit} = "internal_permit" || '
+                                    '{Permit} = "drive_permit_out" || '
+                                    '{Permit} contains "RF permit"'},
+                             'fontWeight': 'bold'},
+                            {'if': {'filter_query':
+                                    '{Value} = 0 && '
+                                    '{Permit} != "ext_permit_bypass"',
+                                    'column_id': 'Value'},
+                             'backgroundColor': '#fdecea',
+                             'color': '#c0392b',
+                             'fontWeight': 'bold'},
+                            {'if': {'filter_query':
+                                    '{Value} = 1 && '
+                                    '{Permit} = "ext_permit_bypass"',
+                                    'column_id': 'Value'},
+                             'backgroundColor': '#fff4e5',
+                             'color': '#d35400',
+                             'fontWeight': 'bold'}
                         ]
                     )
                 ]
@@ -841,6 +1400,72 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
             return f"dac_drive_sel={name} ({int(value)}) at {time.strftime('%H:%M:%S')}"
         except Exception as e:
             return f"dac_drive_sel write failed: {e}"
+
+    @app.callback(
+        Output('slow-ctrl-status', 'children'),
+        Input('cbuf-post-delay', 'value'),
+        prevent_initial_call=True
+    )
+    def set_cbuf_post_delay(value):
+        # cic_waves.v: circle buffer stops writing value cbuf_sync's after
+        # record_en (sum_drive_enable) drops; 0 disables the freeze.
+        if value is None:
+            return ""
+        try:
+            llrf_app.write_reg('cbuf_post_delay', int(value))
+            note = " (freeze disabled)" if int(value) == 0 else ""
+            return (f"cbuf_post_delay={int(value)}{note} at "
+                    f"{time.strftime('%H:%M:%S')}")
+        except Exception as e:
+            return f"cbuf_post_delay write failed: {e}"
+
+    @app.callback(
+        Output('wave-trig-status', 'children'),
+        Output('soft-trigger-btn', 'disabled'),
+        Input('wave-trig-sel', 'value'),
+        Input('soft-trigger-btn', 'n_clicks'),
+        prevent_initial_call=True
+    )
+    def set_wave_trig_sel(value, _n_clicks):
+        if value is None:
+            return "", True
+        soft_disabled = int(value) not in SOFT_TRIG_MODES
+        try:
+            if dash.ctx.triggered_id == 'soft-trigger-btn':
+                llrf_app.write_reg('soft_trigger', 1)  # single-cycle
+                return (f"soft_trigger at {time.strftime('%H:%M:%S')}",
+                        soft_disabled)
+            llrf_app.write_reg('wave_trig_sel', int(value))
+            name = WaveTrigSel(int(value)).name
+            return (f"wave_trig_sel={name} ({int(value)}) at "
+                    f"{time.strftime('%H:%M:%S')}", soft_disabled)
+        except Exception as e:
+            return f"Trigger write failed: {e}", soft_disabled
+
+    @app.callback(
+        Output('wave-samp-status', 'children'),
+        Input('wave-samp-per', 'value')
+    )
+    def set_wave_samp_per(value):
+        # Fires on page load to show the current time scale.
+        if value is None:
+            return ""
+        try:
+            value = int(value)
+            if value != llrf_app.model.cic_mon.wave_samp_per:
+                # The setter rebuilds the model with the new CIC gain and
+                # writes cic_wave_shift along with wave_samp_per to avoid
+                # saturation; cic waveforms are rescaled by cic_wfm_gain.
+                llrf_app.wave_samp_per = value
+                # Flush the buffer recorded across the change; in triggered
+                # modes none may come, the request then stays armed.
+                try:
+                    llrf_app.read_cbuf_data()
+                except TimeoutError:
+                    pass
+            return f"{time_scale_text()} at {time.strftime('%H:%M:%S')}"
+        except Exception as e:
+            return f"wave_samp_per write failed: {e}"
 
     @app.callback(
         Output('init-status', 'children'),
@@ -1028,18 +1653,109 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
         )
         return disabled, interval
 
+    def read_inlk():
+        """rf_pwr interlock table rows with a rf_pwr_permit_sum row."""
+        try:
+            df, permit_sum = llrf_app.get_inlk_status()
+        except Exception as e:
+            logger.error(f"Error reading interlock status: {e}")
+            return []
+        return format_inlk_records(df, permit_sum)
+
+    def read_arc():
+        """Arc interlock table rows with an arc_permit_sum row."""
+        try:
+            df, permit_sum = llrf_app.get_arc_status()
+        except Exception as e:
+            logger.error(f"Error reading arc interlock status: {e}")
+            return []
+        return format_arc_records(df, permit_sum)
+
+    def read_permit():
+        """RF permit chain table rows."""
+        try:
+            regs = llrf_app.get_permit_status()
+        except Exception as e:
+            logger.error(f"Error reading permit status: {e}")
+            return []
+        return format_permit_records(
+            regs, llrf_app.signals[-llrf_app.n_dac:])
+
+    def read_slow():
+        """Slow data snapshot of the buffer transferred last.
+
+        Returns (SlowData or None, error message)."""
+        try:
+            return llrf_app.read_slow_data(flip=False), ""
+        except Exception as e:
+            logger.error(f"Error reading slow data: {e}")
+            return None, f"slow data read failed: {e}"
+
+    def fault_badge(slow):
+        if slow is None:
+            return "slow data: n/a", {'backgroundColor': '#ecf0f1',
+                                      'color': '#7f8c8d'}
+        if slow.fault:
+            return "FAULT RECORD", {'backgroundColor': '#e74c3c',
+                                    'color': 'white'}
+        return "normal record", {'backgroundColor': '#27ae60',
+                                 'color': 'white'}
+
     @app.callback(
         Output('wfm-graph', 'figure'),
         Output('rfmon-table', 'data'),
+        Output('inlk-table', 'data'),
+        Output('arc-table', 'data'),
+        Output('permit-table', 'data'),
         Output('status-text', 'children'),
+        Output('slow-status-table', 'data'),
+        Output('slow-adc-table', 'data'),
+        Output('slow-fault-badge', 'children'),
+        Output('slow-fault-badge', 'style'),
+        Output('slow-last-fault', 'children'),
+        Output('auto-refresh-check', 'value'),
         Input('live-interval', 'n_intervals'),
         Input('fetch-btn', 'n_clicks'),
         State('wfm-source-select', 'value'),
         State('plot-mode-select', 'value'),
-        State('signal-select', 'value')
+        State('signal-select', 'value'),
+        State('hold-on-fault', 'value'),
+        State('slow-fault-badge', 'style'),
+        State('wave-trig-sel', 'value')
     )
     def update_plot_and_rfmon(_n_intervals, _n_clicks, source, plot_mode,
-                              selected_sigs):
+                              selected_sigs, hold_on_fault, badge_style,
+                              trig_sel):
+        fig, rfmon_data, status = update_wfm(
+            source, plot_mode, selected_sigs, trig_sel)
+
+        # The slow block snapshots on the buffer transfer selected by
+        # slow_snap_cic, so read it right after the waveform it belongs to.
+        slow, slow_err = read_slow()
+        badge, style = fault_badge(slow)
+        style = {**(badge_style or {}), **style}
+        last_fault = dash.no_update
+        auto_refresh = dash.no_update
+        if slow is not None and slow.fault:
+            last_fault = (f"Last fault record at {time.strftime('%H:%M:%S')}: "
+                          f"cbuf_count={slow.cbuf_count}, "
+                          f"last_addr={slow.last_addr:#06x}, "
+                          f"wrap={slow.buf_wrap}")
+            if source == 'cic' and fig is not dash.no_update:
+                fig.update_layout(title=f"{fig.layout.title.text} "
+                                        "[FAULT RECORD]")
+            if 'on' in (hold_on_fault or []):
+                auto_refresh = []
+                last_fault += " (auto refresh stopped)"
+        if slow_err:
+            status = f"{status} | {slow_err}"
+        return (fig, rfmon_data, read_inlk(), read_arc(), read_permit(),
+                status,
+                format_slow_records(slow),
+                format_slow_adc_records(slow, llrf_app.signals[:llrf_app.n_adc]),
+                badge, style, last_fault, auto_refresh)
+
+    def update_wfm(source, plot_mode, selected_sigs, trig_sel=None):
         # 1. Update RF Monitor Table
         rfmon_data = []
         try:
@@ -1063,7 +1779,23 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
             elif source == 'iq':
                 df = llrf_app.get_iq_wfms_df()
             else:  # 'cic'
-                df = llrf_app.get_cic_wfm_df()
+                # Triggered modes hand over a buffer only after a trigger:
+                # poll briefly and keep the last waveform until one comes.
+                triggered = (
+                    trig_sel is not None
+                    and int(trig_sel) != int(WaveTrigSel.Always)
+                )
+                df = llrf_app.get_cic_wfm_df(
+                    timeout=0.1 if triggered else 1.0)
+        except TimeoutError as e:
+            if source == 'cic' and triggered:
+                name = WaveTrigSel(int(trig_sel)).name
+                return (dash.no_update, rfmon_data,
+                        f"Waiting for {name} trigger at "
+                        f"{time.strftime('%H:%M:%S')}, "
+                        "showing last waveform")
+            return go.Figure(layout={'title': f"Error: {e}"}), \
+                rfmon_data, f"Error: {e}"
         except Exception as e:
             empty_fig = go.Figure()
             empty_fig.update_layout(

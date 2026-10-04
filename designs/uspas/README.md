@@ -88,6 +88,7 @@ flowchart LR
     'LOOP1_ADC_CHAN': 3,            # Feedback ADC channel for Loop 1
     'DAC_DRIVE_SEL': 0,             # 0: I0Q0 mode
     'PULSE_MODES': 0,               # CW mode
+    'SLOW_SNAP_CIC': True,          # Slow data snapshot with cic_waves (CW)
     'EVCODE': 5
 }
 ```
@@ -129,6 +130,7 @@ flowchart LR
 | `dsp_slow_data` | `0x10900` | 16-bit unsigned | R | Slow bridge streaming data |
 | `mon_amp` | `0x10a00` | 16-bit signed (x16) | R | Channel amplitude monitor array |
 | `mon_phs` | `0x10a10` | 17-bit signed (x16) | R | Channel phase monitor array |
+| `fault_amp` | `0x10a20` | 16-bit signed (x16) | R | Channel amplitude latched at the first fault (fault record) |
 | `rf_pwr_status` / `latch` | `0x00003` / `0x00005`| 10-bit unsigned | R | RF power interlock status and latched bits |
 | `arc_permit_sum` | `0x00009` | 1-bit unsigned | R | ARC interlock overall permit |
 | `loop0_amp_err`, `phs_err` | `0x0000a`, `0x0000b` | 15-bit signed | R | Loop 0 amplitude and phase error monitors |

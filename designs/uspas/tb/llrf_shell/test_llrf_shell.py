@@ -18,4 +18,5 @@ async def test(dut, amp_exp, phs_exp, loop):
         regmap_json_path='../../llrf_shell.json')
     await tb.test_open_loop(loop)
     await tb.test_fast_interlock(loop)
+    await tb.test_record_stop(loop)
     await tb.test_close_loop(loop)

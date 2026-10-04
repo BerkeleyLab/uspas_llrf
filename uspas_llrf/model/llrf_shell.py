@@ -105,6 +105,9 @@ class LLRFShell(LLRF_DSP):
         loop1_pulse_high_len: int = 10
         soft_drive_enable: int = 0b11
         slow_snap_cic: bool = False
+        # buffer syncs from a drive permit drop to the fault record freeze;
+        # 0 (power-up value) disables the freeze, see cic_waves.v
+        cbuf_post_delay: int = 1
         prl_adc_chan: int = 0
         loop0_adc_chan: int = 0
         loop1_adc_chan: int = 0
@@ -188,6 +191,10 @@ class LLRFShell(LLRF_DSP):
             loop1_pulse_start=0, loop1_pulse_high_len=10,
             dac_drive_sel=DacDriveSel(self.config['DAC_DRIVE_SEL']),
             pulse_modes=self.config['PULSE_MODES'],
+            # CW LLRF (USPAS, ALSU) diagnoses with cic_waves, so the slow
+            # block snapshots on cbuf_transferred; pulsed LLRF (AWA, LEMP)
+            # uses the IQ waveforms and snapshots on sig_buf transfer.
+            slow_snap_cic=self.config['SLOW_SNAP_CIC'],
             int_trigger_period=int_trig_period,
             evcode=self.config['EVCODE']
         )
