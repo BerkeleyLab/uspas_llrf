@@ -6,5 +6,6 @@ BSP_DIR            = $(TOP)marble_bsp
 APP_DSP_DIR        = $(TOP)llrf_dsp
 DESIGNS_DIR        = $(TOP)designs
 USPAS_LLRF_DIR     = $(TOP)uspas_llrf
+MB_MOCKUP_DIR      = $(SUBMODULES_DIR)/modbus_mockup
 
 include $(BEDROCK_DIR)/dir_list.mk

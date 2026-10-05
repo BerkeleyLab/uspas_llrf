@@ -15,6 +15,9 @@
 #include "llrf.h"
 #include "evr_gt_wrapper.h"
 #include "string.h"
+#include "mb_client.h"
+#include "init_modbus.h"
+#include "uart.h"
 #ifdef SIMULATION
 #include "llrf_regs_addr.h"
 #endif
@@ -32,6 +35,17 @@ void _putchar(char c){
 volatile char last_char=0;
 uint32_t *irq(uint32_t *regs, uint32_t irqs)
 {
+    // Modbus byte received
+    if (irqs & (1 << MODBUS_IRQ_UART)) {
+        modbus_irq_rx(UART_GETC(MODBUS_BASE_UART));
+        // This almost certainly will send us into a death trap, but I have to be able to say
+        // I tried the most bone-headed solution before moving on.
+        // Aha. modbus_irq_rx() starts a timer (3.5 char times) and modbusPoll() checks to see if
+        // it has elapsed, otherwise doing nothing.  So this arrangement can't work without major
+        // re-writes to the modbus driver.
+        //modbusPoll();
+    }
+
     if (irqs & (1 << IRQ_UART0_RX)) {
         // Ctrl + T = reset
         last_char = UART_GETC(BASE_UART0);
@@ -120,28 +134,33 @@ int main(void) {
     printf("==== Marble Init       ==== : %s.\n", pass?"PASS":"FAIL");
     pass &= init_zest(BASE_ZEST, &zest_init_data);
     printf("==== ZEST Init         ==== : %s.\n", pass?"PASS":"FAIL");
+    //printf("... %ld\n", llrf_init_data.len);
     pass &= init_llrf(&llrf_init_data);
     printf("==== LLRF Init         ==== : %s.\n", pass?"PASS":"FAIL");
     if (marble_init_data.enable_evr_gt) {
         pass &= init_evr_gt();
         printf("==== EVR Init          ==== : %s.\n", pass?"PASS":"FAIL");
     }
+    modbus_init();
+    printf("==== Modbus Init       ==== : %s.\n", pass?"PASS":"FAIL");
 
     set_llrf_soft_drive_enable(pass);
     set_llrf_bist_pass(pass);
 
-    unsigned cnt=0;
+    uint32_t time_ms = 0, new_time_ms = 0;
+    int update_in_progress = 0;
     while(1) {
         if (last_char) {
             console(last_char);
         }
         last_char = 0;
 
-        // 20 Hz cycle time
-        DELAY_US(50000);
-        cnt++;
-        if (cnt % 20 == 0) {    // update rate 1 Hz
+        modbusPoll();
+        regmap_poll();
+        new_time_ms = reimplement_millis();
+        if (((new_time_ms - time_ms) >= 1000) || update_in_progress) { // update rate 1 Hz
             if (marble_init_data.enable_poll_status) {
+                update_in_progress = 1;
                 get_marble_info(&marble);
                 memcpy_lb_dma(BSP_INFO_BUF, (unsigned char *)&marble, sizeof(marble));
             }
@@ -149,6 +168,7 @@ int main(void) {
                 get_zest_status(&zest);
                 memcpy_lb_dma(BSP_INFO_BUF+sizeof(marble), (unsigned char *)&zest, sizeof(zest));
             }
+            time_ms = new_time_ms;
         }
     }
 

@@ -2,3 +2,7 @@
 	path = submodules/bedrock
 	url = https://github.com/BerkeleyLab/Bedrock.git
 	shallow = true
+[submodule "submodules/modbus_mockup"]
+	path = submodules/modbus_mockup
+	url = ../../llrf-projects/modbus_mockup.git
+	shallow = true

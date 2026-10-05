@@ -65,8 +65,8 @@ system #(
     .I2C_SCL        (I2C_SCL),
     .I2C_SDA        (I2C_SDA),
     .I2C_RST        (I2C_RST),
-    .PMOD0          (PMOD1),
-    .PMOD1          (PMOD2),
+    .PMOD0          (),  // XXX ALSU specific, PMOD1 is used for ARC detectors
+    .PMOD1          (),  // XXX ALSU specific, PMOD2 is used for fo_board
     .PMOD2          (ZEST_PMOD1),
     .PMOD3          (ZEST_PMOD2),
     .trig_from_dsp    (trig_from_dsp),
@@ -151,7 +151,12 @@ wire [15:0] dac_b_out;
 wire gt_rxclk;
 wire [1:0] gt_rxcharisk;
 wire [15:0] gt_rxdata;
-wire [2:0] arc_permit_in=0;  // XXX hook me up!
+wire [2:0] arc_permit_in;
+wire [2:0] arc_test_out;
+wire arc_reset_out;
+assign arc_permit_in = PMOD1[6:4];
+assign PMOD1[2:0] = arc_test_out;
+assign PMOD1[3] = arc_reset_out;
 llrf_shell llrf_inst (
     .lb_clk         (lb_clk),
     .lb_addr        (lb_addr[17:0]),
@@ -168,9 +173,15 @@ llrf_shell llrf_inst (
     .dac_data_a_out (dac_a_out),
     .dac_data_b_out (dac_b_out),
 
-    .drive_permit_in (1'b1),
-    .slow_permit_in  (1'b1),
+    .drive_permit_in    (PMOD2[7]),
+    .slow_permit_in     (PMOD2[6]),
+    .fast_permit_out    (PMOD2[3]),
+    .fast_rf_permit_out (PMOD2[2]),
+    .evg_permit_out     (PMOD2[1]),
+    .hpa_permit_out     (PMOD2[0]),
     .arc_permit_in   (arc_permit_in),
+    .arc_test_out    (arc_test_out),
+    .arc_reset_out   (arc_reset_out),
     // to EVR
     .gt_rxclk        (gt_rxclk),
     .gt_rxdata       (gt_rxdata),

@@ -5,8 +5,9 @@ module system #(
     parameter LB_READ_DELAY = 3,
     parameter LB_ADW     = 20
 ) (
-    input           clk,
-    input           cpu_reset,
+    input               clk,
+    input               cpu_reset,
+    output              trap,
 
     inout           I2C_SCL,
     inout           I2C_SDA,
@@ -22,10 +23,8 @@ module system #(
     input           trig_from_dsp,
     output          trig_to_dsp,
 
-    output          uart_tx,
-    input           uart_rx,
-
-    output          trap,
+    output              uart_tx,
+    input               uart_rx,
 
     input               lb_write,
     input               lb_read,
@@ -55,6 +54,7 @@ localparam IRQ_EBREAK = 8'h01;
 localparam IRQ_BUSERR = 8'h02;
 // Triggers when byte received. Cleared when byte read from UART_RX_REG
 localparam IRQ_UART0_RX = 8'h03;
+localparam IRQ_UART1_RX = 8'h04;
 
 // --------------------------------------------------------------
 //  Highest byte of the memory address selects peripherals, must match settings.h
@@ -65,6 +65,7 @@ localparam BASE_UART0       = 8'h02;
 localparam BASE_LOCALBUS    = 8'h03;
 localparam BASE_XADC        = 8'h04;
 localparam BASE_FMC         = 8'h05;
+localparam BASE_UART1       = 8'h06;
 
 // Localbus related
 
@@ -90,7 +91,9 @@ wire [68:0] packed_cpu_fwd;
 wire [32:0] packed_cpu_ret;
 
 assign irqFlags[2:0] = 0;
-assign irqFlags[31:4]= 0;
+assign irqFlags[31:5]= 0;
+
+//assign debug_irq_flags = {irqFlags[IRQ_UART1_RX], irqFlags[IRQ_UART0_RX]};
 
 pico_pack cpu_inst (
     .clk           ( clk            ),
@@ -115,12 +118,14 @@ wire [32:0] packed_URT0_ret;
 wire [32:0] packed_lbus_ret;
 wire [32:0] packed_xadc_ret;
 wire [32:0] packed_fmc_ret;
+wire [32:0] packed_URT1_ret;
 assign packed_cpu_ret = packed_mem_ret |
                         packed_gpio_ret|
                         packed_URT0_ret|
                         packed_lbus_ret|
                         packed_xadc_ret|
-                        packed_fmc_ret;
+                        packed_fmc_ret |
+                        packed_URT1_ret;
 
 // --------------------------------------------------------------
 //  Instantiate the memory (holds data and program!)
@@ -277,6 +282,27 @@ assign rst = reset;
 assign mem_packed_fwd = packed_cpu_fwd;
 assign packed_fmc_ret = mem_packed_ret;
 
+wire RS485_RE_N, RS485_DI, RS485_RO, RS485_DE;
+// --------------------------------------------------------------
+//  UART1, does Modbus-RTU
+// --------------------------------------------------------------
+rs485_uart #(
+    .BASE_ADDR   (BASE_UART1)
+) uart_inst1 (
+    // Hardware interface
+    .clk         (clk),
+    .rst         (reset),
+    .M_RXD       (RS485_RO),
+    .M_TXD       (RS485_DI),
+    .M_RE_N      (RS485_RE_N),
+    .M_DE        (RS485_DE),
+    .irq_rx_valid(irqFlags[IRQ_UART1_RX]),
+
+    // PicoRV32 packed MEM Bus interface
+    .mem_packed_fwd(packed_cpu_fwd), //CPU > URT
+    .mem_packed_ret(packed_URT1_ret)  //CPU < URT
+);
+
 // --------------------------------------------------------------
 //  GPIO control
 // --------------------------------------------------------------
@@ -317,4 +343,9 @@ endgenerate
 
 // permits output: GPIO_PIN_EN_UPCONV_0, GPIO_PIN_EN_UPCONV_1
 assign PMOD2[7:6] = gpio_z[4:3];
+// RS485 for ALSU:
+assign PMOD2[0] = RS485_RE_N;
+assign PMOD2[1] = RS485_DI;
+assign RS485_RO = PMOD2[2];
+assign PMOD2[3] = RS485_DE;
 endmodule

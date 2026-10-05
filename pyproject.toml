@@ -21,9 +21,11 @@ dependencies = [
     "pyserial>=3.5",
     "scipy>=1.15.3",
     "pytest==9.0.2",
+    "leep>=1.0.0",
+    "pymodbus>=3.13.0",
+    "tomli==2.4.1",
     "flake8",
     "Flake8-pyproject",
-    "leep",
     "dash"
 ]
 license = "LicenseRef-Government-Use"

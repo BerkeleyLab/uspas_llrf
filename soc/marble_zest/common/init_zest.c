@@ -82,6 +82,7 @@ t_reg32 regmap_ad9781[] = {
 
 t_reg32 regmap_ad7794[] = {
     {0x1, 0x200a},   // mode: single conversion, t_settle=120ms
+    //{0x1, 0x000a},   // mode: continuous conversion, t_settle=120ms
     {0x2, 0x0090}    // configuration, range 2.5V, internal ref
 };
 
