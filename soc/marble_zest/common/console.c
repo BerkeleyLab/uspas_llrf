@@ -19,6 +19,8 @@ extern zest_init_t zest_init_data;
 extern marble_dev_t marble;
 extern zest_status_t zest;
 
+static void modbus_status(void);
+
 void console(char c) {
     uint32_t *fcnt_exp = zest_init_data.fcnt_exp;
     int16_t dval;
@@ -37,6 +39,7 @@ void console(char c) {
             printf("w    adc wfm test\n");
             printf("d    mailbox and marble info test\n");
             printf("l    llrf test\n");
+            printf("s    modbus status\n");
             printf("x    troubleshoot\n");
             break;
 
@@ -93,6 +96,10 @@ void console(char c) {
             align_mo_phase();
             break;
 
+        case 's':
+            modbus_status();
+            break;
+
         case 'x':
             // init_evr_gt();
             write_lb_reg(GT_SOFT_RESET, 1);
@@ -108,4 +115,16 @@ void console(char c) {
             _putchar(c);
             return;
     }
+}
+
+static void modbus_status(void) {
+  uint32_t sr = GET_REG(MODBUS_BASE_UART + REG_UART_STATUS);
+  uint16_t cc;
+  printf("sr = %x", sr);
+  if (sr & 2) {
+    cc = UART_GETC(MODBUS_BASE_UART);
+    printf("; cc = %c", cc);
+  }
+  printf("\r\n");
+  return;
 }

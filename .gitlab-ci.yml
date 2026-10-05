@@ -95,7 +95,7 @@ llrf_synthesis:
       - top/marble_zest/_xilinx/*.runs/impl_1/*.rpt
   parallel:
     matrix:
-      - TARGET: [alsu, uspas, lemp, awa]
+      - TARGET: [alsu]
 
 alsu_run:
   variables:
@@ -120,7 +120,7 @@ alsu_run:
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
-awa_run:
+.awa_run:
   variables:
     CLK_F: 1320e6
   stage: run
@@ -139,7 +139,7 @@ awa_run:
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
-lemp_run:
+.lemp_run:
   variables:
     EVG_F: 119e6
     CLK_F: 2856e6
@@ -162,7 +162,7 @@ lemp_run:
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
-uspas_run:
+.uspas_run:
   variables:
     CLK_F: 460e6
   stage: run

@@ -11,8 +11,10 @@
 #define BASE_XADC              0x04000000
 #define BASE_ZEST              0x05000000    // zest if
 #define BASE_I2C               BASE_GPIO
+#define BASE_UART1             0x06000000    // Modbus UART
 
-#define IRQ_UART0_RX            0x03
+#define IRQ_UART0_RX           0x03
+#define IRQ_UART1_RX           0x04
 
 #define F_CLK                  125000000     // [Hz]
 
@@ -47,5 +49,26 @@
         do { if (DEBUG_PRINT) printf(__VA_ARGS__); } while (0)
 
 #define ARRAY_SIZE(arr) ((sizeof arr) / (sizeof arr[0]))
+
+// connect modbus client to UART1
+#define MODBUS_BASE_UART        BASE_UART1
+#define MODBUS_IRQ_UART         IRQ_UART1_RX
+#ifdef SIMULATION
+    #define MODBUS_BAUDRATE     1000000
+#else
+    #define MODBUS_BAUDRATE     115200
+#endif
+// Need to accommodate the largest modbus packet
+#define MODBUS_BUFFER_SIZE       (255)
+
+
+// Debug defines
+#define MB_MEMORY_ALLOW_ALL_WRITES (0)
+
+// A necessary hack to disable blocking reads from the
+// horrendously slow AD7794 and to allow timely response
+// to modbus messages (or any other comms going through
+// the picorv32).
+#define ZEST_BYPASS_AD7794_READS
 
 #endif

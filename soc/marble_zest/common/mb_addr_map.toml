@@ -1,0 +1,106 @@
+# Modbus address mapping to LEEP registers
+# localBusAddressMap.py unrolls reg addrs in JSON for any arrays of size <= 32
+#   The unrolled addresses are "{reg_name}_{index}"
+#   The C-generated names are output in all caps
+# Read-only
+# TODO - Add 'arc' interlock registers
+[ro]
+    # MB Addr Enum = [str leep_name, int offset, bool word]
+    # If leep_name is 0, save a spot for it but don't generate C code
+    # For datawidth > 16, set 'word' to true, then two adjacent entries will be used
+    # to cover the full data width (second one marked with _HI)
+    ADC0_MON_AMP      = ["mon_amp", 0, false]    # ADC0 RF amp [cnt] (signed 16 bits)
+    ADC1_MON_AMP      = ["mon_amp", 1, false]    # ADC1 RF amp [cnt] (signed 16 bits)
+    ADC2_MON_AMP      = ["mon_amp", 2, false]    # ADC2 RF amp [cnt] (signed 16 bits)
+    ADC3_MON_AMP      = ["mon_amp", 3, false]    # ADC3 RF amp [cnt] (signed 16 bits)
+    ADC4_MON_AMP      = ["mon_amp", 4, false]    # ADC4 RF amp [cnt] (signed 16 bits)
+    ADC5_MON_AMP      = ["mon_amp", 5, false]    # ADC5 RF amp [cnt] (signed 16 bits)
+    ADC6_MON_AMP      = ["mon_amp", 6, false]    # ADC6 RF amp [cnt] (signed 16 bits)
+    ADC7_MON_AMP      = ["mon_amp", 7, false]    # ADC7 RF amp [cnt] (signed 16 bits)
+    DAC0_MON_AMP      = ["mon_amp", 8, false]    # DAC0 RF amp [cnt] (signed 16 bits)
+    DAC1_MON_AMP      = ["mon_amp", 9, false]    # DAC1 RF amp [cnt] (signed 16 bits)
+    ADC0_MON_PHS      = ["mon_phs", 0, true ]    # ADC0 RF phs [cnt] (signed 17 bits)
+    ADC1_MON_PHS      = ["mon_phs", 1, true ]    # ADC1 RF phs [cnt] (signed 17 bits)
+    ADC2_MON_PHS      = ["mon_phs", 2, true ]    # ADC2 RF phs [cnt] (signed 17 bits)
+    ADC3_MON_PHS      = ["mon_phs", 3, true ]    # ADC3 RF phs [cnt] (signed 17 bits)
+    ADC4_MON_PHS      = ["mon_phs", 4, true ]    # ADC4 RF phs [cnt] (signed 17 bits)
+    ADC5_MON_PHS      = ["mon_phs", 5, true ]    # ADC5 RF phs [cnt] (signed 17 bits)
+    ADC6_MON_PHS      = ["mon_phs", 6, true ]    # ADC6 RF phs [cnt] (signed 17 bits)
+    ADC7_MON_PHS      = ["mon_phs", 7, true ]    # ADC7 RF phs [cnt] (signed 17 bits)
+    DAC0_MON_PHS      = ["mon_phs", 8, true ]    # DAC0 RF phs [cnt] (signed 17 bits)
+    DAC1_MON_PHS      = ["mon_phs", 9, true ]    # DAC1 RF phs [cnt] (signed 17 bits)
+    INLK_FIRST_FAULT_STATUS = ["rf_pwr_first_fault_status", 0, false] # Amplitude interlock first fault status bitmask
+    INLK_STATUS       = ["rf_pwr_status", 0, false] # Amplitude interlock status bitmask
+    INLK_PERMIT       = ["rf_pwr_permit_sum", 0, false] # Amplitude interlock permit value
+    INLK_LATCH        = ["rf_pwr_latch", 0, false] # Amplitude interlock latch (ok) bitmask
+    INLK_HI           = ["rf_pwr_hi", 0, false]    # Amplitude interlock high bitmask
+    INLK_LO           = ["rf_pwr_lo", 0, false]    # Amplitude interlock low bitmask
+    ARC_PERMIT_LATCH  = ["arc_permit_latch", 0, false]
+    ARC_PERMIT_RAW    = ["arc_permit_raw", 0, false]
+    ARC_PERMIT_SUM    = ["arc_permit_sum", 0, false]
+    DRIVE_PERMIT_IN   = ["drive_permit_in", 0, false]   # External drive permit input
+    SLOW_PERMIT_IN    = ["slow_permit_in", 0, false]    # PLC slow permit input
+    FAST_PERMIT       = ["fast_permit_out", 0, false]   # Fast permit out: RF amplitude + ARC
+    HPA_PERMIT        = ["hpa_permit_out", 0, false]    # HPA oscillation permit out
+    EVG_PERMIT_OUT    = ["evg_permit_out", 0, false]    # Final drive permit out to EVG (reg + internal + external)
+    DRIVE_PERMIT_OUT  = ["drive_permit_out", 0, false]  # Final drive permit out (internal + external)
+
+# Read-Write
+[rw]
+    INLK_AMP_LO_ADC0 = ["inlk_amp_lo", 0, false]  # ADC0 interlock low  threshold
+    INLK_AMP_LO_ADC1 = ["inlk_amp_lo", 1, false]  # ADC1 interlock low  threshold
+    INLK_AMP_LO_ADC2 = ["inlk_amp_lo", 2, false]  # ADC2 interlock low  threshold
+    INLK_AMP_LO_ADC3 = ["inlk_amp_lo", 3, false]  # ADC3 interlock low  threshold
+    INLK_AMP_LO_ADC4 = ["inlk_amp_lo", 4, false]  # ADC4 interlock low  threshold
+    INLK_AMP_LO_ADC5 = ["inlk_amp_lo", 5, false]  # ADC5 interlock low  threshold
+    INLK_AMP_LO_ADC6 = ["inlk_amp_lo", 6, false]  # ADC6 interlock low  threshold
+    INLK_AMP_LO_ADC7 = ["inlk_amp_lo", 7, false]  # ADC7 interlock low  threshold
+    INLK_AMP_LO_DAC0 = ["inlk_amp_lo", 8, false]  # DAC0 interlock low  threshold
+    INLK_AMP_LO_DAC1 = ["inlk_amp_lo", 9, false]  # DAC1 interlock low  threshold
+    INLK_AMP_HI_ADC0 = ["inlk_amp_hi", 0, false]  # ADC0 interlock high threshold
+    INLK_AMP_HI_ADC1 = ["inlk_amp_hi", 1, false]  # ADC1 interlock high threshold
+    INLK_AMP_HI_ADC2 = ["inlk_amp_hi", 2, false]  # ADC2 interlock high threshold
+    INLK_AMP_HI_ADC3 = ["inlk_amp_hi", 3, false]  # ADC3 interlock high threshold
+    INLK_AMP_HI_ADC4 = ["inlk_amp_hi", 4, false]  # ADC4 interlock high threshold
+    INLK_AMP_HI_ADC5 = ["inlk_amp_hi", 5, false]  # ADC5 interlock high threshold
+    INLK_AMP_HI_ADC6 = ["inlk_amp_hi", 6, false]  # ADC6 interlock high threshold
+    INLK_AMP_HI_ADC7 = ["inlk_amp_hi", 7, false]  # ADC7 interlock high threshold
+    INLK_AMP_HI_DAC0 = ["inlk_amp_hi", 8, false]  # DAC0 interlock high threshold
+    INLK_AMP_HI_DAC1 = ["inlk_amp_hi", 9, false]  # DAC1 interlock high threshold
+    INLK_MODE_ADC0   = ["inlk_inlk_mode", 0, false]    # ADC0 interlock mode
+    INLK_MODE_ADC1   = ["inlk_inlk_mode", 1, false]    # ADC1 interlock mode
+    INLK_MODE_ADC2   = ["inlk_inlk_mode", 2, false]    # ADC2 interlock mode
+    INLK_MODE_ADC3   = ["inlk_inlk_mode", 3, false]    # ADC3 interlock mode
+    INLK_MODE_ADC4   = ["inlk_inlk_mode", 4, false]    # ADC4 interlock mode
+    INLK_MODE_ADC5   = ["inlk_inlk_mode", 5, false]    # ADC5 interlock mode
+    INLK_MODE_ADC6   = ["inlk_inlk_mode", 6, false]    # ADC6 interlock mode
+    INLK_MODE_ADC7   = ["inlk_inlk_mode", 7, false]    # ADC7 interlock mode
+    INLK_MODE_DAC0   = ["inlk_inlk_mode", 8, false]    # DAC0 interlock mode
+    INLK_MODE_DAC1   = ["inlk_inlk_mode", 9, false]    # DAC1 interlock mode
+    INLK_MASK        = ["inlk_permit_mask", 0, false]  # Included interlock RF channel bit mask
+    INLK_RESET       = ["inlk_reset_inlk", 0, false]   # Reset interlock
+    LOOP0_KP_AMP     = ["loop0_Kp_amp", 0, true ]       # Proportional term coefficient for amplitude control loop
+    LOOP0_KI_AMP     = ["loop0_Ki_amp", 0, true ]       # Integral term coefficient for amplitude control loop
+    LOOP0_KP_PHS     = ["loop0_Kp_phs", 0, true ]       # Proportional term coefficient for phase control loop
+    LOOP0_KI_PHS     = ["loop0_Ki_phs", 0, true ]       # Integral term coefficient for phase control loop
+    LOOP0_AMP_ENABLE = ["loop0_amp_enable", 0, false] # Enable amplitude control feedback
+    LOOP0_PHS_ENABLE = ["loop0_phs_enable", 0, false] # Enable phase control feedback
+    LOOP0_AMP_SETPOINT = ["loop0_amp_setpoint", 0, true] # Setpoint for amplitude control loop
+    LOOP0_PHS_SETPOINT = ["loop0_phs_setpoint", 0, true] # Setpoint for phase control loop
+    LOOP0_AMP_RESET   = ["loop0_amp_reset", 0, false] # Reset for amplitude control loop
+    LOOP0_PHS_RESET   = ["loop0_phs_reset", 0, false] # Reset for phase control loop
+    ARC_PERMIT_MASK  = ["arc_permit_mask", 0, false] # Arc interlock channel mask
+    ARC_RESET_ARC_DEV= ["arc_reset_arc_dev", 0, false] # Arc detector remote device reset
+    ARC_RESET_LATCH  = ["arc_reset_latch", 0, false] # Arc interlock latch reset
+    ARC_TEST_MASK    = ["arc_test_mask", 0, false]   # Arc detector device self-test channel mask
+    ARC_TEST_STB     = ["arc_test_stb", 0, false]    # Arc detector device self-test start strobe
+    SOFT_DRIVE_ENABLE = ["soft_drive_enable", 0, false]
+
+# Special registers will not auto-generate C code (need to hand-write)
+[special]
+    FPGA_UP      = [0, 0, false] # uptime [10 min]
+    FPGA_TEMP    = [0, 0, false] # FPGA temperature. signed [degC / 100]
+    FPGA_VCCINT  = [0, 0, false] # FPGA VCCINT pin voltage [mV] (nominal 1000 mV)
+    FPGA_VCCAUX  = [0, 0, false] # FPGA VCCAUX pin voltage [mV] (nominal 1800 mV)
+    FPGA_VCCBRAM = [0, 0, false] # FPGA VCCBRAM pin voltage [mV] (nominal 1000 mV)
+

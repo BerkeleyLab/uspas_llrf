@@ -1,8 +1,8 @@
 `timescale 1 ns / 1 ns
 
 module system_top (
-	input           GTPREFCLK_P,
-	input           GTPREFCLK_N,
+    input           GTPREFCLK_P,
+    input           GTPREFCLK_N,
 
     inout [7:0]     PMOD1,
     inout [7:0]     PMOD2,
