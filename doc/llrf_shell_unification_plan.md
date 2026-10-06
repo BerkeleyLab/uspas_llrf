@@ -1,13 +1,13 @@
 # llrf_shell Unification & SystemVerilog Architecture Plan
 
-Status: draft v8. All review questions resolved (D1–D22); v8 revises D1 after LEMP review (LEMP keeps 1K signal buffers). newad retired for llrf_shell (D14); sv2v in the flow (D15); per-design `top/` and `soc/` (D16, D20); ALSU merge-back (D17–D19, D21–D22).
+Status: draft v9. All review questions resolved (D1–D22); v8 and v9 revise D1 after LEMP review (LEMP keeps 1K signal buffers and its one-call `iq_buf` readout). newad retired for llrf_shell (D14); sv2v in the flow (D15); per-design `top/` and `soc/` (D16, D20); ALSU merge-back (D17–D19, D21–D22).
 Scope: `designs/*/llrf_shell.v`, `static_regmap.json`, `llrf_dsp/`, `uspas_llrf/model/llrf_shell.py`, `uspas_llrf/tests/test_llrf_shell.py`, and LEMP branch `llrf_dsp/llrf_shell.v`.
 
 ## D. Decisions (from review)
 
 | # | Decision |
 |---|---|
-| D1 | `SIG_BUF_AW = 11` (2048 samples) for every design **except LEMP, which keeps `SIG_BUF_AW = 10`** (1024 samples, as on the LEMP branch; revised in v8 after LEMP review). uspas/alsu go from 4K to 2K; awa/pip-ii stay at 2K. `designs/lemp` on main is a uspas symlink until step 9 and follows uspas until then. Buffer address slots stay 2K in every design, so the address map is the same for all (§1.1). |
+| D1 | `SIG_BUF_AW = 11` (2048 samples) for every design **except LEMP, which keeps `SIG_BUF_AW = 10`** (1024 samples, as on the LEMP branch; revised in v8 after LEMP review). uspas/alsu go from 4K to 2K; awa/pip-ii stay at 2K. `designs/lemp` on main is a uspas symlink until step 9 and follows uspas until then. Signal buffers are packed at their natural size (`2^SIG_BUF_AW`), so the 20 I/Q buffers always form one contiguous region; LEMP keeps its `iq_buf` window over it (`addr_width` 15, v9). The 2K designs keep the §1.1 map; only LEMP's buffer addresses differ. |
 | D2 | Pulse-modulation LUTs are in **every** design. No `PULSE_LUT_EN`. |
 | D3 | Modulation is indexed from the **pulse start**, is **additive**, and applies to **both amplitude and phase** per loop. LUT memory uses bedrock `dsp/dpram.v`. |
 | D4 | A Python allocator is the source of truth for the address map. |
@@ -158,7 +158,9 @@ Notes:
 
 ## Part 1: Unify the variants
 
-### 1.1 Address map (fixed for all designs)
+### 1.1 Address map
+
+Shown for `SIG_BUF_AW=11` (all designs except LEMP):
 
 ```
 0x00000-0x0ffff  status regs / config ROM compat         (window unchanged)
@@ -178,7 +180,19 @@ Notes:
 - BRAM cost stays at about 32 RAMB36 (4 × 16K×18, using the native 2K×18 BRAM width). That equals pip-ii's 2 × 32K×16 today.
 - 18-bit entries give full `DWBB` resolution for both amplitude and phase.
 - `SIG_BUF_AW=11` halves signal-buffer BRAM for uspas and alsu.
-- Every buffer keeps a 2K slot, whatever the design's `SIG_BUF_AW`. LEMP (`SIG_BUF_AW=10`, D1) fills the lower 1K of each slot: its JSON reports `addr_width` 10, and the upper half of the slot is not decoded. Base addresses, including the LUTs, are the same in every design.
+- Signal buffers are packed at their natural size, `2^SIG_BUF_AW`, in a fixed order: raw ADC, then I (adc0..7, drv0..1), then Q. The 20 I/Q buffers are therefore one contiguous region in every design. The LUT and circle-buffer bases are fixed for all designs; the buffer bases depend on `SIG_BUF_AW` (D5).
+- LEMP (`SIG_BUF_AW=10`, D1) packs to:
+
+  ```
+  0x12000-0x13fff  adc0..7_buf                    8 x 1K
+  0x14000-0x167ff  adc0..7_i_buf, drv0..1_i_buf   10 x 1K
+  0x16800-0x18fff  adc0..7_q_buf, drv0..1_q_buf   10 x 1K
+  0x14000-0x1bfff  iq_buf (alias)                 addr_width 15: all 20 I/Q buffers in one read
+  0x19000-0x1ffff  unused
+  0x20000-...      LUTs and circle buffer, as above
+  ```
+
+  `iq_buf` keeps LEMP's one-call waveform readout with `addr_width` 15, as on the LEMP branch (base `0x1c000` there). With 2K slots it would need 16 and read twice the data. The alias is only a JSON entry over the per-buffer decodes; its unused tail (`0x19000`–`0x1bfff`) reads as an unmapped address.
 
 ### 1.2 Pulse modulation (amplitude + phase LUT) in `loop_ctrl`
 
@@ -234,7 +248,7 @@ A generic version would address PR3–PR5: an offset accumulator, a strobe-based
 - **uspas, alsu:** 2K buffers; all buffer addresses move.
 - **awa:** zero-valued `dac_raw_out` dropped; IQ buffers move.
 - **pip-ii:** IQ buffers unchanged. LUTs are renamed and become 16K deep, and each loop gains a phase LUT.
-- **LEMP:** keeps 1K buffers (D1); buffer addresses move to the shared 2K slots. Phase-step registers are unchanged, and the LUTs are added.
+- **LEMP:** keeps 1K buffers and the `iq_buf` window (`addr_width` 15) (D1); buffer addresses move to the packed layout in §1.1. Phase-step registers are unchanged, and the LUTs are added.
 - **ALSU:** gets its own thin shell (from step 7) so it can wire `phase_ramp` on loop 0. Gains the LUTs; the arc test/reset strobes are already on `alsu_fork`. `phase_ramp_*` registers are renamed `loop0_phs_ramp_*` (D21). Modbus map names are preserved.
 - **All designs (D18):** `arc_test_arc_dev` (level) → `arc_test_mask` + `arc_test_stb`, and `arc_reset_arc_dev` becomes a strobe with a 0.5 s output pulse.
 - **All non-LEMP designs:** `pulse_modes` → `drv0/1_pulse_mode` and `soft_drive_enable` → `soft_drive0/1_enable` (D11). leep names, init JSON and model fields change with them.
@@ -345,7 +359,8 @@ STATUS = [                       # read-only, wired by the design shell into sta
   Status('rf_pwr_hi', 10, domain='lb'),
   Status('loop0_amp_err', 15, domain='dsp'),   # dsp-domain status -> jit_rad_gateway bank
 ]
-BLOCKS = [*sig_bufs(SIG_BUF_AW, slot_aw=SIG_BUF_SLOT_AW), *mod_luts(LUT_AW), Block('circle_data', aw=CBUF_AW, dw=24)]
+BLOCKS = [*sig_bufs(SIG_BUF_AW), *mod_luts(LUT_AW), Block('circle_data', aw=CBUF_AW, dw=24)]
+# designs/lemp/design.py adds: Alias('iq_buf', base='adc0_i_buf', aw=15)
 ```
 
 **Outputs** (into `designs/<d>/_gen/`):
@@ -357,14 +372,15 @@ BLOCKS = [*sig_bufs(SIG_BUF_AW, slot_aw=SIG_BUF_SLOT_AW), *mod_luts(LUT_AW), Blo
 **Allocation:**
 - Address windows stay where they are today: status `0x00000`–, rw scalars `0x11000`– (mirror), blocks `0x12000`–`0x3ffff`.
 - Inside each window the allocator assigns addresses with natural alignment and an overlap check. Scalar addresses may move (D5).
-- Signal buffers are allocated in fixed 2K slots (`SIG_BUF_SLOT_AW = 11`), independent of `SIG_BUF_AW`, so block bases match across designs (§1.1). Each `Block` records its own `aw` (LEMP: 10) for the JSON and decode.
+- Signal buffers are packed at their natural size (`2^SIG_BUF_AW`) in the fixed order raw ADC, I, Q, so the I/Q buffers are contiguous (§1.1). LUTs and the circle buffer keep fixed bases.
+- `Alias(name, base=<block>, aw=N)` adds a read window over a contiguous run of blocks (LEMP `iq_buf`). It goes into the JSON only, adds no decode, and is exempt from the overlap check as long as it covers only signal buffers and unused space.
 - `design.py` blocks go into a reserved design window.
 
 **Naming:** registers keep flat names (`loopN_*`, `drvN_pulse_mode`, `soft_driveN_enable`; D9, D11). A generated pack fills `loop_cfg_t cfg[N_DRIVE]`, replacing the ~30 hand-written `assign`s.
 
 **Checks:**
 - `test_regmap_consistency` (cic_waves pattern): `P_ADDR_*` exported by the shell must equal the JSON.
-- `test_regmap_compat` compares each design's generated JSON with the **baseline newad JSON captured in step 1**. Names, `data_width`, `sign` and `access` must match, except the intentional renames (D11) and additions (LUTs) listed in an allow-list.
+- `test_regmap_compat` compares each design's generated JSON with the **baseline newad JSON captured in step 1** (for LEMP: the LEMP-branch `llrf_shell.json`, since `designs/lemp` on main is a uspas copy). Names, `data_width`, `sign` and `access` must match, except the intentional renames (D11) and additions (LUTs) listed in an allow-list.
 - Every `LLRFInitRegisters` field must exist in the regmap with a matching width.
 - Every `leep_name` in `soc/alsu/mb_addr_map.toml` must exist in ALSU's generated JSON, including the instance-derived `arc_*`/`inlk_*` names and the `rf_pwr_*` aliases.
 
@@ -558,7 +574,7 @@ LEMP diverged before the `designs/` split and carries about 2800 lines of app an
 1. **Bring LEMP pieces to main, with tests.**
    - LEMP-only, into `designs/lemp/` (D12): `fiducial_int_gen.v` with its test, `timing_core_local.v`, `triggers.v`.
    - Generic, into shared blocks: `buf_delay` and 32-bit pulse fields, LEMP register naming (D11), and the `cic_waves` `buf_trig` change reconciled with main's `cbuf_free_run`.
-2. **Build `designs/lemp/llrf_shell.sv` on main** from the shared blocks (`SIG_BUF_AW=10`, D1), plus LEMP's ports, interlock, timing, triggers and readback. Fix L1–L5. Replace the current `designs/lemp` symlinks.
+2. **Build `designs/lemp/llrf_shell.sv` on main** from the shared blocks (`SIG_BUF_AW=10` and the `iq_buf` alias, D1), plus LEMP's ports, interlock, timing, triggers and readback. Fix L1–L5. Replace the current `designs/lemp` symlinks.
    Build **`top/lemp/`** (§2.8): `design_io.vh` (HDMI `OBUFDS`, PMOD, SSSB, fiber), `design_mid.vh` (`interlock_wrapper` @ segment 2), `design.xdc`, `fiber_top.v` + `gtp_config/`, `flash.sh`. Move `interlock/` to `designs/lemp/interlock/`.
 3. **Port LEMP's `test_llrf_shell.py` deltas** into the LEMP TB subclass. Use LEMP hardware logs as the reference for the trigger and interlock behavior.
 4. **Merge main into the LEMP branch.** For `llrf_dsp/llrf_shell.v`, `static_regmap.json` and `top/marble_zest/*`, take main's side; they are replaced by `designs/lemp` and `top/lemp`. Keep LEMP's Python scripts, and move the plotting ones under `uspas_llrf/app/` or `tools/`.
@@ -634,6 +650,7 @@ Steps marked ⚠ in §4 depend on these.
 | Phase-ramp behavior when the loop opens | same as `alsu_fork` today (snap back to `phs_setpoint`) | D19 |
 | Phase-ramp trigger / loops | EVR event, loop 0 only; `phase_ramp` stays as-is in `designs/alsu/` until a generic loop modulator exists | D19, §1.2.1, R8 |
 | SoC BRAM | 64K for ALSU only | D22 |
-| LEMP signal-buffer size (v8, LEMP review) | LEMP keeps `SIG_BUF_AW=10` (1K); the others use 11 (2K); 2K address slots everywhere | D1, §1.1, §2.4 |
+| LEMP signal-buffer size (v8, LEMP review) | LEMP keeps `SIG_BUF_AW=10` (1K); the others use 11 (2K) | D1 |
+| LEMP one-call I/Q readout (v9, LEMP review) | buffers packed at natural size (no 2K slots), so the I/Q buffers are contiguous; LEMP keeps `iq_buf` with `addr_width` 15 | D1, §1.1, §2.4 |
 
 No open questions remain. Items to confirm during implementation are tracked as reminders R1–R8 (§5).
