@@ -1,13 +1,13 @@
 # llrf_shell Unification & SystemVerilog Architecture Plan
 
-Status: draft v7. All review questions resolved (D1–D22). newad retired for llrf_shell (D14); sv2v in the flow (D15); per-design `top/` and `soc/` (D16, D20); ALSU merge-back (D17–D19, D21–D22).
+Status: draft v8. All review questions resolved (D1–D22); v8 revises D1 after LEMP review (LEMP keeps 1K signal buffers). newad retired for llrf_shell (D14); sv2v in the flow (D15); per-design `top/` and `soc/` (D16, D20); ALSU merge-back (D17–D19, D21–D22).
 Scope: `designs/*/llrf_shell.v`, `static_regmap.json`, `llrf_dsp/`, `uspas_llrf/model/llrf_shell.py`, `uspas_llrf/tests/test_llrf_shell.py`, and LEMP branch `llrf_dsp/llrf_shell.v`.
 
 ## D. Decisions (from review)
 
 | # | Decision |
 |---|---|
-| D1 | `SIG_BUF_AW = 11` (2048 samples) for every design, including LEMP. uspas/alsu/lemp go from 4K to 2K; LEMP goes from 1K to 2K. |
+| D1 | `SIG_BUF_AW = 11` (2048 samples) for every design **except LEMP, which keeps `SIG_BUF_AW = 10`** (1024 samples, as on the LEMP branch; revised in v8 after LEMP review). uspas/alsu go from 4K to 2K; awa/pip-ii stay at 2K. `designs/lemp` on main is a uspas symlink until step 9 and follows uspas until then. Buffer address slots stay 2K in every design, so the address map is the same for all (§1.1). |
 | D2 | Pulse-modulation LUTs are in **every** design. No `PULSE_LUT_EN`. |
 | D3 | Modulation is indexed from the **pulse start**, is **additive**, and applies to **both amplitude and phase** per loop. LUT memory uses bedrock `dsp/dpram.v`. |
 | D4 | A Python allocator is the source of truth for the address map. |
@@ -112,6 +112,48 @@ Issues seen in the ALSU delta, to fix while merging:
 | S1 | SoC: `rs485_uart` and its pins are hard-wired in the shared `system.v`, and the Modbus sources and 64K BRAM are unconditional in `common.mk`. Every design would inherit them. |
 | S2 | Naming trap: `system`'s port `PMOD2` is board `ZEST_PMOD1`, not board `PMOD2`. Name the expansion port by function (`rs485_*`), not by PMOD. |
 
+### 0.4 Current status (step-1 baseline, 2026-10-06)
+
+Reference results that later steps must reproduce (step 1, R2, R6). The reports themselves are kept outside the repository.
+
+- Vivado: 2022.1, `xc7k160tffg676-2`, CI job `llrf_synthesis` (`top/marble_zest`, `make DESIGN=<d>`) on `main` 20c4c1c (bedrock b4ea165), on `alsu_fork` bb162b7 (bedrock e1313d5), and on the `LEMP` branch 2e25cd9 (bedrock 235f3e3; the later commits up to `origin/LEMP` 7e56f3b change only Python plotting scripts).
+- CDC and tb: run locally on `main` 20c4c1c with bedrock e1313d5, on `alsu_fork` bb162b7, and on `LEMP` 2e25cd9 (`llrf_dsp/`, `llrf_dsp/tests/llrf_shell`). bedrock e1313d5 changes only `cic_wave_recorder`; with it, every newad `llrf_shell.json` and config-ROM JSON is byte-identical.
+- `lemp` on `main` is a symlink to the uspas shell, not the LEMP-branch shell. The **LEMP-branch** row is the reference for step 9 (R1, R6).
+- pip-ii is not in the CI synthesis matrix, so it has no Vivado result.
+
+**Utilization and timing** (device totals: 101400 LUT, 202800 FF, 325 BRAM tiles, 600 DSP, 400 IOB)
+
+| Design | Source | Slice LUT | Slice FF | BRAM tile | DSP | Bonded IOB | WNS / TNS (ns) | WHS / THS (ns) | WPWS (ns) |
+|---|---|---|---|---|---|---|---|---|---|
+| uspas | `main` | 23295 (22.97%) | 27219 (13.42%) | 232 (71.4%) | 32 (5.3%) | 148 | 0.554 / 0 | 0.047 / 0 | 0.264 |
+| alsu | `main` | 23299 (22.98%) | 27223 (13.42%) | 232 (71.4%) | 32 (5.3%) | 148 | 0.200 / 0 | 0.041 / 0 | 0.264 |
+| alsu | `alsu_fork` | 23661 (23.33%) | 27588 (13.60%) | 240.5 (74.0%) | 32 (5.3%) | 145 | 0.516 / 0 | 0.028 / 0 | 0.264 |
+| lemp | `main` | 23298 (22.98%) | 27219 (13.42%) | 232 (71.4%) | 32 (5.3%) | 148 | 0.361 / 0 | 0.056 / 0 | 0.264 |
+| lemp | `LEMP` branch | 25910 (25.55%) | 29990 (14.79%) | 136.5 (42.0%) | 34 (5.7%) | 144 | 0.375 / 0 | 0.041 / 0 | 0.264 |
+| awa | `main` | 23455 (23.13%) | 27208 (13.42%) | 166 (51.1%) | 32 (5.3%) | 148 | 0.646 / 0 | 0.048 / 0 | 0.264 |
+| pip-ii | `main` | — | — | — | — | — | — | — | — |
+
+**Checks**
+
+| Design | Source | Routing errors | DRC (all warnings) | CDC: CDC / OKX / BAD | tb `llrf_shell` (Verilator) |
+|---|---|---|---|---|---|
+| uspas | `main` | 0 | 23: LVDS-1 ×1, RPBF-3 ×22 | 278 / 646 / **0** | 12/12 |
+| alsu | `main` | 0 | 23: LVDS-1 ×1, RPBF-3 ×22 | 278 / 646 / **0** | 8/8 |
+| alsu | `alsu_fork` | 0 | 28: LVDS-1 ×1, RPBF-3 ×27 | 278 / 646 / **0** | 8/8 |
+| lemp | `main` | 0 | 23: LVDS-1 ×1, RPBF-3 ×22 | 278 / 646 / **0** | 6/6 |
+| lemp | `LEMP` branch | 0 | 28: PDRC-153 ×4, PLHOLDVIO-2 ×4, RPBF-3 ×20 | 300 / 451 / **0** | 60/60 (USPAS, ALSU, LEMP, AWA configs × 15) |
+| awa | `main` | 0 | 23: LVDS-1 ×1, RPBF-3 ×22 | 278 / 646 / **0** | 12/12 |
+| pip-ii | `main` | — | — | 278 / 646 / **0** | 12/12 |
+
+Notes:
+- Every build meets timing. ALSU on `main` has the smallest setup margin (WNS 0.200 ns); on `alsu_fork` it is 0.516 ns.
+- `alsu_fork` costs +362 LUT, +365 FF and +8.5 BRAM tiles (+8 RAMB36, +1 RAMB18) over ALSU on `main`. The +8 RAMB36 is consistent with the SoC block RAM going from 32K to 64K (D22). The LUT/FF split between `phase_ramp`, the upgraded `arc_inlk` and the Modbus UART was not measured.
+- Pin assignments (site, signal, IO standard, drive, slew) are identical on `main` and `alsu_fork`. `alsu_fork` drives the PMOD lines in a fixed direction (ARC detectors, FO board; IBUF 57→43, OBUF 27→38, OBUFT 15→7), so bonded IOBs drop from 148 to 145 and RPBF-3 (incomplete inout buffering) rises from 22 to 27.
+- LVDS-1 is the bidirectional `ZEST_HDMI_D1/D2` LVDS pairs, present in every `main` and `alsu_fork` build. The LEMP branch drives HDMI through `OBUFDS` (19 vs 15), so LVDS-1 does not appear.
+- LEMP branch vs ALSU/uspas on `main`: +2.6K LUT and +2.8K FF (LEMP additions: interlock, triggers, local timing, fiber; not broken down), 95.5 fewer BRAM tiles (only partly from `SIG_BUF_AW=10` vs 12, about 42 tiles for 28 buffers; the rest is not broken down), +2 DSP. Clocking and GT use are the same (1 GTX channel, 2 MMCM, 7 BUFG).
+- LEMP-branch PDRC-153/PLHOLDVIO-2: the four event outputs of `timing_evr` (`i_ev1..4/flagtoggle_cdc`, also driven to `PMOD2[7:4]`) are LUT outputs that clock the four `freq_gcount` gray counters. Gated clocks; revisit when `timing_core_local` moves into `designs/lemp/` (step 9).
+- The LEMP-branch tb must import the branch's own `uspas_llrf` (`PYTHONPATH=<LEMP checkout>`). With the `main` package it fails on `LLRFShell.DSP_CLK_CYCLE`.
+
 ---
 
 ## Part 1: Unify the variants
@@ -135,7 +177,8 @@ Issues seen in the ALSU delta, to fix while merging:
 - The amp LUT bases match pip-ii's `pulse0/1_lut`. Depth goes from 32K to 16K, and `pulse_res_shift` stretches the LUT to longer pulses.
 - BRAM cost stays at about 32 RAMB36 (4 × 16K×18, using the native 2K×18 BRAM width). That equals pip-ii's 2 × 32K×16 today.
 - 18-bit entries give full `DWBB` resolution for both amplitude and phase.
-- `SIG_BUF_AW=11` halves signal-buffer BRAM for uspas, alsu and lemp.
+- `SIG_BUF_AW=11` halves signal-buffer BRAM for uspas and alsu.
+- Every buffer keeps a 2K slot, whatever the design's `SIG_BUF_AW`. LEMP (`SIG_BUF_AW=10`, D1) fills the lower 1K of each slot: its JSON reports `addr_width` 10, and the upper half of the slot is not decoded. Base addresses, including the LUTs, are the same in every design.
 
 ### 1.2 Pulse modulation (amplitude + phase LUT) in `loop_ctrl`
 
@@ -188,10 +231,10 @@ A generic version would address PR3–PR5: an offset accumulator, a strobe-based
 
 ### 1.3 Behavioral impact accepted
 
-- **uspas, alsu, lemp:** 2K buffers; all buffer addresses move.
+- **uspas, alsu:** 2K buffers; all buffer addresses move.
 - **awa:** zero-valued `dac_raw_out` dropped; IQ buffers move.
 - **pip-ii:** IQ buffers unchanged. LUTs are renamed and become 16K deep, and each loop gains a phase LUT.
-- **LEMP:** 1K → 2K buffers. Phase-step registers are unchanged, and the LUTs are added.
+- **LEMP:** keeps 1K buffers (D1); buffer addresses move to the shared 2K slots. Phase-step registers are unchanged, and the LUTs are added.
 - **ALSU:** gets its own thin shell (from step 7) so it can wire `phase_ramp` on loop 0. Gains the LUTs; the arc test/reset strobes are already on `alsu_fork`. `phase_ramp_*` registers are renamed `loop0_phs_ramp_*` (D21). Modbus map names are preserved.
 - **All designs (D18):** `arc_test_arc_dev` (level) → `arc_test_mask` + `arc_test_stb`, and `arc_reset_arc_dev` becomes a strobe with a 0.5 s output pulse.
 - **All non-LEMP designs:** `pulse_modes` → `drv0/1_pulse_mode` and `soft_drive_enable` → `soft_drive0/1_enable` (D11). leep names, init JSON and model fields change with them.
@@ -239,7 +282,7 @@ The top level and the SoC follow the same base-plus-override pattern: `top/commo
 | `rx_chain` | `adc_t adc[N_ADC]`, LO, `i_sel` → `iq_t sig_iq[N_ADC]` (to loops), `iq_t sig_iq_mon[N_ADC]` (to diag) | `DC_CH_MASK` (LEMP `8'b1100_0000`): those channels bypass the DDC on the monitor path (I=ADC≪guard, Q=0, fixes L1), while the loop path stays DDC |
 | `loop_ctrl` | `loop_cfg_t cfg`, `iq_t field`, `trig`, `drive_permit`, `phs_offset`, `lb_if.slave` (2 LUT windows) → `iq_t drive`, `pulse_dval`, `pulse_idx`, `err` (amp/phs, for design hooks such as ALSU `phase_ramp`) | `LUT_AW` (14), `PULSE_AW` (32); generate × `N_DRIVE` |
 | `tx_chain` | `iq_t drive[N_DRIVE]`, `dac_drive_sel`, flip → `dac_a/b` | — |
-| `diag` | `iq_t sig[N_CH]`, raw `adc[N_ADC]`, `buf_trig`, `cbuf_trig` → sig_buf array, cic_waves, monitor_inlk, arc_inlk (D18: test/reset strobes, 0.5 s pulse), `lb_if.slave` windows, `inlk_permit`; ARC detector IO passed to the shell | `SIG_BUF_AW` (11), `CBUF_AW`, `F_CLK` (from `DSP_FREQ_MHZ`, A2) |
+| `diag` | `iq_t sig[N_CH]`, raw `adc[N_ADC]`, `buf_trig`, `cbuf_trig` → sig_buf array, cic_waves, monitor_inlk, arc_inlk (D18: test/reset strobes, 0.5 s pulse), `lb_if.slave` windows, `inlk_permit`; ARC detector IO passed to the shell | `SIG_BUF_AW` (11; LEMP 10, D1), `CBUF_AW`, `F_CLK` (from `DSP_FREQ_MHZ`, A2) |
 | `lb_rd_mux` | `{hit[i], rdata[i]}` × N_WIN → `lb_rdata` | registered, READ_DELAY=3 preserved |
 | design shell | flat Verilog-compatible ports, `llrf_shell_regs` instance (cfg/status structs), permits, trigger source, timing, design status wiring | — |
 
@@ -302,7 +345,7 @@ STATUS = [                       # read-only, wired by the design shell into sta
   Status('rf_pwr_hi', 10, domain='lb'),
   Status('loop0_amp_err', 15, domain='dsp'),   # dsp-domain status -> jit_rad_gateway bank
 ]
-BLOCKS = [*sig_bufs(SIG_BUF_AW), *mod_luts(LUT_AW), Block('circle_data', aw=CBUF_AW, dw=24)]
+BLOCKS = [*sig_bufs(SIG_BUF_AW, slot_aw=SIG_BUF_SLOT_AW), *mod_luts(LUT_AW), Block('circle_data', aw=CBUF_AW, dw=24)]
 ```
 
 **Outputs** (into `designs/<d>/_gen/`):
@@ -314,6 +357,7 @@ BLOCKS = [*sig_bufs(SIG_BUF_AW), *mod_luts(LUT_AW), Block('circle_data', aw=CBUF
 **Allocation:**
 - Address windows stay where they are today: status `0x00000`–, rw scalars `0x11000`– (mirror), blocks `0x12000`–`0x3ffff`.
 - Inside each window the allocator assigns addresses with natural alignment and an overlap check. Scalar addresses may move (D5).
+- Signal buffers are allocated in fixed 2K slots (`SIG_BUF_SLOT_AW = 11`), independent of `SIG_BUF_AW`, so block bases match across designs (§1.1). Each `Block` records its own `aw` (LEMP: 10) for the JSON and decode.
 - `design.py` blocks go into a reserved design window.
 
 **Naming:** registers keep flat names (`loopN_*`, `drvN_pulse_mode`, `soft_driveN_enable`; D9, D11). A generated pack fills `loop_cfg_t cfg[N_DRIVE]`, replacing the ~30 hand-written `assign`s.
@@ -391,7 +435,7 @@ Renames (all in the step that introduces them; consumers updated in the same MR,
 
 | Tool | Status | Action |
 |---|---|---|
-| Verilator 5.051 | OK | Primary simulator for SV blocks and shells |
+| Verilator 5.052 | OK | Primary simulator for SV blocks and shells; reference simulator for the step-1 baseline |
 | Vivado 2022.1+ | OK | none |
 | Icarus 12 | no interfaces | Optional: can run on the sv2v output |
 | sv2v v0.0.13 (installed) | — | Produces `llrf_shell_expand.v`. Pin the version in `doc/developer_guide.md` and CI |
@@ -511,7 +555,7 @@ LEMP diverged before the `designs/` split and carries about 2800 lines of app an
 1. **Bring LEMP pieces to main, with tests.**
    - LEMP-only, into `designs/lemp/` (D12): `fiducial_int_gen.v` with its test, `timing_core_local.v`, `triggers.v`.
    - Generic, into shared blocks: `buf_delay` and 32-bit pulse fields, LEMP register naming (D11), and the `cic_waves` `buf_trig` change reconciled with main's `cbuf_free_run`.
-2. **Build `designs/lemp/llrf_shell.sv` on main** from the shared blocks, plus LEMP's ports, interlock, timing, triggers and readback. Fix L1–L5. Replace the current `designs/lemp` symlinks.
+2. **Build `designs/lemp/llrf_shell.sv` on main** from the shared blocks (`SIG_BUF_AW=10`, D1), plus LEMP's ports, interlock, timing, triggers and readback. Fix L1–L5. Replace the current `designs/lemp` symlinks.
    Build **`top/lemp/`** (§2.8): `design_io.vh` (HDMI `OBUFDS`, PMOD, SSSB, fiber), `design_mid.vh` (`interlock_wrapper` @ segment 2), `design.xdc`, `fiber_top.v` + `gtp_config/`, `flash.sh`. Move `interlock/` to `designs/lemp/interlock/`.
 3. **Port LEMP's `test_llrf_shell.py` deltas** into the LEMP TB subclass. Use LEMP hardware logs as the reference for the trigger and interlock behavior.
 4. **Merge main into the LEMP branch.** For `llrf_dsp/llrf_shell.v`, `static_regmap.json` and `top/marble_zest/*`, take main's side; they are replaced by `designs/lemp` and `top/lemp`. Keep LEMP's Python scripts, and move the plotting ones under `uspas_llrf/app/` or `tools/`.
@@ -579,7 +623,7 @@ Steps marked ⚠ in §4 depend on these.
 | R7 | **ALSU hardware check** through the `alsu_run` CI job (`MARBLE_SERIAL`). Modbus (`modbus_test.py`, `app_modbus_test.py`), ARC detector test/reset on PMOD1, and FO-board permits on PMOD2 must behave like `alsu_fork`. | steps 3, 7 |
 | R8 | **Generic loop modulator (§1.2.1) is future work.** Do not move ALSU off its `phase_ramp` without a decision and a hardware comparison. | after step 11 |
 
-## 6. Resolved questions (v7)
+## 6. Resolved questions (v7, v8)
 
 | Q | Answer | Recorded as |
 |---|---|---|
@@ -587,5 +631,6 @@ Steps marked ⚠ in §4 depend on these.
 | Phase-ramp behavior when the loop opens | same as `alsu_fork` today (snap back to `phs_setpoint`) | D19 |
 | Phase-ramp trigger / loops | EVR event, loop 0 only; `phase_ramp` stays as-is in `designs/alsu/` until a generic loop modulator exists | D19, §1.2.1, R8 |
 | SoC BRAM | 64K for ALSU only | D22 |
+| LEMP signal-buffer size (v8, LEMP review) | LEMP keeps `SIG_BUF_AW=10` (1K); the others use 11 (2K); 2K address slots everywhere | D1, §1.1, §2.4 |
 
 No open questions remain. Items to confirm during implementation are tracked as reminders R1–R8 (§5).
