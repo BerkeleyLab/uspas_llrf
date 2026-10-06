@@ -8,7 +8,7 @@
 // and handles localbus segmentation based on lb_addr[21:18]
 //   0  to llrf_shell
 //   1  to marble_bsp
-//   others not (yet) used
+//   2+ design IP (top/<design>/design_mid.vh)
 
 // localbus master declaration, driven by badger (located inside marble_bsp)
 wire        m_lb_clk;
@@ -243,3 +243,8 @@ marble_bsp #(
     .in_use         (in_use        ),
     .mac_status     (mac_status    )
 );
+
+// ----------------------------------
+// Design-specific IP, @ lb_base_2 and up (top/<design>/design_mid.vh)
+// ---------------------------------
+`include "design_mid.vh"

@@ -82,29 +82,29 @@ make
 ### 4. RISC-V SoC Simulation
 ```bash
 # Open-source RTL simulation (Icarus Verilog)
-cd soc/marble_zest/sim
+cd soc/common/sim
 make
 
 # Full simulation with Vivado UNISIM primitives (requires Vivado in PATH)
-cd soc/marble_zest/top_sim
+cd soc/common/top_sim
 make
 ```
 
 ### 5. FPGA Bitstream Synthesis
 ```bash
-cd top/marble_zest
-# Synthesis entry-level key is DESIGN: [uspas, alsu, lemp, awa, pip-ii]
+# One directory per design: top/{uspas, alsu, lemp, awa, pip-ii}, each with its own _xilinx/
 # (FSET is automatically mapped from DESIGN in settings.mk: USPAS, ALSU, LEMP, AWA)
-make DESIGN=uspas
-make DESIGN=awa
+# Shared rules: top/common/top_rules.mk; SoC firmware is built in soc/<design>/build/
+make -C top/uspas
+make -C top/awa
 ```
 
 ### 6. Hardware Deployment & Testing (LEEP)
 ```bash
-cd top/marble_zest
+cd top/uspas
 
 # Program FPGA over OpenOCD (set MARBLE_SERIAL to the board's serial number)
-make system_config MARBLE_SERIAL=61 DESIGN=uspas
+make system_config MARBLE_SERIAL=61
 
 # Test Ethernet and system self-test via LEEP (IP defaults to 192.168.19.<SERIAL>)
 make system_test MARBLE_SERIAL=61
@@ -144,8 +144,12 @@ uspas_llrf/
 │   ├── cic_waves.v            # CIC decimation filters, multi-channel circular waveform capture buffer & fast interlocks
 │   └── pulse_gen.v            # Trigger and gating pulse generation
 ├── marble_bsp/                # Marble FPGA board support package (Local Bus, Packet Badger UDP/Ethernet, EVR timing, MMC)
-├── soc/marble_zest/           # PicoRV32 RISC-V soft-core SoC for configuration, booting, and diagnostics
-├── top/marble_zest/           # Top-level FPGA integration (`marble_zest_top.v`) and Vivado synthesis flow
+├── soc/
+│   ├── common/                # PicoRV32 RISC-V soft-core SoC (system.v, firmware, sim/, top_sim/, synth/)
+│   └── <design>/              # Per-design firmware: design.mk, settings_design.h, init_zest.c, init_marble.c
+├── top/
+│   ├── common/                # Top-level FPGA integration (`marble_zest_top.v`), top_rules.mk, Vivado TCL, topsim
+│   └── <design>/              # Per-design build directory (Makefile; optional design_io.vh, design_mid.vh)
 ├── epics/                     # EPICS Display Builder UI screens (BOB files)
 └── doc/                       # System documentation and Jupyter demonstration notebooks
 ```

@@ -99,18 +99,18 @@ make -C llrf_dsp/tests
 ### Synthesize bitstream
 
 ```bash
-cd top/marble_zest
-make DESIGN={TARGET}
+make -C top/{DESIGN}
 ```
-Where TARGET is alsu, awa lemp, uspas, pip-ii and vts.
+Where DESIGN is alsu, awa, lemp, uspas or pip-ii. Each design builds in its own
+directory, so designs can be built side by side. The shared rules are in
+[top/common](top/common/top_rules.mk); per-design SoC firmware settings are in `soc/{DESIGN}/`.
 
 ### Program bitstream to hardware
 
 Provide the Zest reference clock signal at specified frequency in the above list, at +3dBm.
 
 ```bash
-cd top/marble_zest/
-make system_config MARBLE_SERIAL=42 BITSTREAM=<bitstream>.bit
+make -C top/{DESIGN} system_config MARBLE_SERIAL=42 BITSTREAM=<bitstream>.bit
 ```
 Note 42 is the Marble serial number.
 
@@ -126,7 +126,7 @@ python -m uspas_llrf.app.dash --add 192.168.19.42:803
 
 ### Boot-load soft core program
 
-See [soc/marble_zest](soc/marble_zest/synth/README.md).
+See [soc/common/synth](soc/common/synth/README.md).
 
 ### Chassis I/O
 

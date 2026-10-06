@@ -1,10 +1,16 @@
 include $(PICORV_DIR)/rules.mk
 include $(TOP)settings.mk
-APP_COMMON_DIR = $(APP_SOC_DIR)/common
+APP_COMMON_DIR = $(SOC_COMMON_DIR)
+
+# Per-design firmware settings (soc/<design>/design.mk) may set SOC_INIT_DIR,
+# BLOCK_RAM_SIZE, SRCS and CFLAGS.
+SOC_DESIGN_DIR = $(SOC_DIR)/$(DESIGN)
+SOC_INIT_DIR   = $(SOC_DESIGN_DIR)
+include $(SOC_DESIGN_DIR)/design.mk
 INC_DIR       += -I$(BOARD_SUPPORT_DIR)/marble_soc/firmware -I$(BOARD_SUPPORT_DIR)/zest_soc/firmware
 VIVADO_BASE    = $(dir $(shell which vivado))..
 
-vpath %.c $(APP_COMMON_DIR)
+vpath %.c $(APP_COMMON_DIR) $(SOC_INIT_DIR)
 vpath system.v $(APP_COMMON_DIR)
 
 .PHONY: all
@@ -28,20 +34,20 @@ SRCS  +=  printf.c iserdes.c
 SRCS  +=  settings.h
 SRCS  +=  $(BOARD_SUPPORT_DIR)/marble_soc/firmware/marble.c
 SRCS  +=  $(BOARD_SUPPORT_DIR)/zest_soc/firmware/zest.c
-SRCS  +=  init_zest_$(FSET).c
-SRCS  +=  init_marble_$(FSET).c
+SRCS  +=  init_zest.c
+SRCS  +=  init_marble.c
 OBJS  =  $(subst .c,.o,$(filter %.c, $(SRCS))) startup_irq.o
 
 #size of the blockRam [bytes]
-BLOCK_RAM_SIZE  = 32768
+BLOCK_RAM_SIZE ?= 32768
 SYNTH_OPT += -DBLOCK_RAM_SIZE=$(BLOCK_RAM_SIZE)
-CFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\" -I../common
+CFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\" -I$(APP_COMMON_DIR) -I$(SOC_DESIGN_DIR)
 CFLAGS += -DBOOTLOADER_BAUDRATE=$(BOOTLOADER_BAUDRATE)
 CFLAGS += -ffunction-sections
 CFLAGS += -nostartfiles
 CFLAGS += -DNONSTD_PRINTF
 CFLAGS += -DUSPAS_LLRF_FSET=\"$(FSET)\"
 
-CLEAN += init_zest_$(FSET).o init_marble_$(FSET).o
+CLEAN += init_zest.o init_marble.o
 
-include $(APP_SOC_DIR)/common/llrf/rules.mk
+include $(APP_COMMON_DIR)/llrf/rules.mk

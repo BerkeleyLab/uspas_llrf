@@ -48,4 +48,7 @@
 
 #define ARRAY_SIZE(arr) ((sizeof arr) / (sizeof arr[0]))
 
+// Per-design overrides: soc/<design>/settings_design.h
+#include "settings_design.h"
+
 #endif

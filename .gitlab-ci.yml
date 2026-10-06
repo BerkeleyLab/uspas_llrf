@@ -59,38 +59,37 @@ llrf_shell_test:
 soc_system_test:
   stage: test
   script:
-    - cd soc/marble_zest/sim
+    - cd soc/common/sim
     - make
 
 soc_system_top_test:
   stage: test
   script:
-    - cd soc/marble_zest/top_sim
+    - cd soc/common/top_sim
     - make
 
 soc_synthesis:
   stage: synthesis
   script:
-    - cd soc/marble_zest/synth
+    - cd soc/common/synth
     - make
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
     expire_in: 2 days
     paths:
-      - soc/marble_zest/synth/*.bit
-      - soc/marble_zest/synth/_xilinx/*.runs/impl_1/*.rpt
+      - soc/common/synth/*.bit
+      - soc/common/synth/_xilinx/*.runs/impl_1/*.rpt
 
 llrf_synthesis:
   stage: synthesis
   script:
-    - cd top/marble_zest
-    - make DESIGN=${TARGET}
+    - make -C top/${TARGET}
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
     expire_in: 2 days
     paths:
-      - top/marble_zest/*.bit
-      - top/marble_zest/_xilinx/*.runs/impl_1/*.rpt
+      - top/${TARGET}/*.bit
+      - top/${TARGET}/_xilinx/*.runs/impl_1/*.rpt
   parallel:
     matrix:
       - TARGET: [alsu, uspas, lemp, awa]
@@ -113,8 +112,8 @@ alsu_run:
     - python3 -m uspas_llrf.tools.dual_evg -r
     - sleep 10
     - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
-    - cd top/marble_zest
-    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=alsu
+    - cd top/alsu
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL}
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
@@ -132,8 +131,8 @@ awa_run:
           - TARGET: awa
   script:
     - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
-    - cd top/marble_zest
-    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=awa
+    - cd top/awa
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL}
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
@@ -155,8 +154,8 @@ lemp_run:
     - python3 -m uspas_llrf.tools.dual_evg -r
     - sleep 10
     - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
-    - cd top/marble_zest
-    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=lemp
+    - cd top/lemp
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL}
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
 
@@ -174,7 +173,7 @@ uspas_run:
           - TARGET: uspas
   script:
     - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
-    - cd top/marble_zest
-    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL} DESIGN=uspas
+    - cd top/uspas
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL}
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}

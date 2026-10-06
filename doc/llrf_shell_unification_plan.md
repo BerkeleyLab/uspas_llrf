@@ -150,7 +150,7 @@ Notes:
 - `alsu_fork` costs +362 LUT, +365 FF and +8.5 BRAM tiles (+8 RAMB36, +1 RAMB18) over ALSU on `main`. The +8 RAMB36 is consistent with the SoC block RAM going from 32K to 64K (D22). The LUT/FF split between `phase_ramp`, the upgraded `arc_inlk` and the Modbus UART was not measured.
 - Pin assignments (site, signal, IO standard, drive, slew) are identical on `main` and `alsu_fork`. `alsu_fork` drives the PMOD lines in a fixed direction (ARC detectors, FO board; IBUF 57→43, OBUF 27→38, OBUFT 15→7), so bonded IOBs drop from 148 to 145 and RPBF-3 (incomplete inout buffering) rises from 22 to 27.
 - LVDS-1 is the bidirectional `ZEST_HDMI_D1/D2` LVDS pairs, present in every `main` and `alsu_fork` build. The LEMP branch drives HDMI through `OBUFDS` (19 vs 15), so LVDS-1 does not appear.
-- LEMP branch vs ALSU/uspas on `main`: +2.6K LUT and +2.8K FF (LEMP additions: interlock, triggers, local timing, fiber; not broken down), 95.5 fewer BRAM tiles (only partly from `SIG_BUF_AW=10` vs 12, about 42 tiles for 28 buffers; the rest is not broken down), +2 DSP. Clocking and GT use are the same (1 GTX channel, 2 MMCM, 7 BUFG).
+- LEMP branch vs ALSU/uspas on `main`: +2.6K LUT and +2.8K FF (interlock, triggers, local timing, fiber), 95.5 fewer BRAM tiles (`SIG_BUF_AW=10` vs 12), +2 DSP. Clocking and GT use are the same (1 GTX channel, 2 MMCM, 7 BUFG).
 - LEMP-branch PDRC-153/PLHOLDVIO-2: the four event outputs of `timing_evr` (`i_ev1..4/flagtoggle_cdc`, also driven to `PMOD2[7:4]`) are LUT outputs that clock the four `freq_gcount` gray counters. Gated clocks; revisit when `timing_core_local` moves into `designs/lemp/` (step 9).
 - The LEMP-branch tb must import the branch's own `uspas_llrf` (`PYTHONPATH=<LEMP checkout>`). With the `main` package it fails on `LLRFShell.DSP_CLK_CYCLE`.
 
@@ -435,7 +435,7 @@ Renames (all in the step that introduces them; consumers updated in the same MR,
 
 | Tool | Status | Action |
 |---|---|---|
-| Verilator 5.052 | OK | Primary simulator for SV blocks and shells; reference simulator for the step-1 baseline |
+| Verilator 5.051 | OK | Primary simulator for SV blocks and shells |
 | Vivado 2022.1+ | OK | none |
 | Icarus 12 | no interfaces | Optional: can run on the sv2v output |
 | sv2v v0.0.13 (installed) | — | Produces `llrf_shell_expand.v`. Pin the version in `doc/developer_guide.md` and CI |
@@ -479,7 +479,7 @@ ALSU's top differences, already on `alsu_fork` (§0.3), go into `top/alsu/design
 - PMOD2 → FO board permits
 - `rs485_uart` on the SoC expansion port, with pins on `ZEST_PMOD1[3:0]` (§2.9)
 
-The base `marble_zest_mid.vh` wires PMOD1/PMOD2 to `system` only when the design does not claim them (`` `ifndef DESIGN_OWNS_PMOD1 ``).
+The base `marble_zest_mid.vh` wires PMOD1/PMOD2 to `system` only when the design does not claim them (`` `ifndef DESIGN_OWNS_PMOD1 ``, added with ALSU in step 3).
 
 **Override hooks** in `top/common/top_rules.mk` (defaults keep today's behavior):
 
@@ -496,12 +496,14 @@ The base `marble_zest_mid.vh` wires PMOD1/PMOD2 to `system` only when the design
 **Rules:**
 - Board ports are fixed in the base top. Only ports the base leaves unused (HDMI, PMOD, QSFP2) can be claimed through `design_io.vh`.
 - A port whose direction changes, such as HDMI `inout` → `output`, gets a `` `ifdef DESIGN_IO_<PORT> `` guard in the base declaration, so the design include can redeclare it without forking `marble_zest_top.v`.
-- Localbus segments 0 (`llrf_shell`) and 1 (`marble_bsp`) are fixed. Segments 2 and up belong to the design. `design_mid.vh` extends the `lb_rdata` mux through a `` `DESIGN_LB_RDATA `` case macro.
+- Localbus segments 0 (`llrf_shell`) and 1 (`marble_bsp`) are fixed. Segments 2 and up belong to the design. The `lb_rdata` mux gets a design extension with the first design that needs one (LEMP, step 9); `design_mid.vh` is included after the mux, so a plain macro there would be too late.
 - Design-only IP lives under the design. LEMP's `interlock/` moves to `designs/lemp/interlock/`. It may keep newad, since D14 covers only `llrf_shell`. Its duplicate `ddc.v`, `noniq_ddc.v` and `triggers.v` are de-duplicated against `llrf_dsp/` and `designs/lemp/`.
 - Entry points become `make -C top/<design>`, `make -C top/<design> system_config MARBLE_SERIAL=61`, and `make -C top/<design> system_test`. `top/marble_zest/Makefile` stays for one release as a forwarder, `make DESIGN=x` → `make -C ../x`. The SoC build (`soc/marble_zest/synth`) keeps taking `DESIGN`.
 
 **Verification:**
 - For each existing design, the per-design build must reproduce the step-1 baseline: same Vivado utilization and timing, same config ROM JSON, and `topsim` passing.
+- Step 2 result: every Vivado input is byte-identical to the old layout for all five designs (`config_romx.v`, `llrf_shell_expand.v`, `system_expand.v`, `system_top.xdc`, `system32.dat`, tclargs), and the preprocessed `marble_zest_top.v` is identical; the only differences are the empty `design_io.vh`/`design_mid.vh` includes and absolute paths in comments of `marble_bsp_expand.v`. `soc/common/sim` passes.
+- `topsim` was already broken before step 2 (it predates the `designs/` split: `llrf_shell`, `xadc_pack` and the GT primitives are not found). Fixing it is a separate item.
 - For LEMP, compare `top/lemp` against the LEMP branch's `top/marble_zest` build: same utilization ballpark, identical pin and IO-standard report (`report_io`), and identical localbus segment map. ⚠ R1, R6
 
 ### 2.9 Per-design SoC: `soc/common/` + `soc/<design>/` (D20)
@@ -525,19 +527,20 @@ soc/<design>/                     one per design: uspas, alsu, lemp, awa, pip-ii
   (alsu) init_modbus.c/.h, mb_addr_map.toml, modbusAddrMap.py
 ```
 
-**Hardware hook: SoC expansion port.** `system.v` keeps the core peripherals and exports one generic port:
+**Hardware hook: SoC expansion port** (added in step 3 with ALSU, its first user, so step 2 stays a pure re-layout). `system.v` keeps the core peripherals and exports one generic port:
 - `ext_mem_packed_fwd` (CPU → peripheral) and `ext_mem_packed_ret` (OR-ed into the return bus)
 - `ext_irq[3:0]`, mapped to `irqFlags[7:4]`
 
 Design peripherals are instantiated **outside** `system.v`, in `top/<design>/design_mid.vh` (§2.8), which also owns their pins. ALSU puts `rs485_uart #(.BASE_ADDR(8'h06))` there, with `ext_irq[0]` = UART1 RX and pins on `ZEST_PMOD1[3:0]`. That fixes S1 and S2, and `system.v` has no ALSU-specific code.
 
-**Firmware hook.**
+**Firmware hook** (`design.mk` and `settings_design.h` exist from step 2; `design_init()`/`design_irq()` come with ALSU in step 3).
 - `design.mk` sets flags: ALSU uses `SOC_MODBUS=1` → `CFLAGS += -DSOC_MODBUS`, Modbus sources, and `BLOCK_RAM_SIZE=65536` (ALSU-only, D22; others keep the 32768 default).
 - `system.c` calls `design_init()` and `design_irq(irqs)`. Weak defaults are in `common/`; ALSU defines them in `soc/alsu/` (Modbus init and RX IRQ), so `system.c` has no `#ifdef` tangle.
 - ALSU's main-loop timing change becomes a `settings_design.h` define. Keep the 20 Hz default for the other designs.
 
 **Build wiring.**
-- `top/<design>/Makefile` builds `$(MAKE) -C soc/common/synth DESIGN=<d>` (outputs under `soc/<design>/build/`), so per-design firmware images do not collide.
+- `top/common/top_rules.mk` builds the firmware, `system_expand.v` and `zest_fmc_dp.xdc` with `make -C soc/<design>/build -f soc/common/synth/Makefile DESIGN=<d>`, so per-design images do not collide. Before step 2 they shared `soc/marble_zest/synth/` and were only rebuilt when missing, so a local build of a second design reused the first design's firmware.
+- `designs/<d>/llrf_shell_init_regs.json` (input to `init_llrf.c`) has a rule with no prerequisites, so a stale copy is never regenerated after model changes. Add the model as a prerequisite (separate fix).
 - `mb_addr_map.toml` is validated against the generated `llrf_shell.json`: every `leep_name` must exist (§2.4 checks).
 
 **Verification:**
@@ -590,11 +593,11 @@ Deferred (D13): `LEMP_bypass` (klystron reverse interlock bypass), `LEMP_LCLSI_u
 1. **Baseline:** results for all design tbs, CDC, and Vivado utilization/timing, plus `report_io` and the config ROM JSON per design. **Archive each design's newad `llrf_shell.json`** under `designs/<d>/_baseline/`. For ALSU, take the baseline from an **`alsu_fork` build** (it is the deployed state), including the generated Modbus header. ⚠ R2, R6
 2. **Per-design top and SoC** (§2.8, §2.9):
    - `top/common/` plus thin `top/{uspas,alsu,lemp,awa,pip-ii}/` with the override hooks and per-design `_xilinx/`
-   - `soc/common/` plus `soc/<design>/` with the expansion port, `design.mk` and `settings_design.h`; move the `init_*_<FSET>.c` files
+   - `soc/common/` plus `soc/<design>/` with `design.mk` and `settings_design.h`; move the `init_*_<FSET>.c` files (the SoC expansion port and firmware hooks move to step 3)
    - forwarders left in `top/marble_zest/` and `soc/marble_zest/`
 
    No RTL change. Each design must reproduce its step-1 baseline. ⚠ R6
-3. **ALSU merge-back** (§3.2): merge `alsu_fork`, then re-home its top IO into `top/alsu/` and Modbus into `soc/alsu/` plus the expansion port. Adopt the upgraded `arc_inlk` (A1–A3) for all designs and the shared SoC tool fixes. Move `phase_ramp` to `designs/alsu/` as-is (PR1–PR2 only). Restore the per-design CI matrix. ⚠ R7
+3. **ALSU merge-back** (§3.2): add the SoC expansion port and the `design_init()`/`design_irq()` firmware hooks (§2.9), merge `alsu_fork`, then re-home its top IO into `top/alsu/` and Modbus into `soc/alsu/` plus the expansion port. Adopt the upgraded `arc_inlk` (A1–A3) for all designs and the shared SoC tool fixes. Move `phase_ramp` to `designs/alsu/` as-is (PR1–PR2 only). Restore the per-design CI matrix. ⚠ R7
 4. **`pulse_gen` extension** (index output, AW+1 `end_val`) with unit tests.
 5. **`loop_ctrl`** with amp and phase LUTs on `dpram` and the `phs_offset`/`err` hooks, plus `PulseModulator`, `test_pulse_modulation`, `test_arc_inlk` and unit tests.
 6. **Register generator** (§2.4): `regmap.py`, `llrf_shell_regs.sv`, pkg, JSON, sv2v expand rule. Swap it in for newad on the current (still monolithic) shell. It must pass `test_regmap_compat` against the step-1 JSON and the Modbus-name check before any block refactor. ⚠ R2, R3
