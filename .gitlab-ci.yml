@@ -16,8 +16,6 @@ image: mohs.dhcp.lbl.gov/xilinx_env_trixie_custom_verilator
 default:
   before_script:
     - export PATH=$XILINX_VIVADO/bin:$PATH
-    - apt update
-    - apt install -y python3-venv
     - python3 -m venv .venv
     - source .venv/bin/activate
     - pip install -e .
