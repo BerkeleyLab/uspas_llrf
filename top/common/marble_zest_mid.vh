@@ -55,6 +55,17 @@ wire reset_system = uart_cts_r | ~idelayctrl_ready;
 // 18 bit peripheral address width
 wire trig_from_dsp;
 wire trig_to_dsp;
+
+// SoC expansion port: design peripherals in design_mid.vh drive these when
+// the design defines DESIGN_SOC_EXPANSION (SYNTH_OPT in top/<design>/Makefile)
+wire [68:0] ext_mem_packed_fwd;
+wire [32:0] ext_mem_packed_ret;
+wire [3:0]  ext_irq;
+`ifndef DESIGN_SOC_EXPANSION
+assign ext_mem_packed_ret = 33'b0;
+assign ext_irq = 4'b0;
+`endif
+
 system #(
     .LB_READ_DELAY(LB_READ_DELAY),
     .LB_ADW(22),
@@ -65,8 +76,16 @@ system #(
     .I2C_SCL        (I2C_SCL),
     .I2C_SDA        (I2C_SDA),
     .I2C_RST        (I2C_RST),
+`ifdef DESIGN_OWNS_PMOD1
+    .PMOD0          (),  // board PMOD1 used by design_mid.vh
+`else
     .PMOD0          (PMOD1),
+`endif
+`ifdef DESIGN_OWNS_PMOD2
+    .PMOD1          (),  // board PMOD2 used by design_mid.vh
+`else
     .PMOD1          (PMOD2),
+`endif
     .PMOD2          (ZEST_PMOD1),
     .PMOD3          (ZEST_PMOD2),
     .trig_from_dsp    (trig_from_dsp),
@@ -88,7 +107,10 @@ system #(
     .lb_merge_rvalid(lb_rvalid),
     .rst            (rst),
     .mem_packed_fwd (mem_packed_fwd),
-    .mem_packed_ret (mem_packed_ret)
+    .mem_packed_ret (mem_packed_ret),
+    .ext_mem_packed_fwd (ext_mem_packed_fwd),
+    .ext_mem_packed_ret (ext_mem_packed_ret),
+    .ext_irq        (ext_irq)
 );
 
 // Localbus multiplixer
@@ -151,7 +173,17 @@ wire [15:0] dac_b_out;
 wire gt_rxclk;
 wire [1:0] gt_rxcharisk;
 wire [15:0] gt_rxdata;
-wire [2:0] arc_permit_in=0;  // XXX hook me up!
+// Interlock IO: design_mid.vh connects these to pins when the design defines
+// DESIGN_OWNS_PERMITS; otherwise the permits are held on and the ARC inputs off
+wire       drive_permit_in, slow_permit_in;
+wire       fast_permit_out, fast_rf_permit_out, evg_permit_out, hpa_permit_out;
+wire [2:0] arc_permit_in, arc_test_out;
+wire       arc_reset_out;
+`ifndef DESIGN_OWNS_PERMITS
+assign drive_permit_in = 1'b1;
+assign slow_permit_in  = 1'b1;
+assign arc_permit_in   = 3'b0;
+`endif
 llrf_shell llrf_inst (
     .lb_clk         (lb_clk),
     .lb_addr        (lb_addr[17:0]),
@@ -168,9 +200,15 @@ llrf_shell llrf_inst (
     .dac_data_a_out (dac_a_out),
     .dac_data_b_out (dac_b_out),
 
-    .drive_permit_in (1'b1),
-    .slow_permit_in  (1'b1),
-    .arc_permit_in   (arc_permit_in),
+    .drive_permit_in    (drive_permit_in),
+    .slow_permit_in     (slow_permit_in),
+    .fast_permit_out    (fast_permit_out),
+    .fast_rf_permit_out (fast_rf_permit_out),
+    .evg_permit_out     (evg_permit_out),
+    .hpa_permit_out     (hpa_permit_out),
+    .arc_permit_in      (arc_permit_in),
+    .arc_test_out       (arc_test_out),
+    .arc_reset_out      (arc_reset_out),
     // to EVR
     .gt_rxclk        (gt_rxclk),
     .gt_rxdata       (gt_rxdata),
