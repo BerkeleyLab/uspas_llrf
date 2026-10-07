@@ -74,6 +74,11 @@ puts "Adding all other sources"
 puts $flist_work
 add_files $flist_work
 
+# `include search order: the design directory (top/<design>), then top/common
+set include_dirs [list [file normalize .] [file normalize [file dirname [info script]]]]
+set_property include_dirs $include_dirs [current_fileset]
+puts "Include dirs: $include_dirs"
+
 # Set design-top
 set_property  top "marble_zest_top" [current_fileset]
 set gitid_for_filename $git_status(short_id)$git_status(suffix)

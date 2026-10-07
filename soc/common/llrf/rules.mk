@@ -1,4 +1,4 @@
-LLRF_DIR = $(APP_SOC_DIR)/common/llrf
+LLRF_DIR = $(SOC_COMMON_DIR)/llrf
 LLRF_AUTO = init_llrf.c llrf_regs_addr.h marble_regs_addr.h
 
 INC_DIR   += -I$(LLRF_DIR)

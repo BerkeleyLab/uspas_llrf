@@ -3,7 +3,7 @@
     make
 ```
 Note that this Synthesizing uses `system_top.v` which is for testing the soft core, and does not contain LLRF DSP.
-The full LLRF Synthesizing should be done at `top/marble_zest` directory instead.
+The full LLRF synthesis is done per design in `top/<design>/` instead (`make -C top/uspas`).
 
 To build CPU program only, use:
 ```bash

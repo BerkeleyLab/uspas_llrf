@@ -104,6 +104,8 @@ module marble_zest_top #(
     inout           ZEST_HDMI_CEC,
     inout           ZEST_APP_I2C_SDA,
     inout           ZEST_APP_I2C_SCL
+    // Design ports (top/<design>/design_io.vh); each line starts with a comma
+`include "design_io.vh"
 );
 
 // ---------------------------------

@@ -71,29 +71,29 @@ Detailed description of settings:
 * LLRF DSP:
   All configurations are contained in [uspas_llrf/settings.json](uspas_llrf/settings.json).
 * Board Support:
-  For each application, customized hardware settings and LLRF configurations can be found in [soc/marble_zest/common](soc/marble_zest/common), where each application's configuration files for FPGA carrier and digitizer are located at.
+  For each application, customized hardware settings and LLRF configurations can be found in `soc/<design>/` (for example [soc/uspas](soc/uspas)), where each application's configuration files for FPGA carrier and digitizer (`init_marble.c`, `init_zest.c`) are located.
 
 ## System-On-Chip architecture
 
 A RISC-V soft core [PicoRV32](https://github.com/YosysHQ/picorv32) is used for peripheral control, booting and diagnostics.
 We leverage the cross-compiler tool and common modules described in Berkeley Lab's [Bedrock](https://github.com/BerkeleyLab/Bedrock/tree/master/soc/picorv32) repository.
 
-The design can be found in [soc/marble_zest](soc/marble_zest), where:
+The design can be found in [soc/common](soc/common), where:
 
 * Open source RTL simulation:
-  See [soc/marble_zest/sim](soc/marble_zest/sim), for the booting process, using purely icarus verilog.
+  See [soc/common/sim](soc/common/sim), for the booting process, using purely icarus verilog.
 * Full RTL simulation:
-  See [soc/marble_zest/top_sim](soc/marble_zest/top_sim). This simulation process requires Xilinx vivado command tools like `xvlog` and `xelab`, for building and execution respectively.
+  See [soc/common/top_sim](soc/common/top_sim). This simulation process requires Xilinx vivado command tools like `xvlog` and `xelab`, for building and execution respectively.
   This allows the use of UNISIM models provided by vivado's installation package, for a complete behavioral verification of Xilinx primitives including XADC, ISERDES, etc, which is needed for the development of board support package with LVDS digitizer interface.
-* Hardware test: See [soc/marble_zest/synth](soc/marble_zest/synth), where two functions are implemented:
+* Hardware test: See [soc/common/synth](soc/common/synth), where two functions are implemented:
   * Synthesis: A minimal structured bitstream file containing only the soft core and essential peripherals.
   * Boot-loading: The CPU program memory in the deployed production bitstream can be updated using a boot-loading process thanks to a built-in bootloader.
     This is a well known technique in embedded system designs, and provides flexible and quick iterations for development / troubleshooting.
-    Details and examples can be found in [soc/marble_zest/synth/README.md](soc/marble_zest/synth/README.md).
+    Details and examples can be found in [soc/common/synth/README.md](soc/common/synth/README.md).
 
 ## Top level synthesize
 
-We use LBNL Bedrock's Makefile based building system to find dependencies and synthesize the bitstream file at [top/marble_zest](top/marble_zest), where the top level RTL `marble_zest_top.v` assembles the soft core, board support package and LLRF DSP together.
+We use LBNL Bedrock's Makefile based building system to find dependencies and synthesize the bitstream file in `top/<design>/` (for example [top/uspas](top/uspas)), with shared rules and sources in [top/common](top/common). The top level RTL `marble_zest_top.v` assembles the soft core, board support package and LLRF DSP together.
 
 ## Board Support Package (BSP)
 
