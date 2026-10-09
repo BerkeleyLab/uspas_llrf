@@ -14,6 +14,7 @@
 #include "llrf_regs_addr.h"
 #include "marble_regs_addr.h"
 #include "evr_gt_wrapper.h"
+#include "design_hooks.h"
 
 extern zest_init_t zest_init_data;
 extern marble_dev_t marble;
@@ -38,6 +39,7 @@ void console(char c) {
             printf("d    mailbox and marble info test\n");
             printf("l    llrf test\n");
             printf("x    troubleshoot\n");
+            design_console(c);
             break;
 
         case 'm':
@@ -103,9 +105,10 @@ void console(char c) {
             printf("GT_RESETS:  %d\n", read_lb_reg(GT_RX_RESET_CNT));
             break;
 
-        // any other key is echoed back
+        // design commands; any other key is echoed back
         default:
-            _putchar(c);
+            if (!design_console(c))
+                _putchar(c);
             return;
     }
 }

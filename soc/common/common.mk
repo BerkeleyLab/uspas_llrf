@@ -1,16 +1,11 @@
 include $(PICORV_DIR)/rules.mk
 include $(TOP)settings.mk
 APP_COMMON_DIR = $(SOC_COMMON_DIR)
-
-# Per-design firmware settings (soc/<design>/design.mk) may set SOC_INIT_DIR,
-# BLOCK_RAM_SIZE, SRCS and CFLAGS.
 SOC_DESIGN_DIR = $(SOC_DIR)/$(DESIGN)
-SOC_INIT_DIR   = $(SOC_DESIGN_DIR)
-include $(SOC_DESIGN_DIR)/design.mk
 INC_DIR       += -I$(BOARD_SUPPORT_DIR)/marble_soc/firmware -I$(BOARD_SUPPORT_DIR)/zest_soc/firmware
 VIVADO_BASE    = $(dir $(shell which vivado))..
 
-vpath %.c $(APP_COMMON_DIR) $(SOC_INIT_DIR)
+vpath %.c $(APP_COMMON_DIR)
 vpath system.v $(APP_COMMON_DIR)
 
 .PHONY: all
@@ -49,5 +44,12 @@ CFLAGS += -DNONSTD_PRINTF
 CFLAGS += -DUSPAS_LLRF_FSET=\"$(FSET)\"
 
 CLEAN += init_zest.o init_marble.o
+
+# Per-design firmware settings, included after the base lists so that
+# soc/<design>/design.mk can extend SRC_V, SRCS and CFLAGS and set
+# BLOCK_RAM_SIZE or SOC_INIT_DIR (board init files, default soc/<design>/).
+SOC_INIT_DIR = $(SOC_DESIGN_DIR)
+include $(SOC_DESIGN_DIR)/design.mk
+vpath %.c $(SOC_INIT_DIR)
 
 include $(APP_COMMON_DIR)/llrf/rules.mk

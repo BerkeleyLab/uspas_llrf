@@ -3,7 +3,10 @@
 
 import os
 import sys
-import tomli as toml
+try:
+    import tomllib as toml  # Python 3.11+
+except ImportError:
+    import tomli as toml
 
 
 def get_addr_map(filepath):

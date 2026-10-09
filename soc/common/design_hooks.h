@@ -11,5 +11,8 @@ void design_init(void);
 void design_irq(uint32_t irqs);
 // Called on every main-loop iteration.
 void design_poll(void);
+// Console commands of the design: return 1 if c was handled. Called with
+// '?' after the common help so the design can list its commands.
+int design_console(char c);
 
 #endif

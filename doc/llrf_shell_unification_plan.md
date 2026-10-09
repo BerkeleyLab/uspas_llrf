@@ -561,7 +561,7 @@ Design peripherals are instantiated **outside** `system.v`, in `top/<design>/des
 
 **Verification:**
 - Each non-ALSU design's `system32.dat` stays functionally unchanged (same `system.map` symbols, same BRAM size), and `soc/common/sim` passes.
-- ALSU must match the `alsu_fork` build: Modbus registers respond (`test_scripts/modbus_test.py` on hardware), and `report_io` shows RS485 on the same pins. ⚠ R7
+- ALSU must match the `alsu_fork` build: Modbus registers respond (`designs/alsu/scripts/modbus_test.py` on hardware), and `report_io` shows RS485 on the same pins. ⚠ R7
 
 ---
 
