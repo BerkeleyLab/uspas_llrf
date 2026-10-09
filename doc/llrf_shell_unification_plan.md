@@ -111,6 +111,8 @@ Issues seen in the ALSU delta, to fix while merging:
 | PR5 | `phase_ramp` (*future*): the comment says the in-range filter is 3 cycles, but the code uses 8. Make it a parameter. Move `timeout_counter`/`programmable_timeout` into their own file. |
 | S1 | SoC: `rs485_uart` and its pins are hard-wired in the shared `system.v`, and the Modbus sources and 64K BRAM are unconditional in `common.mk`. Every design would inherit them. |
 | S2 | Naming trap: `system`'s port `PMOD2` is board `ZEST_PMOD1`, not board `PMOD2`. Name the expansion port by function (`rs485_*`), not by PMOD. |
+| A4 | Main loop (kept as is in step 3): `update_in_progress` is set and never cleared, so after the first second the BSP status is refreshed on every loop iteration instead of at 1 Hz. |
+| X1 | bedrock `xadc_pack.v` started a second DRP read after every XADC read; its DRDY OR-ed data into the next bus transaction (a corrupted instruction fetch in `soc/common/sim`). Fixed in bedrock 11af4fd (step 3). |
 
 ### 0.4 Current status (step-1 baseline, 2026-10-06)
 
@@ -549,10 +551,10 @@ soc/<design>/                     one per design: uspas, alsu, lemp, awa, pip-ii
 
 Design peripherals are instantiated **outside** `system.v`, in `top/<design>/design_mid.vh` (§2.8), which also owns their pins. ALSU puts `rs485_uart #(.BASE_ADDR(8'h06))` there, with `ext_irq[0]` = UART1 RX and pins on `ZEST_PMOD1[3:0]`. That fixes S1 and S2, and `system.v` has no ALSU-specific code.
 
-**Firmware hook** (`design.mk` and `settings_design.h` exist from step 2; `design_init()`/`design_irq()` come with ALSU in step 3).
-- `design.mk` sets flags: ALSU uses `SOC_MODBUS=1` → `CFLAGS += -DSOC_MODBUS`, Modbus sources, and `BLOCK_RAM_SIZE=65536` (ALSU-only, D22; others keep the 32768 default).
-- `system.c` calls `design_init()` and `design_irq(irqs)`. Weak defaults are in `common/`; ALSU defines them in `soc/alsu/` (Modbus init and RX IRQ), so `system.c` has no `#ifdef` tangle.
-- ALSU's main-loop timing change becomes a `settings_design.h` define. Keep the 20 Hz default for the other designs.
+**Firmware hook** (`design.mk` and `settings_design.h` exist from step 2; the hooks below come with ALSU in step 3).
+- `design.mk` is included at the end of `common.mk`, so it can extend `SRC_V`, `SRCS` and `CFLAGS` and set `BLOCK_RAM_SIZE`. ALSU adds `rs485_uart`, the Modbus client and its generated register map, and `BLOCK_RAM_SIZE=65536` (ALSU-only, D22; others keep the 32768 default).
+- `system.c` calls `design_init()`, `design_irq(irqs)` and `design_poll()`, and `console.c` calls `design_console(c)`. Weak no-op defaults are in `soc/common/design_hooks.c`; ALSU defines them in `soc/alsu/alsu_hooks.c` (Modbus init, RX IRQ, poll, console `s`), so the common code has no `#ifdef` tangle.
+- ALSU's main-loop timing change is the `DESIGN_FAST_MAIN_LOOP` define in `settings_design.h`. The other designs keep the 20 Hz loop.
 
 **Build wiring.**
 - `top/common/top_rules.mk` builds the firmware, `system_expand.v` and `zest_fmc_dp.xdc` with `make -C soc/<design>/build -f soc/common/synth/Makefile DESIGN=<d>`, so per-design images do not collide. Before step 2 they shared `soc/marble_zest/synth/` and were only rebuilt when missing, so a local build of a second design reused the first design's firmware.
@@ -613,7 +615,7 @@ Deferred (D13): `LEMP_bypass` (klystron reverse interlock bypass), `LEMP_LCLSI_u
    - forwarders left in `top/marble_zest/` and `soc/marble_zest/`
 
    No RTL change. Each design must reproduce its step-1 baseline. ⚠ R6
-3. **ALSU merge-back** (§3.2): add the SoC expansion port and the `design_init()`/`design_irq()` firmware hooks (§2.9), merge `alsu_fork`, then re-home its top IO into `top/alsu/` and Modbus into `soc/alsu/` plus the expansion port. Adopt the upgraded `arc_inlk` (A1–A3) for all designs and the shared SoC tool fixes. Move `phase_ramp` to `designs/alsu/` as-is (PR1–PR2 only). Restore the per-design CI matrix. ⚠ R7
+3. **ALSU merge-back** (§3.2): add the SoC expansion port and the `design_init()`/`design_irq()`/`design_poll()`/`design_console()` firmware hooks (§2.9), merge `alsu_fork`, then re-home its top IO into `top/alsu/` and Modbus into `soc/alsu/` plus the expansion port. Adopt the upgraded `arc_inlk` (A1–A3) for all designs and the shared SoC tool fixes. Move `phase_ramp` to `designs/alsu/` as-is (PR1–PR2 only). Restore the per-design CI matrix. ⚠ R7
 4. **`pulse_gen` extension** (index output, AW+1 `end_val`) with unit tests.
 5. **`loop_ctrl`** with amp and phase LUTs on `dpram` and the `phs_offset`/`err` hooks, plus `PulseModulator`, `test_pulse_modulation`, `test_arc_inlk` and unit tests.
 6. **Register generator** (§2.4): `regmap.py`, `llrf_shell_regs.sv`, pkg, JSON, sv2v expand rule. Swap it in for newad on the current (still monolithic) shell. It must pass `test_regmap_compat` against the step-1 JSON and the Modbus-name check before any block refactor. ⚠ R2, R3
