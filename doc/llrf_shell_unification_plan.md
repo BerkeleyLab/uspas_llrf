@@ -105,7 +105,7 @@ Issues seen in the ALSU delta, to fix while merging:
 `phase_ramp` stays as-is (D19). Only PR1 (needed by the toolchain) and PR2 (no behavior change at ALSU's clock) are applied now. PR3–PR5 are recorded for the future generic modulator (§1.2.1).
 
 | PR1 | `phase_ramp` (**apply**): `dwell` uses `in_range` and `dwell_timeout` before they are declared. Verilator and sv2v are stricter about this; reorder the declarations. |
-| PR2 | `phase_ramp` (**apply**): `timeout_counter` hard-codes `CLOCK_PERIOD = 8.7206e-9` (ALSU). Parameterize it from `DSP_FREQ_MHZ`; the ALSU value is unchanged. Keep the 10 s timeout. |
+| PR2 | `phase_ramp` (**apply**): `timeout_counter` hard-codes `CLOCK_PERIOD = 8.7206e-9` (ALSU). Parameterize it from `DSP_FREQ_MHZ`; the ALSU value is unchanged. Keep the 10 s timeout. Done in step 3 as a `phase_ramp` `CLOCK_PERIOD` parameter with that default; ALSU's `DSP_FREQ_MHZ` (114.58) gives 8.7276e-9, so passing `1/F_DSP_HZ` in step 7 makes the timeout 0.08% longer. |
 | PR3 | `phase_ramp` (*future*): `steps = 0` makes `steps-1` underflow, so the ramp never finishes and always times out. `step_cnt` and `timeout_en` are not cleared by `reset_all`. |
 | PR4 | `phase_ramp` (*future*): it outputs an **absolute** setpoint latched from `setpoint_start`, so `phs_setpoint` writes are ignored while it holds, and opening the loop snaps back. ALSU keeps this behavior (D19). A generic modulator would use an offset accumulator. |
 | PR5 | `phase_ramp` (*future*): the comment says the in-range filter is 3 cycles, but the code uses 8. Make it a parameter. Move `timeout_counter`/`programmable_timeout` into their own file. |

@@ -58,7 +58,8 @@ endmodule
 
 module phase_ramp #(
     parameter KW = 18, // signal width
-    parameter EW = 15  // error width (saturated)
+    parameter EW = 15, // error width (saturated)
+    parameter real CLOCK_PERIOD = 8.7206e-9  // clk period [s], for the 10 s ramp timeout
 ) (
     input clk,
     input reset,
@@ -87,7 +88,6 @@ reg signed [KW-1:0] setpoint = 0;
 reg [KW-1:0] step_cnt = 0;
 reg [1:0] start_edge = 0;
 reg ramping = 0, ramp_finish_i = 0;
-wire dwell = in_range & ~dwell_timeout;
 
 wire timeout, dwell_timeout;
 wire reset_all = reset | ~enable; // forget old states when relocking
@@ -102,6 +102,7 @@ wire [EW-1:0] loop_error = ((error < 0) ? -error : error); // Take the absolute 
 wire in_range = in_range_shift == 8'b11111111;
 always @(posedge clk)
     in_range_shift <= {in_range_shift[6:0], loop_error < error_threshold};
+wire dwell = in_range & ~dwell_timeout;
 
 always @(posedge clk) begin
     if (reset_all) begin
@@ -147,7 +148,7 @@ assign setpoint_finish = setpoint;
 assign ramping_i = ramping;
 assign timeout_i = timeout_en;
 
-timeout_counter timer(
+timeout_counter #(.CLOCK_PERIOD(CLOCK_PERIOD)) timer(
     .clk    (clk),
     .reset  (dwell_timeout | ~ramping),
     .enable (~dwell_timeout & ramping),

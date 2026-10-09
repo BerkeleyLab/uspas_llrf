@@ -1,6 +1,8 @@
 `timescale 1ns / 1ns
-`include "constants.vams"
-`include "settings.vams"
+// DSP clock period [ns]; was in an external settings.vams
+`ifndef DSP_CLK_CYCLE
+`define DSP_CLK_CYCLE 8.7206
+`endif
 
 module phase_ramp_tb;
 parameter N = 80000;
