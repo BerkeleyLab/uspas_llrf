@@ -1,6 +1,6 @@
 module arc_inlk #(
     parameter N_CH = 3,
-    parameter F_CLK=125_000_000
+    parameter F_CLK=125_000_000  // clk frequency [Hz], sets the 0.5 s test/reset pulse
 ) (
     input               clk,
     input [0:0]         reset_latch, // external single-cycle
@@ -13,6 +13,7 @@ module arc_inlk #(
     output [N_CH-1:0]   permit_raw_out,
     output [N_CH-1:0]   permit_latch_out,
     output              permit_sum_out,
+    output              testing_out,     // test/reset pulse active
 
     // device interface
     input [N_CH-1:0]    dev_permit_in,
@@ -37,8 +38,10 @@ localparam CW = $clog2(MAX_COUNT);
 reg [CW-1:0] counter=0;
 
 reg testing=1'b0;
-reg [3:0] reset_test_mask_r=0;
-assign {dev_reset_out, dev_test_out} = testing ? reset_test_mask_r : 4'h0;
+reg [N_CH:0] reset_test_mask_r=0;
+assign {dev_reset_out, dev_test_out} = testing ? reset_test_mask_r : {(N_CH+1){1'b0}};
+// Test and reset requests are ignored while a pulse is active
+assign testing_out = testing;
 
 always @(posedge clk) begin
   permit_rbk <= dev_permit_in;
@@ -52,7 +55,7 @@ always @(posedge clk) begin
   end else begin
     if (test_stb | reset_arc_dev) begin
       // Ignore test_mask if reset requested
-      if (reset_arc_dev) reset_test_mask_r <= 4'b1000;
+      if (reset_arc_dev) reset_test_mask_r <= {1'b1, {N_CH{1'b0}}};
       else reset_test_mask_r <= {1'b0, test_mask[N_CH-1:0]};
       testing <= 1'b1;
     end

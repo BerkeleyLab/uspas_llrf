@@ -184,7 +184,9 @@ assign drive_permit_in = 1'b1;
 assign slow_permit_in  = 1'b1;
 assign arc_permit_in   = 3'b0;
 `endif
-llrf_shell llrf_inst (
+llrf_shell #(
+    .F_DSP_HZ       ($rtoi(`DSP_FREQ_MHZ * 1e6))  // arc_inlk pulse timing (A2)
+) llrf_inst (
     .lb_clk         (lb_clk),
     .lb_addr        (lb_addr[17:0]),
     .lb_write       (lb_write_0),

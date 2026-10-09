@@ -37,6 +37,7 @@ wire permit_sum;
 reg [2:0] test_mask=0;
 reg test_stb=1'b0;
 reg [2:0] permit_mask = 3'b111;
+wire testing;
 arc_inlk #(
   .N_CH(3),
   .F_CLK(F_CLK)
@@ -52,7 +53,8 @@ arc_inlk #(
   .test_stb(test_stb), // input
   .dev_permit_in(permit), // input [2:0]
   .dev_test_out(test_out), // output [2:0]
-  .dev_reset_out(board_reset) // output
+  .dev_reset_out(board_reset), // output
+  .testing_out(testing) // output
 );
 
 wire busy = (|test_out) | board_reset;
@@ -88,7 +90,11 @@ initial begin
   #(2*TICK) test_mask = 3'b101;
   test_stb  = 1'b1;
   #TICK test_stb = 1'b0;
-  #(2*TICK) if (test_out !== test_mask) begin
+  #(2*TICK) if (!testing) begin
+    $display("ERROR: testing_out low during a test pulse");
+    $stop(0);
+  end
+  if (test_out !== test_mask) begin
     $display("ERROR: test pattern = %b != mask %b", test_out, test_mask);
     $stop(0);
   end
