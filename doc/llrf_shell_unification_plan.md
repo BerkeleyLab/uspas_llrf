@@ -118,7 +118,7 @@ Reference results that later steps must reproduce (step 1, R2, R6). The reports 
 
 - Vivado: 2022.1, `xc7k160tffg676-2`, CI job `llrf_synthesis` (`top/marble_zest`, `make DESIGN=<d>`) on `main` 20c4c1c (bedrock b4ea165), on `alsu_fork` bb162b7 (bedrock e1313d5), and on the `LEMP` branch 2e25cd9 (bedrock 235f3e3; the later commits up to `origin/LEMP` 7e56f3b change only Python plotting scripts).
 - CDC and tb: run locally on `main` 20c4c1c with bedrock e1313d5, on `alsu_fork` bb162b7, and on `LEMP` 2e25cd9 (`llrf_dsp/`, `llrf_dsp/tests/llrf_shell`). bedrock e1313d5 changes only `cic_wave_recorder`; with it, every newad `llrf_shell.json` and config-ROM JSON is byte-identical.
-- `lemp` on `main` is a symlink to the uspas shell, not the LEMP-branch shell. The **LEMP-branch** row is the reference for step 9 (R1, R6).
+- `lemp` on `main` is a symlink to the uspas shell, not the LEMP-branch shell. The **LEMP-branch** row is the reference for step 9 (R1, R6), and `designs/lemp/_baseline/llrf_shell.json` is the LEMP-branch register map (2e25cd9).
 - pip-ii is not in the CI synthesis matrix, so it has no Vivado result.
 
 **Utilization and timing** (device totals: 101400 LUT, 202800 FF, 325 BRAM tiles, 600 DSP, 400 IOB)
@@ -380,7 +380,7 @@ BLOCKS = [*sig_bufs(SIG_BUF_AW), *mod_luts(LUT_AW), Block('circle_data', aw=CBUF
 
 **Checks:**
 - `test_regmap_consistency` (cic_waves pattern): `P_ADDR_*` exported by the shell must equal the JSON.
-- `test_regmap_compat` compares each design's generated JSON with the **baseline newad JSON captured in step 1** (for LEMP: the LEMP-branch `llrf_shell.json`, since `designs/lemp` on main is a uspas copy). Names, `data_width`, `sign` and `access` must match, except the intentional renames (D11) and additions (LUTs) listed in an allow-list.
+- `test_regmap_compat` compares each design's generated JSON with the **baseline newad JSON captured in step 1** (for LEMP, `designs/lemp/_baseline/llrf_shell.json` is the LEMP-branch JSON, see step 1). Names, `data_width`, `sign` and `access` must match, except the intentional renames (D11) and additions (LUTs) listed in an allow-list.
 - Every `LLRFInitRegisters` field must exist in the regmap with a matching width.
 - Every `leep_name` in `soc/alsu/mb_addr_map.toml` must exist in ALSU's generated JSON, including the instance-derived `arc_*`/`inlk_*` names and the `rf_pwr_*` aliases.
 
@@ -606,7 +606,7 @@ Deferred (D13): `LEMP_bypass` (klystron reverse interlock bypass), `LEMP_LCLSI_u
 
 ## 4. Sequencing (one MR each, CI green)
 
-1. **Baseline:** results for all design tbs, CDC, and Vivado utilization/timing, plus `report_io` and the config ROM JSON per design. **Archive each design's newad `llrf_shell.json`** under `designs/<d>/_baseline/`. For ALSU, take the baseline from an **`alsu_fork` build** (it is the deployed state), including the generated Modbus header. ⚠ R2, R6
+1. **Baseline:** results for all design tbs, CDC, and Vivado utilization/timing, plus `report_io` and the config ROM JSON per design. **Archive each design's newad `llrf_shell.json`** under `designs/<d>/_baseline/`. For ALSU, take the baseline from an **`alsu_fork` build** (it is the deployed state), including the generated Modbus header. For LEMP, take it from the **LEMP branch** (`llrf_dsp/llrf_shell.json` at 2e25cd9, bedrock 235f3e3; 187 registers including `iq_buf`), not from `designs/lemp` on main, which is a uspas copy (replaced 2026-10-09). ⚠ R2, R6
 2. **Per-design top and SoC** (§2.8, §2.9):
    - `top/common/` plus thin `top/{uspas,alsu,lemp,awa,pip-ii}/` with the override hooks and per-design `_xilinx/`
    - `soc/common/` plus `soc/<design>/` with `design.mk` and `settings_design.h`; move the `init_*_<FSET>.c` files (the SoC expansion port and firmware hooks move to step 3)
