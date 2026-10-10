@@ -27,10 +27,12 @@ module llrf_skin #(
     // ---------------------
     // FO Interlock interface
     // ---------------------
-    input                drive_permit_in,  // From RF Drive Control
-    input                slow_permit_in,   // From Master Interlock PLC
-    output               fast_permit_out,  // To Master Interlock PLC, RF Drive Control
-    output               hpa_permit_out,   // To HPA
+    input                drive_permit_in,     // From RF Drive Control
+    input                slow_permit_in,      // From Master Interlock PLC
+    output               fast_permit_out,     // To RF Drive Control
+    output               fast_rf_permit_out,  // To Master Interlock PLC
+    output               evg_permit_out,      // To EVG
+    output               hpa_permit_out,      // To HPA (Osc Permit)
 
     // ---------------------
     // ARC Interlock interface

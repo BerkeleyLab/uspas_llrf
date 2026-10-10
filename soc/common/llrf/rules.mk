@@ -21,7 +21,7 @@ $(DESIGN_DSP_DIR)/llrf_shell_init_regs.json:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
 llrf_regs_addr.h: $(DESIGN_DSP_DIR)/llrf_shell.json
-	$(PYTHON) $(LLRF_DIR)/localbus_address_map.py -i $< -o $@
+	$(PYTHON) $(COMMON_DIR)/localBusAddressMap.py $< $@
 
 marble_regs_addr.h: $(BSP_DIR)/marble_bsp.json
 	$(PYTHON) $(LLRF_DIR)/localbus_address_map.py -i $< -o $@

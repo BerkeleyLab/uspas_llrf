@@ -100,7 +100,10 @@ module system_tb;
         .lb_merge_rvalid    (lb_rvalid),
         .rst                (rst),
         .mem_packed_fwd     (mem_packed_fwd),
-        .mem_packed_ret     (mem_packed_ret)
+        .mem_packed_ret     (mem_packed_ret),
+        .ext_mem_packed_fwd (),
+        .ext_mem_packed_ret (33'b0),
+        .ext_irq            (4'b0)
     );
 
     // mirror ram to test write / read lb registers

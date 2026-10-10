@@ -15,6 +15,7 @@
 #include "llrf.h"
 #include "evr_gt_wrapper.h"
 #include "string.h"
+#include "design_hooks.h"
 #ifdef SIMULATION
 #include "llrf_regs_addr.h"
 #endif
@@ -32,6 +33,8 @@ void _putchar(char c){
 volatile char last_char=0;
 uint32_t *irq(uint32_t *regs, uint32_t irqs)
 {
+    design_irq(irqs);
+
     if (irqs & (1 << IRQ_UART0_RX)) {
         // Ctrl + T = reset
         last_char = UART_GETC(BASE_UART0);
@@ -45,6 +48,25 @@ uint32_t *irq(uint32_t *regs, uint32_t irqs)
 void memcpy_lb_dma(uint32_t base, unsigned char *buffer, size_t len) {
     for (size_t ix=0; ix<len; ix++) {
         write_lb_reg(base + ix, *buffer++);
+    }
+}
+
+#ifdef DESIGN_FAST_MAIN_LOOP
+// Milliseconds since reset, from the CPU cycle counter
+static uint32_t uptime_ms(void) {
+    uint64_t cs = _picorv32_rd_cycle_64();
+    return cs / (F_CLK / 1000);
+}
+#endif
+
+static void update_bsp_status(void) {
+    if (marble_init_data.enable_poll_status) {
+        get_marble_info(&marble);
+        memcpy_lb_dma(BSP_INFO_BUF, (unsigned char *)&marble, sizeof(marble));
+    }
+    if (zest_init_data.enable_poll_status) {
+        get_zest_status(&zest);
+        memcpy_lb_dma(BSP_INFO_BUF+sizeof(marble), (unsigned char *)&zest, sizeof(zest));
     }
 }
 
@@ -126,30 +148,43 @@ int main(void) {
         pass &= init_evr_gt();
         printf("==== EVR Init          ==== : %s.\n", pass?"PASS":"FAIL");
     }
+    design_init();
 
     set_llrf_soft_drive_enable(pass);
     set_llrf_bist_pass(pass);
 
+#ifdef DESIGN_FAST_MAIN_LOOP
+    // No fixed delay, so design_poll() runs as often as possible (ALSU Modbus)
+    uint32_t time_ms = 0, new_time_ms = 0;
+    int update_in_progress = 0;
+#else
     unsigned cnt=0;
+#endif
     while(1) {
         if (last_char) {
             console(last_char);
         }
         last_char = 0;
+        design_poll();
 
+#ifdef DESIGN_FAST_MAIN_LOOP
+        new_time_ms = uptime_ms();
+        if (((new_time_ms - time_ms) >= 1000) || update_in_progress) { // update rate 1 Hz
+            // update_in_progress is never cleared, so after the first second
+            // the status is refreshed on every iteration (alsu_fork behavior)
+            if (marble_init_data.enable_poll_status)
+                update_in_progress = 1;
+            update_bsp_status();
+            time_ms = new_time_ms;
+        }
+#else
         // 20 Hz cycle time
         DELAY_US(50000);
         cnt++;
         if (cnt % 20 == 0) {    // update rate 1 Hz
-            if (marble_init_data.enable_poll_status) {
-                get_marble_info(&marble);
-                memcpy_lb_dma(BSP_INFO_BUF, (unsigned char *)&marble, sizeof(marble));
-            }
-            if (zest_init_data.enable_poll_status) {
-                get_zest_status(&zest);
-                memcpy_lb_dma(BSP_INFO_BUF+sizeof(marble), (unsigned char *)&zest, sizeof(zest));
-            }
+            update_bsp_status();
         }
+#endif
     }
 
 #endif   // #ifdef SIMULATION

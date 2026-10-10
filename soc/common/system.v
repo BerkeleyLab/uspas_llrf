@@ -43,7 +43,14 @@ module system #(
 
     output              rst,
     output [68:0]       mem_packed_fwd,
-    input  [32:0]       mem_packed_ret
+    input  [32:0]       mem_packed_ret,
+
+    // Expansion port for design peripherals instantiated outside system
+    // (top/<design>/design_mid.vh). Tie ext_mem_packed_ret and ext_irq to 0
+    // when unused.
+    output [68:0]       ext_mem_packed_fwd,
+    input  [32:0]       ext_mem_packed_ret,
+    input  [3:0]        ext_irq             // to irqFlags[7:4]
 );
 
 // --------------------------------------------------------------
@@ -90,7 +97,8 @@ wire [68:0] packed_cpu_fwd;
 wire [32:0] packed_cpu_ret;
 
 assign irqFlags[2:0] = 0;
-assign irqFlags[31:4]= 0;
+assign irqFlags[7:4] = ext_irq;
+assign irqFlags[31:8]= 0;
 
 pico_pack cpu_inst (
     .clk           ( clk            ),
@@ -120,7 +128,8 @@ assign packed_cpu_ret = packed_mem_ret |
                         packed_URT0_ret|
                         packed_lbus_ret|
                         packed_xadc_ret|
-                        packed_fmc_ret;
+                        packed_fmc_ret |
+                        ext_mem_packed_ret;
 
 // --------------------------------------------------------------
 //  Instantiate the memory (holds data and program!)
@@ -276,6 +285,11 @@ lb_merge #(
 assign rst = reset;
 assign mem_packed_fwd = packed_cpu_fwd;
 assign packed_fmc_ret = mem_packed_ret;
+
+// --------------------------------------------------------------
+//  Expansion port (design peripherals)
+// --------------------------------------------------------------
+assign ext_mem_packed_fwd = packed_cpu_fwd;
 
 // --------------------------------------------------------------
 //  GPIO control

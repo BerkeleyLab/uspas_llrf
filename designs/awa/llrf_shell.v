@@ -37,6 +37,7 @@
 // 30000 to 3ffff   Circular buffer
 
 module llrf_shell #(
+    parameter integer F_DSP_HZ = 125_000_000,  // dsp_clk frequency, sets the arc_inlk 0.5 s pulse
     parameter integer CBUF_DW = 24,
     parameter integer CBUF_AW = 16,
     parameter integer SIG_BUF_AW = 11,
@@ -514,7 +515,8 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire [2:0] arc_permit_raw;
     wire [2:0] arc_permit_latch;
     wire arc_permit_sum;
-    arc_inlk #(.N_CH(3)) arc // auto lb1
+    wire arc_testing;
+    arc_inlk #(.N_CH(3), .F_CLK(F_DSP_HZ)) arc // auto lb1
         (.clk               (dsp_clk),
         .permit_mask        (arc_permit_mask),
         .dev_permit_in      (arc_permit_in),
@@ -523,6 +525,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .permit_raw_out     (arc_permit_raw),
         .permit_latch_out   (arc_permit_latch),
         .permit_sum_out     (arc_permit_sum),
+        .testing_out        (arc_testing),
         `AUTOMATIC_arc);
 
     assign inlk_arc_permit = inlk_permit_out && arc_permit_sum;
@@ -849,12 +852,13 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire [2:0] arc_permit_raw_lb;
     wire [2:0] arc_permit_latch_lb;
     wire [0:0] arc_permit_sum_lb;
-    data_xdomain #(.size(3+3+1)) arc_stat_xdomain (
+    wire [0:0] arc_testing_lb;
+    data_xdomain #(.size(1+3+3+1)) arc_stat_xdomain (
         .clk_in   (dsp_clk),
         .gate_in  (dsp_tick),
-        .data_in  ({arc_permit_sum, arc_permit_latch, arc_permit_raw}),
+        .data_in  ({arc_testing, arc_permit_sum, arc_permit_latch, arc_permit_raw}),
         .clk_out  (lb_clk),
-        .data_out ({arc_permit_sum_lb, arc_permit_latch_lb, arc_permit_raw_lb})
+        .data_out ({arc_testing_lb, arc_permit_sum_lb, arc_permit_latch_lb, arc_permit_raw_lb})
     );
 
     // ---------------------
@@ -911,6 +915,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             4'h2: reg_bank_1 <= pps_valid_lb;         // alias: evr_pps_valid
             4'h3: reg_bank_1 <= oc_valid_lb;          // alias: evr_oc_valid
             4'h4: reg_bank_1 <= oc_evr_frequency;     // alias: evr_oc_frequency
+            4'h5: reg_bank_1 <= arc_testing_lb;       // alias: arc_testing
             default: reg_bank_1 <= 32'hfaceface;
         endcase
     end

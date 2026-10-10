@@ -27,8 +27,8 @@ def write_init(init_dict, ifname, ofname):
     cf += 'const init_llrf_data_t llrf_init_data = {'
 
     cf += '''
-    sizeof({}) / sizeof({}[0]),
-    {}\n'''.format(var_name, var_name, var_name)
+    sizeof({}) / sizeof(lbreg32_t),
+    {}\n'''.format(var_name, var_name)
 
     cf += '};\n'
     with open(ofname, "w") as f:

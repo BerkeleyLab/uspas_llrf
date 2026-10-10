@@ -1,8 +1,8 @@
 `timescale 1 ns / 1 ns
 
 module system_top (
-	input           GTPREFCLK_P,
-	input           GTPREFCLK_N,
+    input           GTPREFCLK_P,
+    input           GTPREFCLK_N,
 
     inout [7:0]     PMOD1,
     inout [7:0]     PMOD2,
@@ -162,7 +162,10 @@ system #(
     .lb_merge_rvalid(lb_rvalid),
     .rst            (rst),
     .mem_packed_fwd (mem_packed_fwd),
-    .mem_packed_ret (mem_packed_ret)
+    .mem_packed_ret     (mem_packed_ret),
+    .ext_mem_packed_fwd (),
+    .ext_mem_packed_ret (33'b0),
+    .ext_irq            (4'b0)
 );
 
 // LB read mux: Match READ_DELAY=3 in system.v
