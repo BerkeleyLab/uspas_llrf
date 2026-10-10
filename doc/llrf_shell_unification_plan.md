@@ -113,6 +113,7 @@ Issues seen in the ALSU delta, to fix while merging:
 | S2 | Naming trap: `system`'s port `PMOD2` is board `ZEST_PMOD1`, not board `PMOD2`. Name the expansion port by function (`rs485_*`), not by PMOD. |
 | A4 | Main loop (kept as is in step 3): `update_in_progress` is set and never cleared, so after the first second the BSP status is refreshed on every loop iteration instead of at 1 Hz. |
 | X1 | bedrock `xadc_pack.v` started a second DRP read after every XADC read; its DRDY OR-ed data into the next bus transaction (a corrupted instruction fetch in `soc/common/sim`). Fixed in bedrock 11af4fd (step 3). |
+| Z1 | LEMP startup (pre-existing, seen in the step-3 `lemp_run`; not caused by step 3): after a bitstream load, BUFR `CLR` retries in bedrock `zest.c` `align_adc_clk_phase()` sometimes reach only two adjacent `clk_div` phases (ADC0 −43/−107, ADC1 −58/−122) and never the `phs_center` state (ADC0 ≈85, ADC1 ≈70), so the phase check fails after 128 retries. Which states are reachable is set per boot by the clock/ADC init (a soft reboot recovers; the same bitstream passes on other loads). The `clk_div`→`dsp_clk` crossing is a single `reg_tech_cdc` flop in an asynchronous clock group, so `phs_center` is its only margin control. Fix later in bedrock: re-run the clock/ADC init when the retries fail, and validate any extra accepted phase with long PN9 captures (and a phase sweep if available). |
 
 ### 0.4 Current status (step-1 baseline, 2026-10-06)
 
