@@ -369,7 +369,9 @@ BLOCKS = [*sig_bufs(SIG_BUF_AW), *mod_luts(LUT_AW), Block('circle_data', aw=CBUF
 **Outputs** (into `designs/<d>/_gen/`):
 1. `llrf_shell_regs.sv`: storage, per-domain decode and crossings, strobes, mirror, status readback (lb and jit_rad banks)
 2. `llrf_shell_regmap_pkg.sv`: `cfg_*_t`/`status_t` structs, `ADDR_*`/`AW_*`, and index-ordered arrays (`ADDR_SIG_I_BUF[N_CH]`, `ADDR_AMP_LUT[N_DRIVE]`) for generate loops
-3. `llrf_shell.json`, consumed unchanged by `leep.build_rom` (config ROM), `soc/.../localbus_address_map.py` (C header), `gen_init_reg.py` and `LocalbusAppMaster`
+3. `llrf_shell.json`, consumed unchanged by `leep.build_rom` (config ROM), the SoC C-header generator, `gen_init_reg.py` and `LocalbusAppMaster`
+
+**SoC address-map headers (step 6).** Today two scripts make them: bedrock `localBusAddressMap.py` for `llrf_regs_addr.h` (unrolls arrays with `addr_width` 1–6 to `NAME_0..n`, drops arrays wider than that, timestamped output) and the repo's `soc/common/llrf/localbus_address_map.py` for `marble_regs_addr.h` (base names only, integer `base_addr` only). The firmware needs the unrolled llrf names (`MON_PHS_0`, `DSP_SLOW_ADC_MIN_0`) and the large marble arrays (`BSP_INFO_BUF`, `MARBLE_MBOX_BUF`). Replace both with one repo script that emits a base name for every entry plus `NAME_0..n` for arrays up to `addr_width` 6, accepts string or integer `base_addr`, checks duplicates and range, and has no timestamp. Both current headers agree on every common name, so this is a superset and needs no firmware change.
 4. a README address table
 
 **Allocation:**
@@ -617,9 +619,9 @@ Deferred (D13): `LEMP_bypass` (klystron reverse interlock bypass), `LEMP_LCLSI_u
 
    No RTL change. Each design must reproduce its step-1 baseline. ⚠ R6
 3. **ALSU merge-back** (§3.2): add the SoC expansion port and the `design_init()`/`design_irq()`/`design_poll()`/`design_console()` firmware hooks (§2.9), merge `alsu_fork`, then re-home its top IO into `top/alsu/` and Modbus into `soc/alsu/` plus the expansion port. Adopt the upgraded `arc_inlk` (A1–A3) for all designs and the shared SoC tool fixes. Move `phase_ramp` to `designs/alsu/` as-is (PR1–PR2 only). Restore the per-design CI matrix. ⚠ R7
-4. **`pulse_gen` extension** (index output, AW+1 `end_val`) with unit tests.
+4. **`pulse_gen` extension** (index output, AW+1 `end_val`) with unit tests. Done as: `res` input and registered `pulse_idx = (pc - start) >> res`, aligned with `pulse_dval` (P3, P5); AW+1 `end_val` (P6); existing instances tie `res` to 0. The per-loop AW=32 instances and the removal of pip-ii's `mod_pulse_gen` move to step 5, where `loop_ctrl` replaces them; P4 (2-clock LUT latency) is in `loop_ctrl`.
 5. **`loop_ctrl`** with amp and phase LUTs on `dpram` and the `phs_offset`/`err` hooks, plus `PulseModulator`, `test_pulse_modulation`, `test_arc_inlk` and unit tests.
-6. **Register generator** (§2.4): `regmap.py`, `llrf_shell_regs.sv`, pkg, JSON, sv2v expand rule. Swap it in for newad on the current (still monolithic) shell. It must pass `test_regmap_compat` against the step-1 JSON and the Modbus-name check before any block refactor. ⚠ R2, R3
+6. **Register generator** (§2.4): `regmap.py`, `llrf_shell_regs.sv`, pkg, JSON, sv2v expand rule, and one SoC address-map header generator for both `llrf_regs_addr.h` and `marble_regs_addr.h`. Swap it in for newad on the current (still monolithic) shell. It must pass `test_regmap_compat` against the step-1 JSON and the Modbus-name check before any block refactor. ⚠ R2, R3
 7. **Package, `lb_if`, `lb_rd_mux`, `rx_chain`, `tx_chain`, `diag`.** Convert `designs/uspas/llrf_shell.sv` to blocks; awa and pip-ii reuse it. Create **`designs/alsu/llrf_shell.sv`** (base blocks plus `phase_ramp` on loop 0, EVR start, through `phs_offset`), the ALSU TB subclass with `test_phase_ramp`, and the `PhaseRamp` model. Apply the naming convention (§2.4.1) in the shell, model, TB, `mb_addr_map.toml` and `designs/alsu/scripts/phase_ramp.py`. ⚠ R5, R7
 8. **Bring LEMP pieces to main** (§3.1 step 1): generic ones into blocks, LEMP-only ones into `designs/lemp/`.
 9. **`designs/lemp/llrf_shell.sv`, `top/lemp/` and `soc/lemp/`** (`design_io.vh`, `design_mid.vh`, `design.xdc`, fiber/GTP, `interlock/` moved into `designs/lemp/`), plus the LEMP TB subclass. Port the `// auto` trigger regs to array `Reg`s. ⚠ R1, R6
