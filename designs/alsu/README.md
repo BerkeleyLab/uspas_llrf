@@ -5,8 +5,8 @@ This directory contains the DSP configuration and static register mapping for th
 ## Design Architecture & Shell Flavor
 
 - **Frequency Configuration (`FSET`)**: `ALSU`
-- **`llrf_shell.v` Flavor**: **Baseline** (symbolic link to `../uspas/llrf_shell.v`)
-- **`static_regmap.json`**: Symbolic link to `../uspas/static_regmap.json`
+- **`llrf_shell` Flavor**: **Baseline** (`SHELL_SRC = ../uspas/llrf_shell.sv` in the Makefile)
+- **Register map**: the base map in `uspas_llrf/regmap.py`
 - **Testbench**: Uses unified cocotb runner `tb/llrf_shell/` based on `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell`.
 
 ---

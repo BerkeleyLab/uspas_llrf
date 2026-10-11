@@ -15,6 +15,7 @@ Required system & FPGA tools:
 - **Verilator** (v5.038+ tested) or **Icarus Verilog** (v12.0 tested)
 - **cocotb** (v2.0.1)
 - **Yosys** (for synthesis & CDC checks)
+- **sv2v** (v0.0.13-13-g493a88f tested): converts the SystemVerilog shells (`designs/*/llrf_shell.sv`, `llrf_dsp/*.sv`) into `llrf_shell_expand.v` for Vivado, Yosys and the testbenches
 - **Xilinx Vivado 2022.1+** (for bitstream synthesis and `top_sim`)
 - Submodules: LBNL `submodules/bedrock` (must be initialized: `git submodule update --init --recursive`)
 

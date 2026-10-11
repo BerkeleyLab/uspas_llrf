@@ -138,3 +138,14 @@ def test_address_header():
         lam.address_defines({**regmap_, 'mon_phs_0': regmap_['dsp_tag']})
     with pytest.raises(ValueError, match='outside'):
         lam.address_defines({'x': {'base_addr': lam.LB_LIMIT, 'addr_width': 0}})
+
+
+def test_readback_windows():
+    """Every llrf_shell.json entry of the SV shell is inside a readback window
+    of the generated mux (windows() also rejects overlapping windows)."""
+    m = regmap.load_map()
+    wins = [(base, base + (1 << aw)) for _, base, aw, _ in regmap.windows(m)]
+    for name, e in regmap.shell_json(m).items():
+        lo, hi = e['base_addr'], e['base_addr'] + (1 << e['addr_width'])
+        covered = sum(min(hi, b) - max(lo, a) for a, b in wins if a < hi and lo < b)
+        assert covered == hi - lo, f"{name}: [{lo:#x}, {hi:#x}) not fully decoded"
