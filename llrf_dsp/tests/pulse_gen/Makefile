@@ -9,5 +9,6 @@ VERILOG_SOURCES += $(APP_DSP_DIR)/$(DUT).v
 
 # module parameters
 export PARAM_AW  := 12
+export PARAM_RW  := 4
 
 include ../cocotb_inc.mk

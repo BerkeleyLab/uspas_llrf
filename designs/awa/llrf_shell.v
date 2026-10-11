@@ -264,6 +264,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .start      (0),
         .high_len   (1<<SIG_BUF_AW),
         .stb_in     (1'b1),
+        .res        (4'd0),
         .pulse_dval (sig_buf_dval),
         .pulse_last (sig_buf_last)
     );
@@ -405,6 +406,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .start      (trigger_delay),
         .high_len   (24'd1),
         .stb_in     (1'b1),
+        .res        (4'd0),
         .pulse_dval (wave_trig)
     );
     assign trig_out = wave_trig;
@@ -696,6 +698,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
             .trigger    (wave_trig),
             .high_len   (pulse_high_len[ch]),   // unit: DSP_CLK_CYCLE
             .stb_in     (1'b1),
+            .res        (4'd0),
             .pulse_dval (pulse_dval[ch])
         );
 
