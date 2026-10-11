@@ -1,44 +1,23 @@
 import argparse
 import pprint
-from enum import IntEnum
-from dataclasses import dataclass
 import numpy as np
 import json
 from uspas_llrf import dsp_config, CICWaveRecorder, RX, TX, LLRF_DSP
-
-
-class WaveTrigSel(IntEnum):
-    Internal = 0
-    External = 1
-    Software = 2
-    EVR = 3
-    Always = 4
-    Mixed = 5
-
-
-class DacDriveSel(IntEnum):
-    I0Q0 = 0
-    I1Q1 = 1
-    I0I1 = 2
-    Q0Q1 = 3
-
-
-class InlkFaultMode(IntEnum):
-    LoLo = 0b00  # V < lower_thresh and V < upper_thresh
-    LoHi = 0b01  # lower_thresh <= V < upper_thresh
-    HiLo = 0b10  # upper_thresh <= V < lower_thresh (shouldn't happen)
-    HiHi = 0b11  # V >= lower_thresh and V >= upper_thresh
+from uspas_llrf import regmap
+from uspas_llrf.regmap import WaveTrigSel, DacDriveSel, InlkFaultMode  # noqa: F401
 
 
 class LLRFShell(LLRF_DSP):
-    def __init__(self, dsp_config=dsp_config['USPAS'], wave_samp_per=1):
+    def __init__(self, dsp_config=dsp_config['USPAS'], wave_samp_per=1, design=None):
         """Represent DSP modules in llrf_shell.v, which include separate RX
         and TX DDS for digital down and up conversion, where the TX DUC is
         in dac_clk domain with interpolation (upsample). Also, CIC waveform
         and interlock data streams are included with gain properties.
 
-        A set of registers are created for initialization during booting.
-        The value of these registers are generated based on DSP configuration.
+        A set of registers are created for initialization during booting:
+        the registers with an init value in uspas_llrf/regmap.py. Their
+        values are generated based on DSP configuration and checked against
+        the register widths.
         A json file is generated and converted into C source files for actual
         build.
 
@@ -48,83 +27,15 @@ class LLRFShell(LLRF_DSP):
             dsp_config (str): Application configuration key (aka FSET),
               in ['LEMP', 'ALSU', 'USPAS', 'AWA']
             wave_samp_per (int): CIC waveform decimation factor
+            design (str): designs/<design> whose register map holds the
+              boot-time registers (default: the base map)
         """
         self.wave_samp_per = wave_samp_per
+        self.regs = regmap.load_design(regmap.design_file(design))
+        self.LLRFInitRegisters = regmap.init_registers(self.regs)
         super().__init__(dsp_config)
         self.feedback_adc = self.config['LOOP0_ADC_CHAN']
         self.phaseref_adc = self.config['PRL_ADC_CHAN']
-
-    @dataclass
-    class LLRFInitRegisters:
-        """Initial register configuration for LLRF DSP module."""
-        rx_dds_amplitude: int = 0
-        rx_dds_phase_step: int = 0
-        rx_dds_phase_shift: int = 0
-        rx_dds_modulo: int = 0
-        tx_dds_amplitude: int = 0
-        tx_dds_phase_step: int = 0
-        tx_dds_phase_shift: int = 0
-        tx_dds_modulo: int = 0
-        duc_spectral_flip: bool = False
-        tx_afe_spectral_flip: bool = False
-        wave_samp_per: int = 1
-        cic_base_period: int = 14
-        cic_wave_shift: int = 0
-        inlk_wave_shift: int = 0
-        inlk_permit_mask: int = 0x0
-        arc_permit_mask: int = 0x0
-        chan_keep: int = 0
-        rx_phase_offset: int = 0
-        tx_phase_offset: int = 0
-        loop0_amp_setpoint: int = 0
-        loop0_max_amp_setpoint: int = 0
-        loop0_phs_setpoint: int = 0
-        loop0_Kp_amp: int = 0
-        loop0_Ki_amp: int = 0
-        loop0_Kp_phs: int = 0
-        loop0_Ki_phs: int = 0
-        loop0_amp_enable: bool = False
-        loop0_phs_enable: bool = False
-        loop0_amp_reset: bool = False
-        loop0_phs_reset: bool = False
-        loop1_amp_setpoint: int = 0
-        loop1_max_amp_setpoint: int = 0
-        loop1_phs_setpoint: int = 0
-        loop1_Kp_amp: int = 0
-        loop1_Ki_amp: int = 0
-        loop1_Kp_phs: int = 0
-        loop1_Ki_phs: int = 0
-        loop1_amp_enable: bool = False
-        loop1_phs_enable: bool = False
-        loop1_amp_reset: bool = False
-        loop1_phs_reset: bool = False
-        pulse_modes: int = 0
-        loop0_pulse_start: int = 0
-        loop0_pulse_high_len: int = 10
-        loop1_pulse_start: int = 0
-        loop1_pulse_high_len: int = 10
-        soft_drive_enable: int = 0b11
-        slow_snap_cic: bool = False
-        # buffer syncs from a drive permit drop to the fault record freeze;
-        # 0 (power-up value) disables the freeze, see cic_waves.v
-        cbuf_post_delay: int = 1
-        prl_adc_chan: int = 0
-        loop0_adc_chan: int = 0
-        loop1_adc_chan: int = 0
-        wave_trig_sel: int = WaveTrigSel.Always
-        dac_drive_sel: int = DacDriveSel.I0Q0
-        trigger_delay: int = 0
-        int_trigger_period: int = 5750000
-        evcode: int = 0
-
-        def __setattr__(self, name, value):
-            """Enforce data type casting, e.g. int"""
-            annotations = getattr(self, '__annotations__', {})
-            if name in annotations:
-                expected_type = annotations[name]
-                if not isinstance(value, expected_type):
-                    value = expected_type(value)
-            super().__setattr__(name, value)
 
     def init_modules(self):
         """ Assemble DSP modules """
@@ -269,6 +180,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--conf", default="USPAS",
                         help="Configuration key in settings.json")
+    parser.add_argument("-d", "--design", help="designs/<design> register map (default: base map)")
     parser.add_argument("--write-init-reg",
                         help="Path to write initialization registers json")
     parser.add_argument("--write-verilog-header",
@@ -276,7 +188,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    model = LLRFShell(dsp_config[args.conf])
+    model = LLRFShell(dsp_config[args.conf], design=args.design)
     if args.write_init_reg:
         pprint.pp(model.init_regs)
         pprint.pp(model.cal_factors)
