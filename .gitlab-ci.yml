@@ -25,6 +25,11 @@ flake8_check:
   script:
    - flake8 uspas_llrf llrf_dsp/tests
 
+regmap_test:
+  stage: test
+  script:
+    - pytest uspas_llrf/tests/test_regmap.py
+
 llrf_dsp_test:
   stage: test
   script:

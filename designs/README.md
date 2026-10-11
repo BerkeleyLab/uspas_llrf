@@ -18,6 +18,8 @@ This directory contains standalone accelerator facility designs, customized `llr
 2. **Customized `llrf_shell.v` & Static Register Maps**:
    Each design assembles DSP functional blocks from `llrf_dsp/` (DDC, DUC, DDS, PI controllers, circular buffers, interlocks, EVR timing) into a top-level `llrf_shell.v`, accompanied by a `static_regmap.json` specifying static memory and buffer address layouts.
 
+   The rw registers are declared in `uspas_llrf/regmap.py` (the base map), extended by `designs/<design>/design.py` where a design has its own (pip-ii). The build generates `_gen/llrf_shell_regs.vh` (storage, decode and the readback mirror, included by `llrf_shell.v`) and the register part of `llrf_shell.json`; status entries come from the `// alias:` comments of the readback mux. `uspas_llrf/tests/test_regmap.py` checks the result against the step-1 baselines in `_baseline/`.
+
 3. **Unified Cocotb Verification**:
    A common testbench class, `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell`, is used across designs. Each design has its own test runner in `designs/<design>/tb/llrf_shell/` parametrized for its specific frequency set, clock rates, and loopback/feedback channel configurations.
 

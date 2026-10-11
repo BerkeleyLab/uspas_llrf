@@ -1,5 +1,4 @@
-`define LB_DECODE_llrf_shell
-`include "llrf_shell_auto.vh"
+`include "llrf_shell_regs.vh"
 
 // 18-bit (0 to 3ffff) address map
 // write:
@@ -105,79 +104,11 @@ module llrf_shell #(
     input                ext_trigger
 );
 
-wire [31:0] lb_data = lb_wdata; // for newad.py
+wire [31:0] lb_data = lb_wdata; // for the generated decode
 
-// reg [0:0] circle_buf_flip; top-level single-cycle
-// reg [0:0] sig_buf_flip; top-level single-cycle
-// newad-force lb1 domain
-// reg [7:0] dsp_tag; top-level
-// reg [15:0] cbuf_post_delay; top-level
-// reg [6:0] wave_samp_per; top-level
-// reg [9:0] chan_keep; top-level
-// reg [6:0] cic_base_period; top-level
-// reg [3:0] cic_wave_shift; top-level
-// reg [3:0] inlk_wave_shift; top-level
-// reg [9:0] inlk_permit_mask; top-level
-// reg [7:0] arc_permit_mask; top-level
-// reg [31:0] rx_dds_phase_step; top-level
-// reg signed [18:0] rx_dds_phase_shift; top-level
-// reg [11:0] rx_dds_modulo; top-level
-// reg [17:0] rx_dds_amplitude; top-level
-// reg signed [18:0] rx_phase_offset; top-level
-// reg signed [18:0] tx_phase_offset; top-level
-// reg [2:0] prl_adc_chan; top-level
-// reg [2:0] loop0_adc_chan; top-level
-// reg [2:0] loop1_adc_chan; top-level
-// reg signed [17:0] loop0_amp_setpoint; top-level
-// reg signed [17:0] loop0_max_amp_setpoint; top-level
-// reg signed [17:0] loop0_phs_setpoint; top-level
-// reg signed [17:0] loop0_Kp_amp; top-level
-// reg signed [17:0] loop0_Kp_phs; top-level
-// reg signed [17:0] loop0_Ki_amp; top-level
-// reg signed [17:0] loop0_Ki_phs; top-level
-// reg [0:0] loop0_amp_enable; top-level
-// reg [0:0] loop0_phs_enable; top-level
-// reg [0:0] loop0_amp_reset; top-level
-// reg [0:0] loop0_phs_reset; top-level
-// reg signed [17:0] loop1_amp_setpoint; top-level
-// reg signed [17:0] loop1_max_amp_setpoint; top-level
-// reg signed [17:0] loop1_phs_setpoint; top-level
-// reg signed [17:0] loop1_Kp_amp; top-level
-// reg signed [17:0] loop1_Kp_phs; top-level
-// reg signed [17:0] loop1_Ki_amp; top-level
-// reg signed [17:0] loop1_Ki_phs; top-level
-// reg [0:0] loop1_amp_enable; top-level
-// reg [0:0] loop1_phs_enable; top-level
-// reg [0:0] loop1_amp_reset; top-level
-// reg [0:0] loop1_phs_reset; top-level
-// reg [0:0] dsp_reset; top-level single-cycle
-// reg [23:0] loop0_pulse_start; top-level
-// reg [23:0] loop0_pulse_high_len; top-level
-// reg [23:0] loop1_pulse_start; top-level
-// reg [23:0] loop1_pulse_high_len; top-level
-// reg [1:0] pulse_modes; top-level
-// reg [1:0] soft_drive_enable; top-level
-// reg [0:0] ntw_amp_enable; top-level
-// reg [0:0] ntw_phs_enable; top-level
-// reg [0:0] system_bist_pass; top-level
-// reg [2:0] wave_trig_sel; top-level
-// reg [23:0] trigger_delay; top-level
-// reg [31:0] int_trigger_period; top-level
-// reg [0:0] soft_trigger; top-level single-cycle
-// reg [0:0] slow_snap_cic; top-level
-// reg [0:0] ext_permit_bypass; top-level
-// newad-force lb2 domain
-// reg [1:0] dac_drive_sel; top-level
-// reg [31:0] tx_dds_phase_step; top-level
-// reg signed [18:0] tx_dds_phase_shift; top-level
-// reg [11:0] tx_dds_modulo; top-level
-// reg [17:0] tx_dds_amplitude; top-level
-// reg [0:0] duc_spectral_flip; top-level
-// reg [0:0] tx_afe_spectral_flip; top-level
-// newad-force lb3 domain
-// reg [7:0] evcode; top-level
-// reg [6:0] evr_oc_delay; top-level
-// newad-force lb domain
+// rw registers and their clock domains are declared in uspas_llrf/regmap.py
+// (extended by design.py). `LLRF_SHELL_REGS below stores and decodes them on
+// the localbus copies lb (lb_clk), lb1 (dsp_clk), lb2 (dac_clk) and lb3 (gt_rxclk).
 
 // Transfer local bus to dsp clk domain: lb1
 wire lb1_clk = dsp_clk;
@@ -209,7 +140,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     .clk_out(lb3_clk), .gate_out(lb3_write), .data_out({lb3_addr,lb3_data})
 );
 
-`AUTOMATIC_decode
+`LLRF_SHELL_REGS
 
     // RX NCO LO
     wire signed [DWLO-1:0] cosd, sind;
@@ -489,7 +420,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
     wire [3:0] fault_addr_out;
     wire [15:0] fault_amp_out;
     wire [16:0] fault_phs_out;
-    monitor_inlk #(.N_CH(N_CH)) inlk // auto lb1
+    monitor_inlk #(.N_CH(N_CH)) inlk
        (.clk            (dsp_clk),
        .permit_mask     (inlk_permit_mask),
        .mon_data        (inlk_data),
@@ -512,13 +443,13 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
        .first_fault_status(first_fault_status),
        .inlk_latch      (inlk_latch),
        .inlk_permit_out (inlk_permit_out),
-       `AUTOMATIC_inlk);
+       `LLRF_SHELL_PORTS_inlk);
 
     wire [2:0] arc_permit_raw;
     wire [2:0] arc_permit_latch;
     wire arc_permit_sum;
     wire arc_testing;
-    arc_inlk #(.N_CH(3), .F_CLK(F_DSP_HZ)) arc // auto lb1
+    arc_inlk #(.N_CH(3), .F_CLK(F_DSP_HZ)) arc
         (.clk               (dsp_clk),
         .permit_mask        (arc_permit_mask),
         .dev_permit_in      (arc_permit_in),
@@ -528,7 +459,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .permit_latch_out   (arc_permit_latch),
         .permit_sum_out     (arc_permit_sum),
         .testing_out        (arc_testing),
-        `AUTOMATIC_arc);
+        `LLRF_SHELL_PORTS_arc);
 
     assign inlk_arc_permit = inlk_permit_out && arc_permit_sum;
 
@@ -769,7 +700,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
 
     wire signed [17:0] ntw_cos_debug;
     wire signed [18:0] ntw_phase_debug;
-    ntw_analyzer #(.KW(DWBB)) ntw // auto lb1
+    ntw_analyzer #(.KW(DWBB)) ntw
     (
         .clk              (dsp_clk),
         .trig             (ntw_trig_i),
@@ -781,7 +712,7 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
         .ntw_cos_debug    (ntw_cos_debug),
         .amp_stp_ntw      (amp_setpoint_ntw), // final amplitude setpoint after excitation
         .phs_stp_ntw      (phs_setpoint_ntw),
-        `AUTOMATIC_ntw
+        `LLRF_SHELL_PORTS_ntw
     );
 
     // timing module with EVR
