@@ -1,5 +1,5 @@
 # Modbus address mapping to LEEP registers
-# localBusAddressMap.py unrolls reg addrs in JSON for any arrays of size <= 32
+# soc/common/llrf/localbus_address_map.py unrolls JSON arrays of up to 64 entries
 #   The unrolled addresses are "{reg_name}_{index}"
 #   The C-generated names are output in all caps
 # Read-only

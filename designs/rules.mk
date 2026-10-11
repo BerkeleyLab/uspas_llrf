@@ -1,11 +1,8 @@
-include $(BUILD_DIR)/newad_top_rules.mk
-
 # Common build rules and variables for LLRF DSP and Design modules
 MODULE     = llrf_shell
-LB_AW      = 17    # should be LB_HI
-NEWAD_DIRS = .,$(APP_DSP_DIR),$(DSP_DIR)
-NEWAD_ARGS = -d $(subst $(SPACE),$(COMMA),$(NEWAD_DIRS)) -i $< -w $(LB_AW) -m
-NEWAD_ARGS_llrf_shell = -b69632    # 0x11000
+GEN_DIR    = _gen
+REGMAP_PY  = $(USPAS_LLRF_DIR)/regmap.py
+DESIGN_PY  = $(wildcard design.py)
 
 .PHONY: all
 all: $(MODULE)_expand.v $(MODULE).json
@@ -26,16 +23,25 @@ LLRF_SHELL_SRC += $(BEDROCK_DIR)/cordic/cstageg.v $(BEDROCK_DIR)/cordic/addsubg.
 LLRF_SHELL_SRC += $(BEDROCK_DIR)/localbus/jit_rad_gateway.v
 LLRF_SHELL_SRC += cordicg_b22.v
 
-VFLAGS_DEP += -I$(AUTOGEN_DIR) -y$(AUTOGEN_DIR)
+VFLAGS_DEP += -I$(GEN_DIR)
 VFLAGS += -g2012
 
 cordicg_b22.v:
 	$(PYTHON) $(CORDIC_DIR)/cordicgx.py 22 $@
 
-$(MODULE).json: $(AUTOGEN_DIR)/regmap_$(MODULE).json $(AUTOGEN_DIR)/scalar_$(MODULE)_regmap.json $(wildcard static_regmap.json)
+# register storage, decode and mirror, and the register part of the JSON
+# (uspas_llrf/regmap.py, extended by design.py)
+$(GEN_DIR)/%_regs.vh $(GEN_DIR)/regmap_%.json: $(REGMAP_PY) $(DESIGN_PY)
+	$(PYTHON) $(REGMAP_PY) $(addprefix -d ,$(DESIGN_PY)) -o $(GEN_DIR)
+
+# status registers, from the "// alias:" comments of the readback mux
+$(GEN_DIR)/scalar_%_regmap.json: %.v
+	mkdir -p $(GEN_DIR); $(PYTHON) $(BUILD_DIR)/reverse_json.py $< > $@
+
+$(MODULE).json: $(GEN_DIR)/regmap_$(MODULE).json $(GEN_DIR)/scalar_$(MODULE)_regmap.json $(wildcard static_regmap.json)
 	$(PYTHON) $(BUILD_DIR)/merge_json.py -o $@ -i $^
 
-$(MODULE)_expand.v: $(LLRF_SHELL_SRC) $(AUTOGEN_DIR)/$(MODULE)_auto.vh $(AUTOGEN_DIR)/addr_map_$(MODULE).vh
+$(MODULE)_expand.v: $(LLRF_SHELL_SRC) $(GEN_DIR)/$(MODULE)_regs.vh
 	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(LLRF_SHELL_SRC)
 
 $(MODULE)_init_regs.json:
@@ -52,3 +58,4 @@ llrf_shell_yosys.json: $(APP_DSP_DIR)/llrf_shell_skin.v llrf_shell_expand.v $(SH
 
 CLEAN += llrf_shell_yosys.json llrf_shell_cdc.txt
 CLEAN += $(MODULE)_expand.v $(MODULE).json cordicg_b22.v
+CLEAN_DIRS += $(GEN_DIR)

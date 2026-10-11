@@ -12,6 +12,7 @@
 *_dep/
 *_ipx/
 *_autogen/
+designs/*/_gen/
 soc/**/*/*.o
 *.elf
 *.map
