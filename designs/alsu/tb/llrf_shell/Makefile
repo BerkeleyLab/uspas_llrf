@@ -12,6 +12,8 @@ CUSTOM_SIM_DEPS += $(DESIGN_DSP_DIR)/llrf_shell.json
 # module parameters
 export PARAM_CBUF_AW     := 6
 export PARAM_SIG_BUF_AW  := 6
+# arc_inlk 0.5 s pulse = 1000 dsp_clk cycles in sim
+export PARAM_F_DSP_HZ    := 2000
 include  $(APP_DSP_DIR)/tests/cocotb_inc.mk
 
 $(DESIGN_DSP_DIR)/llrf_shell_expand.v:

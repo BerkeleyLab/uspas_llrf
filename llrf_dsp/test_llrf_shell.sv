@@ -6,7 +6,8 @@ module test_llrf_shell #(
     parameter integer DWLO = 18,
     parameter integer LB_ADW = 18,
     parameter integer CBUF_AW = 6,
-    parameter integer SIG_BUF_AW = 6
+    parameter integer SIG_BUF_AW = 6,
+    parameter integer F_DSP_HZ = 125_000_000  // set small in sim to shorten the arc_inlk 0.5 s pulse
 ) (
     // ---------------------
     // Localbus interface
@@ -32,7 +33,13 @@ module test_llrf_shell #(
     // ---------------------
     input                gt_rxclk,
     input [15:0]         gt_rxdata,
-    input [1:0]          gt_rxcharisk
+    input [1:0]          gt_rxcharisk,
+
+    // ---------------------
+    // ARC detector outputs
+    // ---------------------
+    output [2:0]         arc_test_out,
+    output               arc_reset_out
 );
 
     logic [N_ADC*DW-1:0] adc_data_in;
@@ -44,7 +51,8 @@ module test_llrf_shell #(
 
     llrf_shell #(
         .SIG_BUF_AW     (SIG_BUF_AW),
-        .CBUF_AW        (CBUF_AW)
+        .CBUF_AW        (CBUF_AW),
+        .F_DSP_HZ       (F_DSP_HZ)
     ) llrf_shell (
         .lb_clk,
         .lb_write,
@@ -64,6 +72,8 @@ module test_llrf_shell #(
         .drive_permit_in (1'b1),
         .slow_permit_in  (1'b1),
         .arc_permit_in   (3'b111),
+        .arc_test_out,
+        .arc_reset_out,
 
         .gt_rxclk,
         .gt_rxdata,

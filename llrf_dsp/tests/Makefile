@@ -1,5 +1,5 @@
 TARGETS := all clean
-SUBDIRS := ddc dds duc pulse_gen llrf_dsp cic_waves
+SUBDIRS := ddc dds duc pulse_gen loop_ctrl llrf_dsp cic_waves
 
 $(TARGETS): $(SUBDIRS)
 $(SUBDIRS):

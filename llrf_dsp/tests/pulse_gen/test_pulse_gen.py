@@ -4,51 +4,14 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge
 
-
-class PulseGenModel:
-    """Cycle-accurate model of pulse_gen.v (registers update on each clk edge)."""
-
-    def __init__(self, aw):
-        self.aw = aw
-        self.mask = (1 << aw) - 1
-        self.mask1 = (1 << (aw + 1)) - 1
-        self.end_val = 0
-        self.pc = 0
-        self.counting = 0
-        self.dval = 0
-        self.idx = 0
-
-    @property
-    def last(self):
-        return int(self.counting and self.pc == self.end_val)
-
-    def step(self, trigger, start, high_len, stb, res):
-        is_last = self.pc == self.end_val
-        in_pulse = self.counting and self.pc >= start and not is_last
-        if is_last:
-            counting = 0
-        elif trigger:
-            counting = 1
-        else:
-            counting = self.counting
-        if not self.counting and trigger:
-            pc = 0
-        elif self.counting:
-            pc = (self.pc + stb) & self.mask1
-        else:
-            pc = 0
-        self.dval = int(in_pulse)
-        self.idx = (((self.pc - start) & self.mask) >> res) if in_pulse else 0
-        self.end_val = (start + high_len) & self.mask1
-        self.pc = pc
-        self.counting = counting
+from uspas_llrf import PulseGen
 
 
 class TB:
     def __init__(self, dut):
         self.dut = dut
         self.aw = int(dut.AW.value)
-        self.model = PulseGenModel(self.aw)
+        self.model = PulseGen(self.aw)
         dut.trigger.value = 0
         dut.start.value = 0
         dut.high_len.value = 0

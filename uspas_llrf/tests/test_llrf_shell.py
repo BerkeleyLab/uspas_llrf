@@ -482,3 +482,59 @@ class TB_llrf_shell:
         if hasattr(self.lb.reg_map, 'fault_amp'):
             await self.wait_drive_permit(0)  # record_status_en low
             await self.check_fault_amp()
+
+    async def test_arc_inlk(self):
+        """ARC detector test and reset strobes (arc_inlk, D18). Each request
+        drives the outputs for 0.5 s (F_DSP_HZ is scaled down in sim);
+        requests during a pulse are ignored; arc_testing reads the pulse."""
+        dut = self.dut
+        self.log_banner('ARC test/reset')
+        pulse_clks = int(0.5 * int(dut.F_DSP_HZ.value))
+        widths = []
+
+        async def wait_testing(value, max_reads=20):
+            """arc_testing crosses to lb_clk on dsp_tick, so it lags the outputs."""
+            for _ in range(max_reads):
+                if await self.lb.read_reg('arc_testing') == value:
+                    return
+            assert False, f'arc_testing did not read {value}'
+
+        async def measure(signal, value):
+            """dsp_clk cycles that signal holds value, from the first one."""
+            while int(signal.value) != value:
+                await RisingEdge(dut.dsp_clk)
+            n = 0
+            while int(signal.value) == value:
+                n += 1
+                await RisingEdge(dut.dsp_clk)
+            widths.append(n)
+
+        assert await self.lb.read_reg('arc_testing') == 0
+        # test strobe: outputs follow arc_test_mask for the whole pulse
+        task = cocotb.start_soon(measure(dut.arc_test_out, 0b101))
+        await self.lb.write_reg('arc_test_mask', 0b101)
+        await self.lb.write_reg('arc_test_stb', 1)
+        while int(dut.arc_test_out.value) == 0:
+            await RisingEdge(dut.dsp_clk)
+        await wait_testing(1)
+        assert int(dut.arc_reset_out.value) == 0
+        # a second request during the pulse is ignored
+        await self.lb.write_reg('arc_test_mask', 0b010)
+        await self.lb.write_reg('arc_test_stb', 1)
+        await self.lb.write_reg('arc_reset_arc_dev', 1)
+        assert int(dut.arc_test_out.value) == 0b101
+        assert int(dut.arc_reset_out.value) == 0
+        await task
+        assert widths[-1] == pulse_clks, f'test pulse {widths[-1]} != {pulse_clks} cycles'
+        assert int(dut.arc_test_out.value) == 0
+        await wait_testing(0)
+        # reset strobe: arc_reset_out, test outputs off, for the whole pulse
+        task = cocotb.start_soon(measure(dut.arc_reset_out, 1))
+        await self.lb.write_reg('arc_reset_arc_dev', 1)
+        while int(dut.arc_reset_out.value) == 0:
+            await RisingEdge(dut.dsp_clk)
+        assert int(dut.arc_test_out.value) == 0
+        await wait_testing(1)
+        await task
+        assert widths[-1] == pulse_clks, f'reset pulse {widths[-1]} != {pulse_clks} cycles'
+        await wait_testing(0)
