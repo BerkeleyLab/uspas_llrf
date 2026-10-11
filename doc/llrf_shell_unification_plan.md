@@ -9,14 +9,14 @@ Scope: `designs/*/llrf_shell.v`, `static_regmap.json`, `llrf_dsp/`, `uspas_llrf/
 |---|---|
 | D1 | `SIG_BUF_AW = 11` (2048 samples) for every design **except LEMP, which keeps `SIG_BUF_AW = 10`** (1024 samples, as on the LEMP branch; revised in v8 after LEMP review). uspas/alsu go from 4K to 2K; awa/pip-ii stay at 2K. `designs/lemp` on main is a uspas symlink until step 9 and follows uspas until then. Signal buffers are packed at their natural size (`2^SIG_BUF_AW`), so the 20 I/Q buffers always form one contiguous region; LEMP keeps its `iq_buf` window over it (`addr_width` 15, v9). The 2K designs keep the §1.1 map; only LEMP's buffer addresses differ. |
 | D2 | Pulse-modulation LUTs are in **every** design. No `PULSE_LUT_EN`. |
-| D3 | Modulation is indexed from the **pulse start**, is **additive**, and applies to **both amplitude and phase** per loop. LUT memory uses bedrock `dsp/dpram.v`. |
+| D3 | Modulation is indexed from the **pulse start**, is **additive**, and applies to **both amplitude and phase** per loop. The modulation tables use bedrock `dsp/dpram.v`. |
 | D4 | A Python allocator is the source of truth for the address map. |
 | D5 | No clients use hard-coded addresses; leep resolves names. Address moves are free. |
 | D6 | Assembly is split into the blocks `rx_chain`, `loop_ctrl` (including modulation), `tx_chain`, `diag` and `lb_rd_mux`. |
 | D7 | `designs/<d>/` stays as the place for per-design customization. LEMP's shell, which today lives only on the LEMP branch, is merged back as `designs/lemp`. |
-| D8 | Phase LUT entries are 18-bit, in raw `phs_setpoint` units (full ±180°). |
-| D9 | LEMP's `loopN_phs_shift`/`loopN_phs_shift_delay` are **kept**, with names unchanged. They coexist with the phase LUT. |
-| D10 | 16K entries per LUT (stretched by `2^res`) is enough. |
+| D8 | Phase modulation table entries are 18-bit, in raw `phs_setpoint` units (full ±180°). |
+| D9 | LEMP's `loopN_phs_shift`/`loopN_phs_shift_delay` are **kept**, with names unchanged. They coexist with the phase modulation table. |
+| D10 | 16K entries per modulation table (stretched by `2^res`) is enough. |
 | D11 | **LEMP register naming** is adopted for all designs: `drvN_pulse_mode` and `soft_driveN_enable` replace `pulse_modes` and `soft_drive_enable`; loop-scoped regs use the `loopN_` prefix. |
 | D12 | `timing_core_local`, `fiducial_int_gen` and `triggers` stay **LEMP-only**, under `designs/lemp/`. |
 | D13 | `LEMP_bypass` (and the other `LEMP_*` branches) is deferred. |
@@ -172,18 +172,18 @@ Shown for `SIG_BUF_AW=11` (all designs except LEMP):
 0x12000-0x15fff  adc0..7_buf                    8 x 2K
 0x16000-0x1afff  adc0..7_i_buf, drv0..1_i_buf   10 x 2K
 0x1b000-0x1ffff  adc0..7_q_buf, drv0..1_q_buf   10 x 2K
-0x20000-0x23fff  loop0_amp_lut                  16K x 18b
-0x24000-0x27fff  loop0_phs_lut                  16K x 18b
-0x28000-0x2bfff  loop1_amp_lut                  16K x 18b
-0x2c000-0x2ffff  loop1_phs_lut                  16K x 18b
+0x20000-0x23fff  loop0_amp_mod                  16K x 18b
+0x24000-0x27fff  loop0_phs_mod                  16K x 18b
+0x28000-0x2bfff  loop1_amp_mod                  16K x 18b
+0x2c000-0x2ffff  loop1_phs_mod                  16K x 18b
 0x30000-0x3ffff  circle buffer                            (unchanged)
 ```
 
-- The amp LUT bases match pip-ii's `pulse0/1_lut`. Depth goes from 32K to 16K, and `pulse_res_shift` stretches the LUT to longer pulses.
+- The amplitude modulation table bases match pip-ii's `pulse0/1_lut`. Depth goes from 32K to 16K, and `pulse_res_shift` stretches the table to longer pulses.
 - BRAM cost stays at about 32 RAMB36 (4 × 16K×18, using the native 2K×18 BRAM width). That equals pip-ii's 2 × 32K×16 today.
 - 18-bit entries give full `DWBB` resolution for both amplitude and phase.
 - `SIG_BUF_AW=11` halves signal-buffer BRAM for uspas and alsu.
-- Signal buffers are packed at their natural size, `2^SIG_BUF_AW`, in a fixed order: raw ADC, then I (adc0..7, drv0..1), then Q. The 20 I/Q buffers are therefore one contiguous region in every design. The LUT and circle-buffer bases are fixed for all designs; the buffer bases depend on `SIG_BUF_AW` (D5).
+- Signal buffers are packed at their natural size, `2^SIG_BUF_AW`, in a fixed order: raw ADC, then I (adc0..7, drv0..1), then Q. The 20 I/Q buffers are therefore one contiguous region in every design. The modulation table and circle-buffer bases are fixed for all designs; the buffer bases depend on `SIG_BUF_AW` (D5).
 - LEMP (`SIG_BUF_AW=10`, D1) packs to:
 
   ```
@@ -197,16 +197,16 @@ Shown for `SIG_BUF_AW=11` (all designs except LEMP):
 
   `iq_buf` keeps LEMP's one-call waveform readout with `addr_width` 15, as on the LEMP branch (base `0x1c000` there). With 2K slots it would need 16 and read twice the data. The alias is only a JSON entry over the per-buffer decodes; its unused tail (`0x19000`–`0x1bfff`) reads as an unmapped address.
 
-### 1.2 Pulse modulation (amplitude + phase LUT) in `loop_ctrl`
+### 1.2 Pulse modulation (amplitude + phase modulation tables) in `loop_ctrl`
 
 Per loop:
 
 ```
 pulse_gen (single counter, extended)  -> pulse_dval, idx = (pc - start) >> res   (P3, P5)
-dpram #(.aw(14), .dw(18)) amp_lut     port A: lb_clk r/w, port B: dsp_clk read
-dpram #(.aw(14), .dw(18)) phs_lut
-amp_sp = sat(amp_setpoint + (mod_en[0] & dval_d2 ? amp_lut : 0))  -> existing open-loop max clamp
-phs_sp =     phs_setpoint + (mod_en[1] & dval_d2 ? phs_lut : 0) + phs_offset
+dpram #(.aw(14), .dw(18)) amp_mod_ram     port A: lb_clk r/w, port B: dsp_clk read
+dpram #(.aw(14), .dw(18)) phs_mod_ram
+amp_sp = sat(amp_setpoint + (amp_mod_enable & dval_d2 ? amp_mod : 0))  -> existing open-loop max clamp
+phs_sp =     phs_setpoint + (phs_mod_enable & dval_d2 ? phs_mod : 0) + phs_offset
              (phase wraps, no sat; phs_offset is a design hook, tied to 0 in the base shell)
 ```
 
@@ -215,8 +215,8 @@ The `phs_offset` hook is used by two design shells:
 - **ALSU:** `phase_ramp` on loop 0, with `phs_offset = setpoint_finish - loop0_phs_setpoint`. The effective setpoint is then exactly `phase_ramp`'s absolute output, so today's behavior is reproduced bit for bit (D19).
 
 Registers per loop:
-- `loopN_lut_len`, 15 bits, saturated to 2^14
-- `loopN_mod_enable[1:0]` (bit0 amp LUT, bit1 phase LUT)
+- `loopN_mod_len`, 15 bits, saturated to 2^14
+- `loopN_amp_mod_enable`, `loopN_phs_mod_enable` (amplitude and phase table, like `loopN_amp/phs_loop_enable`)
 - `loopN_pulse_res_shift`
 
 These replace pip-ii's `lut0_len`, `lut1_len`, `pulse_modulation_enable` and the shared `pulse_res_shift`. LEMP's `loopN_phs_shift` and `loopN_phs_shift_delay` are kept (D9). `loop_ctrl` exports `pulse_idx`/`pulse_dval` and takes an additive `phs_offset` input; the LEMP shell computes the phase step from them (fixes L5).
@@ -226,9 +226,9 @@ Fixes for the review findings on [pip-ii/llrf_shell.v](../designs/pip-ii/llrf_sh
 | # | Fix |
 |---|---|
 | P1 | Remove the dead `drive_i_mod`/`drive_q_mod` code ([:839](../designs/pip-ii/llrf_shell.v#L839)). `res` means time resolution only. |
-| P2 | Saturate `lut_len` to `1<<LUT_AW` ([:1217](../designs/pip-ii/llrf_shell.v#L1217) truncates). |
+| P2 | Saturate the table length (`mod_len`) to `1<<MOD_AW` ([:1217](../designs/pip-ii/llrf_shell.v#L1217) truncates). |
 | P3 | Index from the pulse start, `(pc - start) >> res` ([:1191](../designs/pip-ii/llrf_shell.v#L1191) indexes from the trigger). |
-| P4 | Align the gate with LUT data. `dpram` adds 1 clock and the index register adds 1, so the `dval` gate is delayed by 2 clocks (`dval_d2`) ([:745](../designs/pip-ii/llrf_shell.v#L745)). |
+| P4 | Align the gate with the table data. `dpram` adds 1 clock and the index register adds 1, so the `dval` gate is delayed by 2 clocks (`dval_d2`) ([:745](../designs/pip-ii/llrf_shell.v#L745)). |
 | P5 | Extend `llrf_dsp/pulse_gen.v` with an index output. Delete `mod_pulse_gen` and `pulse_lut_ram`. |
 | P6 | Widen `end_val` to AW+1 bits in `pulse_gen.v`, so `start + high_len` cannot wrap. Use AW=32 everywhere (LEMP needs it). |
 | P7 | Make `res` per loop. Leave modulation independent of `drvN_pulse_mode` and document it. |
@@ -237,11 +237,11 @@ Fixes for the review findings on [pip-ii/llrf_shell.v](../designs/pip-ii/llrf_sh
 
 #### 1.2.1 Future: generic loop modulator (not scheduled)
 
-Once `loop_ctrl` is stable, consider adding a **function-generator source** next to the LUT AWG: an error-gated staircase or ramp, the same idea as `phase_ramp`. It would generalize ALSU's ramp to any loop and to amplitude or phase.
+Once `loop_ctrl` is stable, consider adding a **function-generator source** next to the modulation table AWG: an error-gated staircase or ramp, the same idea as `phase_ramp`. It would generalize ALSU's ramp to any loop and to amplitude or phase.
 
 | Source | Shape | Timing | Gating | Today |
 |---|---|---|---|---|
-| LUT (AWG) | arbitrary, amp + phase | from pulse start, `2^res` clocks per entry | `pulse_dval` | in `loop_ctrl` (all designs) |
+| Modulation table (AWG) | arbitrary, amp + phase | from pulse start, `2^res` clocks per entry | `pulse_dval` | in `loop_ctrl` (all designs) |
 | Function generator | staircase `steps` × `rate` | `ramp_start` edge (EVR/soft/`wave_trig`), dwell `ttime` | \|err\| < threshold, timeout | ALSU-only `phase_ramp` via `phs_offset` |
 
 A generic version would address PR3–PR5: an offset accumulator, a strobe-based clear, `steps=0` handling, a parameterized filter, and per-loop instances using the `loopN_<func>_*` names. ALSU would move to it only after an explicit decision and a hardware comparison against its `phase_ramp`.
@@ -250,7 +250,7 @@ A generic version would address PR3–PR5: an offset accumulator, a strobe-based
 
 - **uspas, alsu:** 2K buffers; all buffer addresses move.
 - **awa:** zero-valued `dac_raw_out` dropped; IQ buffers move.
-- **pip-ii:** IQ buffers unchanged. LUTs are renamed and become 16K deep, and each loop gains a phase LUT.
+- **pip-ii:** IQ buffers unchanged. The LUTs become amplitude modulation tables, 16K deep, and each loop gains a phase modulation table.
 - **LEMP:** keeps 1K buffers and the `iq_buf` window (`addr_width` 15) (D1); buffer addresses move to the packed layout in §1.1. Phase-step registers are unchanged, and the LUTs are added.
 - **ALSU:** gets its own thin shell (from step 7) so it can wire `phase_ramp` on loop 0. Gains the LUTs; the arc test/reset strobes are already on `alsu_fork`. `phase_ramp_*` registers are renamed `loop0_phs_ramp_*` (D21). Modbus map names are preserved.
 - **All designs (D18):** `arc_test_arc_dev` (level) → `arc_test_mask` + `arc_test_stb`, and `arc_reset_arc_dev` becomes a strobe with a 0.5 s output pulse.
@@ -297,7 +297,7 @@ The top level and the SoC follow the same base-plus-override pattern: `top/commo
 | Block | Ports (SV) | Parameters for variation |
 |---|---|---|
 | `rx_chain` | `adc_t adc[N_ADC]`, LO, `i_sel` → `iq_t sig_iq[N_ADC]` (to loops), `iq_t sig_iq_mon[N_ADC]` (to diag) | `DC_CH_MASK` (LEMP `8'b1100_0000`): those channels bypass the DDC on the monitor path (I=ADC≪guard, Q=0, fixes L1), while the loop path stays DDC |
-| `loop_ctrl` | `loop_cfg_t cfg`, `iq_t field`, `trig`, `drive_permit`, `phs_offset`, `lb_if.slave` (2 LUT windows) → `iq_t drive`, `pulse_dval`, `pulse_idx`, `err` (amp/phs, for design hooks such as ALSU `phase_ramp`) | `LUT_AW` (14), `PULSE_AW` (32); generate × `N_DRIVE` |
+| `loop_ctrl` | `loop_cfg_t cfg`, `iq_t field`, `trig`, `drive_permit`, `phs_offset`, `lb_if.slave` (2 modulation table windows) → `iq_t drive`, `pulse_dval`, `pulse_idx`, `err` (amp/phs, for design hooks such as ALSU `phase_ramp`) | `MOD_AW` (14), `PULSE_AW` (32); generate × `N_DRIVE` |
 | `tx_chain` | `iq_t drive[N_DRIVE]`, `dac_drive_sel`, flip → `dac_a/b` | — |
 | `diag` | `iq_t sig[N_CH]`, raw `adc[N_ADC]`, `buf_trig`, `cbuf_trig` → sig_buf array, cic_waves, monitor_inlk, arc_inlk (D18: test/reset strobes, 0.5 s pulse), `lb_if.slave` windows, `inlk_permit`; ARC detector IO passed to the shell | `SIG_BUF_AW` (11; LEMP 10, D1), `CBUF_AW`, `F_CLK` (from `DSP_FREQ_MHZ`, A2) |
 | `lb_rd_mux` | `{hit[i], rdata[i]}` × N_WIN → `lb_rdata` | registered, READ_DELAY=3 preserved |
@@ -321,7 +321,7 @@ package llrf_shell_pkg;
     bb_t amp_setpoint, max_amp_setpoint, phs_setpoint, kp_amp, ki_amp, kp_phs, ki_phs;
     logic amp_enable, phs_enable, amp_reset, phs_reset, pulse_mode;
     logic [31:0] pulse_start, pulse_high_len;
-    logic [14:0] lut_len;  logic [3:0] res_shift;  logic [1:0] mod_enable;
+    logic [14:0] mod_len;  logic [3:0] res_shift;  logic amp_mod_enable, phs_mod_enable;
   } loop_cfg_t;
   typedef enum logic [2:0] { WT_INT=0, WT_EXT=1, WT_SOFT=2, WT_EVR=3,
                              WT_ALWAYS=4, WT_MIXED=5, WT_FIDUCIAL=6 } wave_trig_sel_t;
@@ -356,19 +356,19 @@ REGS = [
   Reg('dac_drive_sel', 2, domain='dac', enum=DacDriveSel),
   Reg('evcode', 8, domain='evr'),
   Reg('circle_buf_flip', 1, kind='strobe', domain='lb'),
-  *loop_regs(N_DRIVE),          # loopN_amp_setpoint ... loopN_lut_len, drvN_pulse_mode, soft_driveN_enable
+  *loop_regs(N_DRIVE),          # loopN_amp_setpoint ... loopN_mod_len, drvN_pulse_mode, soft_driveN_enable
 ]
 STATUS = [                       # read-only, wired by the design shell into status_t
   Status('rf_pwr_hi', 10, domain='lb'),
   Status('loop0_amp_err', 15, domain='dsp'),   # dsp-domain status -> jit_rad_gateway bank
 ]
-BLOCKS = [*sig_bufs(SIG_BUF_AW), *mod_luts(LUT_AW), Block('circle_data', aw=CBUF_AW, dw=24)]
+BLOCKS = [*sig_bufs(SIG_BUF_AW), *mod_tables(MOD_AW), Block('circle_data', aw=CBUF_AW, dw=24)]
 # designs/lemp/design.py adds: Alias('iq_buf', base='adc0_i_buf', aw=15)
 ```
 
 **Outputs** (into `designs/<d>/_gen/`):
 1. `llrf_shell_regs.sv`: storage, per-domain decode and crossings, strobes, mirror, status readback (lb and jit_rad banks)
-2. `llrf_shell_regmap_pkg.sv`: `cfg_*_t`/`status_t` structs, `ADDR_*`/`AW_*`, and index-ordered arrays (`ADDR_SIG_I_BUF[N_CH]`, `ADDR_AMP_LUT[N_DRIVE]`) for generate loops
+2. `llrf_shell_regmap_pkg.sv`: `cfg_*_t`/`status_t` structs, `ADDR_*`/`AW_*`, and index-ordered arrays (`ADDR_SIG_I_BUF[N_CH]`, `ADDR_AMP_MOD[N_DRIVE]`) for generate loops
 3. `llrf_shell.json`, consumed unchanged by `leep.build_rom` (config ROM), the SoC C-header generator, `gen_init_reg.py` and `LocalbusAppMaster`
 
 **SoC address-map headers (step 6).** Today two scripts make them: bedrock `localBusAddressMap.py` for `llrf_regs_addr.h` (unrolls arrays with `addr_width` 1–6 to `NAME_0..n`, drops arrays wider than that, timestamped output) and the repo's `soc/common/llrf/localbus_address_map.py` for `marble_regs_addr.h` (base names only, integer `base_addr` only). The firmware needs the unrolled llrf names (`MON_PHS_0`, `DSP_SLOW_ADC_MIN_0`) and the large marble arrays (`BSP_INFO_BUF`, `MARBLE_MBOX_BUF`). Replace both with one repo script that emits a base name for every entry plus `NAME_0..n` for arrays up to `addr_width` 6, accepts string or integer `base_addr`, checks duplicates and range, and has no timestamp. Both current headers agree on every common name, so this is a superset and needs no firmware change.
@@ -404,7 +404,7 @@ Every register is declared in `regmap.py`/`design.py`, so these rules are enforc
 
 | Scope | Pattern | Examples |
 |---|---|---|
-| Per loop (N = 0..N_DRIVE-1) | `loopN_<func>_<field>`, or `loopN_<field>` for core loop regs | `loop0_amp_setpoint`, `loop1_lut_len`, `loop0_phs_shift_delay`, `loop0_phs_ramp_rate` |
+| Per loop (N = 0..N_DRIVE-1) | `loopN_<func>_<field>`, or `loopN_<field>` for core loop regs | `loop0_amp_setpoint`, `loop1_mod_len`, `loop0_phs_shift_delay`, `loop0_phs_ramp_rate` |
 | Per drive output | `drvN_<field>`, `soft_driveN_<field>` | `drv0_pulse_mode`, `soft_drive1_enable` |
 | Per block instance (was newad `// auto`) | `<inst>_<field>`, keeping today's names | `arc_test_mask`, `arc_reset_arc_dev`, `inlk_inlk_mode` |
 | Arrays | base name; tools unroll to `<name>_<i>` (`localBusAddressMap.py`) | `mon_phs` → `MON_PHS_0` |
@@ -416,8 +416,8 @@ Renames (all in the step that introduces them; consumers updated in the same MR,
 |---|---|---|
 | `pulse_modes[1:0]` | `drv0_pulse_mode`, `drv1_pulse_mode` | all designs (D11) |
 | `soft_drive_enable[1:0]` | `soft_drive0_enable`, `soft_drive1_enable` | all designs, ALSU `mb_addr_map.toml` (D11) |
-| `lut0_len`, `lut1_len`, `pulse_res_shift`, `pulse_modulation_enable` | `loopN_lut_len`, `loopN_pulse_res_shift`, `loopN_mod_enable` | pip-ii (§1.2) |
-| `pulse0_lut`, `pulse1_lut` | `loopN_amp_lut` (+ new `loopN_phs_lut`) | pip-ii (§1.1) |
+| `lut0_len`, `lut1_len`, `pulse_res_shift`, `pulse_modulation_enable` | `loopN_mod_len`, `loopN_pulse_res_shift`, `loopN_amp_mod_enable` + `loopN_phs_mod_enable` | pip-ii (§1.2) |
+| `pulse0_lut`, `pulse1_lut` | `loopN_amp_mod` (+ new `loopN_phs_mod`) | pip-ii (§1.1) |
 | `arc_test_arc_dev` | `arc_test_mask` + `arc_test_stb` | all designs (D18) |
 | `phase_ramp_enable` | `loop0_phs_ramp_enable` | ALSU (D21) |
 | `phase_ramp_steps` | `loop0_phs_ramp_steps` | ALSU |
@@ -431,9 +431,9 @@ Renames (all in the step that introduces them; consumers updated in the same MR,
 ### 2.5 Model integration (`uspas_llrf/model/llrf_shell.py`)
 
 1. **Design-aware model.** `LLRFShell(dsp_config, design='lemp')` loads features from `designs/<d>/design.py` or `uspas_llrf.regmap`: `sig_buf_aw`, `dc_ch_mask`, extra blocks. No hard-coded geometry.
-2. **Init registers.** Add `loopN_lut_len`, `loopN_mod_enable` and `loopN_pulse_res_shift` (default 0, so CW behavior is unchanged). Add `buf_delay`. Rename `pulse_modes` → `drv0/1_pulse_mode` and `soft_drive_enable` → `soft_drive0/1_enable` (D11), and update `settings.json` `PULSE_MODES` consumers. A LEMP subclass adds `loopN_phs_shift`, `loopN_phs_shift_delay`, `fiducial_sel`, `event_sel` and the trigger regs. Regenerate `llrf_shell_init_regs.json` per design.
+2. **Init registers.** Add `loopN_mod_len`, `loopN_amp_mod_enable`, `loopN_phs_mod_enable` and `loopN_pulse_res_shift` (default 0, so CW behavior is unchanged). Add `buf_delay`. Rename `pulse_modes` → `drv0/1_pulse_mode` and `soft_drive_enable` → `soft_drive0/1_enable` (D11), and update `settings.json` `PULSE_MODES` consumers. A LEMP subclass adds `loopN_phs_shift`, `loopN_phs_shift_delay`, `fiducial_sel`, `event_sel` and the trigger regs. Regenerate `llrf_shell_init_regs.json` per design.
 3. **Bit-accurate `PulseModulator`.** Mirrors the extended `pulse_gen` index, the 2-clock latency, additive saturated amplitude, wrapped phase plus optional `phs_offset` step (LEMP), and the open-loop clamp. It is the cocotb scoreboard.
-4. **LUT helpers.** `gen_pulse_lut(kind, ...)` returns `(amp_lut, phs_lut)` as int18 arrays in setpoint units, clipped against `cal_factors.max_amp_setpoint`.
+4. **Modulation table helpers.** `gen_mod_tables(kind, ...)` returns `(amp_mod, phs_mod)` as int18 arrays in setpoint units, clipped against `cal_factors.max_amp_setpoint`.
 5. **DC channels.** `RX` gains a `dc_coupled` flag (gain = `2**(DWBB-DW)`, no LO), so `cic_wfm_gain`/`rx_iq_gain` are right for LEMP ch 6–7.
 6. **`PhaseRamp` model (ALSU).** Bit-accurate copy of today's `phase_ramp`: in-range filter, dwell, step count, timeout, absolute setpoint. It lives with the ALSU model extension and is the scoreboard for ALSU's `test_phase_ramp`.
 7. **One trigger enum.** `WaveTrigSel` imports the package encoding, generated from `regmap.py` or parsed, so Python and RTL share it (L4).
@@ -441,15 +441,14 @@ Renames (all in the step that introduces them; consumers updated in the same MR,
 ### 2.6 Testbench structure
 
 - `TB_llrf_shell` (base) gets feature-driven tests. Run in **every** design:
-  - `test_pulse_modulation`: amp and phase; corner cases `lut_len ∈ {0, 1, 2^14}`, `res > 0`, saturation, phase wrap, `start > 0`
-  - `test_arc_inlk`: test/reset strobes, 0.5 s pulse (`F_CLK` scaled down in sim), requests dropped while busy, `arc_testing` status
+  - `test_pulse_modulation`: amp and phase; corner cases `mod_len ∈ {0, 1, 2^14}`, `res > 0`, saturation, phase wrap, `start > 0`
   - `test_regmap_consistency`
 - `designs/lemp/tb/llrf_shell/test_llrf_shell.py` subclasses it and adds:
   - DC-channel capture
   - interlock-latch / fiducial re-arm
   - `fiducial_int_gen` trigger
   - pmod triggers
-- `designs/alsu/tb/llrf_shell/test_llrf_shell.py` subclasses the base TB (from step 7) and adds `test_phase_ramp`. It runs closed loop with the EVR event as start; the ramp advances only while the error is in range; covers timeout and loop-open snap-back. Modbus is tested on hardware (`designs/alsu/scripts/modbus_test.py`, `alsu_run` CI).
+- `designs/alsu/tb/llrf_shell/test_llrf_shell.py` runs `test_arc_inlk` (ALSU only, from step 5: test/reset strobes, 0.5 s pulse with `F_DSP_HZ` scaled down in sim, requests dropped while busy, `arc_testing` status), subclasses the base TB (from step 7) and adds `test_phase_ramp`. It runs closed loop with the EVR event as start; the ramp advances only while the error is in range; covers timeout and loop-open snap-back. Modbus is tested on hardware (`designs/alsu/scripts/modbus_test.py`, `alsu_run` CI).
 - Unit tests for each block in `llrf_dsp/tests/{rx_chain,loop_ctrl,tx_chain,diag}`, following the cic_waves SV-wrapper pattern.
 
 ### 2.7 Toolchain impact
@@ -619,10 +618,10 @@ Deferred (D13): `LEMP_bypass` (klystron reverse interlock bypass), `LEMP_LCLSI_u
 
    No RTL change. Each design must reproduce its step-1 baseline. ⚠ R6
 3. **ALSU merge-back** (§3.2): add the SoC expansion port and the `design_init()`/`design_irq()`/`design_poll()`/`design_console()` firmware hooks (§2.9), merge `alsu_fork`, then re-home its top IO into `top/alsu/` and Modbus into `soc/alsu/` plus the expansion port. Adopt the upgraded `arc_inlk` (A1–A3) for all designs and the shared SoC tool fixes. Move `phase_ramp` to `designs/alsu/` as-is (PR1–PR2 only). Restore the per-design CI matrix. ⚠ R7
-4. **`pulse_gen` extension** (index output, AW+1 `end_val`) with unit tests. Done as: `res` input and registered `pulse_idx = (pc - start) >> res`, aligned with `pulse_dval` (P3, P5); AW+1 `end_val` (P6); existing instances tie `res` to 0. The per-loop AW=32 instances and the removal of pip-ii's `mod_pulse_gen` move to step 5, where `loop_ctrl` replaces them; P4 (2-clock LUT latency) is in `loop_ctrl`.
-5. **`loop_ctrl`** with amp and phase LUTs on `dpram` and the `phs_offset`/`err` hooks, plus `PulseModulator`, `test_pulse_modulation`, `test_arc_inlk` and unit tests.
+4. **`pulse_gen` extension** (index output, AW+1 `end_val`) with unit tests. Done as: `res` input and registered `pulse_idx = (pc - start) >> res`, aligned with `pulse_dval` (P3, P5); AW+1 `end_val` (P6); existing instances tie `res` to 0. The per-loop AW=32 instances and the removal of pip-ii's `mod_pulse_gen` move to step 5, where `loop_ctrl` replaces them; P4 (2-clock table latency) is in `loop_ctrl`.
+5. **`loop_ctrl`** with amp and phase LUTs on `dpram` and the `phs_offset`/`err` hooks, plus `PulseModulator`, `test_pulse_modulation`, `test_arc_inlk` and unit tests. Done as a standalone block, no hardware change: `llrf_dsp/loop_ctrl.v` (one loop per instance, Verilog-2005 flat ports so the current iverilog/Yosys flow can read it; struct ports come with the package in step 7), the bit-accurate `PulseGen`/`PulseModulator` models (`uspas_llrf/model/pulse_modulator.py`), `llrf_dsp/tests/loop_ctrl` (the modulation tests, scoreboarded by `PulseModulator`), and `test_arc_inlk` in the ALSU shell TB (the TB wrapper passes `F_DSP_HZ`). Shell integration moves to step 7 (below).
 6. **Register generator** (§2.4): `regmap.py`, `llrf_shell_regs.sv`, pkg, JSON, sv2v expand rule, and one SoC address-map header generator for both `llrf_regs_addr.h` and `marble_regs_addr.h`. Swap it in for newad on the current (still monolithic) shell. It must pass `test_regmap_compat` against the step-1 JSON and the Modbus-name check before any block refactor. ⚠ R2, R3
-7. **Package, `lb_if`, `lb_rd_mux`, `rx_chain`, `tx_chain`, `diag`.** Convert `designs/uspas/llrf_shell.sv` to blocks; awa and pip-ii reuse it. Create **`designs/alsu/llrf_shell.sv`** (base blocks plus `phase_ramp` on loop 0, EVR start, through `phs_offset`), the ALSU TB subclass with `test_phase_ramp`, and the `PhaseRamp` model. Apply the naming convention (§2.4.1) in the shell, model, TB, `mb_addr_map.toml` and `designs/alsu/scripts/phase_ramp.py`. ⚠ R5, R7
+7. **Package, `lb_if`, `lb_rd_mux`, `rx_chain`, `tx_chain`, `diag`.** Convert `designs/uspas/llrf_shell.sv` to blocks; awa and pip-ii reuse it. Integrate `loop_ctrl` (from step 5): the modulation table windows and `loopN_mod_len`/`loopN_amp_mod_enable`/`loopN_phs_mod_enable`/`loopN_pulse_res_shift` registers through the generator, the D1 buffer sizes and the §1.1 map, per-loop `pulse_gen` at AW=32, removal of pip-ii's `mod_pulse_gen`/`pulse_lut_ram`, and the shell-level `test_pulse_modulation`. Create **`designs/alsu/llrf_shell.sv`** (base blocks plus `phase_ramp` on loop 0, EVR start, through `phs_offset`), the ALSU TB subclass with `test_phase_ramp`, and the `PhaseRamp` model. Apply the naming convention (§2.4.1) in the shell, model, TB, `mb_addr_map.toml` and `designs/alsu/scripts/phase_ramp.py`. ⚠ R5, R7
 8. **Bring LEMP pieces to main** (§3.1 step 1): generic ones into blocks, LEMP-only ones into `designs/lemp/`.
 9. **`designs/lemp/llrf_shell.sv`, `top/lemp/` and `soc/lemp/`** (`design_io.vh`, `design_mid.vh`, `design.xdc`, fiber/GTP, `interlock/` moved into `designs/lemp/`), plus the LEMP TB subclass. Port the `// auto` trigger regs to array `Reg`s. ⚠ R1, R6
 10. **Merge main into the LEMP branch**; hardware check. ⚠ R1, R4

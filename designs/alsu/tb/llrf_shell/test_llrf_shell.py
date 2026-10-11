@@ -47,3 +47,9 @@ async def test_cic_waves(dut, f_config='ALSU', amp_exp=15000, phs_exp=45,
     cic_meas = cic_meas[2:]  # XXX discard first 2 samples due to transient
     tb.check_sig(cic_meas.mean() / tb.llrf.cic_wfm_gain,
                  sig_name='phaseref_adc')
+
+
+@cocotb.test(timeout_time=200, timeout_unit='us')
+async def test_arc_inlk(dut):
+    tb = TB_llrf_shell(dut, f_config='ALSU', regmap_json_path='../../llrf_shell.json')
+    await tb.test_arc_inlk()
