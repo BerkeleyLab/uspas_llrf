@@ -34,6 +34,7 @@ import os
 from dataclasses import dataclass
 from enum import IntEnum
 from pathlib import Path
+from typing import Optional
 
 # register domain -> localbus copy in llrf_shell (data_xdomain from lb_clk)
 DOMAINS = {'lb': 'lb', 'dsp': 'lb1', 'dac': 'lb2', 'evr': 'lb3'}
@@ -92,9 +93,9 @@ class Reg:
     kind: str = 'rw'
     signed: bool = False
     aw: int = 0
-    inst: str = None
-    enum: type = None
-    init: int = None
+    inst: Optional[str] = None
+    enum: Optional[type[IntEnum]] = None
+    init: Optional[int] = None
     description: str = ''
 
     def __post_init__(self):
@@ -103,13 +104,15 @@ class Reg:
         assert not (self.aw and self.kind != 'rw'), self.name
         assert not self.inst or self.name.startswith(self.inst + '_'), self.name
         assert not (self.init is not None and (self.aw or self.kind != 'rw')), self.name
-        if self.enum:
-            [self.value(e) for e in self.enum]
+        if self.enum is not None:
+            for e in self.enum:
+                self.value(e)
         if self.init is not None:
             self.init = self.value(self.init)
 
     @property
     def port(self):
+        assert self.inst is not None, self.name
         return self.name[len(self.inst) + 1:]
 
     def value(self, v):
@@ -230,7 +233,7 @@ class Block:
     aw: int
     width: int
     port: str
-    index: int = None
+    index: Optional[int] = None
     signed: bool = False
     description: str = ''
 
@@ -364,6 +367,7 @@ def allocate(regs, base=RW_BASE):
         base = -(-base >> r.aw) << r.aw
         addr[r.name] = base
         base += size
+    assert mirror_base is not None, "no register to mirror"
     return addr, mirror_base, mirror_aw
 
 
@@ -627,7 +631,7 @@ def load_map(fname=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or '').split('\n\n')[0])
     parser.add_argument('-d', '--design', help='design.py (default: base map)')
     parser.add_argument('-o', '--outdir', required=True, help='output directory')
     parser.add_argument('--sv', action='store_true',
