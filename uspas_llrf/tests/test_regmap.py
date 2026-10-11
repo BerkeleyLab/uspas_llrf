@@ -1,9 +1,10 @@
 """Register map checks (plan §2.4): the generated llrf_shell.json against the
-step-1 baselines, the ALSU Modbus map and LLRFInitRegisters, plus the
-allocator and the SoC address-map header script."""
+step-1 baselines, the ALSU Modbus map, the boot-time registers of the model,
+the allocator and the SoC address-map header script."""
 import dataclasses
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -64,20 +65,39 @@ def test_modbus_names():
     assert not missing, "\n".join(missing)
 
 
-def test_init_registers():
-    """Every LLRFInitRegisters field is a register whose width holds its default."""
-    from uspas_llrf.model.llrf_shell import LLRFShell
-    regs = {r.name: r for r in regmap.base_regs()}
-    errors = []
-    for f in dataclasses.fields(LLRFShell.LLRFInitRegisters):
-        r = regs.get(f.name)
-        if r is None:
-            errors.append(f"{f.name}: not a register")
-            continue
-        lo, hi = (-(1 << (r.width - 1)), 1 << (r.width - 1)) if r.signed else (0, 1 << r.width)
-        if not lo <= int(f.default) < hi:
-            errors.append(f"{f.name}: default {f.default} does not fit {r.width} bits")
-    assert not errors, "\n".join(errors)
+def design_fset(design):
+    """FSET of a design, from settings.mk (FSET_<design> = <FSET>)."""
+    for line in (TOP / 'settings.mk').read_text().splitlines():
+        m = re.match(rf"FSET_{re.escape(design)}\s*=\s*(\w+)", line)
+        if m:
+            return m.group(1)
+    raise KeyError(design)
+
+
+@pytest.mark.parametrize('design', DESIGNS)
+def test_init_registers(design):
+    """The boot-time registers come from the design's register map, and every
+    value the model derives from the design's FSET fits its register (the
+    LLRFInitRegisters assignments check it)."""
+    from uspas_llrf import dsp_config, LLRFShell
+    model = LLRFShell(dsp_config[design_fset(design)], design=design)
+    boot = [r.name for r in model.regs if r.init is not None]
+    assert list(dataclasses.asdict(model.init_regs)) == boot
+
+
+def test_init_register_checks():
+    regs = regmap.base_regs()
+    init = regmap.init_registers(regs)()
+    init.chan_keep = 0x3ff
+    with pytest.raises(ValueError, match='chan_keep'):
+        init.chan_keep = 0x400
+    with pytest.raises(ValueError, match='loop0_amp_setpoint'):
+        init.loop0_amp_setpoint = -(1 << 17) - 1
+    with pytest.raises(ValueError):
+        init.wave_trig_sel = 7
+    with pytest.raises(AttributeError, match='dsp_reset'):
+        init.dsp_reset = 1
+    assert init.wave_trig_sel is regmap.WaveTrigSel.Always and init.soft_drive_enable == 0b11
 
 
 @pytest.mark.parametrize('design', DESIGNS)

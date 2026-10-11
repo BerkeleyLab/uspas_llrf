@@ -3,6 +3,9 @@ outputs (plan §2.4). Replaces newad for llrf_shell.
 
 The base map is base_regs(). A design extends it in designs/<d>/design.py,
 which defines design(rm) returning the register list; rm is this module.
+It is the single source of register facts: besides the generated outputs
+below, the model's boot-time registers (init_registers(), LLRFShell) and the
+register encodings (WaveTrigSel, DacDriveSel, InlkFaultMode) come from here.
 
 Outputs, written by the command line below:
 - llrf_shell_regs.vh: register storage and decode (`LLRF_SHELL_REGS), the
@@ -17,9 +20,12 @@ This module uses the standard library only: the design build runs it as a
 script, without importing the uspas_llrf package.
 """
 import argparse
+import dataclasses
 import json
 import os
 from dataclasses import dataclass
+from enum import IntEnum
+from pathlib import Path
 
 # register domain -> localbus copy in llrf_shell (data_xdomain from lb_clk)
 DOMAINS = {'lb': 'lb', 'dsp': 'lb1', 'dac': 'lb2', 'evr': 'lb3'}
@@ -27,6 +33,7 @@ LB_HI = 17           # localbus address MSB (newad -w)
 RW_BASE = 0x11000    # rw register window, mirrored for readback
 MIRROR_MAX_AW = 5    # registers and tables up to 2^5 entries are mirrored
 N_DRIVE = 2
+DESIGNS_DIR = Path(__file__).resolve().parents[1] / 'designs'
 
 # Renames and additions against the step-1 baseline JSON; test_regmap_compat
 # allows exactly these differences (plan §2.4.1).
@@ -34,6 +41,29 @@ RENAMES = {
     'arc_test_arc_dev': ['arc_test_mask', 'arc_test_stb'],                # D18, step 3
 }
 ADDITIONS = ['arc_testing']                                               # D18, step 3
+
+
+class WaveTrigSel(IntEnum):
+    Internal = 0
+    External = 1
+    Software = 2
+    EVR = 3
+    Always = 4
+    Mixed = 5
+
+
+class DacDriveSel(IntEnum):
+    I0Q0 = 0
+    I1Q1 = 1
+    I0I1 = 2
+    Q0Q1 = 3
+
+
+class InlkFaultMode(IntEnum):
+    LoLo = 0b00  # V < lower_thresh and V < upper_thresh
+    LoHi = 0b01  # lower_thresh <= V < upper_thresh
+    HiLo = 0b10  # upper_thresh <= V < lower_thresh (shouldn't happen)
+    HiHi = 0b11  # V >= lower_thresh and V >= upper_thresh
 
 
 @dataclass
@@ -44,6 +74,9 @@ class Reg:
     after the write (newad single-cycle).
     inst: block instance whose port the register drives; the port name is
     the register name without the '<inst>_' prefix.
+    enum: IntEnum of the register (or table entry) encoding.
+    init: value the firmware writes at boot (init_llrf.c); None: not written.
+    The model overrides it with values derived from the DSP configuration.
     """
     name: str
     width: int = 1
@@ -52,6 +85,8 @@ class Reg:
     signed: bool = False
     aw: int = 0
     inst: str = None
+    enum: type = None
+    init: int = None
     description: str = ''
 
     def __post_init__(self):
@@ -59,25 +94,39 @@ class Reg:
         assert self.kind in ('rw', 'strobe'), (self.name, self.kind)
         assert not (self.aw and self.kind != 'rw'), self.name
         assert not self.inst or self.name.startswith(self.inst + '_'), self.name
+        assert not (self.init is not None and (self.aw or self.kind != 'rw')), self.name
+        if self.enum:
+            [self.value(e) for e in self.enum]
+        if self.init is not None:
+            self.init = self.value(self.init)
 
     @property
     def port(self):
         return self.name[len(self.inst) + 1:]
 
+    def value(self, v):
+        """v as the register holds it: an int (or enum member) in range."""
+        v = self.enum(v) if self.enum else int(v)
+        lo, hi = (-(1 << (self.width - 1)), 1 << (self.width - 1)) if self.signed else (0, 1 << self.width)
+        if not lo <= v < hi:
+            raise ValueError(f"{self.name}: {v} does not fit {'signed' if self.signed else 'unsigned'}"
+                             f" {self.width} bits")
+        return v
+
 
 def loop_regs(n):
     w = 18
-    return [Reg(f'loop{n}_amp_setpoint', w, signed=True),
-            Reg(f'loop{n}_max_amp_setpoint', w, signed=True),
-            Reg(f'loop{n}_phs_setpoint', w, signed=True),
-            Reg(f'loop{n}_Kp_amp', w, signed=True),
-            Reg(f'loop{n}_Kp_phs', w, signed=True),
-            Reg(f'loop{n}_Ki_amp', w, signed=True),
-            Reg(f'loop{n}_Ki_phs', w, signed=True),
-            Reg(f'loop{n}_amp_enable'),
-            Reg(f'loop{n}_phs_enable'),
-            Reg(f'loop{n}_amp_reset'),
-            Reg(f'loop{n}_phs_reset')]
+    return [Reg(f'loop{n}_amp_setpoint', w, signed=True, init=0),
+            Reg(f'loop{n}_max_amp_setpoint', w, signed=True, init=0),
+            Reg(f'loop{n}_phs_setpoint', w, signed=True, init=0),
+            Reg(f'loop{n}_Kp_amp', w, signed=True, init=0),
+            Reg(f'loop{n}_Kp_phs', w, signed=True, init=0),
+            Reg(f'loop{n}_Ki_amp', w, signed=True, init=0),
+            Reg(f'loop{n}_Ki_phs', w, signed=True, init=0),
+            Reg(f'loop{n}_amp_enable', init=0),
+            Reg(f'loop{n}_phs_enable', init=0),
+            Reg(f'loop{n}_amp_reset', init=0),
+            Reg(f'loop{n}_phs_reset', init=0)]
 
 
 def base_regs():
@@ -86,50 +135,53 @@ def base_regs():
         Reg('circle_buf_flip', domain='lb', kind='strobe'),
         Reg('sig_buf_flip', domain='lb', kind='strobe'),
         Reg('dsp_tag', 8),
-        Reg('cbuf_post_delay', 16),
-        Reg('wave_samp_per', 7),
-        Reg('chan_keep', 10),
-        Reg('cic_base_period', 7),
-        Reg('cic_wave_shift', 4),
-        Reg('inlk_wave_shift', 4),
-        Reg('inlk_permit_mask', 10),
-        Reg('arc_permit_mask', 8),
-        Reg('rx_dds_phase_step', 32),
-        Reg('rx_dds_phase_shift', 19, signed=True),
-        Reg('rx_dds_modulo', 12),
-        Reg('rx_dds_amplitude', 18),
-        Reg('rx_phase_offset', 19, signed=True),
-        Reg('tx_phase_offset', 19, signed=True),
-        Reg('prl_adc_chan', 3),
-        *[Reg(f'loop{n}_adc_chan', 3) for n in range(N_DRIVE)],
+        # buffer syncs from a drive permit drop to the fault record freeze;
+        # 0 (power-up value) disables the freeze, see cic_waves.v
+        Reg('cbuf_post_delay', 16, init=1),
+        Reg('wave_samp_per', 7, init=1),
+        Reg('chan_keep', 10, init=0),
+        Reg('cic_base_period', 7, init=14),
+        Reg('cic_wave_shift', 4, init=0),
+        Reg('inlk_wave_shift', 4, init=0),
+        Reg('inlk_permit_mask', 10, init=0),
+        Reg('arc_permit_mask', 8, init=0),
+        Reg('rx_dds_phase_step', 32, init=0),
+        Reg('rx_dds_phase_shift', 19, signed=True, init=0),
+        Reg('rx_dds_modulo', 12, init=0),
+        Reg('rx_dds_amplitude', 18, init=0),
+        Reg('rx_phase_offset', 19, signed=True, init=0),
+        Reg('tx_phase_offset', 19, signed=True, init=0),
+        Reg('prl_adc_chan', 3, init=0),
+        *[Reg(f'loop{n}_adc_chan', 3, init=0) for n in range(N_DRIVE)],
         *[r for n in range(N_DRIVE) for r in loop_regs(n)],
         Reg('dsp_reset', kind='strobe'),
-        *[Reg(f'loop{n}_pulse_{f}', 24) for n in range(N_DRIVE) for f in ('start', 'high_len')],
-        Reg('pulse_modes', N_DRIVE),
-        Reg('soft_drive_enable', N_DRIVE),
+        *[Reg(f'loop{n}_pulse_{f}', 24, init=v) for n in range(N_DRIVE)
+          for f, v in (('start', 0), ('high_len', 10))],
+        Reg('pulse_modes', N_DRIVE, init=0),
+        Reg('soft_drive_enable', N_DRIVE, init=(1 << N_DRIVE) - 1),
         Reg('ntw_amp_enable'),
         Reg('ntw_phs_enable'),
         Reg('system_bist_pass'),
-        Reg('wave_trig_sel', 3),
-        Reg('trigger_delay', 24),
-        Reg('int_trigger_period', 32),
+        Reg('wave_trig_sel', 3, enum=WaveTrigSel, init=WaveTrigSel.Always),
+        Reg('trigger_delay', 24, init=0),
+        Reg('int_trigger_period', 32, init=5750000),
         Reg('soft_trigger', kind='strobe'),
-        Reg('slow_snap_cic'),
+        Reg('slow_snap_cic', init=0),
         Reg('ext_permit_bypass'),
-        Reg('dac_drive_sel', 2, domain='dac'),
-        Reg('tx_dds_phase_step', 32, domain='dac'),
-        Reg('tx_dds_phase_shift', 19, domain='dac', signed=True),
-        Reg('tx_dds_modulo', 12, domain='dac'),
-        Reg('tx_dds_amplitude', 18, domain='dac'),
-        Reg('duc_spectral_flip', domain='dac'),
-        Reg('tx_afe_spectral_flip', domain='dac'),
-        Reg('evcode', 8, domain='evr'),
+        Reg('dac_drive_sel', 2, domain='dac', enum=DacDriveSel, init=DacDriveSel.I0Q0),
+        Reg('tx_dds_phase_step', 32, domain='dac', init=0),
+        Reg('tx_dds_phase_shift', 19, domain='dac', signed=True, init=0),
+        Reg('tx_dds_modulo', 12, domain='dac', init=0),
+        Reg('tx_dds_amplitude', 18, domain='dac', init=0),
+        Reg('duc_spectral_flip', domain='dac', init=0),
+        Reg('tx_afe_spectral_flip', domain='dac', init=0),
+        Reg('evcode', 8, domain='evr', init=0),
         Reg('evr_oc_delay', 7, domain='evr'),
         # monitor_inlk inlk
         Reg('inlk_amp_lo', 16, aw=4, inst='inlk'),
         Reg('inlk_amp_hi', 16, aw=4, inst='inlk'),
         Reg('inlk_reset_inlk', kind='strobe', inst='inlk'),
-        Reg('inlk_inlk_mode', 2, aw=4, inst='inlk'),
+        Reg('inlk_inlk_mode', 2, aw=4, inst='inlk', enum=InlkFaultMode),
         # arc_inlk arc
         Reg('arc_reset_latch', kind='strobe', inst='arc'),
         Reg('arc_reset_arc_dev', kind='strobe', inst='arc'),
@@ -142,6 +194,22 @@ def base_regs():
         Reg('ntw_phase_step_l', 12, inst='ntw'),
     ]
     return regs
+
+
+def init_registers(regs):
+    """Dataclass of the registers written at boot (init is not None), with
+    their init values as defaults. Assignments are checked: unknown names
+    and values that do not fit the register raise."""
+    boot = {r.name: r for r in regs if r.init is not None}
+
+    def setattr_checked(self, name, value):
+        if name not in boot:
+            raise AttributeError(f"{name} is not a boot-time register")
+        object.__setattr__(self, name, boot[name].value(value))
+
+    fields = [(r.name, int, dataclasses.field(default=r.init)) for r in boot.values()]
+    return dataclasses.make_dataclass('LLRFInitRegisters', fields,
+                                      namespace={'__setattr__': setattr_checked})
 
 
 def insert_after(regs, name, new):
@@ -248,6 +316,15 @@ def regs_vh(regs, source):
         out.append(ports(regs, inst))
     out.append("`define LLRF_SHELL_REGS\\\n" + "".join(decode(r) for r in regs) + mirror() + "\n")
     return "".join(out)
+
+
+def design_file(design):
+    """designs/<design>/design.py, or None if the design uses the base map."""
+    if design is None:
+        return None
+    assert (DESIGNS_DIR / design).is_dir(), f"unknown design {design}"
+    f = DESIGNS_DIR / design / 'design.py'
+    return f if f.exists() else None
 
 
 def load_design(fname=None):

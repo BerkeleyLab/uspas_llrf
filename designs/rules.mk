@@ -44,8 +44,12 @@ $(MODULE).json: $(GEN_DIR)/regmap_$(MODULE).json $(GEN_DIR)/scalar_$(MODULE)_reg
 $(MODULE)_expand.v: $(LLRF_SHELL_SRC) $(GEN_DIR)/$(MODULE)_regs.vh
 	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(LLRF_SHELL_SRC)
 
-$(MODULE)_init_regs.json:
-	$(PYTHON) $(USPAS_LLRF_DIR)/model/llrf_shell.py -c $(FSET) --write-init-reg $@
+# boot-time register values: the design directory sets the FSET and the
+# register map, whatever DESIGN is in the environment
+THIS_DESIGN := $(notdir $(CURDIR))
+INIT_REGS_DEP = $(wildcard $(USPAS_LLRF_DIR)/*.py $(USPAS_LLRF_DIR)/model/*.py) $(USPAS_LLRF_DIR)/settings.json $(DESIGN_PY)
+$(MODULE)_init_regs.json: $(INIT_REGS_DEP)
+	$(PYTHON) $(USPAS_LLRF_DIR)/model/llrf_shell.py -c $(FSET_$(THIS_DESIGN)) -d $(THIS_DESIGN) --write-init-reg $@
 
 # check of basic CDC-correctness
 # rewrite the following rule from top_rules.mk to avoid depending directly on llrf_shell.v (%.v)
@@ -57,5 +61,5 @@ llrf_shell_yosys.json: $(APP_DSP_DIR)/llrf_shell_skin.v llrf_shell_expand.v $(SH
 # exercise with make llrf_shell_expand.v llrf_shell_cdc.txt
 
 CLEAN += llrf_shell_yosys.json llrf_shell_cdc.txt
-CLEAN += $(MODULE)_expand.v $(MODULE).json cordicg_b22.v
+CLEAN += $(MODULE)_expand.v $(MODULE).json $(MODULE)_init_regs.json cordicg_b22.v
 CLEAN_DIRS += $(GEN_DIR)
