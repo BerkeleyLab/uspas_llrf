@@ -66,30 +66,31 @@ generate for (ch = 0; ch < N_DRIVE; ch = ch + 1) begin: gen_duc
     );
 end endgenerate
 
-// XXX sensitive to both dac_clk edges, as in the original shell; to be
-// reviewed separately (step 7a keeps the behavior)
-reg [DW-1:0] dac_data_a = 0, dac_data_b = 0;
-always @(dac_clk) begin
+// DAC output select, combinational: the zest ODDRs register it on dac_clk.
+// (Was always @(dac_clk), which Vivado also built as combinational logic;
+// only simulation saw it update on both edges.)
+logic [DW-1:0] dac_data_a, dac_data_b;
+always_comb begin
     case (dac_drive_sel)
         2'b00: begin    // loop 0 drives, I0Q0
-            dac_data_a <= dac_i_out[0];
-            dac_data_b <= dac_q_out[0];
+            dac_data_a = dac_i_out[0];
+            dac_data_b = dac_q_out[0];
         end
         2'b01: begin    // loop 1 drives, I1Q1
-            dac_data_a <= dac_i_out[1];
-            dac_data_b <= dac_q_out[1];
+            dac_data_a = dac_i_out[1];
+            dac_data_b = dac_q_out[1];
         end
         2'b10: begin    // dual loops I drive, I0I1
-            dac_data_a <= dac_i_out[0];
-            dac_data_b <= dac_i_out[1];
+            dac_data_a = dac_i_out[0];
+            dac_data_b = dac_i_out[1];
         end
         2'b11: begin    // dual loops Q drive, Q0Q1
-            dac_data_a <= dac_q_out[0];
-            dac_data_b <= dac_q_out[1];
+            dac_data_a = dac_q_out[0];
+            dac_data_b = dac_q_out[1];
         end
         default: begin
-            dac_data_a <= dac_i_out[0];
-            dac_data_b <= dac_q_out[0];
+            dac_data_a = dac_i_out[0];
+            dac_data_b = dac_q_out[0];
         end
     endcase
 end
