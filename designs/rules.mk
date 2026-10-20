@@ -3,11 +3,14 @@ MODULE     = llrf_shell
 GEN_DIR    = _gen
 REGMAP_PY  = $(USPAS_LLRF_DIR)/regmap.py
 DESIGN_PY  = $(wildcard design.py)
+# the design shell: llrf_shell.sv (shared blocks, generated SV register file,
+# expanded by sv2v) or llrf_shell.v (monolithic, generated Verilog decode)
+SHELL_SRC ?= llrf_shell.v
+SV2V      ?= sv2v
 
 .PHONY: all
 all: $(MODULE)_expand.v $(MODULE).json
 
-LLRF_SHELL_SRC = llrf_shell.v
 APP_DSP_SRC += slow_bridge_shell.v sig_buf.v pulse_gen.v pi_scalar.v ph_acc_general.v ntw_analyzer.v
 APP_DSP_SRC += noniq_ddc.v monitor_inlk.v interp_xdomain.v interpolator.v
 APP_DSP_SRC += dsp_core.v dds.v ddc.v dac_duc.v cic_waves.v cic_timing.v arc_inlk.v
@@ -16,12 +19,12 @@ DSP_SRC     += minmax.v fwashout.v freq_gcount.v freq_count.v flag_xdomain.v fiq
 DSP_SRC     += fchan_subset.v dpram.v double_inte_smp.v doublediff.v demand_gpt.v data_xdomain.v
 DSP_SRC     += cpxmul_fullspeed.v circle_buf.v circle_buf_serial.v cic_wave_recorder.v cic_multichannel.v ccfilt.v
 EVR_SRC     += tinyEVR.v timing_core.v evr_ts_cdc.v evrSROC.v
-LLRF_SHELL_SRC += $(addprefix $(APP_DSP_DIR)/, $(APP_DSP_SRC))
-LLRF_SHELL_SRC += $(addprefix $(DSP_DIR)/, $(DSP_SRC))
-LLRF_SHELL_SRC += $(addprefix $(SERIAL_IO_DIR)/EVG_EVR/, $(EVR_SRC))
-LLRF_SHELL_SRC += $(BEDROCK_DIR)/cordic/cstageg.v $(BEDROCK_DIR)/cordic/addsubg.v
-LLRF_SHELL_SRC += $(BEDROCK_DIR)/localbus/jit_rad_gateway.v
-LLRF_SHELL_SRC += cordicg_b22.v
+LIB_SRC  = $(addprefix $(APP_DSP_DIR)/, $(APP_DSP_SRC))
+LIB_SRC += $(addprefix $(DSP_DIR)/, $(DSP_SRC))
+LIB_SRC += $(addprefix $(SERIAL_IO_DIR)/EVG_EVR/, $(EVR_SRC))
+LIB_SRC += $(BEDROCK_DIR)/cordic/cstageg.v $(BEDROCK_DIR)/cordic/addsubg.v
+LIB_SRC += $(BEDROCK_DIR)/localbus/jit_rad_gateway.v
+LIB_SRC += cordicg_b22.v
 
 VFLAGS_DEP += -I$(GEN_DIR)
 VFLAGS += -g2012
@@ -29,6 +32,28 @@ VFLAGS += -g2012
 cordicg_b22.v:
 	$(PYTHON) $(CORDIC_DIR)/cordicgx.py 22 $@
 
+ifeq ($(suffix $(SHELL_SRC)),.sv)
+# rw registers, status words and readback mux, and the whole JSON
+# (uspas_llrf/regmap.py, extended by design.py)
+SV_SRC  = $(APP_DSP_DIR)/llrf_shell_pkg.sv $(GEN_DIR)/llrf_shell_regmap_pkg.sv
+SV_SRC += $(addprefix $(APP_DSP_DIR)/, lb_xdomain.sv lb_rd_mux.sv rx_chain.sv tx_chain.sv diag.sv)
+SV_SRC += $(GEN_DIR)/llrf_shell_regs.sv $(SHELL_SRC)
+
+$(GEN_DIR)/%_regmap_pkg.sv $(GEN_DIR)/%_regs.sv $(GEN_DIR)/%.json: $(REGMAP_PY) $(DESIGN_PY)
+	$(PYTHON) $(REGMAP_PY) --sv $(addprefix -d ,$(DESIGN_PY)) -o $(GEN_DIR)
+
+$(MODULE).json: $(GEN_DIR)/$(MODULE).json
+	cp $< $@
+
+# sv2v converts the SV sources only: it drops comments, and with them the
+# verilator lint pragmas of the Verilog library, which is preprocessed as before
+$(MODULE)_expand.v: $(SV_SRC) $(LIB_SRC)
+	$(SV2V) --version
+	$(SV2V) $(SV_SRC) > $@.sv2v
+	$(VERILOG) $(VFLAGS_DEP) -E -o $@.lib $(LIB_SRC)
+	cat $@.sv2v $@.lib > $@
+	rm -f $@.sv2v $@.lib
+else
 # register storage, decode and mirror, and the register part of the JSON
 # (uspas_llrf/regmap.py, extended by design.py)
 $(GEN_DIR)/%_regs.vh $(GEN_DIR)/regmap_%.json: $(REGMAP_PY) $(DESIGN_PY)
@@ -41,8 +66,9 @@ $(GEN_DIR)/scalar_%_regmap.json: %.v
 $(MODULE).json: $(GEN_DIR)/regmap_$(MODULE).json $(GEN_DIR)/scalar_$(MODULE)_regmap.json $(wildcard static_regmap.json)
 	$(PYTHON) $(BUILD_DIR)/merge_json.py -o $@ -i $^
 
-$(MODULE)_expand.v: $(LLRF_SHELL_SRC) $(GEN_DIR)/$(MODULE)_regs.vh
-	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(LLRF_SHELL_SRC)
+$(MODULE)_expand.v: $(SHELL_SRC) $(LIB_SRC) $(GEN_DIR)/$(MODULE)_regs.vh
+	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(SHELL_SRC) $(LIB_SRC)
+endif
 
 # boot-time register values: the design directory sets the FSET and the
 # register map, whatever DESIGN is in the environment
@@ -52,7 +78,7 @@ $(MODULE)_init_regs.json: $(INIT_REGS_DEP)
 	$(PYTHON) $(USPAS_LLRF_DIR)/model/llrf_shell.py -c $(FSET_$(THIS_DESIGN)) -d $(THIS_DESIGN) --write-init-reg $@
 
 # check of basic CDC-correctness
-# rewrite the following rule from top_rules.mk to avoid depending directly on llrf_shell.v (%.v)
+# rewrite the following rule from top_rules.mk to avoid depending directly on the shell source
 SHELL_EXTRA_V = $(DSP_DIR)/half_filt.v $(DSP_DIR)/sat_add.v
 llrf_shell_yosys.json: $(APP_DSP_DIR)/llrf_shell_skin.v llrf_shell_expand.v $(SHELL_EXTRA_V) $(BUILD_DIR)/cdc_snitch_proc.ys
 	$(YOSYS_JSON_PRECHECK)

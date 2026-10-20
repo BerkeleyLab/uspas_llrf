@@ -15,20 +15,22 @@ This directory contains standalone accelerator facility designs, customized `llr
 
    The mapping from `DESIGN` to `FSET` is configured in `settings.mk` and parameter sets in `uspas_llrf/settings.json`.
 
-2. **Customized `llrf_shell.v` & Static Register Maps**:
-   Each design assembles DSP functional blocks from `llrf_dsp/` (DDC, DUC, DDS, PI controllers, circular buffers, interlocks, EVR timing) into a top-level `llrf_shell.v`, accompanied by a `static_regmap.json` specifying static memory and buffer address layouts.
+2. **Design shells and the register map**:
+   Each design has a top-level `llrf_shell`, selected by `SHELL_SRC` in its Makefile:
+   - **SV shell** (`designs/uspas/llrf_shell.sv`, used by uspas, alsu and lemp): assembles the shared blocks `rx_chain`, `diag` and `tx_chain` (`llrf_dsp/*.sv`, types in `llrf_shell_pkg.sv`) with the design-owned permits, trigger selection, feedback loops and EVR timing. The register map, `uspas_llrf/regmap.py`, declares the rw registers, status words and readback windows; the build generates `_gen/llrf_shell_regs.sv` (registers, mirror, status banks and the readback mux), its package and the whole `llrf_shell.json`. sv2v converts the SV sources, and the result is concatenated with the preprocessed Verilog library into `llrf_shell_expand.v`.
+   - **Verilog shell** (`llrf_shell.v` in awa and pip-ii, until they move onto the SV shell): the build generates `_gen/llrf_shell_regs.vh` (register storage, decode and mirror) and the register part of `llrf_shell.json`; status entries come from the `// alias:` comments of the readback mux and the buffer windows from `static_regmap.json`.
 
-   The rw registers are declared in `uspas_llrf/regmap.py` (the base map), extended by `designs/<design>/design.py` where a design has its own (pip-ii). The build generates `_gen/llrf_shell_regs.vh` (storage, decode and the readback mirror, included by `llrf_shell.v`) and the register part of `llrf_shell.json`; status entries come from the `// alias:` comments of the readback mux. `uspas_llrf/tests/test_regmap.py` checks the result against the step-1 baselines in `_baseline/`.
+   A design extends the base register map in `designs/<design>/design.py` (pip-ii). `uspas_llrf/tests/test_regmap.py` checks the result against the step-1 baselines in `_baseline/`.
 
 3. **Unified Cocotb Verification**:
    A common testbench class, `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell`, is used across designs. Each design has its own test runner in `designs/<design>/tb/llrf_shell/` parametrized for its specific frequency set, clock rates, and loopback/feedback channel configurations.
 
-4. **Matrix of `llrf_shell.v` Flavors**:
-   Currently, 3 flavors of `llrf_shell.v` are matrixed across all designs. Symbolic links (`ln -s`) are used to eliminate duplicate copies across identical implementations:
+4. **Matrix of `llrf_shell` Flavors**:
+   Currently, 3 flavors are matrixed across all designs; designs that share a shell point `SHELL_SRC` at it:
 
-| `llrf_shell.v` Flavor | Base Location | Used By Designs | Key Features |
+| `llrf_shell` Flavor | Base Location | Used By Designs | Key Features |
 | :--- | :--- | :--- | :--- |
-| **Baseline** | `designs/uspas/llrf_shell.v` | `uspas`, `alsu`, `lemp`, `awa` | Standard dual-loop PI feedback, raw/IQ sample buffers (4k/2k samples with `0x1000` stride), standard pulse gating via `pulse_gen`, circular buffer, fast interlocks. |
+| **Baseline** | `designs/uspas/llrf_shell.sv` | `uspas`, `alsu`, `lemp` | Standard dual-loop PI feedback, raw/IQ sample buffers (4k/2k samples with `0x1000` stride), standard pulse gating via `pulse_gen`, circular buffer, fast interlocks. |
 | **Pulse Modulation LUT** | `designs/pip-ii/llrf_shell.v` | `pip-ii`, `vts` | Dual arbitrary pulse modulation Look-Up Tables (`pulse0_lut`, `pulse1_lut`, 32k x 16-bit each), `mod_pulse_gen` with configurable sample-rate division (`pulse_res_shift`), pulsed drive modulation. |
 | **Compact Buffer Map** | `designs/awa/llrf_shell.v` | `awa` | Similar architecture to `pip-ii` (compact buffer addresses with `0x800` stride) but without arbitrary pulse modulation LUTs. |
 
@@ -38,12 +40,11 @@ This directory contains standalone accelerator facility designs, customized `llr
 
 ## Design Matrix Summary
 
-| Design (`DESIGN`) | Frequency Set (`FSET`) | `llrf_shell.v` Source | `static_regmap.json` Source | Pulse LUT | Special Features / Operating Mode |
+| Design (`DESIGN`) | Frequency Set (`FSET`) | `llrf_shell` Source | Readback windows | Pulse LUT | Special Features / Operating Mode |
 | :--- | :---: | :--- | :--- | :---: | :--- |
-| **`uspas`** | `USPAS` | `designs/uspas/` | `designs/uspas/` | No | USPAS 2023 educational setup, CW/Gated |
-| **`alsu`** | `ALSU` | Symlink &rarr; `../uspas/` | Symlink &rarr; `../uspas/` | No | ALS-U Accumulator Ring LLRF (500 MHz MO) |
-| **`lemp`** | `LEMP` | Symlink &rarr; `../uspas/` | Symlink &rarr; `../uspas/` | No | SLAC LEMP modernization (2856 MHz MO) |
-| **`awa`** | `AWA` | Symlink &rarr; `../uspas/` | Symlink &rarr; `../uspas/` | No | AWA baseline pulsed setup |
-| **`pip-ii`** | `AWA` | `designs/pip-ii/` | `designs/pip-ii/` | **Yes** | Fermilab PIP-II Linac pulse modulation |
-| **`awa`** | `AWA` | `designs/awa/` | `designs/awa/` | No | AWA compact buffer addressing without LUT |
+| **`uspas`** | `USPAS` | `designs/uspas/llrf_shell.sv` | `regmap.py` | No | USPAS 2023 educational setup, CW/Gated |
+| **`alsu`** | `ALSU` | `SHELL_SRC` &rarr; `../uspas/llrf_shell.sv` | `regmap.py` | No | ALS-U Accumulator Ring LLRF (500 MHz MO) |
+| **`lemp`** | `LEMP` | `SHELL_SRC` &rarr; `../uspas/llrf_shell.sv` | `regmap.py` | No | SLAC LEMP modernization (2856 MHz MO) |
+| **`pip-ii`** | `AWA` | `designs/pip-ii/llrf_shell.v` | `designs/pip-ii/static_regmap.json` | **Yes** | Fermilab PIP-II Linac pulse modulation |
+| **`awa`** | `AWA` | `designs/awa/llrf_shell.v` | `designs/awa/static_regmap.json` | No | AWA compact buffer addressing without LUT |
 

@@ -112,9 +112,23 @@ class TB_llrf_shell:
         phs_err = abs(wrap_phase(phs_meas - self.phs_exp))
         assert phs_err < 0.1, "phase out-of-bound of 0.1 deg"
 
+    def shell_scope(self, name):
+        """The llrf_shell scope that holds name: the shell, or its diag block
+        (SV shells, step 7a)."""
+        shell = self.dut.llrf_shell
+        try:
+            getattr(shell, name)
+            return shell
+        except AttributeError:
+            return shell.diag
+
+    def shell_sig(self, name):
+        """Internal llrf_shell signal, see shell_scope()."""
+        return getattr(self.shell_scope(name), name)
+
     async def drive_phaseref_adc(self, ch=0, amp=0.0, phs=0.0, noise_amp=3):
         # wait for dsp_reset
-        dsp_reset = self.dut.llrf_shell.dsp_reset
+        dsp_reset = self.shell_sig('dsp_reset')
         while True:
             await dsp_reset.value_change
             if dsp_reset.value == 0:  # falling edge
@@ -146,7 +160,7 @@ class TB_llrf_shell:
         """Read average of waveform data from the circle buffer. """
         await self.lb.write_reg('circle_buf_flip', 1)
         # wait for circle buffer ready, rely on timeout_time for exceptions
-        await RisingEdge(self.dut.llrf_shell.cbuf_transferred)
+        await RisingEdge(self.shell_sig('cbuf_transferred'))
         assert await self.lb.read_reg('llrf_circle_ready')
         wfm = []
         n_samples = (1 << self.cbuf_aw) // self.cic_n_chan // 2
@@ -164,7 +178,7 @@ class TB_llrf_shell:
         Rely on timeout_time for exceptions.
         """
         await self.lb.write_reg('sig_buf_flip', 1)
-        transferred = self.dut.llrf_shell.sig_buf_iq_transferred
+        transferred = self.shell_sig('sig_buf_iq_transferred')
         while True:
             await transferred.value_change
             if transferred.value.to_unsigned() & 1:
@@ -345,7 +359,7 @@ class TB_llrf_shell:
         else:
             raise AssertionError(f'rf_pwr_permit_sum did not reach {expected}')
         await RisingEdge(self.dut.dsp_clk)
-        record_en = int(self.dut.llrf_shell.sum_drive_enable.value)
+        record_en = int(self.shell_sig('sum_drive_enable').value)
         assert record_en == expected, \
             f'sum_drive_enable (record_en) is {record_en}, expected {expected}'
 
@@ -385,7 +399,7 @@ class TB_llrf_shell:
         n_ch = len(self.dut.adc_array_in) + len(self.dut.dac_array_out)
         for ch in range(n_ch):
             amp = await self.lb.read_reg('fault_amp', ch)
-            fault_amp_r = self.dut.llrf_shell.fault_amp_r.value
+            fault_amp_r = self.shell_sig('fault_amp_r').value
             expected = fault_amp_r[16 * ch + 15:16 * ch].to_signed()
             assert amp == expected, \
                 f'fault_amp[{ch}] reads {amp}, latched {expected}'
@@ -424,7 +438,7 @@ class TB_llrf_shell:
 
         await self.trip_fast_interlock()
         await self.wait_drive_permit(0)  # record_en low
-        cbuf_sync = self.dut.llrf_shell.cbuf_sync
+        cbuf_sync = self.shell_sig('cbuf_sync')
         for _ in range(post_delay + 2):
             await RisingEdge(cbuf_sync)
         stat1 = await self.read_cbuf_stat1()
@@ -454,7 +468,7 @@ class TB_llrf_shell:
         inlk_gain_abs = np.abs(self.llrf.inlk_gain)
         await self.trip_fast_interlock()
 
-        dut = self.dut.llrf_shell
+        dut = self.shell_scope('inlk')
         await RisingEdge(dut.inlk.wave_valid)
         cocotb.log.info("%8s " * 9 % (
             'chan', 'mon_amp', 'amp_lo', 'amp_hi', '>=lo', '>=hi',

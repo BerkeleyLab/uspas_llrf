@@ -19,6 +19,7 @@ default:
     - python3 -m venv .venv
     - source .venv/bin/activate
     - pip install -e .
+    - sv2v --version  # CI image: v0.0.12-19-g7808819 (doc/developer_guide.md)
 
 flake8_check:
   stage: test
