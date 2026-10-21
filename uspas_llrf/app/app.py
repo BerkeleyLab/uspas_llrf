@@ -267,7 +267,7 @@ class LLRFApp(LEEPDevice):
 
     def read_iq_wfms(self):
         """ Read I, Q waveforms of all waveforms in ADC count unit.
-            Returns a 2D array of shape (n_chan, 4096)
+            Returns a 2D array of shape (n_chan, 2**SIG_BUF_AW) (2048; LEMP 1024)
         """
         self.write_reg('sig_buf_flip', 1)
         while (self.read_reg('sig_iq_buf_ready') != 0xfffff):
