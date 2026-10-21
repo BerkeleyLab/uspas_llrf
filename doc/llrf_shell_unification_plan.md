@@ -242,6 +242,7 @@ Once `loop_ctrl` is stable, consider adding a **function-generator source** next
 | Source | Shape | Timing | Gating | Today |
 |---|---|---|---|---|
 | Modulation table (AWG) | arbitrary, amp + phase | from pulse start, `2^res` clocks per entry | `pulse_dval` | in `loop_ctrl` (all designs) |
+| Sinusoid (`dds`, step 14) | sine, amp and/or phase | free-running or trigger-restarted | per-loop enables | network analyzer, bypassed |
 | Function generator | staircase `steps` × `rate` | `ramp_start` edge (EVR/soft/`wave_trig`), dwell `ttime` | \|err\| < threshold, timeout | ALSU-only `phase_ramp` via `phs_offset` |
 
 A generic version would address PR3–PR5: an offset accumulator, a strobe-based clear, `steps=0` handling, a parameterized filter, and per-loop instances using the `loopN_<func>_*` names. ALSU would move to it only after an explicit decision and a hardware comparison against its `phase_ramp`.
@@ -640,6 +641,12 @@ Deferred (D13): `LEMP_bypass` (klystron reverse interlock bypass), `LEMP_LCLSI_u
     - remove the `top/marble_zest` and `soc/marble_zest` forwarders
     - retire `alsu_fork`
     - record §1.2.1 (generic loop modulator) as a follow-up item
+
+After step 11 (requested 2026-10-20, not yet scheduled):
+
+12. **Base shell into `llrf_dsp/`.** Move `designs/uspas/llrf_shell.sv` to `llrf_dsp/llrf_shell.sv`, next to the blocks it assembles, and make it the default `SHELL_SRC` in `designs/rules.mk`; the designs that use it (uspas, awa, pip-ii) drop their `SHELL_SRC` line, and the custom shells (`designs/alsu/`, `designs/lemp/`) keep theirs. Update §2.1, the READMEs and the paths in `uspas_llrf/tests/test_regmap.py`. No RTL change: `llrf_shell_expand.v` and `llrf_shell.json` identical for every design.
+13. **`ntw_analyzer` → `dds`.** `ntw_analyzer.v` is a `ph_acc_general` plus `cordicg_b22`, which is what `dds.v` is; instantiate `dds` instead and retire `ntw_analyzer.v` and `ntw_analyzer_tb.v` (and `llrf_dsp/scripts/ntw_analyzer.py` if the model's DDS settings calculation covers it). The registers take the `dds` layout of `rx_dds_*`/`tx_dds_*` (`phase_step` 32 bits split 20/12, `modulo`, `amplitude`), replacing `ntw_lo_amp`, `ntw_modulo`, `ntw_phase_step_h` (32) and `ntw_phase_step_l` (12): a leep rename (`RENAMES`), with the model, app, EPICS screens and settings updated in the same MR (as R5). Add a cocotb test of the sinusoid: frequency from the phase step and modulo, amplitude, phase reset on the trigger, against a Python model. Today the ntw outputs only reach status words (`amp_setpoint_ntw`, `phs_setpoint_ntw`, `ntw_cos_debug`, `ntw_phase_debug`); the setpoint path is bypassed in the shell.
+14. **Sinusoidal modulation source in `loop_ctrl`.** Add the `dds` sinusoid as a second modulation source next to the modulation tables: per loop, added to the amplitude setpoint (saturated, then the open-loop clamp) and/or the phase setpoint (wrapped), with `loopN_amp_sin_enable`/`loopN_phs_sin_enable` and the `dds` settings as `loopN_sin_*` registers (§2.4.1). It replaces the shell-level network-analyzer instance, whose excitation then reaches the loops instead of being bypassed; review the ntw status words then. Extend `PulseModulator` and `llrf_dsp/tests/loop_ctrl`, and the shell-level `test_pulse_modulation`. Decide at that step whether the DDS runs free or restarts on the trigger/pulse start, and whether it is gated by `pulse_dval` like the tables.
 
 ## 5. Reminders for future steps
 
