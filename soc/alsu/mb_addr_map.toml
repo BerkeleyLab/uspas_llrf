@@ -94,7 +94,7 @@
     ARC_RESET_LATCH  = ["arc_reset_latch", 0, false] # Arc interlock latch reset
     ARC_TEST_MASK    = ["arc_test_mask", 0, false]   # Arc detector device self-test channel mask
     ARC_TEST_STB     = ["arc_test_stb", 0, false]    # Arc detector device self-test start strobe
-    SOFT_DRIVE_ENABLE = ["soft_drive_enable", 0, false]
+    SOFT_DRIVE_ENABLE = ["soft_drive0_enable", 0, false] # Loop 0 (drive 0) software enable
 
 # Special registers will not auto-generate C code (need to hand-write)
 [special]
@@ -104,3 +104,7 @@
     FPGA_VCCAUX  = [0, 0, false] # FPGA VCCAUX pin voltage [mV] (nominal 1800 mV)
     FPGA_VCCBRAM = [0, 0, false] # FPGA VCCBRAM pin voltage [mV] (nominal 1000 mV)
 
+# Read-write registers added after [special]: their addresses follow the
+# special registers, so existing Modbus addresses do not move
+[rw_ext]
+    SOFT_DRIVE1_ENABLE = ["soft_drive1_enable", 0, false] # Loop 1 (drive 1) software enable

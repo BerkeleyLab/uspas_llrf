@@ -88,7 +88,8 @@ flowchart LR
     'LOOP0_ADC_CHAN': 3,            # Feedback ADC channel for Loop 0
     'LOOP1_ADC_CHAN': 3,            # Feedback ADC channel for Loop 1
     'DAC_DRIVE_SEL': 2,             # 2: I0I1 mode
-    'PULSE_MODES': 3,               # Pulsed mode enabled
+    'DRV0_PULSE_MODE': 1,            # Pulsed mode enabled
+    'DRV1_PULSE_MODE': 1,
     'SLOW_SNAP_CIC': False,         # Slow data snapshot with IQ waveforms (pulsed)
     'EVCODE': 151
 }
@@ -155,7 +156,7 @@ flowchart LR
 | `loop0_phs_setpoint` | 18-bit signed | RW | Loop 0 Phase setpoint |
 | `loop0_pulse_start` | 24-bit unsigned | RW | Loop 0 pulse modulation start time |
 | `loop0_pulse_high_len` | 24-bit unsigned | RW | Loop 0 pulse width length |
-| `pulse_modes` | 2-bit unsigned | RW | Pulse mode enable (`3`) |
+| `drv0_pulse_mode`, `drv1_pulse_mode` | 1-bit unsigned | RW | Pulse mode enable per drive (`1`) |
 | `wave_samp_per` | 7-bit unsigned | RW | CIC decimation multiplier (default `1`) |
 | `chan_keep` | 10-bit unsigned | RW | Bitmask of captured channels in circular buffer |
 | `dac_drive_sel` | 2-bit unsigned | RW | DAC multiplexer selection (`2`: I0I1) |

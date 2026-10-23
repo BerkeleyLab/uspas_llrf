@@ -358,6 +358,9 @@ data_xdomain #(.size(LB_ADW+LB_DW)) lb_to_3x(
 
     assign fast_permit_out = internal_permit_out;
     assign fast_rf_permit_out = internal_permit_out;
+    // per-drive registers, indexed in the loop generate below
+    wire [N_DRIVE-1:0] soft_drive_enable = {soft_drive1_enable, soft_drive0_enable};
+    wire [N_DRIVE-1:0] pulse_modes = {drv1_pulse_mode, drv0_pulse_mode};
     assign evg_permit_out = soft_drive_enable[0] && sum_drive_enable;  // XXX ALSU specific
 
     // ---------------------

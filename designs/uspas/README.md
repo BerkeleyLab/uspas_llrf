@@ -87,7 +87,8 @@ flowchart LR
     'LOOP0_ADC_CHAN': 3,            # Feedback ADC channel for Loop 0
     'LOOP1_ADC_CHAN': 3,            # Feedback ADC channel for Loop 1
     'DAC_DRIVE_SEL': 0,             # 0: I0Q0 mode
-    'PULSE_MODES': 0,               # CW mode
+    'DRV0_PULSE_MODE': 0,            # CW mode
+    'DRV1_PULSE_MODE': 0,
     'SLOW_SNAP_CIC': True,          # Slow data snapshot with cic_waves (CW)
     'EVCODE': 5
 }

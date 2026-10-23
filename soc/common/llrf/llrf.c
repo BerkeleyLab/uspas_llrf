@@ -78,7 +78,8 @@ void align_mo_phase(void) {
 }
 
 void set_llrf_soft_drive_enable(bool permit) {
-    write_lb_reg(SOFT_DRIVE_ENABLE, permit ? 0b11 :0);
+    write_lb_reg(SOFT_DRIVE0_ENABLE, permit);
+    write_lb_reg(SOFT_DRIVE1_ENABLE, permit);
 }
 
 void set_llrf_bist_pass(bool pass) {

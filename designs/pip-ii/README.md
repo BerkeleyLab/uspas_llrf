@@ -95,7 +95,8 @@ flowchart LR
     'LOOP0_ADC_CHAN': 3,            # Feedback ADC channel for Loop 0
     'LOOP1_ADC_CHAN': 3,            # Feedback ADC channel for Loop 1
     'DAC_DRIVE_SEL': 2,             # 2: I0I1 mode
-    'PULSE_MODES': 3,               # Pulsed mode enabled
+    'DRV0_PULSE_MODE': 1,            # Pulsed mode enabled
+    'DRV1_PULSE_MODE': 1,
     'SLOW_SNAP_CIC': False,         # Slow data snapshot with IQ waveforms (pulsed)
     'EVCODE': 151
 }
@@ -166,7 +167,7 @@ flowchart LR
 | `duc_spectral_flip` | 1-bit unsigned | RW | DUC spectral inversion for 2nd Nyquist (`1`) |
 | `tx_phase_offset` | 19-bit signed | RW | TX baseband phase compensation (`-77451`) |
 | `lut1_len`, `lut2_len` | 16-bit unsigned | RW | Pulse LUT waveform lengths |
-| `pulse_modes` | 2-bit unsigned | RW | Pulse mode enable (`3`) |
+| `drv0_pulse_mode`, `drv1_pulse_mode` | 1-bit unsigned | RW | Pulse mode enable per drive (`1`) |
 | `pulse_modulation_enable` | 2-bit unsigned | RW | Pulse LUT modulation enable |
 | `pulse_res_shift` | 4-bit unsigned | RW | Pulse LUT sample rate division shift |
 | `wave_samp_per` | 7-bit unsigned | RW | CIC decimation multiplier (default `1`) |
