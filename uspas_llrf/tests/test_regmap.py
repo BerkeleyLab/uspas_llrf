@@ -31,13 +31,14 @@ def build_json(design):
 
 def compat_errors(base, gen):
     """Differences in name, data_width, sign and access, apart from
-    regmap.RENAMES and regmap.ADDITIONS."""
+    regmap.RENAMES, regmap.ADDITIONS and regmap.REMOVALS. Addresses and
+    addr_width may change (D1, D5)."""
     errors = []
     for k, b in base.items():
         if k in gen:
             errors += [f"{k}: {f} {b.get(f)} -> {gen[k].get(f)}"
                        for f in ('data_width', 'sign', 'access') if b.get(f) != gen[k].get(f)]
-        elif not all(n in gen for n in regmap.RENAMES.get(k, [None])):
+        elif k not in regmap.REMOVALS and not all(n in gen for n in regmap.RENAMES.get(k, [None])):
             errors.append(f"{k}: missing")
     allowed = set(regmap.ADDITIONS) | {n for new in regmap.RENAMES.values() for n in new}
     errors += [f"{k}: not in the baseline" for k in gen if k not in base and k not in allowed]
@@ -140,12 +141,77 @@ def test_address_header():
         lam.address_defines({'x': {'base_addr': lam.LB_LIMIT, 'addr_width': 0}})
 
 
-def test_readback_windows():
+@pytest.mark.parametrize('design', ['uspas', 'alsu', 'lemp', 'awa'])
+def test_readback_windows(design):
     """Every llrf_shell.json entry of the SV shell is inside a readback window
-    of the generated mux (windows() also rejects overlapping windows)."""
-    m = regmap.load_map()
-    wins = [(base, base + (1 << aw)) for _, base, aw, _ in regmap.windows(m)]
+    of the generated mux (windows() also rejects overlapping windows). An
+    alias such as LEMP's iq_buf may also cover unmapped space, but of the
+    decoded windows only signal buffers, whole (§2.4)."""
+    m = regmap.load_map(regmap.design_file(design))
+    wins = [(name, base, base + (1 << aw)) for name, base, aw, _ in regmap.windows(m)]
+    aliases = {a.name for a in m.aliases}
     for name, e in regmap.shell_json(m).items():
         lo, hi = e['base_addr'], e['base_addr'] + (1 << e['addr_width'])
-        covered = sum(min(hi, b) - max(lo, a) for a, b in wins if a < hi and lo < b)
+        hits = [(w, a, b) for w, a, b in wins if a < hi and lo < b]
+        if name in aliases and e['addr_width'] > 0 and name.endswith('_buf'):
+            for w, a, b in hits:
+                assert w.endswith('_buf') and lo <= a and b <= hi, f"{name} covers part of {w}"
+            continue
+        covered = sum(min(hi, b) - max(lo, a) for _, a, b in hits)
         assert covered == hi - lo, f"{name}: [{lo:#x}, {hi:#x}) not fully decoded"
+
+
+# --- `// external` ports of the block instances that own registers -------
+
+EXTERNAL_PORT = re.compile(
+    r"^\s*(input|output)\s+(?:signed\s+)?(?:\[(\d+):(\d+)\])?\s*(\w+)\s*,?\s*"
+    r"//\s*external(?:\s+(single-cycle))?(?:\s+address for (\w+))?", re.M)
+
+
+def external_ports(module):
+    """{port: (direction, width, single_cycle, address_of)} of the ports
+    marked `// external` in llrf_dsp/<module>.v."""
+    text = (TOP / 'llrf_dsp' / f'{module}.v').read_text()
+    return {m[4]: (m[1], int(m[2]) - int(m[3]) + 1 if m[2] else 1, bool(m[5]), m[6])
+            for m in EXTERNAL_PORT.finditer(text)}
+
+
+def instance_modules():
+    """{instance: module} of the register-owning instances in the SV shell."""
+    src = (TOP / 'designs' / 'uspas' / 'llrf_shell.sv').read_text()
+    src += (TOP / 'llrf_dsp' / 'diag.sv').read_text()
+    insts = {r.inst for r in regmap.base_regs() if r.inst}
+    found = {}
+    for inst in insts:
+        m = re.search(rf"^\s*(\w+)\s*(?:#\s*\([^;]*?\))?\s+{inst}\s*\(", src, re.M)
+        assert m, f"instance {inst} not found"
+        found[inst] = m[1]
+    return found
+
+
+@pytest.mark.parametrize('inst', sorted({r.inst for r in regmap.base_regs() if r.inst}))
+def test_external_ports(inst):
+    """Every `// external` port of the instance's module has a register with
+    the same width and kind (single-cycle = strobe; an `address for` output
+    makes a table of that address width), and every register of the
+    instance has such a port."""
+    module = instance_modules()[inst]
+    ports = external_ports(module)
+    regs = {r.port: r for r in regmap.base_regs() if r.inst == inst}
+    errors = []
+    for port, (direction, width, single_cycle, address_of) in ports.items():
+        if direction == 'output':
+            r = regs.get(address_of)
+            if r is None or r.aw != width:
+                errors.append(f"{module}.{port}: table {inst}_{address_of} with aw {width} expected")
+            continue
+        r = regs.get(port)
+        if r is None:
+            errors.append(f"{module}.{port}: no register {inst}_{port}")
+            continue
+        if r.width != width:
+            errors.append(f"{inst}_{port}: width {r.width}, port {width}")
+        if (r.kind == 'strobe') != single_cycle:
+            errors.append(f"{inst}_{port}: kind {r.kind}, port {'single-cycle' if single_cycle else 'level'}")
+    errors += [f"{r.name}: {module} has no `// external` port {p}" for p, r in regs.items() if p not in ports]
+    assert not errors, "\n".join(errors)

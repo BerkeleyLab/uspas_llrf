@@ -57,7 +57,7 @@ flowchart LR
     end
 
     subgraph Diagnostics["Diagnostics & Interlocks"]
-        IQ_BB --> RAW_BUF["Raw & IQ Buffers<br/>(4k samples / ch)"]
+        IQ_BB --> RAW_BUF["Raw & IQ Buffers<br/>(1k samples / ch)"]
         DRIVE --> RAW_BUF
         IQ_BB --> CIC["CIC Decimation<br/>Recorder (Base Period 28)"]
         DRIVE --> CIC
@@ -115,11 +115,12 @@ flowchart LR
 ### Static Buffers (12-bit depth = 4096 samples, 18-bit signed I/Q)
 | Buffer Name | Base Address (Hex) | Word Width | Access | Description |
 | :--- | :---: | :---: | :---: | :--- |
-| `adc0_buf` .. `adc7_buf` | `0x12000` - `0x19000` | 16-bit signed | R | Raw ADC waveform buffers (4k each) |
-| `adc0_i_buf` .. `adc7_i_buf` | `0x1c000` - `0x23000` | 18-bit signed | R | ADC demodulated In-phase buffers |
-| `drv0_i_buf`, `drv1_i_buf` | `0x24000`, `0x25000` | 18-bit signed | R | DAC drive In-phase buffers |
-| `adc0_q_buf` .. `adc7_q_buf` | `0x26000` - `0x2d000` | 18-bit signed | R | ADC demodulated Quadrature buffers |
-| `drv0_q_buf`, `drv1_q_buf` | `0x2e000`, `0x2f000` | 18-bit signed | R | DAC drive Quadrature buffers |
+| `adc0_buf` .. `adc7_buf` | `0x12000` - `0x13c00` | 16-bit signed | R | Raw ADC waveform buffers (1k each) |
+| `adc0_i_buf` .. `adc7_i_buf` | `0x14000` - `0x15c00` | 18-bit signed | R | ADC demodulated In-phase buffers |
+| `drv0_i_buf`, `drv1_i_buf` | `0x16000`, `0x16400` | 18-bit signed | R | DAC drive In-phase buffers |
+| `adc0_q_buf` .. `adc7_q_buf` | `0x16800` - `0x18400` | 18-bit signed | R | ADC demodulated Quadrature buffers |
+| `drv0_q_buf`, `drv1_q_buf` | `0x18800`, `0x18c00` | 18-bit signed | R | DAC drive Quadrature buffers |
+| `iq_buf` | `0x14000` | 18-bit signed | R | All 20 I then Q buffers in one read (addr_width 15) |
 | `circle_data` | `0x30000` | 24-bit signed | R | Circular buffer waveform recorder (64k depth) |
 
 ### Status & Diagnostic Registers

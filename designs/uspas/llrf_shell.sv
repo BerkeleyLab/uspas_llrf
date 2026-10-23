@@ -9,7 +9,7 @@ module llrf_shell
     parameter integer F_DSP_HZ = 125_000_000,  // dsp_clk frequency, sets the arc_inlk 0.5 s pulse
     parameter integer CBUF_DW = 24,
     parameter integer CBUF_AW = 16,
-    parameter integer SIG_BUF_AW = 12,
+    parameter integer SIG_BUF_AW = MAP_SIG_BUF_AW,  // buffer depth; at most the map's windows (sim: less)
     localparam integer CIC_SHIFT_BASE = 7,
     localparam integer INLK_SHIFT_BASE = 11, // near 2*np.log2(CIC_BASE_PERIOD) + 2
     localparam integer MON_RW = 44           // must <= 44, see ccfilt.v:51

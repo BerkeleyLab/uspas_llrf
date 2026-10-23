@@ -42,6 +42,12 @@ LB_HI = 17           # localbus address MSB (newad -w)
 RW_BASE = 0x11000    # rw register window, mirrored for readback
 MIRROR_MAX_AW = 5    # registers and tables up to 2^5 entries are mirrored
 N_DRIVE = 2
+N_ADC = 8
+SIG_BUF_AW = 11      # signal buffer depth 2^SIG_BUF_AW (D1); designs may override
+SIG_BUF_BASE = 0x12000
+# fixed windows: (name, base, aw); MOD_TABLES is reserved until loop_ctrl (7d)
+MOD_TABLES = ('mod_tables', 0x20000, 16)
+CBUF_BASE = 0x30000
 DESIGNS_DIR = Path(__file__).resolve().parents[1] / 'designs'
 
 # Renames and additions against the step-1 baseline JSON; test_regmap_compat
@@ -50,6 +56,8 @@ RENAMES = {
     'arc_test_arc_dev': ['arc_test_mask', 'arc_test_stb'],                # D18, step 3
 }
 ADDITIONS = ['arc_testing']                                               # D18, step 3
+REMOVALS = ['iq_buf',                     # 2K designs: only LEMP keeps it (D1), step 7b
+            'dac0_raw_out', 'dac1_raw_out']  # awa: zero-valued buffers retired (§1.3), step 7b
 
 
 class WaveTrigSel(IntEnum):
@@ -276,9 +284,22 @@ def base_status():
     return status
 
 
-def base_blocks():
-    """Readback windows shared by the designs (step 7a: today's layout)."""
-    sig = [f'adc{c}' for c in range(8)] + [f'drv{n}' for n in range(N_DRIVE)]
+def sig_buf_bases(sig_buf_aw):
+    """Packed signal buffers (§1.1): raw ADC, then I and Q of the ADC and
+    drive channels, each 2^sig_buf_aw deep, from SIG_BUF_BASE."""
+    size, n_ch = 1 << sig_buf_aw, N_ADC + N_DRIVE
+    raw = SIG_BUF_BASE
+    i_base = raw + N_ADC * size
+    q_base = i_base + n_ch * size
+    assert q_base + n_ch * size <= MOD_TABLES[1], f"signal buffers overrun 0x{MOD_TABLES[1]:x}"
+    return raw, i_base, q_base
+
+
+def base_blocks(sig_buf_aw=SIG_BUF_AW):
+    """Readback windows shared by the designs."""
+    sig = [f'adc{c}' for c in range(N_ADC)] + [f'drv{n}' for n in range(N_DRIVE)]
+    size = 1 << sig_buf_aw
+    raw, i_base, q_base = sig_buf_bases(sig_buf_aw)
     return [
         Block('llrf_circle_ready', 0x10800, 0, 2, 'rd_circle_ready'),
         Block('sig_buf_ready', 0x10801, 0, 8, 'rd_sig_buf_ready'),
@@ -288,12 +309,13 @@ def base_blocks():
         Block('mon_phs', 0x10a10, 4, 17, 'rd_mon_phs', signed=True),
         Block('fault_amp', 0x10a20, 4, 16, 'rd_fault_amp', signed=True,
               description='Monitor amplitude latched at the first fault, per channel'),
-        *[Block(f'adc{c}_buf', 0x12000 + 0x1000 * c, 12, 16, 'rd_adc_buf', c, signed=True) for c in range(8)],
-        *[Block(f'{s}_i_buf', 0x1c000 + 0x1000 * c, 12, 18, 'rd_sig_i_buf', c, signed=True)
+        *[Block(f'adc{c}_buf', raw + size * c, sig_buf_aw, 16, 'rd_adc_buf', c, signed=True)
+          for c in range(N_ADC)],
+        *[Block(f'{s}_i_buf', i_base + size * c, sig_buf_aw, 18, 'rd_sig_i_buf', c, signed=True)
           for c, s in enumerate(sig)],
-        *[Block(f'{s}_q_buf', 0x26000 + 0x1000 * c, 12, 18, 'rd_sig_q_buf', c, signed=True)
+        *[Block(f'{s}_q_buf', q_base + size * c, sig_buf_aw, 18, 'rd_sig_q_buf', c, signed=True)
           for c, s in enumerate(sig)],
-        Block('circle_data', 0x30000, 16, 24, 'rd_cbuf', signed=True),
+        Block('circle_data', CBUF_BASE, 16, 24, 'rd_cbuf', signed=True),
     ]
 
 
@@ -307,7 +329,6 @@ def base_aliases():
         Alias('dsp_slow_tag_old', 0x10915, 0, 16),
         Alias('dsp_slow_adc_min', 0x10916, 3, 16, signed=True),
         Alias('dsp_slow_adc_max', 0x1091e, 3, 16, signed=True),
-        Alias('iq_buf', 0x1c000, 17, 18, signed=True),
     ]
 
 
@@ -317,6 +338,7 @@ class RegMap:
     status: list
     blocks: list
     aliases: list
+    sig_buf_aw: int = SIG_BUF_AW
 
 
 def init_registers(regs):
@@ -469,7 +491,7 @@ def windows(m):
     win = [(f'status_bank_{b:x}', b << 4, 4, f'status_bank_{b:x}') for b in banks]
     win += [('rom_compat', *ROM_COMPAT, "32'h0"), ('mirror', mirror_base, mirror_aw, 'mirror_out')]
     win += [(b.name, b.base, b.aw, b.port + ('' if b.index is None else f'[{b.index}]')) for b in m.blocks]
-    spans = sorted((base, base + (1 << aw), name) for name, base, aw, _ in win)
+    spans = sorted((base, base + (1 << aw), name) for name, base, aw, _ in win + [(*MOD_TABLES, None)])
     for (_, end, a), (start, _, b) in zip(spans, spans[1:]):
         assert end <= start, f"readback windows {a} and {b} overlap"
     return win
@@ -492,6 +514,7 @@ def pkg_sv(m, source):
         fields = "".join(field(s.name, s.width, s.signed) for s in st)
         out.append(f"    typedef struct packed {{\n{fields}    }} status_{dom}_t;\n")
     out.append(f"    localparam int MIRROR_WIDTH = {mirror_aw};\n")
+    out.append(f"    localparam int MAP_SIG_BUF_AW = {m.sig_buf_aw};  // signal buffer windows\n")
     for r in m.regs:
         out.append(f"    localparam logic [{LB_HI}:0] ADDR_{r.name.upper()} = 18'h{addr[r.name]:05x};\n")
     for b in m.blocks:
@@ -606,26 +629,35 @@ def design_file(design):
     return f if f.exists() else None
 
 
+def design_scope(fname=None):
+    """Namespace of designs/<d>/design.py (empty for the base map). It may
+    define SIG_BUF_AW, design(rm) returning the registers and aliases(rm, m)
+    returning extra aliases; rm is this module."""
+    scope = {}
+    if fname:
+        with open(fname) as f:
+            exec(compile(f.read(), str(fname), 'exec'), scope)
+    return scope
+
+
 def load_design(fname=None):
     """Registers of a design: design(rm) from fname, or the base map."""
     import sys
     rm = sys.modules[__name__]
-    if not fname:
-        regs = base_regs()
-    else:
-        scope = {}
-        with open(fname) as f:
-            exec(compile(f.read(), fname, 'exec'), scope)
-        regs = scope['design'](rm)
+    regs = design_scope(fname).get('design', lambda rm: rm.base_regs())(rm)
     check(regs)
     return regs
 
 
 def load_map(fname=None):
-    """Register map of a design: registers from load_design(), status words,
-    blocks and aliases from the base (a design.py may add status(rm),
-    blocks(rm) and aliases(rm) functions later)."""
-    m = RegMap(load_design(fname), base_status(), base_blocks(), base_aliases())
+    """Register map of a design: registers from load_design(), status words
+    from the base, blocks with the design's SIG_BUF_AW, and aliases."""
+    import sys
+    scope = design_scope(fname)
+    sig_buf_aw = scope.get('SIG_BUF_AW', SIG_BUF_AW)
+    m = RegMap(load_design(fname), base_status(), base_blocks(sig_buf_aw), base_aliases(), sig_buf_aw)
+    if 'aliases' in scope:
+        m.aliases += scope['aliases'](sys.modules[__name__], m)
     windows(m)
     return m
 

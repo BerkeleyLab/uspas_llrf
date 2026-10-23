@@ -5,8 +5,8 @@ This directory contains the DSP configuration and static register mapping for th
 ## Design Architecture & Shell Flavor
 
 - **Frequency Configuration (`FSET`)**: `AWA`
-- **`llrf_shell.v` Flavor**: **Compact Buffer Map** (direct file in this directory; similar to `pip-ii` buffer mapping but without pulse modulation LUTs)
-- **`static_regmap.json`**: Direct file in this directory (`0x800` stride mapping)
+- **`llrf_shell` Flavor**: **Baseline** (`SHELL_SRC = ../uspas/llrf_shell.sv` in the Makefile)
+- **Register map**: the base map in `uspas_llrf/regmap.py` (2k signal buffers, `0x800` stride)
 - **Testbench**: Uses unified cocotb runner `tb/llrf_shell/` based on `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell`.
 
 ---
@@ -115,12 +115,11 @@ flowchart LR
 ### Static Buffers (11-bit depth = 2048 samples, 18-bit signed I/Q)
 | Buffer Name | Base Address (Hex) | Word Width | Access | Description |
 | :--- | :---: | :---: | :---: | :--- |
-| `adc0_buf` .. `adc7_buf` | `0x12000` - `0x15800` | 16-bit signed | R | Raw ADC waveform buffers (2k each, 0x800 stride) |
-| `dac0_raw_out`, `dac1_raw_out` | `0x16000`, `0x16800` | 16-bit signed | R | Raw DAC output waveform buffers (2k each) |
-| `adc0_i_buf` .. `adc7_i_buf` | `0x17000` - `0x1a800` | 18-bit signed | R | ADC demodulated In-phase buffers |
-| `drv0_i_buf`, `drv1_i_buf` | `0x1b000`, `0x1b800` | 18-bit signed | R | DAC drive In-phase buffers |
-| `adc0_q_buf` .. `adc7_q_buf` | `0x1c000` - `0x1f800` | 18-bit signed | R | ADC demodulated Quadrature buffers |
-| `drv0_q_buf`, `drv1_q_buf` | `0x20000`, `0x20800` | 18-bit signed | R | DAC drive Quadrature buffers |
+| `adc0_buf` .. `adc7_buf` | `0x12000` - `0x15800` | 16-bit signed | R | Raw ADC waveform buffers (2k each) |
+| `adc0_i_buf` .. `adc7_i_buf` | `0x16000` - `0x19800` | 18-bit signed | R | ADC demodulated In-phase buffers |
+| `drv0_i_buf`, `drv1_i_buf` | `0x1a000`, `0x1a800` | 18-bit signed | R | DAC drive In-phase buffers |
+| `adc0_q_buf` .. `adc7_q_buf` | `0x1b000` - `0x1e800` | 18-bit signed | R | ADC demodulated Quadrature buffers |
+| `drv0_q_buf`, `drv1_q_buf` | `0x1f000`, `0x1f800` | 18-bit signed | R | DAC drive Quadrature buffers |
 | `circle_data` | `0x30000` | 24-bit signed | R | Circular buffer waveform recorder (64k depth) |
 
 ### Status & Diagnostic Registers
