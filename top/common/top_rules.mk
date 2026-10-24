@@ -35,7 +35,7 @@ GT_TCL  ?= $(BEDROCK_DIR)/serial_io/EVG_EVR/gt_tcl/evr_gtx.tcl
 PIN_MAP ?= $(TOP_COMMON_DIR)/pin_map.csv
 vpath %.c $(BUILD_DIR)
 
-.PHONY: all system_config system_test evr_test clean
+.PHONY: all system_config system_test evr_test console clean
 all: $(TARGET)_top_$(DESIGN).bit
 
 IP_EXPAND := $(BSP_DIR)/marble_bsp_expand.v $(SOC_BUILD_DIR)/system_expand.v $(DESIGNS_DIR)/$(DESIGN)/llrf_shell_expand.v $(IP_EXPAND)
@@ -100,6 +100,10 @@ system_config:
 	-c "init; xc7_program xc7.tap; pld load 0 $(BITSTREAM); exit"
 
 # check Ethernet and system selftest status
+#: SoC console on the Marble's USB UART (see soc/common/synth/Makefile)
+console:
+	$(SOC_MAKE) console
+
 system_test:
 	ping -v -c 4 -w 20 $(IP_ADDRESS)
 	test "$$(leep leep://$(IP_ADDRESS):803 gitid)" = "$(GIT_ID)" && echo "gitid OK" && \

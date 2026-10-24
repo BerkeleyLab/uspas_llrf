@@ -6,8 +6,11 @@ include $(SOC_COMMON_DIR)/common.mk
 
 TARGET              = system
 HARDWARE            = marble
-BOOTLOADER_SERIAL   = $(shell readlink -f /dev/serial/by-id/usb-LBNL_Marble_$(MARBLE_SN)-if02-port0)
-BOOTLOADER_BAUDRATE = 115200
+# the Marble's USB UART to the SoC (console, bootloader)
+MARBLE_UART         = $(shell readlink -f /dev/serial/by-id/usb-LBNL_Marble_$(MARBLE_SN)-if02-port0)
+CONSOLE_BAUDRATE    = 115200
+BOOTLOADER_SERIAL   = $(MARBLE_UART)
+BOOTLOADER_BAUDRATE = $(CONSOLE_BAUDRATE)
 ZEST_DIR            = $(BOARD_SUPPORT_DIR)/zest_soc
 
 SRC_V  += xilinx7_clocks.v
@@ -20,6 +23,16 @@ SRC_V  += $(BOARD_SUPPORT_DIR)/fmc11x/dco_buf.v \
 OBJS   += bootloader.o 0x0e0.lds
 
 all: $(TARGET)_top.bit
+
+# SoC console on the Marble's USB UART: make console MARBLE_SERIAL=<n>.
+# The UART's RTS line resets the SoC when released (UART_CTS edge,
+# top/common/marble_zest_mid.vh), and Linux releases it when a terminal closes
+# the port; -hupcl keeps it asserted, so leaving the console does not reboot.
+.PHONY: console
+console:
+	@test -n "$(MARBLE_UART)" || { echo "No Marble UART for MARBLE_SERIAL=$(MARBLE_SERIAL)"; exit 1; }
+	stty -F $(MARBLE_UART) -hupcl
+	$(PYTHON) -m serial.tools.miniterm $(MARBLE_UART) $(CONSOLE_BAUDRATE)
 
 $(TARGET).elf: $(OBJS)
 $(TARGET)_top.bit: system_top.xdc system_top.v $(SRC_V) $(TARGET)32.dat

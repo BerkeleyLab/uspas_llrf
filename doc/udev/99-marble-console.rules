@@ -1,0 +1,5 @@
+# Marble SoC console (FTDI 0403:6011, interface 02): turn off hang-up on close,
+# so closing a terminal leaves RTS asserted. The UART's RTS line resets the SoC
+# when released (UART_CTS edge in top/common/marble_zest_mid.vh).
+# Install: sudo cp 99-marble-console.rules /etc/udev/rules.d/ && sudo udevadm control --reload
+SUBSYSTEM=="tty", ENV{ID_VENDOR_ID}=="0403", ENV{ID_MODEL_ID}=="6011", ENV{ID_MODEL}=="Marble", ENV{ID_USB_INTERFACE_NUM}=="02", RUN+="/bin/stty -F /dev/%k -hupcl"
