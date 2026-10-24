@@ -110,6 +110,9 @@ make system_config MARBLE_SERIAL=61
 # Test Ethernet and system self-test via LEEP (IP defaults to 192.168.19.<SERIAL>)
 make system_test MARBLE_SERIAL=61
 
+# Post-boot firmware check over the USB UART console (answers '?' with this commit's GIT_REV_ID)
+make system_console_test MARBLE_SERIAL=61
+
 # Direct LEEP CLI access
 .venv/bin/leep leep://192.168.18.61:803 list
 .venv/bin/leep leep://192.168.18.61:803 reg <reg_name>

@@ -35,7 +35,7 @@ GT_TCL  ?= $(BEDROCK_DIR)/serial_io/EVG_EVR/gt_tcl/evr_gtx.tcl
 PIN_MAP ?= $(TOP_COMMON_DIR)/pin_map.csv
 vpath %.c $(BUILD_DIR)
 
-.PHONY: all system_config system_test evr_test console clean
+.PHONY: all system_config system_test system_console_test evr_test console clean
 all: $(TARGET)_top_$(DESIGN).bit
 
 IP_EXPAND := $(BSP_DIR)/marble_bsp_expand.v $(SOC_BUILD_DIR)/system_expand.v $(DESIGNS_DIR)/$(DESIGN)/llrf_shell_expand.v $(IP_EXPAND)
@@ -108,6 +108,12 @@ system_test:
 	ping -v -c 4 -w 20 $(IP_ADDRESS)
 	test "$$(leep leep://$(IP_ADDRESS):803 gitid)" = "$(GIT_ID)" && echo "gitid OK" && \
 	leep leep://$(IP_ADDRESS):803 reg system_bist_pass | awk ' $$2!=00000001 { exit 1 }'
+
+#: post-boot firmware check: the console must answer '?' with this commit's
+#: GIT_REV_ID (needs a UART0 interrupt and the main loop running)
+CONSOLE_PORT = /dev/serial/by-id/usb-LBNL_Marble_$(MARBLE_SN)-if02-port0
+system_console_test:
+	$(PYTHON) -m uspas_llrf.tools.marble_console $(CONSOLE_PORT) --git-id $(GIT_32BIT_ID)
 
 #: Verilator simulation of the full top (see topsim.sh)
 topsim:
