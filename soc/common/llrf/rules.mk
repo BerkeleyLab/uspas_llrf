@@ -11,14 +11,19 @@ $(LLRF_DIR)/llrf.o: $(LLRF_AUTO)
 ui.o:               $(LLRF_AUTO)
 system.o:           $(LLRF_AUTO)
 
-$(DESIGN_DSP_DIR)/llrf_shell.json:
+$(DESIGN_DSP_DIR)/llrf_shell.json: FORCE
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
-$(BSP_DIR)/marble_bsp.json:
+$(BSP_DIR)/marble_bsp.json: FORCE
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
-$(DESIGN_DSP_DIR)/llrf_shell_init_regs.json:
+$(DESIGN_DSP_DIR)/llrf_shell_init_regs.json: FORCE
 	$(MAKE) -C $(dir $@) $(notdir $@)
+
+# Sub-make targets depend on FORCE, so the owning directory's make always
+# decides whether they are current (they used to be built only once).
+.PHONY: FORCE
+FORCE:
 
 llrf_regs_addr.h: $(DESIGN_DSP_DIR)/llrf_shell.json $(LLRF_DIR)/localbus_address_map.py
 	$(PYTHON) $(LLRF_DIR)/localbus_address_map.py -i $< -o $@

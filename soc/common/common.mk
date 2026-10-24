@@ -44,6 +44,9 @@ CFLAGS += -DNONSTD_PRINTF
 CFLAGS += -DUSPAS_LLRF_FSET=\"$(FSET)\"
 
 CLEAN += init_zest.o init_marble.o
+# files a design's design.mk generates (soc/alsu: Modbus map), cleaned for any
+# DESIGN because sim/, top_sim/ and synth/ are shared between designs
+CLEAN += modbus_registers.h modbus_bus_handlers.c
 
 # Per-design firmware settings, included after the base lists so that
 # soc/<design>/design.mk can extend SRC_V, SRCS and CFLAGS and set

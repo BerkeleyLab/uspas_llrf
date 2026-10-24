@@ -14,11 +14,16 @@ export PARAM_CBUF_AW     := 6
 export PARAM_SIG_BUF_AW  := 6
 include  $(APP_DSP_DIR)/tests/cocotb_inc.mk
 
-$(DESIGN_DSP_DIR)/llrf_shell_expand.v:
+$(DESIGN_DSP_DIR)/llrf_shell_expand.v: FORCE
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
-$(DESIGN_DSP_DIR)/llrf_shell.json:
+$(DESIGN_DSP_DIR)/llrf_shell.json: FORCE
 	$(MAKE) -C $(dir $@) $(notdir $@)
+
+# Sub-make targets depend on FORCE, so the owning directory's make always
+# decides whether they are current (they used to be built only once).
+.PHONY: FORCE
+FORCE:
 
 clean::
 	rm -f $(DESIGN_DSP_DIR)/llrf_shell_expand.v
