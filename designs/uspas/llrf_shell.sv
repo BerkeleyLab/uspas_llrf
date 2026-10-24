@@ -138,7 +138,10 @@ wire [0:0] sum_drive_enable = internal_permit_out && external_permit_in;
 
 assign fast_permit_out = internal_permit_out;
 assign fast_rf_permit_out = internal_permit_out;
-assign evg_permit_out = cfg_dsp.soft_drive_enable[0] && sum_drive_enable;  // XXX ALSU specific
+// per-drive registers, indexed in the loop generate below
+wire [N_DRIVE-1:0] soft_drive_enable = {cfg_dsp.soft_drive1_enable, cfg_dsp.soft_drive0_enable};
+wire [N_DRIVE-1:0] drv_pulse_mode = {cfg_dsp.drv1_pulse_mode, cfg_dsp.drv0_pulse_mode};
+assign evg_permit_out = soft_drive_enable[0] && sum_drive_enable;  // XXX ALSU specific
 
 // ---------------------
 // Triggering logic
@@ -432,8 +435,8 @@ generate for (ch = 0; ch < N_DRIVE; ch = ch + 1) begin: gen_loops
         .pulse_dval (pulse_dval[ch])
     );
 
-    assign drive_on[ch] = cfg_dsp.soft_drive_enable[ch] && sum_drive_enable &&
-                          (cfg_dsp.pulse_modes[ch] ? pulse_dval[ch] : 1'b1);
+    assign drive_on[ch] = soft_drive_enable[ch] && sum_drive_enable &&
+                          (drv_pulse_mode[ch] ? pulse_dval[ch] : 1'b1);
     assign drive_i_out[ch] = drive_on[ch] ? drive_i[ch] : {DWBB{1'b0}};
     assign drive_q_out[ch] = drive_on[ch] ? drive_q[ch] : {DWBB{1'b0}};
 

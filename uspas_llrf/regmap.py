@@ -54,6 +54,8 @@ DESIGNS_DIR = Path(__file__).resolve().parents[1] / 'designs'
 # allows exactly these differences (plan §2.4.1).
 RENAMES = {
     'arc_test_arc_dev': ['arc_test_mask', 'arc_test_stb'],                # D18, step 3
+    'pulse_modes': ['drv0_pulse_mode', 'drv1_pulse_mode'],                # D11, step 7c
+    'soft_drive_enable': ['soft_drive0_enable', 'soft_drive1_enable'],    # D11, step 7c
 }
 ADDITIONS = ['arc_testing']                                               # D18, step 3
 REMOVALS = ['iq_buf',                     # 2K designs: only LEMP keeps it (D1), step 7b
@@ -176,8 +178,8 @@ def base_regs():
         Reg('dsp_reset', kind='strobe'),
         *[Reg(f'loop{n}_pulse_{f}', 24, init=v) for n in range(N_DRIVE)
           for f, v in (('start', 0), ('high_len', 10))],
-        Reg('pulse_modes', N_DRIVE, init=0),
-        Reg('soft_drive_enable', N_DRIVE, init=(1 << N_DRIVE) - 1),
+        *[Reg(f'drv{n}_pulse_mode', init=0) for n in range(N_DRIVE)],
+        *[Reg(f'soft_drive{n}_enable', init=1) for n in range(N_DRIVE)],
         Reg('ntw_amp_enable'),
         Reg('ntw_phs_enable'),
         Reg('system_bist_pass'),

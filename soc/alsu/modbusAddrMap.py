@@ -31,6 +31,9 @@ class CGenerator():
         self._ro = self._addr_map.get("ro", None)
         self._rw = self._addr_map.get("rw", None)
         self._sp = self._addr_map.get("special", None)
+        # read-write registers numbered after [special], so adding one does
+        # not move existing Modbus addresses
+        self._rwx = self._addr_map.get("rw_ext", {})
         self._input_file = filepath
         self._written = []
         self._write_fn_sig = "void mb_autogen_write_callback(int mbRegId, int mbData)"
@@ -124,6 +127,7 @@ class CGenerator():
             (self._ro, "Read-Only Registers"),
             (self._rw, "Read-Write Registers"),
             (self._sp, "Special Registers"),
+            (self._rwx, "Read-Write Registers, appended"),
         )
         for _map, comment in todo:
             if len(_map) == 0:
@@ -158,7 +162,8 @@ class CGenerator():
 
     def gen_write_fn(self, filepath=None, includes=None):
         fname, initialized = self._init_filepath(filepath, self._default_source_name)
-        if len(self._rw) == 0:
+        writable = {**self._rw, **self._rwx}
+        if len(writable) == 0:
             self._w("/* No writable registers */")
             if self._fp is not None:
                 self._fp.close()
@@ -169,7 +174,7 @@ class CGenerator():
         self._w("  enum mb_reg_id id = (enum mb_reg_id)(mbRegId & 0xffff);")
         self._w("  int32_t mbData32 = (int32_t)(mbData & 0xffff);")
         self._w("  switch (id) {")
-        for mb_name, (leep_name, is_upper) in self._rw.items():
+        for mb_name, (leep_name, is_upper) in writable.items():
             if leep_name is None:
                 continue
             self._w(f"    case {mb_name}:")
@@ -210,9 +215,11 @@ class CGenerator():
             self._source_init(fname, includes)
         ro = self._purge_lowers(self._addr_map.get("ro", []))
         rw = self._purge_lowers(self._addr_map.get("rw", []))
+        rwx = self._purge_lowers(self._rwx)
         todo = (
             (ro, "Read-Only Registers"),
             (rw, "Read-Write Registers"),
+            (rwx, "Read-Write Registers, appended"),
         )
         self._w(f"\n{self._read_fn_sig} {{")
         self._w("  int32_t val;")

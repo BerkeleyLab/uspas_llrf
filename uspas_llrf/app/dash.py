@@ -238,11 +238,11 @@ def format_permit_records(regs, drive_names):
             'readback of external & internal'),
     ]
     for n, name in enumerate(drive_names):
-        soft = (regs['soft_drive_enable'] >> n) & 1
-        records.append(row('Final', f'soft_drive_enable[{n}]', soft,
+        soft = regs[f'soft_drive{n}_enable'] & 1
+        records.append(row('Final', f'soft_drive{n}_enable', soft,
                            f'{name} software enable'))
         records.append(row('Final', f'RF permit {name}', soft & drive_out,
-                           f'= soft_drive_enable[{n}] & drive_permit_out'))
+                           f'= soft_drive{n}_enable & drive_permit_out'))
     return records
 
 
@@ -1235,7 +1235,7 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
                     html.Div(
                         "1 = permit, 0 = trip. drive_permit_out = "
                         "external_permit & internal_permit; each drive "
-                        "is on with its soft_drive_enable bit and "
+                        "is on with its soft_driveN_enable and "
                         "drive_permit_out.",
                         style={'fontSize': '11px', 'color': '#7f8c8d',
                                'marginBottom': '8px'}
@@ -1535,11 +1535,9 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
                 return f"Wrote loop0_Ki_phs={ki_phs} at {time.strftime('%H:%M:%S')}"
             elif trig_id == 'loop0-pulse-enable':
                 en0 = 'en' in (en0_val or [])
-                curr_modes = int(llrf_app.read_reg('pulse_modes'))
-                pulse_modes = (curr_modes | 0b01) if en0 else (curr_modes & ~0b01)
-                llrf_app.write_reg('pulse_modes', pulse_modes)
+                llrf_app.write_reg('drv0_pulse_mode', int(en0))
                 mode_str = "ENABLED" if en0 else "DISABLED"
-                return f"Loop0 pulse mode {mode_str} (pulse_modes={bin(pulse_modes)}) at {time.strftime('%H:%M:%S')}"
+                return f"Loop0 pulse mode {mode_str} (drv0_pulse_mode={int(en0)}) at {time.strftime('%H:%M:%S')}"
             elif trig_id == 'loop0-pulse-start' and start0_val is not None:
                 clk = ns_to_clk(start0_val)
                 llrf_app.write_reg('loop0_pulse_start', clk)
@@ -1604,11 +1602,9 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
                 return f"Wrote loop1_Ki_phs={ki_phs} at {time.strftime('%H:%M:%S')}"
             elif trig_id == 'loop1-pulse-enable':
                 en1 = 'en' in (en1_val or [])
-                curr_modes = int(llrf_app.read_reg('pulse_modes'))
-                pulse_modes = (curr_modes | 0b10) if en1 else (curr_modes & ~0b10)
-                llrf_app.write_reg('pulse_modes', pulse_modes)
+                llrf_app.write_reg('drv1_pulse_mode', int(en1))
                 mode_str = "ENABLED" if en1 else "DISABLED"
-                return f"Loop1 pulse mode {mode_str} (pulse_modes={bin(pulse_modes)}) at {time.strftime('%H:%M:%S')}"
+                return f"Loop1 pulse mode {mode_str} (drv1_pulse_mode={int(en1)}) at {time.strftime('%H:%M:%S')}"
             elif trig_id == 'loop1-pulse-start' and start1_val is not None:
                 clk = ns_to_clk(start1_val)
                 llrf_app.write_reg('loop1_pulse_start', clk)

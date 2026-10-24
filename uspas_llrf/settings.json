@@ -39,7 +39,8 @@
             "LOOP0_ADC_CHAN":    6,
             "LOOP1_ADC_CHAN":    6,
             "DAC_DRIVE_SEL":     0,
-            "PULSE_MODES":       0,
+            "DRV0_PULSE_MODE":   0,
+            "DRV1_PULSE_MODE":   0,
             "SLOW_SNAP_CIC":     true,
             "EVCODE":            5
         },
@@ -60,7 +61,8 @@
             "LOOP0_ADC_CHAN":    3,
             "LOOP1_ADC_CHAN":    3,
             "DAC_DRIVE_SEL":     0,
-            "PULSE_MODES":       0,
+            "DRV0_PULSE_MODE":   0,
+            "DRV1_PULSE_MODE":   0,
             "SLOW_SNAP_CIC":     true,
             "EVCODE":            5
         },
@@ -81,7 +83,8 @@
             "LOOP0_ADC_CHAN":    0,
             "LOOP1_ADC_CHAN":    0,
             "DAC_DRIVE_SEL":     2,
-            "PULSE_MODES":       3,
+            "DRV0_PULSE_MODE":   1,
+            "DRV1_PULSE_MODE":   1,
             "SLOW_SNAP_CIC":     false,
             "EVCODE":            151
         },
@@ -102,7 +105,8 @@
             "LOOP0_ADC_CHAN":    3,
             "LOOP1_ADC_CHAN":    3,
             "DAC_DRIVE_SEL":     2,
-            "PULSE_MODES":       3,
+            "DRV0_PULSE_MODE":   1,
+            "DRV1_PULSE_MODE":   1,
             "SLOW_SNAP_CIC":     false,
             "EVCODE":            151
         }

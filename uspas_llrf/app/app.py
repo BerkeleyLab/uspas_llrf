@@ -120,8 +120,10 @@ class LLRFApp(LEEPDevice):
             ('inlk_permit_mask', 0),  # bypass interlocks
             ('arc_permit_mask', 0),  # bypass interlocks
             ('ext_permit_bypass', 1),  # bypass external permits
-            ('pulse_modes', 0),
-            ('soft_drive_enable', 3),
+            ('drv0_pulse_mode', 0),
+            ('drv1_pulse_mode', 0),
+            ('soft_drive0_enable', 1),
+            ('soft_drive1_enable', 1),
             ('wave_samp_per', self.wave_samp_per),
             ('chan_keep', self.chan_keep)
         ])
@@ -239,7 +241,7 @@ class LLRFApp(LEEPDevice):
 
         drive_permit_out = (ext_permit_bypass | drive_permit_in &
         slow_permit_in) & rf_pwr_permit_sum & arc_permit_sum &
-        hpa_permit_out; drive n is on with soft_drive_enable[n] &
+        hpa_permit_out; drive n is on with soft_driveN_enable &
         drive_permit_out (see llrf_shell.v).
 
         Returns:
@@ -247,7 +249,7 @@ class LLRFApp(LEEPDevice):
         """
         names = ['drive_permit_in', 'slow_permit_in', 'ext_permit_bypass',
                  'rf_pwr_permit_sum', 'arc_permit_sum', 'hpa_permit_out',
-                 'drive_permit_out', 'soft_drive_enable']
+                 'drive_permit_out', 'soft_drive0_enable', 'soft_drive1_enable']
         return {n: int(v) for n, v in zip(names, self.reg_read(names))}
 
     def read_raw_bufs(self):

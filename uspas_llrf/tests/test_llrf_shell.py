@@ -28,7 +28,7 @@ class TB_llrf_shell:
         config['TX_SECOND_NYQUIST'] = False
         config['TX_AFE_SPECTRAL_FLIP'] = False
         # Force CW mode to allow loop tests
-        config['PULSE_MODES'] = 0
+        config['DRV0_PULSE_MODE'] = config['DRV1_PULSE_MODE'] = 0
         self.llrf = llrf = LLRFShell(config, wave_samp_per=wave_samp_per)
         self.lb = LocalbusAppMaster(
             dut, dut.lb_clk, regmap_json_path=regmap_json_path)

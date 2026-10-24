@@ -101,7 +101,8 @@ class LLRFShell(LLRF_DSP):
             loop0_pulse_start=0, loop0_pulse_high_len=10,
             loop1_pulse_start=0, loop1_pulse_high_len=10,
             dac_drive_sel=DacDriveSel(self.config['DAC_DRIVE_SEL']),
-            pulse_modes=self.config['PULSE_MODES'],
+            drv0_pulse_mode=self.config['DRV0_PULSE_MODE'],
+            drv1_pulse_mode=self.config['DRV1_PULSE_MODE'],
             # CW LLRF (USPAS, ALSU) diagnoses with cic_waves, so the slow
             # block snapshots on cbuf_transferred; pulsed LLRF (AWA, LEMP)
             # uses the IQ waveforms and snapshots on sig_buf transfer.

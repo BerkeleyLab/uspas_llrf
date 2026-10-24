@@ -98,7 +98,7 @@ def test_init_register_checks():
         init.wave_trig_sel = 7
     with pytest.raises(AttributeError, match='dsp_reset'):
         init.dsp_reset = 1
-    assert init.wave_trig_sel is regmap.WaveTrigSel.Always and init.soft_drive_enable == 0b11
+    assert init.wave_trig_sel is regmap.WaveTrigSel.Always and init.soft_drive0_enable == init.soft_drive1_enable == 1
 
 
 @pytest.mark.parametrize('design', DESIGNS)
