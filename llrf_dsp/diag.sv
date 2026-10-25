@@ -35,20 +35,15 @@ module diag
     input  [15:0]         cbuf_post_delay,
     input  [7:0]          dsp_tag,
     input                 slow_snap_cic,
-    input  [9:0]          inlk_permit_mask,
-    input  [7:0]          arc_permit_mask,
+    input  inlk_cfg_t     inlk_cfg,          // monitor_inlk
+    input  arc_cfg_t      arc_cfg,           // arc_inlk
     // monitor_inlk thresholds and modes (register tables)
     input  [15:0]         inlk_amp_lo,
-    output [3:0]          inlk_amp_lo_addr,
+    output [INLK_AW-1:0]  inlk_amp_lo_addr,
     input  [15:0]         inlk_amp_hi,
-    output [3:0]          inlk_amp_hi_addr,
+    output [INLK_AW-1:0]  inlk_amp_hi_addr,
     input  [1:0]          inlk_inlk_mode,
-    output [3:0]          inlk_inlk_mode_addr,
-    input                 inlk_reset_inlk,
-    input                 arc_reset_latch,
-    input                 arc_reset_arc_dev,
-    input  [7:0]          arc_test_mask,
-    input                 arc_test_stb,
+    output [INLK_AW-1:0]  inlk_inlk_mode_addr,
 
     // ARC detectors
     input  [2:0]          arc_permit_in,
@@ -277,7 +272,7 @@ wire [15:0] fault_amp_out;
 wire [16:0] fault_phs_out;
 monitor_inlk #(.N_CH(N_CH)) inlk (
     .clk               (dsp_clk),
-    .permit_mask       (inlk_permit_mask),
+    .cfg               (inlk_cfg),
     .mon_data          (inlk_data),
     .mon_valid         (inlk_dval),
     .mon_last          (inlk_last),
@@ -302,7 +297,6 @@ monitor_inlk #(.N_CH(N_CH)) inlk (
     .amp_lo_addr       (inlk_amp_lo_addr),
     .amp_hi            (inlk_amp_hi),
     .amp_hi_addr       (inlk_amp_hi_addr),
-    .reset_inlk        (inlk_reset_inlk),
     .inlk_mode         (inlk_inlk_mode),
     .inlk_mode_addr    (inlk_inlk_mode_addr)
 );
@@ -316,18 +310,14 @@ wire arc_permit_sum;
 wire arc_testing;
 arc_inlk #(.N_CH(3), .F_CLK(F_DSP_HZ)) arc (
     .clk              (dsp_clk),
-    .permit_mask      (arc_permit_mask),
+    .cfg              (arc_cfg),
     .dev_permit_in    (arc_permit_in),
     .dev_test_out     (arc_test_out),
     .dev_reset_out    (arc_reset_out),
     .permit_raw_out   (arc_permit_raw),
     .permit_latch_out (arc_permit_latch),
     .permit_sum_out   (arc_permit_sum),
-    .testing_out      (arc_testing),
-    .reset_latch      (arc_reset_latch),
-    .reset_arc_dev    (arc_reset_arc_dev),
-    .test_mask        (arc_test_mask),
-    .test_stb         (arc_test_stb)
+    .testing_out      (arc_testing)
 );
 
 assign inlk_arc_permit = inlk_permit_out & arc_permit_sum;

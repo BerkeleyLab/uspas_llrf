@@ -1,6 +1,7 @@
 `timescale 1us/1us
 
 module arc_inlk_tb;
+import llrf_shell_pkg::*;
 
 localparam CLK_HALFPERIOD = 500;
 localparam TICK = 2*CLK_HALFPERIOD;
@@ -38,19 +39,22 @@ reg [2:0] test_mask=0;
 reg test_stb=1'b0;
 reg [2:0] permit_mask = 3'b111;
 wire testing;
+arc_cfg_t cfg;
+assign cfg.reset_latch = reset_latch;
+assign cfg.reset_arc_dev = reset_request;
+assign cfg.permit_mask = {5'h00, permit_mask};
+assign cfg.test_mask = {5'h00, test_mask};
+assign cfg.test_stb = test_stb;
+
 arc_inlk #(
   .N_CH(3),
   .F_CLK(F_CLK)
 ) arc_inlk_i (
   .clk(clk), // input
-  .reset_latch(reset_latch), // input (stb)
-  .reset_arc_dev(reset_request), // input (stb)
-  .permit_mask({5'h00, permit_mask}), // input [7:0]
-  .test_mask({5'h00, test_mask}), // input [7:0]
+  .cfg(cfg), // input arc_cfg_t
   .permit_raw_out(permit_rbk), // output [2:0]
   .permit_latch_out(permit_latch), // output [2:0]
   .permit_sum_out(permit_sum), // output
-  .test_stb(test_stb), // input
   .dev_permit_in(permit), // input [2:0]
   .dev_test_out(test_out), // output [2:0]
   .dev_reset_out(board_reset), // output

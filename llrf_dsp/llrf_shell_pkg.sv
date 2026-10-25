@@ -21,4 +21,31 @@ package llrf_shell_pkg;
                            WAVE_TRIG_EVR    = 3'd3,  // EVR trigger
                            WAVE_TRIG_ALWAYS = 3'd4,  // internal trigger, cbuf continuous
                            WAVE_TRIG_MIXED  = 3'd5;  // external or software trigger
+
+    // Register configs of the blocks (plan §2.2): uspas_llrf/regmap.py puts
+    // the registers of instance <inst> (Reg(inst=<inst>)) into the field
+    // cfg_<domain>.<inst> of type <inst>_cfg_t, one member per register,
+    // named without the '<inst>_' prefix. `// strobe` members are high for
+    // one cycle after the write.
+    localparam int INLK_AW = 4;  // monitor_inlk tables: amp_lo, amp_hi, inlk_mode
+
+    typedef struct packed {
+        logic       reset_inlk;    // strobe
+        logic [9:0] permit_mask;
+    } inlk_cfg_t;                  // monitor_inlk
+
+    typedef struct packed {
+        logic       reset_latch;   // strobe
+        logic       reset_arc_dev; // strobe
+        logic [7:0] permit_mask;
+        logic [7:0] test_mask;
+        logic       test_stb;      // strobe
+    } arc_cfg_t;                   // arc_inlk
+
+    typedef struct packed {
+        logic [17:0] lo_amp;
+        logic [11:0] modulo;
+        logic [31:0] phase_step_h;
+        logic [11:0] phase_step_l;
+    } ntw_cfg_t;                   // ntw_analyzer
 endpackage

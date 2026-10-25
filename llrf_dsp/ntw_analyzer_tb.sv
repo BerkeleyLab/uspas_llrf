@@ -1,8 +1,12 @@
 `timescale 1ns / 1ps
 `include "constants.vams"
-`include "settings.vams"
+// DSP clock period [ns]; was in an external settings.vams
+`ifndef DSP_CLK_CYCLE
+`define DSP_CLK_CYCLE 8.7206
+`endif
 
 module ntw_analyzer_tb;
+import llrf_shell_pkg::*;
 parameter N = 50000;
 
 reg clk, trace=0, pass=1;
@@ -122,6 +126,11 @@ wire trig_en = (ntw_amp_enable || ntw_phs_enable) ? trig : 0;
     // ----------------------
     // Network analyzer feature
     // ----------------------
+    ntw_cfg_t cfg;
+    assign cfg.lo_amp = lo_amp;
+    assign cfg.modulo = modulo;
+    assign cfg.phase_step_h = phase_step_h;
+    assign cfg.phase_step_l = phase_step_l;
     ntw_analyzer #(.KW(KW))
     ntw_analyzer (
         .clk              (clk),
@@ -132,10 +141,7 @@ wire trig_en = (ntw_amp_enable || ntw_phs_enable) ? trig : 0;
         .amp_setpoint     (amp_setpoint),
         .phs_setpoint     (phs_setpoint),
 
-        .lo_amp           (lo_amp),
-        .modulo           (modulo),
-        .phase_step_l     (phase_step_l),
-        .phase_step_h     (phase_step_h),
+        .cfg              (cfg),
 
         .amp_stp_ntw      (amp_setpoint_ntw), // final amplitude setpoint after excitation
         .phs_stp_ntw      (phs_setpoint_ntw)

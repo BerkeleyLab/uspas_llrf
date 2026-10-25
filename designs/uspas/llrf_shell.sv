@@ -65,7 +65,7 @@ status_lb_t status_lb;
 status_dsp_t status_dsp;
 wire [LB_ADW-1:0] lb_addr_d1;
 wire xfer_snap;
-wire [3:0] inlk_amp_lo_addr, inlk_amp_hi_addr, inlk_inlk_mode_addr;
+wire [INLK_AW-1:0] inlk_amp_lo_addr, inlk_amp_hi_addr, inlk_inlk_mode_addr;
 wire [15:0] inlk_amp_lo, inlk_amp_hi;
 wire [1:0] inlk_inlk_mode;
 wire [31:0] rd_circle_ready, rd_sig_buf_ready, rd_sig_iq_buf_ready, rd_slow;
@@ -236,19 +236,14 @@ diag #(
     .cbuf_post_delay       (cfg_dsp.cbuf_post_delay),
     .dsp_tag               (cfg_dsp.dsp_tag),
     .slow_snap_cic         (cfg_dsp.slow_snap_cic),
-    .inlk_permit_mask      (cfg_dsp.inlk_permit_mask),
-    .arc_permit_mask       (cfg_dsp.arc_permit_mask),
+    .inlk_cfg              (cfg_dsp.inlk),
+    .arc_cfg               (cfg_dsp.arc),
     .inlk_amp_lo           (inlk_amp_lo),
     .inlk_amp_lo_addr      (inlk_amp_lo_addr),
     .inlk_amp_hi           (inlk_amp_hi),
     .inlk_amp_hi_addr      (inlk_amp_hi_addr),
     .inlk_inlk_mode        (inlk_inlk_mode),
     .inlk_inlk_mode_addr   (inlk_inlk_mode_addr),
-    .inlk_reset_inlk       (cfg_dsp.inlk_reset_inlk),
-    .arc_reset_latch       (cfg_dsp.arc_reset_latch),
-    .arc_reset_arc_dev     (cfg_dsp.arc_reset_arc_dev),
-    .arc_test_mask         (cfg_dsp.arc_test_mask),
-    .arc_test_stb          (cfg_dsp.arc_test_stb),
     .arc_permit_in         (arc_permit_in),
     .arc_test_out          (arc_test_out),
     .arc_reset_out         (arc_reset_out),
@@ -505,10 +500,7 @@ ntw_analyzer #(.KW(DWBB)) ntw (
     .ntw_cos_debug    (ntw_cos_debug),
     .amp_stp_ntw      (amp_setpoint_ntw), // final amplitude setpoint after excitation
     .phs_stp_ntw      (phs_setpoint_ntw),
-    .lo_amp           (cfg_dsp.ntw_lo_amp),
-    .modulo           (cfg_dsp.ntw_modulo),
-    .phase_step_h     (cfg_dsp.ntw_phase_step_h),
-    .phase_step_l     (cfg_dsp.ntw_phase_step_l)
+    .cfg              (cfg_dsp.ntw)
 );
 
 // ---------------------
