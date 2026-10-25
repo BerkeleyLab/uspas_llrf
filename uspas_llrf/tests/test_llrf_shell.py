@@ -1,9 +1,10 @@
 from uspas_llrf import (LLRFShell, DacDriveSel, LocalbusAppMaster,
-                        InlkFaultMode, wrap_phase, clip_int, dsp_config)
+                        InlkFaultMode, wrap_phase, clip_int, dsp_config,
+                        PulseModulator, WaveTrigSel, gen_mod_tables)
 import cocotb
 import random
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, ClockCycles
+from cocotb.triggers import RisingEdge, ClockCycles, ReadOnly
 from cocotb.handle import Immediate
 import logging
 import numpy as np
@@ -552,3 +553,75 @@ class TB_llrf_shell:
         await task
         assert widths[-1] == pulse_clks, f'reset pulse {widths[-1]} != {pulse_clks} cycles'
         await wait_testing(0)
+
+    async def test_pulse_modulation(self, loop='loop0', n_tab=48, res_shift=1, start=5, seed=1):
+        """loop_ctrl in the shell: modulation tables and registers written
+        through the localbus, the pulse started by the shell's trigger path
+        (software trigger), and the modulated setpoints, pulse_dval and
+        pulse_idx checked on every dsp_clk edge against PulseModulator.
+        mod_len is shorter than the pulse, so the table window ends inside it."""
+        dut = self.dut
+        n = int(loop[-1])
+        self.log_banner(f'Pulse modulation {loop}')
+        mod_aw = getattr(self.lb.reg_map, f'{loop}_amp_mod').addr_width
+        mask = (1 << 18) - 1
+        amp_tab, _ = gen_mod_tables('random', n_tab, 3000, seed=seed)
+        _, phs_tab = gen_mod_tables('random', n_tab, 0, 60000, seed=seed + 1)
+        for ix in range(n_tab):
+            await self.lb.write_reg(f'{loop}_amp_mod', amp_tab[ix] & mask, ix)
+            await self.lb.write_reg(f'{loop}_phs_mod', phs_tab[ix] & mask, ix)
+        for ix in (0, n_tab // 2, n_tab - 1):  # table windows read back
+            assert (await self.lb.read_reg(f'{loop}_amp_mod', ix)) & mask == amp_tab[ix] & mask
+            assert (await self.lb.read_reg(f'{loop}_phs_mod', ix)) & mask == phs_tab[ix] & mask
+
+        mod_len = n_tab - 8
+        cfg = dict(pulse_start=start, pulse_high_len=(mod_len << res_shift) + 24, res_shift=res_shift,
+                   mod_len=mod_len, amp_mod_enable=1, phs_mod_enable=1, amp_setpoint=12000,
+                   max_amp_setpoint=13000, phs_setpoint=-20000, phs_offset=0, amp_loop_enable=0)
+        regs = {'wave_trig_sel': int(WaveTrigSel.Software), 'trigger_delay': 0,
+                f'{loop}_pulse_start': cfg['pulse_start'], f'{loop}_pulse_high_len': cfg['pulse_high_len'],
+                f'{loop}_pulse_res_shift': res_shift, f'{loop}_mod_len': mod_len,
+                f'{loop}_amp_mod_enable': 1, f'{loop}_phs_mod_enable': 1,
+                f'{loop}_amp_setpoint': cfg['amp_setpoint'], f'{loop}_max_amp_setpoint': cfg['max_amp_setpoint'],
+                f'{loop}_phs_setpoint': cfg['phs_setpoint'] & mask, f'{loop}_amp_enable': 0}
+        # the other loop gets different values, so crossed wiring between loops fails
+        other = f'loop{1 - n}'
+        regs.update({f'{other}_pulse_res_shift': res_shift + 2, f'{other}_mod_len': 3,
+                     f'{other}_amp_mod_enable': 0, f'{other}_phs_mod_enable': 0,
+                     f'{other}_pulse_start': start + 7, f'{other}_pulse_high_len': 9})
+        for name, value in regs.items():
+            await self.lb.write_reg(name, value)
+        await ClockCycles(dut.dsp_clk, 50)  # register crossing into dsp_clk
+
+        model = PulseModulator(18, 32, mod_aw)
+        for k, v in cfg.items():
+            setattr(model, k, v)
+        model.amp_mod_table[:n_tab] = [a & mask for a in amp_tab]
+        model.phs_mod_table[:n_tab] = [p & mask for p in phs_tab]
+        lc = self.shell_sig('gen_loops')[n].loop_ctrl
+        errors, seen = [], {'dval': 0, 'amp_gate': 0}
+
+        async def monitor(n_cycles):
+            trig = 0   # trig as sampled at the next edge
+            for k in range(n_cycles):
+                await RisingEdge(dut.dsp_clk)
+                model.step(trig)
+                await ReadOnly()
+                trig = int(lc.trig.value)
+                got = (int(lc.pulse_dval.value), int(lc.pulse_idx.value),
+                       lc.amp_setpoint_mod.value.to_signed(), lc.phs_setpoint_mod.value.to_signed())
+                exp = (model.pulse.dval, model.pulse.idx, model.amp_sp, model.phs_sp)
+                seen['dval'] += got[0]
+                seen['amp_gate'] += model.amp_mod_gate
+                if k >= 3 and got != exp and len(errors) < 5:
+                    errors.append(f"cycle {k}: (dval, idx, amp, phs) {got}, expected {exp}")
+
+        n_cycles = start + cfg['pulse_high_len'] + 40
+        task = cocotb.start_soon(monitor(n_cycles))
+        await ClockCycles(dut.dsp_clk, 5)
+        await self.lb.write_reg('soft_trigger', 1)
+        await task
+        assert not errors, "\n".join(errors)
+        assert seen['dval'] == cfg['pulse_high_len'], f"pulse lasted {seen['dval']} clocks"
+        assert seen['amp_gate'] == mod_len << res_shift, f"amplitude table on for {seen['amp_gate']} clocks"
+        cocotb.log.info(f'{loop}: {seen["dval"]} pulse clocks, table applied for {seen["amp_gate"]}')

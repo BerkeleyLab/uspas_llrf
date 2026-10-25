@@ -73,6 +73,9 @@ wire [31:0] rd_mon_amp, rd_mon_phs, rd_fault_amp, rd_cbuf;
 wire [31:0] rd_adc_buf [N_ADC];
 wire [31:0] rd_sig_i_buf [N_CH];
 wire [31:0] rd_sig_q_buf [N_CH];
+wire [31:0] rd_amp_mod [N_DRIVE];   // modulation tables (loop_ctrl)
+wire [31:0] rd_phs_mod [N_DRIVE];
+wire [N_DRIVE-1:0] wr_amp_mod, wr_phs_mod;
 
 llrf_shell_regs regs (
     .lb_clk(lb_clk), .lb_addr(lb_addr), .lb_write(lb_write), .lb_read(lb_read),
@@ -87,7 +90,8 @@ llrf_shell_regs regs (
     .rd_sig_iq_buf_ready(rd_sig_iq_buf_ready), .rd_slow(rd_slow),
     .rd_mon_amp(rd_mon_amp), .rd_mon_phs(rd_mon_phs), .rd_fault_amp(rd_fault_amp),
     .rd_adc_buf(rd_adc_buf), .rd_sig_i_buf(rd_sig_i_buf), .rd_sig_q_buf(rd_sig_q_buf),
-    .rd_cbuf(rd_cbuf)
+    .rd_cbuf(rd_cbuf),
+    .rd_amp_mod(rd_amp_mod), .rd_phs_mod(rd_phs_mod), .wr_amp_mod(wr_amp_mod), .wr_phs_mod(wr_phs_mod)
 );
 
 wire dsp_reset = cfg_dsp.dsp_reset;
@@ -318,43 +322,44 @@ timing_core timing_evr (
 );
 
 // ---------------------
-// Feedback loops (loop_ctrl replaces them in step 7d)
+// Feedback loops with pulse modulation (loop_ctrl)
 // ---------------------
 // XXX network analyzer setpoints bypassed for now
 wire signed [DWBB-1:0] amp_setpoint_ntw;
 wire signed [DWBB-1:0] phs_setpoint_ntw;
 
-wire [N_DRIVE-1:0] drive_on;
-wire signed [DWBB-1:0] drive_i [0:N_DRIVE-1];
-wire signed [DWBB-1:0] drive_q [0:N_DRIVE-1];
 bb_t drive_i_out [N_DRIVE];
 bb_t drive_q_out [N_DRIVE];
-wire signed [DWBB-1:0] amp_measured [0:N_DRIVE-1];
-wire signed [DWBB-1:0] phs_measured [0:N_DRIVE-1];
-wire signed [DWBB-1:0] amp_setpoint [0:N_DRIVE-1];
-wire signed [DWBB-1:0] amp_setpoint_i [0:N_DRIVE-1];
-wire signed [DWBB-1:0] max_amp_setpoint [0:N_DRIVE-1];
-wire signed [DWBB-1:0] phs_setpoint [0:N_DRIVE-1];
-wire [N_DRIVE-1:0] amp_loop_enable;
-wire [N_DRIVE-1:0] amp_loop_reset;
-wire [N_DRIVE-1:0] phs_loop_enable;
-wire [N_DRIVE-1:0] phs_loop_reset;
-wire signed [DWBB-1:0] Kp_amp [0:N_DRIVE-1];
-wire signed [DWBB-1:0] Kp_phs [0:N_DRIVE-1];
-wire signed [DWBB-1:0] Ki_amp [0:N_DRIVE-1];
-wire signed [DWBB-1:0] Ki_phs [0:N_DRIVE-1];
-wire signed [DWBB-1:0] field_i_data [0:N_DRIVE-1];
-wire signed [DWBB-1:0] field_q_data [0:N_DRIVE-1];
 wire signed [14:0] err_out_amp [0:N_DRIVE-1];
 wire signed [14:0] err_out_phs [0:N_DRIVE-1];
 wire signed [14:0] err_out_amp_lb [0:N_DRIVE-1];
 wire signed [14:0] err_out_phs_lb [0:N_DRIVE-1];
-wire [N_DRIVE-1:0] pulse_dval;
-wire [23:0] pulse_start [0:N_DRIVE-1];
-wire [23:0] pulse_high_len [0:N_DRIVE-1];
+wire [DWBB-1:0] lb_rdata_amp_mod [0:N_DRIVE-1];
+wire [DWBB-1:0] lb_rdata_phs_mod [0:N_DRIVE-1];
+
+// per-loop registers, indexed in the generate below
+wire signed [DWBB-1:0] amp_setpoint [0:N_DRIVE-1];
+wire signed [DWBB-1:0] max_amp_setpoint [0:N_DRIVE-1];
+wire signed [DWBB-1:0] phs_setpoint [0:N_DRIVE-1];
+wire signed [DWBB-1:0] Kp_amp [0:N_DRIVE-1];
+wire signed [DWBB-1:0] Kp_phs [0:N_DRIVE-1];
+wire signed [DWBB-1:0] Ki_amp [0:N_DRIVE-1];
+wire signed [DWBB-1:0] Ki_phs [0:N_DRIVE-1];
+wire [N_DRIVE-1:0] amp_loop_enable, phs_loop_enable, amp_loop_reset, phs_loop_reset;
+wire [31:0] pulse_start [0:N_DRIVE-1];
+wire [31:0] pulse_high_len [0:N_DRIVE-1];
+wire [3:0] res_shift [0:N_DRIVE-1];
+wire [MAP_MOD_AW:0] mod_len [0:N_DRIVE-1];
+wire [N_DRIVE-1:0] amp_mod_enable, phs_mod_enable;
+wire signed [DWBB-1:0] field_i_data [0:N_DRIVE-1];
+wire signed [DWBB-1:0] field_q_data [0:N_DRIVE-1];
 
 assign pulse_start[0] = cfg_dsp.loop0_pulse_start;
 assign pulse_high_len[0] = cfg_dsp.loop0_pulse_high_len;
+assign res_shift[0] = cfg_dsp.loop0_pulse_res_shift;
+assign mod_len[0] = cfg_dsp.loop0_mod_len;
+assign amp_mod_enable[0] = cfg_dsp.loop0_amp_mod_enable;
+assign phs_mod_enable[0] = cfg_dsp.loop0_phs_mod_enable;
 assign amp_setpoint[0] = cfg_dsp.loop0_amp_setpoint;
 assign max_amp_setpoint[0] = cfg_dsp.loop0_max_amp_setpoint;
 assign phs_setpoint[0] = cfg_dsp.loop0_phs_setpoint;
@@ -369,6 +374,10 @@ assign phs_loop_reset[0] = cfg_dsp.loop0_phs_reset;
 
 assign pulse_start[1] = cfg_dsp.loop1_pulse_start;
 assign pulse_high_len[1] = cfg_dsp.loop1_pulse_high_len;
+assign res_shift[1] = cfg_dsp.loop1_pulse_res_shift;
+assign mod_len[1] = cfg_dsp.loop1_mod_len;
+assign amp_mod_enable[1] = cfg_dsp.loop1_amp_mod_enable;
+assign phs_mod_enable[1] = cfg_dsp.loop1_phs_mod_enable;
 assign amp_setpoint[1] = cfg_dsp.loop1_amp_setpoint;
 assign max_amp_setpoint[1] = cfg_dsp.loop1_max_amp_setpoint;
 assign phs_setpoint[1] = cfg_dsp.loop1_phs_setpoint;
@@ -387,22 +396,27 @@ assign field_i_data[1] = sig_i_data[cfg_dsp.loop1_adc_chan];
 assign field_q_data[1] = sig_q_data[cfg_dsp.loop1_adc_chan];
 
 generate for (ch = 0; ch < N_DRIVE; ch = ch + 1) begin: gen_loops
-    // in open-loop:   apply max limit to amp_setpoint to avoid DAC saturation.
-    // in closed-loop: the amp_setpoint is compared with ADC measurement, so no limit is applied.
-    assign amp_setpoint_i[ch] = amp_loop_enable[ch] ? amp_setpoint[ch] :
-                                    (amp_setpoint[ch] > max_amp_setpoint[ch] ? max_amp_setpoint[ch] : amp_setpoint[ch]);
-    dsp_core #(.KW(DWBB)) feedback (
-        .clk              (dsp_clk),
-        .reset            (dsp_reset),
-        .field_i          (field_i_data[ch]),
-        .field_q          (field_q_data[ch]),
-        .drive_i          (drive_i[ch]),
-        .drive_q          (drive_q[ch]),
-        .rx_phase_offset  (cfg_dsp.rx_phase_offset),
-        .tx_phase_offset  (cfg_dsp.tx_phase_offset),
-        .amp_measured     (amp_measured[ch]),
-        .phs_measured     (phs_measured[ch]),
-        .amp_setpoint     (amp_setpoint_i[ch]),
+    loop_ctrl #(
+        .DWBB       (DWBB),
+        .EW         (15),
+        .PULSE_AW   (32),
+        .MOD_AW     (MAP_MOD_AW),
+        .RW         (4)
+    ) loop_ctrl (
+        .dsp_clk          (dsp_clk),
+        .dsp_reset        (dsp_reset),
+        .trig             (wave_trig),
+        .pulse_start      (pulse_start[ch]),
+        .pulse_high_len   (pulse_high_len[ch]),   // unit: DSP_CLK_CYCLE
+        .res_shift        (res_shift[ch]),
+        .pulse_mode       (drv_pulse_mode[ch]),
+        .drive_permit     (soft_drive_enable[ch] && sum_drive_enable),
+        .mod_len          (mod_len[ch]),
+        .amp_mod_enable   (amp_mod_enable[ch]),
+        .phs_mod_enable   (phs_mod_enable[ch]),
+        .phs_offset       ({DWBB{1'b0}}),
+        .amp_setpoint     (amp_setpoint[ch]),
+        .max_amp_setpoint (max_amp_setpoint[ch]),
         .phs_setpoint     (phs_setpoint[ch]),
         .Kp_amp           (Kp_amp[ch]),
         .Kp_phs           (Kp_phs[ch]),
@@ -412,9 +426,32 @@ generate for (ch = 0; ch < N_DRIVE; ch = ch + 1) begin: gen_loops
         .phs_loop_enable  (phs_loop_enable[ch]),
         .amp_loop_reset   (amp_loop_reset[ch]),
         .phs_loop_reset   (phs_loop_reset[ch]),
-        .err_out_amp      (err_out_amp[ch]),
-        .err_out_phs      (err_out_phs[ch])
+        .rx_phase_offset  (cfg_dsp.rx_phase_offset),
+        .tx_phase_offset  (cfg_dsp.tx_phase_offset),
+        .field_i          (field_i_data[ch]),
+        .field_q          (field_q_data[ch]),
+        .drive_i          (drive_i_out[ch]),
+        .drive_q          (drive_q_out[ch]),
+        .drive_on         (),
+        .amp_measured     (),
+        .phs_measured     (),
+        .err_amp          (err_out_amp[ch]),
+        .err_phs          (err_out_phs[ch]),
+        .pulse_dval       (),
+        .pulse_last       (),
+        .pulse_idx        (),
+        .amp_setpoint_mod (),
+        .phs_setpoint_mod (),
+        .lb_clk           (lb_clk),
+        .lb_addr          (lb_addr[MAP_MOD_AW-1:0]),
+        .lb_wdata         (lb_wdata[DWBB-1:0]),
+        .lb_write_amp_mod (wr_amp_mod[ch]),
+        .lb_write_phs_mod (wr_phs_mod[ch]),
+        .lb_rdata_amp_mod (lb_rdata_amp_mod[ch]),
+        .lb_rdata_phs_mod (lb_rdata_phs_mod[ch])
     );
+    assign rd_amp_mod[ch] = {{(32-DWBB){lb_rdata_amp_mod[ch][DWBB-1]}}, lb_rdata_amp_mod[ch]};
+    assign rd_phs_mod[ch] = {{(32-DWBB){lb_rdata_phs_mod[ch][DWBB-1]}}, lb_rdata_phs_mod[ch]};
 
     data_xdomain #(.size(30)) loop_err_xdomain (
         .clk_in   (dsp_clk),
@@ -423,22 +460,6 @@ generate for (ch = 0; ch < N_DRIVE; ch = ch + 1) begin: gen_loops
         .clk_out  (lb_clk),
         .data_out ({err_out_amp_lb[ch], err_out_phs_lb[ch]})
     );
-
-    // pulsing and permit at baseband
-    pulse_gen #(.AW(24)) pulse_gen (
-        .clk        (dsp_clk),
-        .start      (pulse_start[ch]),
-        .trigger    (wave_trig),
-        .high_len   (pulse_high_len[ch]),   // unit: DSP_CLK_CYCLE
-        .stb_in     (1'b1),
-        .res        (4'd0),
-        .pulse_dval (pulse_dval[ch])
-    );
-
-    assign drive_on[ch] = soft_drive_enable[ch] && sum_drive_enable &&
-                          (drv_pulse_mode[ch] ? pulse_dval[ch] : 1'b1);
-    assign drive_i_out[ch] = drive_on[ch] ? drive_i[ch] : {DWBB{1'b0}};
-    assign drive_q_out[ch] = drive_on[ch] ? drive_q[ch] : {DWBB{1'b0}};
 
     // base-band loop output for IQ waveform monitoring
     assign sig_i_data[N_ADC+ch] = drive_i_out[ch];

@@ -20,3 +20,10 @@ async def test(dut, amp_exp, phs_exp, loop):
     await tb.test_fast_interlock(loop)
     await tb.test_record_stop(loop)
     await tb.test_close_loop(loop)
+
+
+@cocotb.test(timeout_time=200, timeout_unit='us')
+@cocotb.parametrize(loop=['loop0', 'loop1'])
+async def test_pulse_modulation(dut, loop):
+    tb = TB_llrf_shell(dut, f_config='USPAS', regmap_json_path='../../llrf_shell.json')
+    await tb.test_pulse_modulation(loop)

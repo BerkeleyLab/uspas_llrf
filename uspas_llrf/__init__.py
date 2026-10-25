@@ -5,7 +5,7 @@ from .model.plant import Plant
 from .model.llrf_shell import LLRFShell, DacDriveSel, WaveTrigSel, InlkFaultMode
 from .model.local_bus import LocalbusAppMaster, LocalBusMaster
 from .model.slow_bridge import SlowData, decode_slow_data
-from .model.pulse_modulator import PulseGen, PulseModulator
+from .model.pulse_modulator import PulseGen, PulseModulator, gen_mod_tables
 from .app.app import LLRFApp
 from .app.dash import create_dash_app, run_dash
 
@@ -15,5 +15,5 @@ __all__ = [
     'LLRF_DSP', 'Plant',
     'LLRFShell', 'DacDriveSel', 'WaveTrigSel', 'InlkFaultMode',
     'LocalbusAppMaster', 'LocalBusMaster', 'SlowData', 'decode_slow_data', 'LLRFApp',
-    'PulseGen', 'PulseModulator',
+    'PulseGen', 'PulseModulator', 'gen_mod_tables',
     'create_dash_app', 'run_dash']

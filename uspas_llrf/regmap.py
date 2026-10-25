@@ -9,20 +9,16 @@ besides the generated outputs below, the model's boot-time registers
 (init_registers(), LLRFShell) and the register encodings (WaveTrigSel,
 DacDriveSel, InlkFaultMode) come from here.
 
-Outputs, written by the command line below. SV shells (--sv, step 7a):
+Outputs, written by the command line below:
 - llrf_shell_regmap_pkg.sv: cfg_<domain>_t and status_<domain>_t structs,
-  ADDR_* constants;
+  ADDR_* constants, MAP_SIG_BUF_AW and MAP_MOD_AW;
 - llrf_shell_regs.sv: register storage and decode, the readback mirror, the
-  status banks and the readback mux over every window;
+  status banks, the write strobes of writable windows (modulation tables)
+  and the readback mux over every window;
 - llrf_shell.json: the whole register map (leep schema).
-Verilog shells (awa, pip-ii until they move to the SV shell):
-- llrf_shell_regs.vh: register storage and decode (`LLRF_SHELL_REGS), the
-  port connections of the block instances that own registers
-  (`LLRF_SHELL_PORTS_<inst>) and the mirror readback dpram;
-- regmap_llrf_shell.json: the register part of llrf_shell.json.
 
-Register addresses, decode and mirror reproduce newad (newad.py -l -m -w 17
--b 0x11000), so the step-6 shells and JSON are unchanged.
+rw register addresses are allocated as newad did (newad.py -l -m -w 17
+-b 0x11000): largest tables first, then by name.
 
 This module uses the standard library only: the design build runs it as a
 script, without importing the uspas_llrf package.
@@ -45,8 +41,8 @@ N_DRIVE = 2
 N_ADC = 8
 SIG_BUF_AW = 11      # signal buffer depth 2^SIG_BUF_AW (D1); designs may override
 SIG_BUF_BASE = 0x12000
-# fixed windows: (name, base, aw); MOD_TABLES is reserved until loop_ctrl (7d)
-MOD_TABLES = ('mod_tables', 0x20000, 16)
+MOD_AW = 14          # modulation table depth 2^MOD_AW (loop_ctrl)
+MOD_BASE = 0x20000   # amplitude and phase tables of each loop (§1.1)
 CBUF_BASE = 0x30000
 DESIGNS_DIR = Path(__file__).resolve().parents[1] / 'designs'
 
@@ -56,8 +52,17 @@ RENAMES = {
     'arc_test_arc_dev': ['arc_test_mask', 'arc_test_stb'],                # D18, step 3
     'pulse_modes': ['drv0_pulse_mode', 'drv1_pulse_mode'],                # D11, step 7c
     'soft_drive_enable': ['soft_drive0_enable', 'soft_drive1_enable'],    # D11, step 7c
+    'lut0_len': ['loop0_mod_len'],                                        # pip-ii, step 7d
+    'lut1_len': ['loop1_mod_len'],
+    'pulse_res_shift': ['loop0_pulse_res_shift', 'loop1_pulse_res_shift'],
+    'pulse_modulation_enable': ['loop0_amp_mod_enable', 'loop1_amp_mod_enable'],
+    'pulse0_lut': ['loop0_amp_mod'],
+    'pulse1_lut': ['loop1_amp_mod'],
 }
-ADDITIONS = ['arc_testing']                                               # D18, step 3
+ADDITIONS = ['arc_testing',                                               # D18, step 3
+             *[f'loop{n}_{x}' for n in range(2) for x in ('phs_mod', 'phs_mod_enable')]]  # step 7d
+# registers whose data_width changed on purpose: name -> new width
+WIDTH_CHANGES = {f'loop{n}_pulse_{f}': 32 for n in range(2) for f in ('start', 'high_len')}  # step 7d
 REMOVALS = ['iq_buf',                     # 2K designs: only LEMP keeps it (D1), step 7b
             'dac0_raw_out', 'dac1_raw_out']  # awa: zero-valued buffers retired (§1.3), step 7b
 
@@ -176,8 +181,14 @@ def base_regs():
         *[Reg(f'loop{n}_adc_chan', 3, init=0) for n in range(N_DRIVE)],
         *[r for n in range(N_DRIVE) for r in loop_regs(n)],
         Reg('dsp_reset', kind='strobe'),
-        *[Reg(f'loop{n}_pulse_{f}', 24, init=v) for n in range(N_DRIVE)
+        *[Reg(f'loop{n}_pulse_{f}', 32, init=v) for n in range(N_DRIVE)
           for f, v in (('start', 0), ('high_len', 10))],
+        # pulse modulation (loop_ctrl); all 0 keeps CW behavior
+        *[r for n in range(N_DRIVE) for r in (
+            Reg(f'loop{n}_pulse_res_shift', 4, init=0),
+            Reg(f'loop{n}_mod_len', MOD_AW + 1, init=0, description='modulation table entries used'),
+            Reg(f'loop{n}_amp_mod_enable', init=0),
+            Reg(f'loop{n}_phs_mod_enable', init=0))],
         *[Reg(f'drv{n}_pulse_mode', init=0) for n in range(N_DRIVE)],
         *[Reg(f'soft_drive{n}_enable', init=1) for n in range(N_DRIVE)],
         Reg('ntw_amp_enable'),
@@ -237,7 +248,9 @@ class Status:
 @dataclass
 class Block:
     """Readback window [base, base + 2^aw) of a block (memory or flag word).
-    The shell drives port (port[index] for arrays) with the 32-bit word."""
+    The shell drives port (port[index] for arrays) with the 32-bit word.
+    write: the window is also written (lb_clk domain); the register file
+    then outputs the write strobe wr_<port without rd_> ([index])."""
     name: str
     base: int
     aw: int
@@ -246,9 +259,15 @@ class Block:
     index: Optional[int] = None
     signed: bool = False
     description: str = ''
+    write: bool = False
 
     def __post_init__(self):
         assert self.base % (1 << self.aw) == 0, self.name
+        assert self.port.startswith('rd_'), self.name
+
+    @property
+    def wr_port(self):
+        return 'wr_' + self.port[len('rd_'):]
 
 
 @dataclass
@@ -293,7 +312,7 @@ def sig_buf_bases(sig_buf_aw):
     raw = SIG_BUF_BASE
     i_base = raw + N_ADC * size
     q_base = i_base + n_ch * size
-    assert q_base + n_ch * size <= MOD_TABLES[1], f"signal buffers overrun 0x{MOD_TABLES[1]:x}"
+    assert q_base + n_ch * size <= MOD_BASE, f"signal buffers overrun 0x{MOD_BASE:x}"
     return raw, i_base, q_base
 
 
@@ -317,6 +336,10 @@ def base_blocks(sig_buf_aw=SIG_BUF_AW):
           for c, s in enumerate(sig)],
         *[Block(f'{s}_q_buf', q_base + size * c, sig_buf_aw, 18, 'rd_sig_q_buf', c, signed=True)
           for c, s in enumerate(sig)],
+        # modulation tables of loop n: amplitude, then phase (loop_ctrl)
+        *[Block(f'loop{n}_{x}_mod', MOD_BASE + ((2 * n + ix) << MOD_AW), MOD_AW, 18, f'rd_{x}_mod', n,
+                signed=True, write=True, description=f'loop {n} {x} modulation table')
+          for n in range(N_DRIVE) for ix, x in enumerate(('amp', 'phs'))],
         Block('circle_data', CBUF_BASE, 16, 24, 'rd_cbuf', signed=True),
     ]
 
@@ -406,67 +429,7 @@ def regmap_json(regs):
             for r in regs}
 
 
-def write_json(regs, fname):
-    with open(fname, 'w') as f:
-        json.dump(regmap_json(regs), f, sort_keys=True, indent=4, separators=(',', ': '))
-        f.write('\n')
-
-
-def addr_hit(r, addr):
-    lb = DOMAINS[r.domain]
-    pattern = (addr & ((1 << (LB_HI + 1)) - 1)) >> r.aw
-    return f"`define ADDR_HIT_{r.name} ({lb}_addr[`LB_HI:{r.aw}]=={pattern})\n"
-
-
-def decode(r):
-    """Storage and write decode of one register, as newad emits it."""
-    lb, msb = DOMAINS[r.domain], r.width - 1
-    we = f"wire we_{r.name} = {lb}_write&(`ADDR_HIT_{r.name});\\\n"
-    if r.aw:
-        wires = f"wire [{r.aw - 1}:0] {r.name}_addr;\\\nwire [{msb}:0] {r.name};\\\n"
-        return (wires + we + f"dpram #(.aw({r.aw}),.dw({r.width})) dp_{r.name}(\\\n"
-                f"\t.clka({lb}_clk), .addra({lb}_addr[{r.aw - 1}:0]), .dina({lb}_data[{msb}:0]),"
-                f" .wena(we_{r.name}),\\\n"
-                f"\t.clkb({lb}_clk), .addrb({r.name}_addr), .doutb({r.name}));\\\n")
-    decl = f"reg [{msb}:0] {r.name}=0;"
-    if r.kind == 'strobe':
-        return we + (f"{decl} always @(posedge {lb}_clk) {r.name} <= we_{r.name} ?"
-                     f" {lb}_data[{msb}:0] : {r.width}'b0;\\\n")
-    return we + f"{decl} always @(posedge {lb}_clk) if (we_{r.name}) {r.name} <= {lb}_data;\\\n"
-
-
-def ports(regs, inst):
-    conns = []
-    for r in regs:
-        if r.inst == inst:
-            conns.append(f".{r.port}({r.name})")
-            if r.aw:
-                conns.append(f".{r.port}_addr({r.name}_addr)")
-    return f"`define LLRF_SHELL_PORTS_{inst} " + ",\\\n\t".join(conns) + "\n"
-
-
-def mirror():
-    return ("wire [31:0] mirror_out_0;wire mirror_write_0 = lb_write &(`ADDR_HIT_MIRROR);\\\n"
-            "dpram #(.aw(`MIRROR_WIDTH),.dw(32)) mirror_0(\\\n"
-            "\t.clka(lb_clk), .addra(lb_addr[`MIRROR_WIDTH-1:0]), .dina(lb_data[31:0]),"
-            " .wena(mirror_write_0),\\\n"
-            "\t.clkb(lb_clk), .addrb(lb_addr[`MIRROR_WIDTH-1:0]), .doutb(mirror_out_0));\\\n")
-
-
-def regs_vh(regs, source):
-    addr, mirror_base, mirror_aw = allocate(regs)
-    out = [f"// Generated by uspas_llrf/regmap.py from {source}; do not edit.\n",
-           f"`define LB_HI {LB_HI}\n",
-           f"`define MIRROR_WIDTH {mirror_aw}\n",
-           f"`define ADDR_HIT_MIRROR (lb_addr[`LB_HI:`MIRROR_WIDTH]=={mirror_base >> mirror_aw})\n"]
-    out += [addr_hit(r, addr[r.name]) for r in regs]
-    for inst in dict.fromkeys(r.inst for r in regs if r.inst):
-        out.append(ports(regs, inst))
-    out.append("`define LLRF_SHELL_REGS\\\n" + "".join(decode(r) for r in regs) + mirror() + "\n")
-    return "".join(out)
-
-
-# --- SV backend (step 7a): llrf_shell_regmap_pkg.sv, llrf_shell_regs.sv and
+# --- generated outputs: llrf_shell_regmap_pkg.sv, llrf_shell_regs.sv and
 # the whole llrf_shell.json
 
 ROM_COMPAT = (0x800, 8)   # reads 0: old LEEP config ROM location
@@ -481,7 +444,8 @@ def shell_json(m):
     for s in m.status:
         j[s.name] = entry('r', s.addr, 0, s.width, s.signed, s.description)
     for b in m.blocks + m.aliases:
-        j[b.name] = entry('r', b.base, b.aw, b.width, b.signed, b.description)
+        j[b.name] = entry('rw' if getattr(b, 'write', False) else 'r', b.base, b.aw, b.width, b.signed,
+                          b.description)
     assert len(j) == len(m.regs) + len(m.status) + len(m.blocks) + len(m.aliases), "duplicate names"
     return j
 
@@ -493,7 +457,7 @@ def windows(m):
     win = [(f'status_bank_{b:x}', b << 4, 4, f'status_bank_{b:x}') for b in banks]
     win += [('rom_compat', *ROM_COMPAT, "32'h0"), ('mirror', mirror_base, mirror_aw, 'mirror_out')]
     win += [(b.name, b.base, b.aw, b.port + ('' if b.index is None else f'[{b.index}]')) for b in m.blocks]
-    spans = sorted((base, base + (1 << aw), name) for name, base, aw, _ in win + [(*MOD_TABLES, None)])
+    spans = sorted((base, base + (1 << aw), name) for name, base, aw, _ in win)
     for (_, end, a), (start, _, b) in zip(spans, spans[1:]):
         assert end <= start, f"readback windows {a} and {b} overlap"
     return win
@@ -517,6 +481,7 @@ def pkg_sv(m, source):
         out.append(f"    typedef struct packed {{\n{fields}    }} status_{dom}_t;\n")
     out.append(f"    localparam int MIRROR_WIDTH = {mirror_aw};\n")
     out.append(f"    localparam int MAP_SIG_BUF_AW = {m.sig_buf_aw};  // signal buffer windows\n")
+    out.append(f"    localparam int MAP_MOD_AW = {MOD_AW};  // modulation table windows\n")
     for r in m.regs:
         out.append(f"    localparam logic [{LB_HI}:0] ADDR_{r.name.upper()} = 18'h{addr[r.name]:05x};\n")
     for b in m.blocks:
@@ -566,6 +531,12 @@ def regs_sv(m, source):
     io += ["    input status_lb_t status_lb,", "    input status_dsp_t status_dsp,",
            "    output xfer_snap,  // dsp_clk strobe: snapshot multi-word dsp status"]
     io += [f"    input [31:0] {p}" + (f" [{n}]" if n else "") + "," for p, n in ports.items()]
+    wports = {}
+    for b in m.blocks:
+        if b.write:
+            n = wports.setdefault(b.wr_port, 0)
+            wports[b.wr_port] = max(n, 0 if b.index is None else b.index + 1)
+    io += ["    output " + (f"[{n - 1}:0] " if n else "") + f"{p}," for p, n in wports.items()]
     io[-1] = io[-1].rstrip(',')
     out = [f"// Generated by uspas_llrf/regmap.py from {source}; do not edit.\n",
            "// rw registers (with the readback mirror), status words and the readback mux.\n",
@@ -610,6 +581,11 @@ def regs_sv(m, source):
                        f"always @(posedge xfer_clk) begin\n    case (xfer_addr)\n"
                        f"{cases.replace(f'status_bank_{bank:x} <=', 'xfer_bank <=')}"
                        f"        default: xfer_bank <= 32'hfaceface;\n    endcase\nend\n")
+    wr = "".join(f"assign {b.wr_port}{'' if b.index is None else f'[{b.index}]'} = lb_write & "
+                 f"(lb_addr[{LB_HI}:{b.aw}] == {LB_HI + 1 - b.aw}'h{b.base >> b.aw:x});  // {b.name}\n"
+                 for b in m.blocks if b.write)
+    if wr:
+        out.append(f"\n// writes to the writable windows (lb_clk domain)\n{wr}")
     win = windows(m)
     bases = ", ".join(f"18'h{base:05x}" for _, base, _, _ in reversed(win))
     waws = ", ".join(f"5'd{aw}" for _, _, aw, _ in reversed(win))
@@ -668,25 +644,17 @@ def main():
     parser = argparse.ArgumentParser(description=(__doc__ or '').split('\n\n')[0])
     parser.add_argument('-d', '--design', help='design.py (default: base map)')
     parser.add_argument('-o', '--outdir', required=True, help='output directory')
-    parser.add_argument('--sv', action='store_true',
-                        help='SV backend: llrf_shell_regmap_pkg.sv, llrf_shell_regs.sv, llrf_shell.json')
     args = parser.parse_args()
     source = args.design or 'base_regs()'
     os.makedirs(args.outdir, exist_ok=True)
-    if args.sv:
-        m = load_map(args.design)
-        for fname, text in (('llrf_shell_regmap_pkg.sv', pkg_sv(m, source)),
-                            ('llrf_shell_regs.sv', regs_sv(m, source))):
-            with open(os.path.join(args.outdir, fname), 'w') as f:
-                f.write(text)
-        with open(os.path.join(args.outdir, 'llrf_shell.json'), 'w') as f:
-            json.dump(shell_json(m), f, sort_keys=True, indent=4, separators=(',', ': '))
-            f.write('\n')
-        return
-    regs = load_design(args.design)
-    with open(os.path.join(args.outdir, 'llrf_shell_regs.vh'), 'w') as f:
-        f.write(regs_vh(regs, source))
-    write_json(regs, os.path.join(args.outdir, 'regmap_llrf_shell.json'))
+    m = load_map(args.design)
+    for fname, text in (('llrf_shell_regmap_pkg.sv', pkg_sv(m, source)),
+                        ('llrf_shell_regs.sv', regs_sv(m, source))):
+        with open(os.path.join(args.outdir, fname), 'w') as f:
+            f.write(text)
+    with open(os.path.join(args.outdir, 'llrf_shell.json'), 'w') as f:
+        json.dump(shell_json(m), f, sort_keys=True, indent=4, separators=(',', ': '))
+        f.write('\n')
 
 
 if __name__ == '__main__':

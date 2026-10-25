@@ -110,3 +110,30 @@ class PulseModulator:
         self.phs_mod_gate = int(in_mod and self.phs_mod_enable)
         self.mod_addr = p.idx & (self.mod_size - 1)
         p.step(trigger, self.pulse_start, self.pulse_high_len, 1, self.res_shift)
+
+
+def gen_mod_tables(kind, n, amp_scale=0, phs_scale=0, max_amp_setpoint=None, dwbb=18, seed=None):
+    """Amplitude and phase modulation tables of n entries, as int lists in
+    setpoint units (what loop_ctrl adds to amp_setpoint and phs_setpoint).
+
+    kind: 'zero', 'ramp' (0 to scale), 'sine' (one period of scale amplitude)
+    or 'random' (uniform in [-scale, scale], seeded).
+    Amplitude entries are clipped to +-max_amp_setpoint (default: the dwbb
+    range); phase entries wrap, as the phase setpoint does.
+    """
+    import math
+    import random
+    sat_max = (1 << (dwbb - 1)) - 1
+    amp_lim = sat_max if max_amp_setpoint is None else min(int(max_amp_setpoint), sat_max)
+    rng = random.Random(seed)
+    shapes = {
+        'zero': lambda k, s: 0,
+        'ramp': lambda k, s: s * k / max(n - 1, 1),
+        'sine': lambda k, s: s * math.sin(2 * math.pi * k / n),
+        'random': lambda k, s: rng.uniform(-s, s),
+    }
+    if kind not in shapes:
+        raise ValueError(f"kind {kind!r} not in {sorted(shapes)}")
+    amp = [max(-amp_lim, min(amp_lim, round(shapes[kind](k, amp_scale)))) for k in range(n)]
+    phs = [wrap_signed(round(shapes[kind](k, phs_scale)), dwbb) for k in range(n)]
+    return amp, phs

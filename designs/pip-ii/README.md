@@ -5,8 +5,8 @@ This directory contains the advanced DSP configuration and static register mappi
 ## Design Architecture & Shell Flavor
 
 - **Frequency Configuration (`FSET`)**: `AWA`
-- **`llrf_shell.v` Flavor**: **Pulse Modulation LUT** (direct file in this directory; base implementation for `pip-ii`)
-- **`static_regmap.json`**: Direct file in this directory (`0x800` stride mapping + `pulse0_lut`/`pulse1_lut`)
+- **`llrf_shell` Flavor**: **Baseline** (`SHELL_SRC = ../uspas/llrf_shell.sv` in the Makefile), with the pulse modulation of `loop_ctrl`
+- **Register map**: the base map in `uspas_llrf/regmap.py` (2k signal buffers, `0x800` stride)
 - **Testbench**: Uses unified cocotb runner `tb/llrf_shell/` based on `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell`.
 
 ---
@@ -26,7 +26,7 @@ This directory contains the advanced DSP configuration and static register mappi
 
 - **Zest Reference Clock**: LO (1320 MHz)
 - **DAC Mode**: Mix-Mode (2nd Nyquist zone operation with spectral flip)
-- **Special Feature**: Dedicated Dual Arbitrary Pulse Modulation Look-Up Tables (`pulse0_lut`, `pulse1_lut`, 32k x 16-bit each)
+- **Pulse modulation**: amplitude and phase tables per loop (`loopN_amp_mod`, `loopN_phs_mod`, 16k x 18-bit signed), shared by all designs
 
 ---
 
@@ -120,11 +120,13 @@ flowchart LR
 
 ## Memory Map & Static Registers
 
-### Pulse Modulation Look-Up Tables (15-bit address width = 32768 words)
+### Pulse Modulation Tables (14-bit address width = 16384 words)
 | Memory Block | Base Address (Hex) | Address Range | Word Width | Access | Description |
 | :--- | :---: | :---: | :---: | :---: | :--- |
-| `pulse0_lut` | `0x20000` | `0x20000` - `0x27fff` | 16-bit unsigned | RW | Channel 0 Arbitrary Pulse modulation table |
-| `pulse1_lut` | `0x28000` | `0x28000` - `0x2ffff` | 16-bit unsigned | RW | Channel 1 Arbitrary Pulse modulation table |
+| `loop0_amp_mod` | `0x20000` | `0x20000` - `0x23fff` | 18-bit signed | RW | Loop 0 amplitude modulation (added to `loop0_amp_setpoint`) |
+| `loop0_phs_mod` | `0x24000` | `0x24000` - `0x27fff` | 18-bit signed | RW | Loop 0 phase modulation (added to `loop0_phs_setpoint`) |
+| `loop1_amp_mod` | `0x28000` | `0x28000` - `0x2bfff` | 18-bit signed | RW | Loop 1 amplitude modulation |
+| `loop1_phs_mod` | `0x2c000` | `0x2c000` - `0x2ffff` | 18-bit signed | RW | Loop 1 phase modulation |
 
 ### Static Buffers (11-bit depth = 2048 samples, 18-bit signed I/Q)
 | Buffer Name | Base Address (Hex) | Word Width | Access | Description |
@@ -134,7 +136,6 @@ flowchart LR
 | `drv0_i_buf`, `drv1_i_buf` | `0x1a000`, `0x1a800` | 18-bit signed | R | DAC drive In-phase buffers |
 | `adc0_q_buf` .. `adc7_q_buf` | `0x1b000` - `0x1e800` | 18-bit signed | R | ADC demodulated Quadrature buffers (stride `0x800`) |
 | `drv0_q_buf`, `drv1_q_buf` | `0x1f000`, `0x1f800` | 18-bit signed | R | DAC drive Quadrature buffers |
-| `iq_buf` | `0x16000` | 18-bit signed | R | Merged 20-channel I/Q buffer space (32k depth) |
 | `circle_data` | `0x30000` | 24-bit signed | R | Circular buffer waveform recorder (64k depth) |
 
 ### Status & Diagnostic Registers
@@ -166,10 +167,10 @@ flowchart LR
 | `tx_dds_amplitude` | 18-bit unsigned | RW | TX DDS LO amplitude (`74762`) |
 | `duc_spectral_flip` | 1-bit unsigned | RW | DUC spectral inversion for 2nd Nyquist (`1`) |
 | `tx_phase_offset` | 19-bit signed | RW | TX baseband phase compensation (`-77451`) |
-| `lut1_len`, `lut2_len` | 16-bit unsigned | RW | Pulse LUT waveform lengths |
+| `loopN_mod_len` | 15-bit unsigned | RW | Modulation table entries used (up to 16384) |
 | `drv0_pulse_mode`, `drv1_pulse_mode` | 1-bit unsigned | RW | Pulse mode enable per drive (`1`) |
-| `pulse_modulation_enable` | 2-bit unsigned | RW | Pulse LUT modulation enable |
-| `pulse_res_shift` | 4-bit unsigned | RW | Pulse LUT sample rate division shift |
+| `loopN_amp_mod_enable`, `loopN_phs_mod_enable` | 1-bit unsigned | RW | Apply the amplitude / phase table during the pulse |
+| `loopN_pulse_res_shift` | 4-bit unsigned | RW | `2^shift` dsp clocks per table entry |
 | `wave_samp_per` | 7-bit unsigned | RW | CIC decimation multiplier (default `1`) |
 | `chan_keep` | 10-bit unsigned | RW | Bitmask of captured channels in circular buffer |
 | `dac_drive_sel` | 2-bit unsigned | RW | DAC multiplexer selection (`2`: I0I1) |

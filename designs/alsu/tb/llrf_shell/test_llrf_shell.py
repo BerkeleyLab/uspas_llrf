@@ -53,3 +53,10 @@ async def test_cic_waves(dut, f_config='ALSU', amp_exp=15000, phs_exp=45,
 async def test_arc_inlk(dut):
     tb = TB_llrf_shell(dut, f_config='ALSU', regmap_json_path='../../llrf_shell.json')
     await tb.test_arc_inlk()
+
+
+@cocotb.test(timeout_time=200, timeout_unit='us')
+@cocotb.parametrize(loop=['loop0', 'loop1'])
+async def test_pulse_modulation(dut, loop):
+    tb = TB_llrf_shell(dut, f_config='ALSU', regmap_json_path='../../llrf_shell.json')
+    await tb.test_pulse_modulation(loop)
