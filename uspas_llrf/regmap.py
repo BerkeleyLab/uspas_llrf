@@ -60,7 +60,8 @@ RENAMES = {
     'pulse1_lut': ['loop1_amp_mod'],
 }
 ADDITIONS = ['arc_testing',                                               # D18, step 3
-             *[f'loop{n}_{x}' for n in range(2) for x in ('phs_mod', 'phs_mod_enable')]]  # step 7d
+             *[f'loop{n}_{x}' for n in range(2) for x in ('phs_mod', 'phs_mod_enable')],  # step 7d
+             'buf_delay']                                                 # LEMP, step 8
 # registers whose data_width changed on purpose: name -> new width
 WIDTH_CHANGES = {f'loop{n}_pulse_{f}': 32 for n in range(2) for f in ('start', 'high_len')}  # step 7d
 REMOVALS = ['iq_buf',                     # 2K designs: only LEMP keeps it (D1), step 7b
@@ -196,6 +197,7 @@ def base_regs():
         Reg('system_bist_pass'),
         Reg('wave_trig_sel', 3, enum=WaveTrigSel, init=WaveTrigSel.Always),
         Reg('trigger_delay', 24, init=0),
+        Reg('buf_delay', 32, init=0, description='dsp clocks from wave_trig to the signal and circle buffer captures'),
         Reg('int_trigger_period', 32, init=5750000),
         Reg('soft_trigger', kind='strobe'),
         Reg('slow_snap_cic', init=0),

@@ -21,6 +21,7 @@ module diag
     input  bb_t           sig_i [N_CH],      // ADC channels, then drives
     input  bb_t           sig_q [N_CH],
     input                 wave_trig,
+    input  [31:0]         buf_delay,         // dsp clocks from wave_trig to both captures
     input                 cbuf_free_run,
     input                 record_en,         // drive enabled: record, first fault detection
     input  [63:0]         evr_timestamp,
@@ -110,7 +111,7 @@ wire sig_buf_dval, sig_buf_last;
 pulse_gen #(.AW(32)) sig_buf_trig_gen (
     .clk        (dsp_clk),
     .trigger    (wave_trig),
-    .start      (0),
+    .start      (buf_delay),
     .high_len   (1<<SIG_BUF_AW),
     .stb_in     (1'b1),
     .res        (4'd0),
@@ -178,6 +179,19 @@ assign rd_sig_iq_buf_ready = {{(32-2*N_CH){1'b0}}, sig_iq_buf_ready};
 // ---------------------
 // cic_waves: circular buffer, slow readout and interlock stream
 // ---------------------
+// circle buffer trigger: wave_trig delayed by buf_delay, one clock high
+// (same pulse_gen latency as the signal buffer capture above)
+wire cbuf_trig;
+pulse_gen #(.AW(32)) cbuf_trig_gen (
+    .clk        (dsp_clk),
+    .trigger    (wave_trig),
+    .start      (buf_delay),
+    .high_len   (32'd1),
+    .stb_in     (1'b1),
+    .res        (4'd0),
+    .pulse_dval (cbuf_trig)
+);
+
 wire [CBUF_DW-1:0] cbuf_out;
 wire cbuf_ready;
 wire cbuf_transferred;
@@ -217,7 +231,7 @@ cic_waves #(
     .cbuf_post_delay    (cbuf_post_delay),
     .dsp_tag            (dsp_tag),
 
-    .wave_trig          (wave_trig),
+    .wave_trig          (cbuf_trig),
     .cbuf_free_run      (cbuf_free_run),
     .record_en          (record_en),
 

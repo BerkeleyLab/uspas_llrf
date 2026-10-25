@@ -224,6 +224,7 @@ diag #(
     .sig_i                 (sig_i_data),
     .sig_q                 (sig_q_data),
     .wave_trig             (wave_trig),
+    .buf_delay             (cfg_dsp.buf_delay),
     .cbuf_free_run         (cfg_dsp.wave_trig_sel == WAVE_TRIG_ALWAYS),
     .record_en             (sum_drive_enable),
     .evr_timestamp         (evr_live_ts_dsp),

@@ -6,8 +6,9 @@ This directory contains the DSP configuration and static register mapping for th
 
 - **Frequency Configuration (`FSET`)**: `LEMP`
 - **`llrf_shell` Flavor**: **Baseline** (`SHELL_SRC = ../uspas/llrf_shell.sv` in the Makefile)
-- **Register map**: the base map in `uspas_llrf/regmap.py`
+- **Register map**: the base map in `uspas_llrf/regmap.py`, with `design.py` (1k signal buffers, `iq_buf` window)
 - **Testbench**: Uses unified cocotb runner `tb/llrf_shell/` based on `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell`.
+- **LEMP-only blocks** (from the LEMP branch, not yet in a shell; LEMP's own shell comes in plan step 9): `fiducial_int_gen.v` (fiducial and event-strobe timing; test in `tb/fiducial_int_gen/`), `triggers.v` (PMOD trigger pulse; test in `tb/triggers/`), `timing_core_local.v` (LEMP variant of the EVR timing core). `make -C tb` runs the block tests.
 
 ---
 
