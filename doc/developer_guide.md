@@ -146,13 +146,12 @@ uspas_llrf/
 │   ├── tools/                 # Hardware utility scripts (RF synth, EVG generator)
 │   ├── tests/                 # Unified testbench classes (test_llrf_shell.py: TB_llrf_shell)
 │   └── settings.json          # Pre-defined facility LLRF DSP configuration parameters
-├── designs/                   # Standalone facility designs, customized llrf_shell.v, static regmaps, and testbenches
-│   ├── rules.mk               # Centralized make rules for all designs (expansion, JSON merge, CDC checks)
+├── designs/                   # Facility designs: shell selection (SHELL_SRC), register map extensions, testbenches
+│   ├── rules.mk               # Centralized make rules for all designs (register file generation, sv2v expansion, CDC checks)
 │   ├── README.md              # Detailed overview of design variants and frequency configuration matrix
-│   ├── uspas/                 # Baseline llrf_shell.v and static register map
-│   ├── alsu/, lemp/           # Designs symlinking baseline uspas/llrf_shell.v and static_regmap.json
-│   ├── pip-ii/                # Designs with arbitrary pulse modulation LUT support (pip-ii/llrf_shell.v)
-│   └── awa/                   # Design with compact buffer address layout (awa/llrf_shell.v)
+│   ├── uspas/                 # Base SystemVerilog shell llrf_shell.sv, used by every design
+│   ├── lemp/                  # design.py: 1k signal buffers and the iq_buf window
+│   └── alsu/, awa/, pip-ii/   # Designs on the base shell (SHELL_SRC = ../uspas/llrf_shell.sv)
 ├── llrf_dsp/                  # Verilog DSP core & submodules (DDC, DUC, DDS, PI scalar, CIC filters, interlocks)
 │   ├── tests/                 # Cocotb testbenches verifying individual DSP submodules
 │   ├── dds.v, ddc.v, duc.v    # NCO / Direct Digital Synthesis, Non-IQ Down-Converter, Up-Converter
@@ -179,11 +178,8 @@ uspas_llrf/
 4. **Facility Configurations & Entry Key**:
    - The top-level entry key for synthesis and build configuration is `DESIGN` (`uspas`, `alsu`, `lemp`, `awa`, `pip-ii`).
    - `DESIGN` automatically maps to `FSET` (`USPAS`, `ALSU`, `LEMP`, `AWA`) in `settings.mk` and `uspas_llrf/settings.json`.
-5. **LLRF Shell Flavors & Consolidation**:
-   - 3 consolidated flavors of `llrf_shell.v` are matrixed across designs:
-     - **Baseline** (`designs/uspas/llrf_shell.v`): Used by `uspas`, `alsu`, `lemp` (`alsu/` and `lemp/` symlink `llrf_shell.v` and `static_regmap.json` to `uspas/`).
-     - **Pulse Modulation LUT** (`designs/pip-ii/llrf_shell.v`): Used by `pip-ii` with arbitrary pulse LUTs (`pulse0_lut`, `pulse1_lut`).
-     - **Compact Buffer Map** (`designs/awa/llrf_shell.v`): Used by `awa` with compact buffer address stride (`0x800`); a separate file, not a symlink, with its own `static_regmap.json`.
-   - Unified cocotb testbench `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell` verifies all designs in `designs/<design>/tb/llrf_shell/`.
-   - Planned roadmap: Unify all flavors into a single parameterizable `llrf_shell.v` supporting feedforward tables and pulse modulation across all facilities.
+5. **LLRF Shell**:
+   - Every design uses the base SystemVerilog shell `designs/uspas/llrf_shell.sv` (`SHELL_SRC` in the design Makefile): shared blocks in `llrf_dsp/` (`rx_chain`, `diag`, `loop_ctrl` with the amplitude and phase pulse modulation tables, `tx_chain`) and the register file generated from `uspas_llrf/regmap.py` (a design's `design.py` may extend it; LEMP sets 1k signal buffers).
+   - Unified cocotb testbench `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell` verifies all designs in `designs/<design>/tb/llrf_shell/`, including the shell-level pulse modulation test.
+   - Roadmap (`doc/llrf_shell_unification_plan.md`): thin ALSU and LEMP shells over the same blocks.
 6. **Analog Frontend TX Spectral Flip**: Supports `tx_afe_spectral_flip` XORed with `duc_spectral_flip` for hardware RF mixing polarity compensation.

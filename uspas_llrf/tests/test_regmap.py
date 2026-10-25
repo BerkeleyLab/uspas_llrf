@@ -31,13 +31,14 @@ def build_json(design):
 
 def compat_errors(base, gen):
     """Differences in name, data_width, sign and access, apart from
-    regmap.RENAMES, regmap.ADDITIONS and regmap.REMOVALS. Addresses and
-    addr_width may change (D1, D5)."""
+    regmap.RENAMES, regmap.ADDITIONS, regmap.REMOVALS and regmap.WIDTH_CHANGES.
+    Addresses and addr_width may change (D1, D5)."""
     errors = []
     for k, b in base.items():
         if k in gen:
             errors += [f"{k}: {f} {b.get(f)} -> {gen[k].get(f)}"
-                       for f in ('data_width', 'sign', 'access') if b.get(f) != gen[k].get(f)]
+                       for f in ('data_width', 'sign', 'access') if b.get(f) != gen[k].get(f)
+                       and not (f == 'data_width' and regmap.WIDTH_CHANGES.get(k) == gen[k].get(f))]
         elif k not in regmap.REMOVALS and not all(n in gen for n in regmap.RENAMES.get(k, [None])):
             errors.append(f"{k}: missing")
     allowed = set(regmap.ADDITIONS) | {n for new in regmap.RENAMES.values() for n in new}
@@ -141,7 +142,7 @@ def test_address_header():
         lam.address_defines({'x': {'base_addr': lam.LB_LIMIT, 'addr_width': 0}})
 
 
-@pytest.mark.parametrize('design', ['uspas', 'alsu', 'lemp', 'awa'])
+@pytest.mark.parametrize('design', DESIGNS)
 def test_readback_windows(design):
     """Every llrf_shell.json entry of the SV shell is inside a readback window
     of the generated mux (windows() also rejects overlapping windows). An

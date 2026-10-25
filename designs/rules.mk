@@ -3,9 +3,9 @@ MODULE     = llrf_shell
 GEN_DIR    = _gen
 REGMAP_PY  = $(USPAS_LLRF_DIR)/regmap.py
 DESIGN_PY  = $(wildcard design.py)
-# the design shell: llrf_shell.sv (shared blocks, generated SV register file,
-# expanded by sv2v) or llrf_shell.v (monolithic, generated Verilog decode)
-SHELL_SRC ?= llrf_shell.v
+# the design shell (SystemVerilog): shared blocks, generated register file;
+# designs that reuse the base shell set SHELL_SRC = ../uspas/llrf_shell.sv
+SHELL_SRC ?= llrf_shell.sv
 SV2V      ?= sv2v
 
 .PHONY: all
@@ -14,6 +14,7 @@ all: $(MODULE)_expand.v $(MODULE).json
 APP_DSP_SRC += slow_bridge_shell.v sig_buf.v pulse_gen.v pi_scalar.v ph_acc_general.v ntw_analyzer.v
 APP_DSP_SRC += noniq_ddc.v monitor_inlk.v interp_xdomain.v interpolator.v
 APP_DSP_SRC += dsp_core.v dds.v ddc.v dac_duc.v cic_waves.v cic_timing.v arc_inlk.v
+APP_DSP_SRC += loop_ctrl.v
 DSP_SRC     += timestamp.v serialize.v serializer_multichannel.v reg_tech_cdc.v reg_delay.v
 DSP_SRC     += minmax.v fwashout.v freq_gcount.v freq_count.v flag_xdomain.v fiq_interp.v
 DSP_SRC     += fchan_subset.v dpram.v double_inte_smp.v doublediff.v demand_gpt.v data_xdomain.v
@@ -32,7 +33,6 @@ VFLAGS += -g2012
 cordicg_b22.v:
 	$(PYTHON) $(CORDIC_DIR)/cordicgx.py 22 $@
 
-ifeq ($(suffix $(SHELL_SRC)),.sv)
 # rw registers, status words and readback mux, and the whole JSON
 # (uspas_llrf/regmap.py, extended by design.py)
 SV_SRC  = $(APP_DSP_DIR)/llrf_shell_pkg.sv $(GEN_DIR)/llrf_shell_regmap_pkg.sv
@@ -40,7 +40,7 @@ SV_SRC += $(addprefix $(APP_DSP_DIR)/, lb_xdomain.sv lb_rd_mux.sv rx_chain.sv tx
 SV_SRC += $(GEN_DIR)/llrf_shell_regs.sv $(SHELL_SRC)
 
 $(GEN_DIR)/%_regmap_pkg.sv $(GEN_DIR)/%_regs.sv $(GEN_DIR)/%.json: $(REGMAP_PY) $(DESIGN_PY)
-	$(PYTHON) $(REGMAP_PY) --sv $(addprefix -d ,$(DESIGN_PY)) -o $(GEN_DIR)
+	$(PYTHON) $(REGMAP_PY) $(addprefix -d ,$(DESIGN_PY)) -o $(GEN_DIR)
 
 $(MODULE).json: $(GEN_DIR)/$(MODULE).json
 	cp $< $@
@@ -53,22 +53,6 @@ $(MODULE)_expand.v: $(SV_SRC) $(LIB_SRC)
 	$(VERILOG) $(VFLAGS_DEP) -E -o $@.lib $(LIB_SRC)
 	cat $@.sv2v $@.lib > $@
 	rm -f $@.sv2v $@.lib
-else
-# register storage, decode and mirror, and the register part of the JSON
-# (uspas_llrf/regmap.py, extended by design.py)
-$(GEN_DIR)/%_regs.vh $(GEN_DIR)/regmap_%.json: $(REGMAP_PY) $(DESIGN_PY)
-	$(PYTHON) $(REGMAP_PY) $(addprefix -d ,$(DESIGN_PY)) -o $(GEN_DIR)
-
-# status registers, from the "// alias:" comments of the readback mux
-$(GEN_DIR)/scalar_%_regmap.json: %.v
-	mkdir -p $(GEN_DIR); $(PYTHON) $(BUILD_DIR)/reverse_json.py $< > $@
-
-$(MODULE).json: $(GEN_DIR)/regmap_$(MODULE).json $(GEN_DIR)/scalar_$(MODULE)_regmap.json $(wildcard static_regmap.json)
-	$(PYTHON) $(BUILD_DIR)/merge_json.py -o $@ -i $^
-
-$(MODULE)_expand.v: $(SHELL_SRC) $(LIB_SRC) $(GEN_DIR)/$(MODULE)_regs.vh
-	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(SHELL_SRC) $(LIB_SRC)
-endif
 
 # boot-time register values: the design directory sets the FSET and the
 # register map, whatever DESIGN is in the environment
