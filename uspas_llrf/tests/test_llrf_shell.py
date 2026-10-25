@@ -625,3 +625,38 @@ class TB_llrf_shell:
         assert seen['dval'] == cfg['pulse_high_len'], f"pulse lasted {seen['dval']} clocks"
         assert seen['amp_gate'] == mod_len << res_shift, f"amplitude table on for {seen['amp_gate']} clocks"
         cocotb.log.info(f'{loop}: {seen["dval"]} pulse clocks, table applied for {seen["amp_gate"]}')
+
+    async def test_buf_delay(self, delays=(0, 1, 37)):
+        """buf_delay moves the signal buffer capture (sig_buf_dval) and the
+        circle buffer trigger (cbuf_trig) by the same number of dsp clocks
+        after wave_trig."""
+        dut = self.dut
+        self.log_banner('buf_delay')
+        dg = self.shell_scope('sig_buf_dval')
+        wave_trig = self.shell_sig('wave_trig')
+        await self.lb.write_reg('wave_trig_sel', int(WaveTrigSel.Software))
+        await self.lb.write_reg('trigger_delay', 0)
+        offsets = {}
+        for d in delays:
+            await self.lb.write_reg('buf_delay', d)
+            await ClockCycles(dut.dsp_clk, (1 << self.sig_buf_aw) + 50)  # previous capture done
+            first = {}
+
+            async def watch(n_cycles):
+                for k in range(n_cycles):
+                    await RisingEdge(dut.dsp_clk)
+                    await ReadOnly()
+                    for name, sig in (('trig', wave_trig), ('sig_buf', dg.sig_buf_dval), ('cbuf', dg.cbuf_trig)):
+                        if name not in first and int(sig.value):
+                            first[name] = k
+
+            task = cocotb.start_soon(watch(max(delays) + 200))
+            await self.lb.write_reg('soft_trigger', 1)
+            await task
+            assert set(first) == {'trig', 'sig_buf', 'cbuf'}, f"buf_delay {d}: saw only {sorted(first)}"
+            offsets[d] = (first['sig_buf'] - first['trig'], first['cbuf'] - first['trig'])
+        cocotb.log.info(f'buf_delay -> (sig_buf, cbuf) clocks after wave_trig: {offsets}')
+        base = offsets[delays[0]]
+        assert base[0] == base[1], f"sig_buf and cbuf triggers not aligned: {base}"
+        for d in delays:
+            assert offsets[d] == (base[0] + d - delays[0], base[1] + d - delays[0]), offsets

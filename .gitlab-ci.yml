@@ -39,6 +39,11 @@ llrf_dsp_test:
     - cd llrf_dsp
     - make
 
+lemp_unit_test:
+  stage: test
+  script:
+    - make -C designs/lemp/tb
+
 llrf_cdc_test:
   stage: test
   script:
