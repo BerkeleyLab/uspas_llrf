@@ -111,7 +111,8 @@ system_test:
 
 #: post-boot firmware check: the console must answer '?' with this commit's
 #: GIT_REV_ID (needs a UART0 interrupt and the main loop running)
-CONSOLE_PORT = /dev/serial/by-id/usb-LBNL_Marble_$(MARBLE_SN)-if02-port0
+#: override where udev links are missing, e.g. in a CI container
+CONSOLE_PORT ?= /dev/serial/by-id/usb-LBNL_Marble_$(MARBLE_SN)-if02-port0
 system_console_test:
 	$(PYTHON) -m uspas_llrf.tools.marble_console $(CONSOLE_PORT) --git-id $(GIT_32BIT_ID)
 

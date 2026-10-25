@@ -10,6 +10,8 @@ variables:
   DOCKER_DRIVER: overlay2
   GIT_SUBMODULE_STRATEGY: normal
   MARBLE_SERIAL: 42
+  # SoC console tty of that Marble on the runner (no udev /dev/serial/by-id in the job)
+  CONSOLE_PORT: /dev/ttyUSB9
 
 image: mohs.dhcp.lbl.gov/xilinx_env_trixie_custom_verilator
 
@@ -122,7 +124,7 @@ alsu_run:
     - make system_config MARBLE_SERIAL=${MARBLE_SERIAL}
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
-    - make system_console_test MARBLE_SERIAL=${MARBLE_SERIAL}
+    - make system_console_test MARBLE_SERIAL=${MARBLE_SERIAL} CONSOLE_PORT=${CONSOLE_PORT}
 
 awa_run:
   variables:
@@ -142,7 +144,7 @@ awa_run:
     - make system_config MARBLE_SERIAL=${MARBLE_SERIAL}
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
-    - make system_console_test MARBLE_SERIAL=${MARBLE_SERIAL}
+    - make system_console_test MARBLE_SERIAL=${MARBLE_SERIAL} CONSOLE_PORT=${CONSOLE_PORT}
 
 lemp_run:
   variables:
@@ -166,7 +168,7 @@ lemp_run:
     - make system_config MARBLE_SERIAL=${MARBLE_SERIAL}
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
-    - make system_console_test MARBLE_SERIAL=${MARBLE_SERIAL}
+    - make system_console_test MARBLE_SERIAL=${MARBLE_SERIAL} CONSOLE_PORT=${CONSOLE_PORT}
 
 uspas_run:
   variables:
@@ -186,4 +188,4 @@ uspas_run:
     - make system_config MARBLE_SERIAL=${MARBLE_SERIAL}
     - sleep 8
     - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
-    - make system_console_test MARBLE_SERIAL=${MARBLE_SERIAL}
+    - make system_console_test MARBLE_SERIAL=${MARBLE_SERIAL} CONSOLE_PORT=${CONSOLE_PORT}
