@@ -20,4 +20,3 @@ $(MB_REGS_H) $(MB_REGS_C): $(MB_REGS_TOML)
 
 init_modbus.o: $(MB_REGS_H) $(MB_REGS_C)
 SRCS  += $(MB_REGS_C)
-CLEAN += $(MB_REGS_H) $(MB_REGS_C)

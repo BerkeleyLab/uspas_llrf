@@ -35,27 +35,28 @@ GT_TCL  ?= $(BEDROCK_DIR)/serial_io/EVG_EVR/gt_tcl/evr_gtx.tcl
 PIN_MAP ?= $(TOP_COMMON_DIR)/pin_map.csv
 vpath %.c $(BUILD_DIR)
 
-.PHONY: all system_config system_test evr_test clean
+.PHONY: all system_config system_test system_console_test evr_test console clean
 all: $(TARGET)_top_$(DESIGN).bit
 
 IP_EXPAND := $(BSP_DIR)/marble_bsp_expand.v $(SOC_BUILD_DIR)/system_expand.v $(DESIGNS_DIR)/$(DESIGN)/llrf_shell_expand.v $(IP_EXPAND)
 
 SUB_IP_DIR = $(BSP_DIR)/ $(DESIGNS_DIR)/$(DESIGN)/
 
-$(BSP_DIR)/marble_bsp_expand.v:
+$(BSP_DIR)/marble_bsp_expand.v: FORCE
 	$(MAKE) -C $(dir $@) $(notdir $@)
-$(SOC_BUILD_DIR)/system_expand.v:
+$(SOC_BUILD_DIR)/system_expand.v: FORCE
 	$(SOC_MAKE) $(notdir $@)
-$(DESIGNS_DIR)/$(DESIGN)/llrf_shell_expand.v:
+$(DESIGNS_DIR)/$(DESIGN)/llrf_shell_expand.v: FORCE
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
 IP_JSON := $(DESIGNS_DIR)/$(DESIGN)/llrf_shell.json $(BSP_DIR)/marble_bsp.json $(TOP_COMMON_DIR)/marble_zest_top.json $(IP_JSON)
 
-$(BSP_DIR)/marble_bsp.json:
-	$(MAKE) -C $(dir $@) $(notdir $@)
+# marble_bsp.json and llrf_shell.json: rules in soc/common/llrf/rules.mk
 
-$(DESIGNS_DIR)/$(DESIGN)/llrf_shell.json:
-	$(MAKE) -C $(dir $@) $(notdir $@)
+# Sub-make targets depend on FORCE, so the owning directory's make always
+# decides whether they are current (they used to be built only once).
+.PHONY: FORCE
+FORCE:
 
 $(TARGET).json: $(IP_JSON)
 	$(PYTHON) $(BUILD_DIR)/merge_json.py -o $@ -i $^
@@ -68,10 +69,10 @@ GIT_ID = $(shell git rev-parse --verify HEAD)
 GIT_32BIT_ID = $(shell git rev-parse --short=8 --verify HEAD)
 SYNTH_OPT += -DGIT_32BIT_ID=32'h$(GIT_32BIT_ID)
 
-$(SOC_BUILD_DIR)/system32.dat:
+$(SOC_BUILD_DIR)/system32.dat: FORCE
 	$(SOC_MAKE) system32.dat
 
-$(SOC_BUILD_DIR)/zest_fmc_dp.xdc:
+$(SOC_BUILD_DIR)/zest_fmc_dp.xdc: FORCE
 	$(SOC_MAKE) zest_fmc_dp.xdc
 
 top.xdc: $(BOARD_SUPPORT_DIR)/marble/Marble.xdc $(PIN_MAP)
@@ -99,10 +100,21 @@ system_config:
 	-c "init; xc7_program xc7.tap; pld load 0 $(BITSTREAM); exit"
 
 # check Ethernet and system selftest status
+#: SoC console on the Marble's USB UART (see soc/common/synth/Makefile)
+console:
+	$(SOC_MAKE) console
+
 system_test:
 	ping -v -c 4 -w 20 $(IP_ADDRESS)
 	test "$$(leep leep://$(IP_ADDRESS):803 gitid)" = "$(GIT_ID)" && echo "gitid OK" && \
 	leep leep://$(IP_ADDRESS):803 reg system_bist_pass | awk ' $$2!=00000001 { exit 1 }'
+
+#: post-boot firmware check: the console must answer '?' with this commit's
+#: GIT_REV_ID (needs a UART0 interrupt and the main loop running)
+#: override where udev links are missing, e.g. in a CI container
+CONSOLE_PORT ?= /dev/serial/by-id/usb-LBNL_Marble_$(MARBLE_SN)-if02-port0
+system_console_test:
+	$(PYTHON) -m uspas_llrf.tools.marble_console $(CONSOLE_PORT) --git-id $(GIT_32BIT_ID)
 
 #: Verilator simulation of the full top (see topsim.sh)
 topsim:

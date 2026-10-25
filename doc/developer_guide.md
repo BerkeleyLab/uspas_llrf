@@ -110,11 +110,26 @@ make system_config MARBLE_SERIAL=61
 # Test Ethernet and system self-test via LEEP (IP defaults to 192.168.19.<SERIAL>)
 make system_test MARBLE_SERIAL=61
 
+# Post-boot firmware check over the USB UART console (answers '?' with this commit's GIT_REV_ID)
+make system_console_test MARBLE_SERIAL=61
+
 # Direct LEEP CLI access
 .venv/bin/leep leep://192.168.18.61:803 list
 .venv/bin/leep leep://192.168.18.61:803 reg <reg_name>
 .venv/bin/leep leep://192.168.18.61:803 reg <reg_name>=<val>
+
+# SoC console on the Marble's USB UART (115200 baud, exit with Ctrl+])
+make console MARBLE_SERIAL=61
 ```
+
+**SoC console and reset.** The Marble's USB UART RTS line drives the SoC reset: the top level resets the SoC on its release (`UART_CTS` edge, `top/common/marble_zest_mid.vh`). By default Linux releases RTS when a program closes the port ("hang up on close"), so quitting a terminal such as `pyserial-miniterm` reboots the SoC. `make console` turns this off with `stty -F <port> -hupcl` before starting miniterm. To make it the default for any terminal program, install the udev rule once per host:
+
+```bash
+sudo cp doc/udev/99-marble-console.rules /etc/udev/rules.d/
+sudo udevadm control --reload   # applies when the Marble's USB port next appears
+```
+
+Without the rule, run `stty -F /dev/serial/by-id/usb-LBNL_Marble_<6-digit serial>-if02-port0 -hupcl` once after each power cycle or USB re-plug.
 
 ---
 

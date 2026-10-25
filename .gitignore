@@ -43,6 +43,8 @@ llrf_dsp/_autogen/addr_map_llrf_shell.vh
 soc/**/*/init_llrf.c
 soc/**/*/llrf_regs_addr.h
 soc/**/*/marble_regs_addr.h
+soc/**/*/modbus_registers.h
+soc/**/*/modbus_bus_handlers.c
 soc/**/synth/system_top.xdc
 soc/**/common/llrf/llrf.o
 marble_bsp/construct_tx_table.v
