@@ -44,7 +44,7 @@ assign testing_out = testing;
 always @(posedge clk) begin
   permit_rbk <= dev_permit_in;
   if (testing) begin
-    if (counter == MAX_COUNT-1) begin
+    if (counter == CW'(MAX_COUNT-1)) begin
       testing <= 1'b0;
       counter <= 0;
     end else begin

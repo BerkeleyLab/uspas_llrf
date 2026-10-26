@@ -64,6 +64,7 @@ cordicg_b22 #(.nstg(20), .width(16)) cordic_detect(
     .yin        (y_value),
     .phasein    (17'b0),
     .xout       (mon_amp_out),
+    .yout       (),
     .phaseout   (mon_phs_out)
 );
 
@@ -107,7 +108,7 @@ always @(posedge clk) begin
     //  Interlocks trip when inlk_* are high (latched with reset below)
     if (wave_valid) begin
         for (ix = 0; ix < N_CH; ix = ix+1)
-            if (wave_cnt == 2*ix+1) begin
+            if (wave_cnt == 5'(2*ix+1)) begin
                 high[ix] <= cmpg_hi; low[ix]  <= cmpg_lo; inlk_ok[ix] <= ~inlk_trip;
             end
     end

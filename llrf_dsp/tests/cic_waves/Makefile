@@ -5,6 +5,7 @@ DUT      = cic_waves
 COCOTB_TOPLEVEL       = test_$(DUT)
 COCOTB_TEST_MODULES   = test_$(DUT)
 
+VERILOG_SOURCES +=  $(APP_DSP_DIR)/llrf_shell_pkg.sv
 VERILOG_SOURCES +=  test_$(DUT)_pkg.sv
 VERILOG_SOURCES +=  test_$(DUT).sv
 VERILOG_SOURCES +=  $(DSP_DIR)/dpram.v

@@ -33,6 +33,10 @@ designs/*/cordicg_b22.v
 designs/*/llrf_shell_expand.v
 designs/*/llrf_shell_init_regs.json
 designs/*/llrf_shell.json
+designs/*/llrf_shell_cdc.txt
+designs/*/llrf_shell_yosys.json
+*.wdb
+*xsim_*.backup.jou
 llrf_dsp/cordicg_b22.v
 llrf_dsp/tests/*/cordicg_b22.v
 llrf_dsp/llrf_shell_expand.v

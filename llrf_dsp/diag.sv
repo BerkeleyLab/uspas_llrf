@@ -111,7 +111,8 @@ pulse_gen #(.AW(32)) sig_buf_trig_gen (
     .stb_in     (1'b1),
     .res        (4'd0),
     .pulse_dval (sig_buf_dval),
-    .pulse_last (sig_buf_last)
+    .pulse_last (sig_buf_last),
+    .pulse_idx  ()
 );
 
 genvar ch;
@@ -184,7 +185,9 @@ pulse_gen #(.AW(32)) cbuf_trig_gen (
     .high_len   (32'd1),
     .stb_in     (1'b1),
     .res        (4'd0),
-    .pulse_dval (cbuf_trig)
+    .pulse_dval (cbuf_trig),
+    .pulse_last (),
+    .pulse_idx  ()
 );
 
 wire [CBUF_DW-1:0] cbuf_out;
@@ -332,6 +335,7 @@ dpram #(.aw(4), .dw(16+17)) dp_llrf_amp_mon (
     .addra  (mon_addr_out),
     .dina   ({mon_amp_out, mon_phs_out}),
     .wena   (mon_valid_out),
+    .douta  (),
     .clkb   (lb_clk),
     .addrb  (lb_addr[3:0]),
     .doutb  ({mon_amp_lb, mon_phs_lb})
@@ -344,12 +348,13 @@ data_xdomain #(.size(5*N_CH+1)) inlk_stat_xdomain (
     .gate_in  (dsp_tick),
     .data_in  ({inlk_permit_out, first_fault_status, inlk_latch, inlk_status, inlk_hi, inlk_lo}),
     .clk_out  (lb_clk),
-    .data_out ({inlk_permit_out_lb, first_fault_status_lb, inlk_latch_lb, inlk_status_lb, inlk_hi_lb, inlk_lo_lb})
+    .data_out ({inlk_permit_out_lb, first_fault_status_lb, inlk_latch_lb, inlk_status_lb, inlk_hi_lb, inlk_lo_lb}),
+    .gate_out ()
 );
 
 // Latch fault record amplitude per channel, addressed by fault_addr_out
 reg [16*N_CH-1:0] fault_amp_r = 0;
-always @(posedge dsp_clk) if (fault_valid_out && fault_addr_out < N_CH)
+always @(posedge dsp_clk) if (fault_valid_out && fault_addr_out < 4'(N_CH))
     fault_amp_r[16*fault_addr_out +: 16] <= fault_amp_out;
 
 wire [16*N_CH-1:0] fault_amp_xd;
@@ -358,9 +363,10 @@ data_xdomain #(.size(16*N_CH)) fault_amp_xdomain (
     .gate_in  (dsp_tick),
     .data_in  (fault_amp_r),
     .clk_out  (lb_clk),
-    .data_out (fault_amp_xd)
+    .data_out (fault_amp_xd),
+    .gate_out ()
 );
-wire [15:0] fault_amp_lb = lb_addr_d1[3:0] < N_CH ? fault_amp_xd[16*lb_addr_d1[3:0] +: 16] : 16'h0;
+wire [15:0] fault_amp_lb = lb_addr_d1[3:0] < 4'(N_CH) ? fault_amp_xd[16*lb_addr_d1[3:0] +: 16] : 16'h0;
 assign rd_fault_amp = {16'b0, fault_amp_lb};
 
 data_xdomain #(.size(1+3+3+1)) arc_stat_xdomain (
@@ -368,7 +374,8 @@ data_xdomain #(.size(1+3+3+1)) arc_stat_xdomain (
     .gate_in  (dsp_tick),
     .data_in  ({arc_testing, arc_permit_sum, arc_permit_latch, arc_permit_raw}),
     .clk_out  (lb_clk),
-    .data_out ({arc_testing_lb, arc_permit_sum_lb, arc_permit_latch_lb, arc_permit_raw_lb})
+    .data_out ({arc_testing_lb, arc_permit_sum_lb, arc_permit_latch_lb, arc_permit_raw_lb}),
+    .gate_out ()
 );
 
 endmodule
