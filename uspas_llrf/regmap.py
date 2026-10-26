@@ -558,7 +558,7 @@ def decode_sv(r, addr):
     if r.aw:
         return out + (f"dpram #(.aw({r.aw}), .dw({r.width})) dp_{name} (\n"
                       f"    .clka({lb}_clk), .addra({lb}_addr[{r.aw - 1}:0]), .dina({lb}_data[{msb}:0]),"
-                      f" .wena(we_{name}),\n"
+                      f" .wena(we_{name}), .douta(),\n"
                       f"    .clkb({lb}_clk), .addrb({name}_addr), .doutb({name}));\n")
     out += f"reg [{msb}:0] {name} = 0;\n"
     if r.kind == 'strobe':
@@ -622,7 +622,7 @@ def regs_sv(m, source):
                f"wire mirror_write = lb_write & (lb_addr[{LB_HI}:{mirror_aw}] =="
                f" {LB_HI + 1 - mirror_aw}'h{mirror_base >> mirror_aw:x});\n"
                f"dpram #(.aw({mirror_aw}), .dw(32)) mirror (\n"
-               f"    .clka(lb_clk), .addra(lb_addr[{mirror_aw - 1}:0]), .dina(lb_data), .wena(mirror_write),\n"
+               f"    .clka(lb_clk), .addra(lb_addr[{mirror_aw - 1}:0]), .dina(lb_data), .wena(mirror_write), .douta(),\n"
                f"    .clkb(lb_clk), .addrb(lb_addr[{mirror_aw - 1}:0]), .doutb(mirror_out));\n")
     for bank in sorted({s.addr >> 4 for s in m.status}):
         st = [s for s in m.status if s.addr >> 4 == bank]

@@ -34,6 +34,7 @@ localparam real ASSERT_TIME_S = 0.5; // 0.5 seconds
 localparam MAX_COUNT = $rtoi(ASSERT_TIME_S*F_CLK);
 localparam CW = $clog2(MAX_COUNT);
 reg [CW-1:0] counter=0;
+localparam integer COUNT_LAST = MAX_COUNT-1;  // sliced below: no parameter-width cast, which sv2v keeps
 
 reg testing=1'b0;
 reg [N_CH:0] reset_test_mask_r=0;
@@ -44,7 +45,7 @@ assign testing_out = testing;
 always @(posedge clk) begin
   permit_rbk <= dev_permit_in;
   if (testing) begin
-    if (counter == MAX_COUNT-1) begin
+    if (counter == COUNT_LAST[CW-1:0]) begin
       testing <= 1'b0;
       counter <= 0;
     end else begin

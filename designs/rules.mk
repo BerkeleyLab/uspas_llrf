@@ -54,6 +54,18 @@ $(MODULE)_expand.v: $(SV_SRC) $(LIB_SRC)
 	cat $@.sv2v $@.lib > $@
 	rm -f $@.sv2v $@.lib
 
+# lint of the SystemVerilog sources with Verilator: any warning fails, width
+# warnings included (the cocotb TBs build with -Wno-width, which only the
+# Verilog library needs; its warnings are waived in lint_waivers.vlt).
+# TIMESCALEMOD: the SV files have no `timescale, some library files do.
+# PINCONNECTEMPTY: an unused output is connected as .name(); PINMISSING
+# still catches a port left out of the list.
+LINT_VERILATOR ?= verilator  # not $(VERILATOR): bedrock sets it to -Wall -Wno-fatal
+.PHONY: lint
+lint: $(SV_SRC) $(LIB_SRC)
+	$(LINT_VERILATOR) --lint-only -Wno-TIMESCALEMOD -Wno-PINCONNECTEMPTY --top-module $(MODULE) $(VFLAGS_DEP) \
+		$(APP_DSP_DIR)/lint_waivers.vlt $(SV_SRC) $(addprefix -v ,$(abspath $(LIB_SRC)))
+
 # boot-time register values: the design directory sets the FSET and the
 # register map, whatever DESIGN is in the environment
 THIS_DESIGN := $(notdir $(CURDIR))

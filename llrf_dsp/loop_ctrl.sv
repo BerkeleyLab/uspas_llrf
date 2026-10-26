@@ -103,9 +103,14 @@ localparam signed [DWBB-1:0] SAT_MAX = {1'b0, {(DWBB-1){1'b1}}};
 localparam signed [DWBB-1:0] SAT_MIN = {1'b1, {(DWBB-1){1'b0}}};
 localparam signed [DWBB-1:0] ZERO = 0;  // keeps the conditionals below signed
 
-wire signed [DWBB:0] amp_sum = cfg.amp_setpoint + (amp_mod_gate ? amp_mod : ZERO);
-wire signed [DWBB-1:0] amp_sat = (amp_sum > SAT_MAX) ? SAT_MAX :
-                                 (amp_sum < SAT_MIN) ? SAT_MIN : amp_sum[DWBB-1:0];
+// amplitude sum one bit wider, operands sign-extended, then saturated
+localparam signed [DWBB:0] SUM_MAX = {1'b0, SAT_MAX};
+localparam signed [DWBB:0] SUM_MIN = {1'b1, SAT_MIN};
+wire signed [DWBB:0] amp_sp_x = {cfg.amp_setpoint[DWBB-1], cfg.amp_setpoint};
+wire signed [DWBB:0] amp_mod_x = amp_mod_gate ? {amp_mod[DWBB-1], amp_mod} : {(DWBB+1){1'b0}};
+wire signed [DWBB:0] amp_sum = amp_sp_x + amp_mod_x;
+wire signed [DWBB-1:0] amp_sat = (amp_sum > SUM_MAX) ? SAT_MAX :
+                                 (amp_sum < SUM_MIN) ? SAT_MIN : amp_sum[DWBB-1:0];
 // open loop: clamp to max_amp_setpoint to avoid DAC saturation;
 // closed loop: the setpoint is compared with the measurement, no clamp
 wire signed [DWBB-1:0] amp_clamped = cfg.amp_enable ? amp_sat :

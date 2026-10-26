@@ -79,7 +79,8 @@ generate for (n = 0; n < N_DRIVE; n = n + 1) begin: gen_loops
         .gate_in  (dsp_tick),
         .data_in  ({err_amp, err_phs}),
         .clk_out  (lb_clk),
-        .data_out ({err_amp_lb[n], err_phs_lb[n]})
+        .data_out ({err_amp_lb[n], err_phs_lb[n]}),
+        .gate_out ()
     );
 end endgenerate
 

@@ -41,7 +41,7 @@ The DSP testbenches use cocotb with Verilator (default) or Icarus Verilog.
 ```bash
 cd llrf_dsp
 
-# Run DSP core subsystem cocotb tests (dds, ddc, duc, llrf_dsp, cic_waves, pulse_gen)
+# Run DSP core subsystem cocotb tests (dds, ddc, duc, pulse_gen, loop_ctrl, rx_chain, llrf_dsp, cic_waves)
 make
 
 # Run a single cocotb test suite for DSP submodules (from llrf_dsp/tests/<suite>)
@@ -51,6 +51,11 @@ cd tests/duc && make
 cd tests/llrf_dsp && make
 cd tests/cic_waves && make
 cd tests/pulse_gen && make
+
+# Lint the shell's SystemVerilog sources with Verilator (per CI job sv_lint): any
+# warning fails, width warnings included. The Verilog library is waived in
+# llrf_dsp/lint_waivers.vlt; the cocotb TBs build with -Wno-width for its sake.
+make -C designs/uspas lint
 
 # Build standalone design package / IP artifacts (e.g., uspas, pip-ii, awa, etc.)
 cd ../designs/uspas && make

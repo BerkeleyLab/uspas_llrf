@@ -85,7 +85,7 @@ module cic_waves #(
     // ~record_en and a non-zero delay so cbuf_post_delay writes (and the
     // power-up default of 0) never produce a spurious fault record.
     reg [16:0] delay_cnt=0;
-    wire       cbuf_delay_stop = (delay_cnt >= cbuf_post_delay);
+    wire       cbuf_delay_stop = (delay_cnt >= {1'b0, cbuf_post_delay});
     reg        cbuf_delay_stop1=1;
     wire cbuf_stop = ~record_en & (|cbuf_post_delay) &
                      cbuf_delay_stop & ~cbuf_delay_stop1;
@@ -164,7 +164,12 @@ module cic_waves #(
         .buf_stb      (cbuf_buf_flip),
         .buf_enable   (cbuf_ready),
         .buf_read_addr(lb_addr[CBUF_AW-1:0]),
-        .buf_d_out    (cbuf_out)
+        .buf_d_out    (cbuf_out),
+
+        // decimated waveform stream: unused
+        .wave_gate_out(),
+        .wave_dval_out(),
+        .wave_data_out()
     );
 
 
@@ -189,7 +194,8 @@ module cic_waves #(
 
     reg [8:0] inlk_count=0;
     always @(posedge dsp_clk) inlk_count <= inlk_dval ? inlk_count + 1 : 0;
-    assign inlk_last = inlk_count == (2*N_CH-1);
+    localparam integer INLK_LAST = 2*N_CH-1;
+    assign inlk_last = inlk_count == INLK_LAST[8:0];
 
     // ---------------------
     // Instantiate diagnostics buffer

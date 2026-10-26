@@ -25,14 +25,16 @@ module interpolator #(
     end
 
     wire signed [SAMP_DW:0] diff = data_in - prev_data;
-    wire signed [SAMP_DW-1:0] delta;
-    assign delta = diff >>> SAMP_NUM_WIDTH;
+    wire signed [SAMP_DW:0] diff_shift = diff >>> SAMP_NUM_WIDTH;
+    wire signed [SAMP_DW-1:0] delta = diff_shift[SAMP_DW-1:0];
 
     wire signed [SAMP_DW-1:0] interp_array [0:SAMP_NUM-1];
     genvar i;
     generate
         for (i = 0; i < SAMP_NUM; i = i + 1) begin
-            assign interp_array[i] = prev_data + $signed(delta * i);
+            // SAMP_DW-bit sum: the product's low bits only
+            wire signed [31:0] step = delta * i;
+            assign interp_array[i] = prev_data + step[SAMP_DW-1:0];
             assign data_out[SAMP_DW*i +: SAMP_DW] = interp_array[i];
         end
     endgenerate

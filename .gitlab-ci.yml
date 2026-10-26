@@ -33,6 +33,11 @@ regmap_test:
   script:
     - pytest uspas_llrf/tests/test_regmap.py
 
+sv_lint:
+  stage: test
+  script:
+    - for d in uspas alsu lemp awa pip-ii; do make -C designs/$d lint || exit 1; done
+
 llrf_dsp_test:
   stage: test
   script:

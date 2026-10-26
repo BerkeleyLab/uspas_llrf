@@ -94,9 +94,10 @@ module test_cic_waves
     // ---------------------
     // Triggering logic
     // ---------------------
-    localparam [2:0] WAVE_TRIG_ALWAYS= 3'd4,  // internal trigger, cbuf continuous
-                     WAVE_TRIG_INT   = 3'd0,  // internal trigger
-                     WAVE_TRIG_EXT   = 3'd1;  // external trigger
+    // encoding from llrf_shell_pkg; module localparams so the test reads them
+    localparam [2:0] WAVE_TRIG_ALWAYS = llrf_shell_pkg::WAVE_TRIG_ALWAYS,  // internal trigger, cbuf continuous
+                     WAVE_TRIG_INT    = llrf_shell_pkg::WAVE_TRIG_INT,     // internal trigger
+                     WAVE_TRIG_EXT    = llrf_shell_pkg::WAVE_TRIG_EXT;     // external trigger
     localparam int INT_TRIG_PERIOD = 1000;
     // trigger flags in dsp_clk domain
     logic int_trig;

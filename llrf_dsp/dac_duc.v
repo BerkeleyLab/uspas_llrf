@@ -38,7 +38,8 @@ module dac_duc #(
         .in_data        (i_data_in),
         .in_data_valid  (i_data_valid),
         .out_clk        (dac_clk),
-        .out_data       (dac_i_data)
+        .out_data       (dac_i_data),
+        .out_data_valid ()
     );
 
     // delay: 8 cycles in dac_clk domain
@@ -48,7 +49,8 @@ module dac_duc #(
         .in_data        (q_data_in),
         .in_data_valid  (q_data_valid),
         .out_clk        (dac_clk),
-        .out_data       (dac_q_data)
+        .out_data       (dac_q_data),
+        .out_data_valid ()
     );
 
     // delay LO to match pipeline latency of I/Q
