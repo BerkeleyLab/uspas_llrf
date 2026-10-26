@@ -1,10 +1,10 @@
 # LLRF Firmware for USPAS 2023
 
-This repository holds the firmware for USPAS 2023 LLRF course, on the [Marble](https://github.com/BerkeleyLab/Marble) and [Zest](https://github.com/BerkeleyLab/Zest) platform.
+This repository holds the firmware for USPAS 2023 LLRF course, on the [Marble](https://github.com/BerkeleyLab/Marble) and [Zest](https://github.com/BerkeleyLab/Zest) platform. The design originated from the LLRF system for the ALS-U Accumulator Ring, LBNL.
 
 ## Global DSP frequency settings
 
-Change [settings.mk](settings.mk) for the option of:
+Each design (`DESIGN`) runs with one of the frequency sets (`FSET`) below. [settings.mk](settings.mk) maps `DESIGN` to `FSET` and sets the DSP clock; [uspas_llrf/settings.json](uspas_llrf/settings.json) holds the DSP and cavity parameters of each `FSET`. The designs, their shells and chassis I/O are described in [designs/README.md](designs/README.md).
 
 ### LBNL ALSU settings
 
@@ -20,7 +20,7 @@ Change [settings.mk](settings.mk) for the option of:
 |   GT ref_clk     |    MO / 4    | 125.099   | MHz |
 
 The Zest reference clock is LO.
-Details see [1](https://arxiv.org/abs/2210.05095).
+Details see [Digital Low-Level RF control system for Accumulator Ring at Advanced Light Source Upgrade Project](https://arxiv.org/abs/2210.05095).
 
 ### USPAS LLRF settings
 
@@ -52,6 +52,9 @@ The Zest reference clock is LO.
 
 The Zest reference clock is MO.
 
+Details see [Digital Low-Level RF system for the Linac Electronics Modernization Plan at LCLS](https://arxiv.org/abs/2510.11950),
+and [LEMP LLRF Firmware and Software](https://indico.jlab.org/event/939/contributions/17411/).
+
 ### ANL AWA LLRF settings
 
 |    **Signal**    |    **Ratio**   | **Value** |     |
@@ -69,6 +72,8 @@ The Zest reference clock is LO.
 
 DAC is in mix-mode for second Nyquist zone sampling.
 
+Details see [LLRF system upgrade of Argonne Wakefield Accelerator Facility](https://indico.jlab.org/event/939/contributions/17433/).
+<!--
 ### FNAL VTS LLRF settings
 
 |    **Signal**    |    **Ratio**   | **Value** |     |
@@ -82,7 +87,7 @@ DAC is in mix-mode for second Nyquist zone sampling.
 | IF_adc / dsp_clk |     7 / 33     |           |     |
 | IF_dac / dsp_clk |     7 / 33     |           |     |
 
-The Zest reference clock is LO.
+The Zest reference clock is LO. -->
 
 ## 🚀 Quick Start
 
@@ -121,27 +126,24 @@ A web based dashboard is available to show its dashboard:
 
 ```bash
 pip install -e .
-python -m uspas_llrf.app.dash --add 192.168.19.42:803
+python -m uspas_llrf.app.dash --addr 192.168.19.42:803 --conf USPAS
 ```
+`--conf` is the design's `FSET` (USPAS, ALSU, LEMP or AWA).
 
 ### Boot-load soft core program
 
 See [soc/common/synth](soc/common/synth/README.md).
 
+### Serial console
+
+```bash
+make -C top/{DESIGN} console MARBLE_SERIAL=42
+```
+The SoC console on the Marble's USB UART; see [doc/developer_guide.md](doc/developer_guide.md) for the reset-on-close behavior and the udev rule.
+
 ### Chassis I/O
 
-The connections of misc. signals to Marble / Zest IO ports are summarized in the following table.
-
-|                       |     **USPAS**    |     **ALSU**     |            **LEMP**           |        **AWA**        |
-|----------------------:|:----------------:|:----------------:|:-----------------------------:|:---------------------:|
-| Marble MMC PMOD (J16) | Front Panel OLED | Front Panel OLED | Front Panel OLED              |                       |
-|    Marble PMOD1 (J12) | Trigger Input    | ARC Detectors    | Trigger Output, Interlock I/O |                       |
-|    Marble PMOD2 (J13) |                  | Interlock I/O    |                               | Front Panel LED       |
-|     Marble QSFP2 Ch.1 |                  | Timing EVR       | Timing EVR                    |                       |
-|      Zest PMOD1 (J17) |                  | Modbus RTU       |                               | Up Conv. Enable [7:6] |
-|      Zest PMOD2 (J18) |                  |                  |                               | Trigger Input [1]     |
-|        Zest SMA (J20) |                  |                  |                               | Up Conv. LO helper    |
-|       Zest HDMI (J19) |                  |                  | Rear panel I/O                |                       |
+The Marble / Zest connections of each design are listed in [designs/README.md](designs/README.md#chassis-io).
 
 ## 📖 Citation
 
