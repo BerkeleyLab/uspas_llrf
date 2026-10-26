@@ -1,0 +1,76 @@
+// loop_ctrl with its loop_cfg_t as flat ports, named as before the struct
+// (step 9b), so test_loop_ctrl.py drives each register by name
+module test_loop_ctrl #(
+    parameter int PULSE_AW = llrf_shell_pkg::PULSE_AW,
+    parameter int MOD_AW = llrf_shell_pkg::MOD_AW,
+    localparam int DWBB = llrf_shell_pkg::DWBB,
+    localparam int RW = llrf_shell_pkg::PULSE_RW
+) (
+    input dsp_clk,
+    input dsp_reset,
+    input trig,
+    input [PULSE_AW-1:0] pulse_start,
+    input [PULSE_AW-1:0] pulse_high_len,
+    input [RW-1:0] res_shift,
+    input pulse_mode,
+    input drive_permit,
+    input [MOD_AW:0] mod_len,
+    input amp_mod_enable,
+    input phs_mod_enable,
+    input signed [DWBB-1:0] phs_offset,
+    input signed [DWBB-1:0] amp_setpoint,
+    input signed [DWBB-1:0] max_amp_setpoint,
+    input signed [DWBB-1:0] phs_setpoint,
+    input signed [DWBB-1:0] Kp_amp,
+    input signed [DWBB-1:0] Kp_phs,
+    input signed [DWBB-1:0] Ki_amp,
+    input signed [DWBB-1:0] Ki_phs,
+    input amp_loop_enable,
+    input phs_loop_enable,
+    input amp_loop_reset,
+    input phs_loop_reset,
+    input [DWBB:0] rx_phase_offset,
+    input [DWBB:0] tx_phase_offset,
+    input signed [DWBB-1:0] field_i,
+    input signed [DWBB-1:0] field_q,
+    output signed [DWBB-1:0] drive_i,
+    output signed [DWBB-1:0] drive_q,
+    output drive_on,
+    output signed [DWBB-1:0] amp_measured,
+    output signed [DWBB-1:0] phs_measured,
+    output signed [14:0] err_amp,
+    output signed [14:0] err_phs,
+    output pulse_dval,
+    output pulse_last,
+    output [PULSE_AW-1:0] pulse_idx,
+    output signed [DWBB-1:0] amp_setpoint_mod,
+    output signed [DWBB-1:0] phs_setpoint_mod,
+    input lb_clk,
+    input [MOD_AW-1:0] lb_addr,
+    input [DWBB-1:0] lb_wdata,
+    input lb_write_amp_mod,
+    input lb_write_phs_mod,
+    output [DWBB-1:0] lb_rdata_amp_mod,
+    output [DWBB-1:0] lb_rdata_phs_mod
+);
+llrf_shell_pkg::loop_cfg_t cfg;
+assign cfg = '{adc_chan: 3'd0, amp_setpoint: amp_setpoint, max_amp_setpoint: max_amp_setpoint,
+               phs_setpoint: phs_setpoint, Kp_amp: Kp_amp, Kp_phs: Kp_phs, Ki_amp: Ki_amp, Ki_phs: Ki_phs,
+               amp_enable: amp_loop_enable, phs_enable: phs_loop_enable,
+               amp_reset: amp_loop_reset, phs_reset: phs_loop_reset,
+               pulse_start: pulse_start, pulse_high_len: pulse_high_len, pulse_res_shift: res_shift,
+               mod_len: mod_len, amp_mod_enable: amp_mod_enable, phs_mod_enable: phs_mod_enable};
+
+loop_ctrl #(.EW(15)) dut (
+    .dsp_clk(dsp_clk), .dsp_reset(dsp_reset), .cfg(cfg),
+    .trig(trig), .pulse_mode(pulse_mode), .drive_permit(drive_permit), .phs_offset(phs_offset),
+    .rx_phase_offset(rx_phase_offset), .tx_phase_offset(tx_phase_offset),
+    .field_i(field_i), .field_q(field_q), .drive_i(drive_i), .drive_q(drive_q), .drive_on(drive_on),
+    .amp_measured(amp_measured), .phs_measured(phs_measured), .err_amp(err_amp), .err_phs(err_phs),
+    .pulse_dval(pulse_dval), .pulse_last(pulse_last), .pulse_idx(pulse_idx),
+    .amp_setpoint_mod(amp_setpoint_mod), .phs_setpoint_mod(phs_setpoint_mod),
+    .lb_clk(lb_clk), .lb_addr(lb_addr), .lb_wdata(lb_wdata),
+    .lb_write_amp_mod(lb_write_amp_mod), .lb_write_phs_mod(lb_write_phs_mod),
+    .lb_rdata_amp_mod(lb_rdata_amp_mod), .lb_rdata_phs_mod(lb_rdata_phs_mod)
+);
+endmodule

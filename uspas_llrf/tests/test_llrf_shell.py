@@ -114,14 +114,16 @@ class TB_llrf_shell:
         assert phs_err < 0.1, "phase out-of-bound of 0.1 deg"
 
     def shell_scope(self, name):
-        """The llrf_shell scope that holds name: the shell, or its diag block
-        (SV shells, step 7a)."""
+        """The llrf_shell scope that holds name: the shell, or its diag or
+        loops block."""
         shell = self.dut.llrf_shell
-        try:
-            getattr(shell, name)
-            return shell
-        except AttributeError:
-            return shell.diag
+        for scope in (shell, shell.diag):
+            try:
+                getattr(scope, name)
+                return scope
+            except AttributeError:
+                pass
+        return shell.loops
 
     def shell_sig(self, name):
         """Internal llrf_shell signal, see shell_scope()."""

@@ -2,16 +2,17 @@ include ../../../dir_list.mk
 include $(TOP)settings.mk
 
 DUT      = loop_ctrl
-COCOTB_TOPLEVEL       = $(DUT)
+COCOTB_TOPLEVEL       = test_$(DUT)
 COCOTB_TEST_MODULES   = test_$(DUT)
 
+VERILOG_SOURCES += $(APP_DSP_DIR)/llrf_shell_pkg.sv
 VERILOG_SOURCES += $(DSP_DIR)/dpram.v \
                    $(CORDIC_DIR)/addsubg.v $(CORDIC_DIR)/cstageg.v \
                    cordicg_b22.v \
                    $(APP_DSP_DIR)/pi_scalar.v \
                    $(APP_DSP_DIR)/dsp_core.v \
                    $(APP_DSP_DIR)/pulse_gen.v \
-                   $(APP_DSP_DIR)/$(DUT).v
+                   $(APP_DSP_DIR)/$(DUT).sv test_$(DUT).sv
 
 include ../cocotb_inc.mk
 

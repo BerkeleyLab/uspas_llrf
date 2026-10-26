@@ -78,6 +78,7 @@ class WaveTrigSel(IntEnum):
     EVR = 3
     Always = 4
     Mixed = 5
+    Fiducial = 6  # LEMP: EVR fiducial (plan L4); the base shell's default case
 
 
 class DacDriveSel(IntEnum):
@@ -104,7 +105,8 @@ class Reg:
     struct <inst>_cfg_t (llrf_shell_pkg.sv), or as a table port; the member
     (port) name is the register name without the '<inst>_' prefix.
     index: element of an instance array: the register is member port of
-    cfg_<domain>.<inst>[index] and is named <inst>_<index>_<port>.
+    cfg_<domain>.<inst>[index] and is named <inst><index>_<port> (D21:
+    loopN_<port>) or <inst>_<index>_<port> (LEMP's trig_N_<port>).
     enum: IntEnum of the register (or table entry) encoding.
     init: value the firmware writes at boot (init_llrf.c); None: not written.
     The model overrides it with values derived from the DSP configuration.
@@ -136,7 +138,10 @@ class Reg:
 
     @property
     def prefix(self):
-        return f'{self.inst}_' + ('' if self.index is None else f'{self.index}_')
+        if self.index is None:
+            return f'{self.inst}_'
+        p = f'{self.inst}{self.index}_'
+        return p if self.name.startswith(p) else f'{self.inst}_{self.index}_'
 
     @property
     def port(self):
@@ -153,19 +158,25 @@ class Reg:
         return v
 
 
+def loop_reg(n, port, width=1, **kw):
+    """Register of feedback loop n: member port of cfg_dsp.loop[n]
+    (loop_cfg_t, the loops block)."""
+    return Reg(f'loop{n}_{port}', width, inst='loop', index=n, **kw)
+
+
 def loop_regs(n):
     w = 18
-    return [Reg(f'loop{n}_amp_setpoint', w, signed=True, init=0),
-            Reg(f'loop{n}_max_amp_setpoint', w, signed=True, init=0),
-            Reg(f'loop{n}_phs_setpoint', w, signed=True, init=0),
-            Reg(f'loop{n}_Kp_amp', w, signed=True, init=0),
-            Reg(f'loop{n}_Kp_phs', w, signed=True, init=0),
-            Reg(f'loop{n}_Ki_amp', w, signed=True, init=0),
-            Reg(f'loop{n}_Ki_phs', w, signed=True, init=0),
-            Reg(f'loop{n}_amp_enable', init=0),
-            Reg(f'loop{n}_phs_enable', init=0),
-            Reg(f'loop{n}_amp_reset', init=0),
-            Reg(f'loop{n}_phs_reset', init=0)]
+    return [loop_reg(n, 'amp_setpoint', w, signed=True, init=0),
+            loop_reg(n, 'max_amp_setpoint', w, signed=True, init=0),
+            loop_reg(n, 'phs_setpoint', w, signed=True, init=0),
+            loop_reg(n, 'Kp_amp', w, signed=True, init=0),
+            loop_reg(n, 'Kp_phs', w, signed=True, init=0),
+            loop_reg(n, 'Ki_amp', w, signed=True, init=0),
+            loop_reg(n, 'Ki_phs', w, signed=True, init=0),
+            loop_reg(n, 'amp_enable', init=0),
+            loop_reg(n, 'phs_enable', init=0),
+            loop_reg(n, 'amp_reset', init=0),
+            loop_reg(n, 'phs_reset', init=0)]
 
 
 def base_regs():
@@ -191,17 +202,17 @@ def base_regs():
         Reg('rx_phase_offset', 19, signed=True, init=0),
         Reg('tx_phase_offset', 19, signed=True, init=0),
         Reg('prl_adc_chan', 3, init=0),
-        *[Reg(f'loop{n}_adc_chan', 3, init=0) for n in range(N_DRIVE)],
+        *[loop_reg(n, 'adc_chan', 3, init=0) for n in range(N_DRIVE)],
         *[r for n in range(N_DRIVE) for r in loop_regs(n)],
         Reg('dsp_reset', kind='strobe'),
-        *[Reg(f'loop{n}_pulse_{f}', 32, init=v) for n in range(N_DRIVE)
+        *[loop_reg(n, f'pulse_{f}', 32, init=v) for n in range(N_DRIVE)
           for f, v in (('start', 0), ('high_len', 10))],
         # pulse modulation (loop_ctrl); all 0 keeps CW behavior
         *[r for n in range(N_DRIVE) for r in (
-            Reg(f'loop{n}_pulse_res_shift', 4, init=0),
-            Reg(f'loop{n}_mod_len', MOD_AW + 1, init=0, description='modulation table entries used'),
-            Reg(f'loop{n}_amp_mod_enable', init=0),
-            Reg(f'loop{n}_phs_mod_enable', init=0))],
+            loop_reg(n, 'pulse_res_shift', 4, init=0),
+            loop_reg(n, 'mod_len', MOD_AW + 1, init=0, description='modulation table entries used'),
+            loop_reg(n, 'amp_mod_enable', init=0),
+            loop_reg(n, 'phs_mod_enable', init=0))],
         *[Reg(f'drv{n}_pulse_mode', init=0) for n in range(N_DRIVE)],
         *[Reg(f'soft_drive{n}_enable', init=1) for n in range(N_DRIVE)],
         Reg('ntw_amp_enable'),

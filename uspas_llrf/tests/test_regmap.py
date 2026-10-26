@@ -168,12 +168,25 @@ def test_readback_windows(design):
 
 PKG = TOP / 'llrf_dsp' / 'llrf_shell_pkg.sv'
 CFG_STRUCT = re.compile(r"typedef struct packed \{(.*?)\}\s*(\w+)_cfg_t;", re.S)
-CFG_MEMBER = re.compile(r"^\s*logic\s+(?:signed\s+)?(?:\[(\d+):(\d+)\])?\s*(\w+);[ \t]*(//\s*strobe)?", re.M)
+CFG_MEMBER = re.compile(r"^\s*logic\s+(signed\s+)?(?:\[([\w+\- ]+):(\d+)\])?\s*(\w+);[ \t]*(//\s*strobe)?", re.M)
+
+
+def pkg_params(text):
+    """{name: value} of the integer localparams in text."""
+    return {m[1]: int(m[2]) for m in re.finditer(r"localparam int (\w+) = (\d+);", text)}
 
 
 def cfg_structs(text):
-    """{inst: {member: (width, strobe)}} of the <inst>_cfg_t types in text."""
-    return {m[2]: {f[3]: (int(f[1]) - int(f[2]) + 1 if f[1] else 1, bool(f[4]))
+    """{inst: {member: (width, signed, strobe)}} of the <inst>_cfg_t types in
+    text; a member's MSB may use the package's localparams (PULSE_AW-1)."""
+    params = pkg_params(text)
+
+    def msb(expr):  # N, NAME or NAME+-N
+        m = re.fullmatch(r"\s*(\w+)\s*(?:([+-])\s*(\d+))?\s*", expr)
+        assert m, expr
+        base = int(m[1]) if m[1].isdigit() else params[m[1]]
+        return base + (int(m[3]) if m[2] == '+' else -int(m[3]) if m[2] else 0)
+    return {m[2]: {f[4]: (msb(f[2]) - int(f[3]) + 1 if f[2] else 1, bool(f[1]), bool(f[5]))
                    for f in CFG_MEMBER.finditer(m[1])}
             for m in CFG_STRUCT.finditer(text)}
 
@@ -181,8 +194,8 @@ def cfg_structs(text):
 @pytest.mark.parametrize('design', DESIGNS)
 def test_cfg_structs(design):
     """The registers of each block instance are the members of its
-    <inst>_cfg_t: same names (a mismatch also fails to compile), widths and
-    kind (`// strobe` members are strobe registers). The monitor_inlk tables
+    <inst>_cfg_t: same names (a mismatch also fails to compile), widths,
+    signedness and kind (`// strobe` members are strobe registers). The monitor_inlk tables
     have INLK_AW address bits."""
     regs = regmap.load_design(regmap.design_file(design))
     text = PKG.read_text()
@@ -194,11 +207,11 @@ def test_cfg_structs(design):
             errors.append(f"instance {inst}: no {inst}_cfg_t in {PKG.name}")
             continue
         for rs in elements:
-            got = {r.port: (r.width, r.kind == 'strobe') for r in rs}
-            errors += [f"{inst}_cfg_t.{p}: (width, strobe) {members.get(p)}, register {rs[0].prefix}{p} {v}"
+            got = {r.port: (r.width, r.signed, r.kind == 'strobe') for r in rs}
+            errors += [f"{inst}_cfg_t.{p}: (width, signed, strobe) {members.get(p)}, register {rs[0].prefix}{p} {v}"
                        for p, v in got.items() if members.get(p) != v]
             errors += [f"{inst}_cfg_t.{p}: no register" for p in members if p not in got]
-    inlk_aw = int(re.search(r"localparam int INLK_AW = (\d+);", text)[1])
+    inlk_aw = pkg_params(text)['INLK_AW']
     errors += [f"{r.name}: aw {r.aw}, INLK_AW {inlk_aw}" for r in regs if r.inst == 'inlk' and r.aw and r.aw != inlk_aw]
     assert not errors, "\n".join(errors)
 
@@ -226,3 +239,12 @@ def test_inst_array(tmp_path):
         (tmp_path / name).write_text(text)
     r = subprocess.run([sv2v, *(str(tmp_path / f) for f in files)], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
+
+
+def test_wave_trig_encoding():
+    """WaveTrigSel (Python) and the WAVE_TRIG_* constants of llrf_shell_pkg.sv
+    are the same encoding (plan L4)."""
+    names = {'INT': 'Internal', 'EXT': 'External', 'SOFT': 'Software', 'EVR': 'EVR',
+             'ALWAYS': 'Always', 'MIXED': 'Mixed', 'FIDUCIAL': 'Fiducial'}
+    rtl = {names[m[1]]: int(m[2]) for m in re.finditer(r"WAVE_TRIG_(\w+)\s*=\s*3'd(\d+)", PKG.read_text())}
+    assert rtl == {e.name: e.value for e in regmap.WaveTrigSel}
