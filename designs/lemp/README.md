@@ -114,7 +114,7 @@ flowchart LR
 
 ## Memory Map & Static Registers
 
-### Static Buffers (12-bit depth = 4096 samples, 18-bit signed I/Q)
+### Static Buffers (10-bit depth = 1024 samples, 18-bit signed I/Q)
 | Buffer Name | Base Address (Hex) | Word Width | Access | Description |
 | :--- | :---: | :---: | :---: | :--- |
 | `adc0_buf` .. `adc7_buf` | `0x12000` - `0x13c00` | 16-bit signed | R | Raw ADC waveform buffers (1k each) |
