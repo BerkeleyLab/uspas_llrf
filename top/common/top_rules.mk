@@ -13,7 +13,8 @@
 #   PIN_MAP     pin map for top.xdc (default: top/common/pin_map.csv)
 #   GT_TCL      GT setup TCL sourced by Vivado (default: EVR GTX)
 #   SOC_DESIGN  soc/<name>/ used for firmware and SoC settings (default: DESIGN)
-# Verilog hooks: design_io.vh (extra top ports) and design_mid.vh (extra IP);
+# Verilog hooks: design_io.vh (extra top ports), design_mid.vh (extra IP) and
+# design_shell_ports.vh (extra llrf_shell ports);
 # a copy in top/<design>/ takes precedence over the empty one in top/common/.
 
 include $(TOP)settings.mk

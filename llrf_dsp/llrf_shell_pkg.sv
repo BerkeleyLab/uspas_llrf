@@ -74,4 +74,9 @@ package llrf_shell_pkg;
         logic               amp_mod_enable;
         logic               phs_mod_enable;
     } loop_cfg_t;                  // loop_ctrl (loops): cfg_dsp.loop[n], registers loopN_*
+
+    typedef struct packed {
+        logic [31:0] width;        // dsp clocks high
+        logic [31:0] delay;        // dsp clocks after global_delay
+    } trig_cfg_t;                  // triggers (LEMP): cfg_dsp.trig[n], registers trig_N_*
 endpackage

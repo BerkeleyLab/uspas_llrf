@@ -1,4 +1,4 @@
-"""triggers.v (LEMP PMOD trigger): after rst_n rises the counter runs; the
+"""triggers.sv (LEMP PMOD trigger, through test_triggers.sv): after rst_n rises the counter runs; the
 output is high for width clocks from counter == global_delay + delay, and
 low while enable is low."""
 import random

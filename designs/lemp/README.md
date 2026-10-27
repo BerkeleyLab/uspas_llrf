@@ -5,10 +5,15 @@ This directory contains the DSP configuration and static register mapping for th
 ## Design Architecture & Shell Flavor
 
 - **Frequency Configuration (`FSET`)**: `LEMP`
-- **`llrf_shell` Flavor**: **Baseline** (`SHELL_SRC = ../uspas/llrf_shell.sv` in the Makefile)
-- **Register map**: the base map in `uspas_llrf/regmap.py`, with `design.py` (1k signal buffers, `iq_buf` window)
-- **Testbench**: Uses unified cocotb runner `tb/llrf_shell/` based on `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell`.
-- **LEMP-only blocks** (from the LEMP branch, not yet in a shell; LEMP's own shell comes in plan step 9): `fiducial_int_gen.v` (fiducial and event-strobe timing; test in `tb/fiducial_int_gen/`), `triggers.v` (PMOD trigger pulse; test in `tb/triggers/`), `timing_core_local.v` (LEMP variant of the EVR timing core). `make -C tb` runs the block tests.
+- **`llrf_shell` Flavor**: **LEMP** (`llrf_shell.sv`, plan step 9c): the base shell's blocks (ADC 6 and 7, beam voltage and current, as DC channels on the monitor path) plus the LEMP features of the LEMP branch (2e25cd9):
+  - fiducial selection: `fiducial_sel` 1 takes the fiducial from `fiducial_int_gen.v` (ACCL 151 or STBY 152 within the fiducial window after event 1, `event_sel`), whose `trig_acc_delay`/`trig_stb_delay` becomes `global_delay`; `fiducial_sel` 0 makes the fiducial `wave_trig`. `wave_trig_sel` `Fiducial` (6) triggers on it; `global_delay` delays `wave_trig` for every selection;
+  - four PMOD triggers (`triggers.sv`, `trig_N_width`/`trig_N_delay` as `cfg_dsp.trig[N]`, `trig_enables`), restarted by the fiducial; an interlock latch stops trigger 0 (modulator);
+  - per-loop phase shift `loopN_phs_shift` from pulse clock `loopN_phs_shift_delay` to the pulse end;
+  - the DAC permit latch: any latched interlock (`intlk_latch_in`) turns both drives off; a fiducial rising edge re-arms them from `soft_driveN_enable`;
+  - SSSB control (`sssb_rf_switch`, `sssb_rst`, inverted outputs; `sssb_alarm`, `sssb_rf_status` status);
+  - `timing_core_local.v` (event codes 151, 152, 1, 10 to `evr_events`, their rates as `evr_frequency_event1..4`; `evr_frequency_event1` counts event 4, as on the LEMP branch).
+- **Register map**: the base map in `uspas_llrf/regmap.py` with `design.py`: 1k signal buffers, the `iq_buf` window, the LEMP registers and status words (addresses from the allocator), and the intended differences from the LEMP-branch map (checked by `test_regmap_compat`)
+- **Testbench**: `tb/llrf_shell/` subclasses `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell` (DC channels excluded from loopback, the DAC permit armed after boot) and adds `test_dc`, `test_sssb`, `test_dac_permit`, `test_phs_shift`, `test_pmod_triggers` and `test_fiducial`. `make -C tb` runs the block tests of `fiducial_int_gen`, `triggers` and `timing_core_local`.
 
 ---
 
@@ -163,4 +168,8 @@ flowchart LR
 | `dac_drive_sel` | 2-bit unsigned | RW | DAC multiplexer selection (`2`: I0I1) |
 | `prl_adc_chan` | 3-bit unsigned | RW | Phase reference channel (`3`) |
 | `loop0_adc_chan`, `loop1_adc_chan` | 3-bit unsigned | RW | Loop 0/1 feedback channel (`0`) |
-| `evcode` | 8-bit unsigned | RW | Event receiver trigger code (`151`) |
+| `fiducial_sel`, `event_sel` | 1-, 8-bit unsigned | RW | Fiducial source (1: `fiducial_int_gen`); its event mode (151: accelerate, falls back to standby; 152: standby) |
+| `trig_acc_delay`, `trig_stb_delay` | 32-bit unsigned | RW | `global_delay` after an accelerate / standby fiducial (dsp clocks) |
+| `trig_enables`, `trig_N_width`, `trig_N_delay` | 4-, 32-bit unsigned | RW | PMOD triggers 0..3: enables, width and delay after `global_delay` (dsp clocks) |
+| `loopN_phs_shift`, `loopN_phs_shift_delay` | 18-bit signed, 32-bit unsigned | RW | Loop N phase step and its start in the pulse (dsp clocks) |
+| `sssb_rf_switch`, `sssb_rst` | 1-bit unsigned | RW | SSSB RF switch and reset (outputs inverted) |

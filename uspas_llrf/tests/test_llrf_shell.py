@@ -1,6 +1,7 @@
 from uspas_llrf import (LLRFShell, DacDriveSel, LocalbusAppMaster,
                         InlkFaultMode, wrap_phase, clip_int, dsp_config,
                         PulseModulator, WaveTrigSel, gen_mod_tables)
+from pathlib import Path
 import cocotb
 import random
 from cocotb.clock import Clock
@@ -16,7 +17,7 @@ import itertools
 class TB_llrf_shell:
     def __init__(self, dut, f_config='USPAS', wave_samp_per=1,
                  amp_exp=None, phs_exp=None,
-                 regmap_json_path='llrf_shell.json'):
+                 regmap_json_path='llrf_shell.json', dc_adcs=()):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
         self.cbuf_aw = dut.CBUF_AW.value.to_unsigned()
@@ -30,7 +31,11 @@ class TB_llrf_shell:
         config['TX_AFE_SPECTRAL_FLIP'] = False
         # Force CW mode to allow loop tests
         config['DRV0_PULSE_MODE'] = config['DRV1_PULSE_MODE'] = 0
-        self.llrf = llrf = LLRFShell(config, wave_samp_per=wave_samp_per)
+        # boot-time registers of the design whose map the TB reads
+        # (designs/<design>/llrf_shell.json), e.g. LEMP has no trigger_delay
+        json_dir = Path(regmap_json_path).resolve().parent
+        design = json_dir.name if json_dir.parent.name == 'designs' else None
+        self.llrf = llrf = LLRFShell(config, wave_samp_per=wave_samp_per, design=design)
         self.lb = LocalbusAppMaster(
             dut, dut.lb_clk, regmap_json_path=regmap_json_path)
         self.log_banner(f'Simulating: {f_config}')
@@ -50,10 +55,12 @@ class TB_llrf_shell:
         self.loopback_dac, self.feedback_dac = 0, 1
         self.feedback_adc = self.llrf.feedback_adc
         self.phaseref_adc = self.llrf.phaseref_adc
-        # pick a random available ADC channel for loopback test
+        # pick a random available ADC channel for loopback test; DC channels
+        # (dc_adcs, LEMP beam voltage and current) bypass the DDC on the monitor path
+        self.dc_adcs = tuple(dc_adcs)
         available_adcs = [
             ch for ch in range(8)
-            if ch not in [self.phaseref_adc, self.feedback_adc]]
+            if ch not in [self.phaseref_adc, self.feedback_adc, *self.dc_adcs]]
         self.loopback_adc = random.choice(available_adcs)
         cocotb.log.warning(
             f'phaseref_adc: {self.phaseref_adc}, '
@@ -212,6 +219,12 @@ class TB_llrf_shell:
         min = await self.lb.read_reg('dsp_slow_adc_min', chan)
         max = await self.lb.read_reg('dsp_slow_adc_max', chan)
         return min, max
+
+    async def zero_trigger_delay(self):
+        """No delay from the trigger selection to wave_trig. LEMP has no
+        trigger_delay: its delay is global_delay, 0 while fiducial_sel is 0."""
+        if self.lb.has_reg('trigger_delay'):
+            await self.lb.write_reg('trigger_delay', 0)
 
     async def write_init_regs(self):
         cocotb.log.debug(f'InitRegisters:\n{pformat(self.llrf.init_regs)}')
@@ -580,7 +593,7 @@ class TB_llrf_shell:
         cfg = dict(pulse_start=start, pulse_high_len=(mod_len << res_shift) + 24, res_shift=res_shift,
                    mod_len=mod_len, amp_mod_enable=1, phs_mod_enable=1, amp_setpoint=12000,
                    max_amp_setpoint=13000, phs_setpoint=-20000, phs_offset=0, amp_loop_enable=0)
-        regs = {'wave_trig_sel': int(WaveTrigSel.Software), 'trigger_delay': 0,
+        regs = {'wave_trig_sel': int(WaveTrigSel.Software),
                 f'{loop}_pulse_start': cfg['pulse_start'], f'{loop}_pulse_high_len': cfg['pulse_high_len'],
                 f'{loop}_pulse_res_shift': res_shift, f'{loop}_mod_len': mod_len,
                 f'{loop}_amp_mod_enable': 1, f'{loop}_phs_mod_enable': 1,
@@ -593,6 +606,7 @@ class TB_llrf_shell:
                      f'{other}_pulse_start': start + 7, f'{other}_pulse_high_len': 9})
         for name, value in regs.items():
             await self.lb.write_reg(name, value)
+        await self.zero_trigger_delay()
         await ClockCycles(dut.dsp_clk, 50)  # register crossing into dsp_clk
 
         model = PulseModulator(18, 32, mod_aw)
@@ -637,7 +651,7 @@ class TB_llrf_shell:
         dg = self.shell_scope('sig_buf_dval')
         wave_trig = self.shell_sig('wave_trig')
         await self.lb.write_reg('wave_trig_sel', int(WaveTrigSel.Software))
-        await self.lb.write_reg('trigger_delay', 0)
+        await self.zero_trigger_delay()
         offsets = {}
         for d in delays:
             await self.lb.write_reg('buf_delay', d)

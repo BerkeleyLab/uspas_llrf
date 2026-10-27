@@ -31,31 +31,38 @@ def build_json(design):
     return json.loads((d / 'llrf_shell.json').read_text())
 
 
-def compat_errors(base, gen):
+def compat_errors(base, gen, scope=None):
     """Differences in name, data_width, sign and access, apart from
-    regmap.RENAMES, regmap.ADDITIONS, regmap.REMOVALS and regmap.WIDTH_CHANGES.
-    Addresses and addr_width may change (D1, D5)."""
+    regmap.RENAMES, regmap.ADDITIONS, regmap.REMOVALS and regmap.WIDTH_CHANGES,
+    and the design's COMPAT_REMOVALS, COMPAT_ADDITIONS and COMPAT_CHANGES
+    ({name: (data_width, sign)}) from design.py (scope). Addresses and
+    addr_width may change (D1, D5)."""
+    scope = scope or {}
+    removals = set(regmap.REMOVALS) | set(scope.get('COMPAT_REMOVALS', []))
+    changes = scope.get('COMPAT_CHANGES', {})
     errors = []
     for k, b in base.items():
         if k in gen:
+            if k in changes and (gen[k].get('data_width'), gen[k].get('sign')) == changes[k]:
+                continue
             errors += [f"{k}: {f} {b.get(f)} -> {gen[k].get(f)}"
                        for f in ('data_width', 'sign', 'access') if b.get(f) != gen[k].get(f)
                        and not (f == 'data_width' and regmap.WIDTH_CHANGES.get(k) == gen[k].get(f))]
-        elif k not in regmap.REMOVALS and not all(n in gen for n in regmap.RENAMES.get(k, [None])):
+        elif k not in removals and not all(n in gen for n in regmap.RENAMES.get(k, [None])):
             errors.append(f"{k}: missing")
-    allowed = set(regmap.ADDITIONS) | {n for new in regmap.RENAMES.values() for n in new}
+    allowed = set(regmap.ADDITIONS) | set(scope.get('COMPAT_ADDITIONS', []))
+    allowed |= {n for new in regmap.RENAMES.values() for n in new}
     errors += [f"{k}: not in the baseline" for k in gen if k not in base and k not in allowed]
     return errors
 
 
-@pytest.mark.parametrize('design', [
-    *DESIGNS[:-1],
-    pytest.param('lemp', marks=pytest.mark.xfail(
-        strict=True, reason="baseline is the LEMP-branch JSON; designs/lemp matches it after steps 9-10")),
-])
+@pytest.mark.parametrize('design', DESIGNS)
 def test_regmap_compat(design):
+    """The design's map against its step-1 baseline; LEMP's baseline is the
+    LEMP-branch map (2e25cd9), its intended differences are in design.py."""
     base = json.loads((TOP / 'designs' / design / '_baseline' / 'llrf_shell.json').read_text())
-    errors = compat_errors(base, build_json(design))
+    scope = regmap.design_scope(regmap.design_file(design))
+    errors = compat_errors(base, build_json(design), scope)
     assert not errors, "\n".join(errors)
 
 
