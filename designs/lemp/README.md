@@ -17,6 +17,44 @@ This directory contains the DSP configuration and static register mapping for th
 
 ---
 
+## Timing and Trigger Scheme
+
+What differs from the other designs: where the EVR trigger comes from, the four PMOD triggers, and the DAC permit latch. As in every design, `wave_trig` is the one master trigger: `wave_trig_sel` selects its source, `trigger_delay` delays it, and it starts the RF pulse in both loops (`loopN_pulse_start`, `loopN_pulse_high_len`), the buffer captures (after `buf_delay`) and `trig_out`.
+
+```mermaid
+flowchart LR
+    subgraph EVR["timing_core_local (EVR, gt_rxclk to dsp_clk)"]
+        direction TB
+        EV["event codes<br/>1 fiducial, 151 ACCL,<br/>152 STBY, 10 TS1&4"]
+        WIN["fiducial window<br/>(23800 dsp clocks after event 1)<br/>collects 151 / 152"]
+        DEC{"event_sel<br/>151: ACCL, else STBY<br/>152: STBY only"}
+        EV --> WIN --> DEC
+    end
+    DEC -- "evr_trig +<br/>trig_acc_delay or<br/>trig_stb_delay" --> MUX
+    SRC["Internal, External,<br/>Software, Mixed"] --> MUX{"wave_trig_sel<br/>(EVR = 3)"}
+    MUX --> DLY["delay:<br/>trigger_delay<br/>(+ mode delay for EVR)"]
+    DLY -- wave_trig --> LOOPS["loops: RF pulse,<br/>modulation, phase shift"]
+    DLY -- wave_trig --> DIAG["diag: buffer captures,<br/>trig_out"]
+    DLY -- "wave_trig (restart)" --> PMOD["4 PMOD triggers<br/>trig_N_delay, trig_N_width,<br/>trig_enables"]
+    DLY -- "wave_trig (re-arm)" --> PERM["DAC permit latch<br/>soft_driveN_enable"]
+    INTLK["intlk_latch_in<br/>(interlock_wrapper)"] -- "clear both drives" --> PERM
+    INTLK -- "block trigger 0" --> PMOD
+    PERM -- drive_permit --> LOOPS
+    EV -. "evr_events[3:0]" .-> OUT["PMOD2 monitor (top level)"]
+    PMOD -. "pmod_trigs[3:0]:<br/>modulator, SSSB, scope, spare" .-> PINS["PMOD1, HDMI LVDS (top level)"]
+```
+
+- **EVR trigger** (`timing_core_local.v`, with `fiducial_int_gen.v` inside):
+  - Of the four event codes routed to `dsp_clk` (`evr_events`), three decide the trigger. The fiducial (1) opens a window; accelerate (151) and standby (152) are collected in it. Event 10 is only routed out and rate-counted.
+  - At the window's end, `event_sel` picks the trigger: 151 takes accelerate if it came, else standby; 152 takes standby only; other values never fire.
+  - The trigger comes with its mode delay, `trig_acc_delay` or `trig_stb_delay`. So `wave_trig`, the RF pulse and the PMOD triggers shift together between accelerate and standby timing.
+  - In the other designs, `timing_core`'s EVR trigger is a single programmable event code (`evcode`). LEMP operation is `wave_trig_sel` = EVR (3), with `event_sel` and the two mode delays set from software.
+- **PMOD triggers** (`triggers.sv`): four delay/width pulses for external devices, restarted by `wave_trig` and firing `trig_N_delay` dsp clocks after it, `trig_N_width` clocks long, each enabled by a `trig_enables` bit. A latched interlock blocks trigger 0, the modulator trigger.
+- **DAC permit latch:** any latched interlock (`intlk_latch_in` from `interlock_wrapper`, plan step 9d) turns both drives off at once. The next `wave_trig` re-arms them from `soft_driveN_enable`, so a changed enable also takes effect at the next trigger.
+- **Rates:** `evr_frequency_event1..4` (the four event codes), `acc_cycles` and `stb_cycles` (the accelerate and standby triggers). They are counted on `dsp_clk`, gated by the events, and read as status words.
+
+---
+
 ## Frequency and Clocking Summary
 
 | Signal | Ratio | Frequency | Unit |
