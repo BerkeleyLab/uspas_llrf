@@ -7,8 +7,8 @@ SIG_BUF_AW = 10
 N_TRIG = 4  # PMOD triggers
 
 # base registers the LEMP shell has no use for: timing_core_local has no
-# event code or OC decoder; only the EVR trigger is delayed, by its mode delay (plan 9c, B3)
-DROPPED = ['evcode', 'evr_oc_delay', 'trigger_delay']
+# event code or OC decoder (plan 9c, B3)
+DROPPED = ['evcode', 'evr_oc_delay']
 
 
 def design(rm):

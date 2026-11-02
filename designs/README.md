@@ -30,7 +30,7 @@ This directory contains the accelerator facility designs: which `llrf_shell` eac
 | :--- | :--- | :--- | :--- |
 | **Baseline** | `designs/uspas/llrf_shell.sv` | `uspas`, `alsu`, `awa`, `pip-ii` | Dual-loop PI feedback with amplitude and phase pulse modulation tables (`loopN_amp_mod`, `loopN_phs_mod`, 16k x 18-bit, `2^loopN_pulse_res_shift` clocks per entry), raw/IQ sample buffers packed at `2^SIG_BUF_AW` (2k; LEMP 1k, `designs/lemp/design.py`), standard pulse gating via `pulse_gen`, circular buffer, fast interlocks. |
 
-| **LEMP** | `designs/lemp/llrf_shell.sv` | `lemp` | The base blocks (ADC 6/7 as DC channels) plus the LEMP branch's fiducial selection (`fiducial_int_gen`), `global_delay`, four PMOD triggers, per-loop phase shift, DAC permit latch, SSSB and `timing_core_local` (plan step 9c). See `designs/lemp/README.md`. |
+| **LEMP** | `designs/lemp/llrf_shell.sv` | `lemp` | The base blocks (ADC 6/7 as DC channels) plus the LEMP features: the EVR trigger of `timing_core_local` (accelerate/standby with mode delays, `wave_trig_sel` EVR), four PMOD triggers and the DAC permit latch on `wave_trig`, per-loop phase shift, SSSB (plan step 9c, D27–D29). See `designs/lemp/README.md`. |
 
 > **Roadmap**: the LEMP interlock (`interlock_wrapper`, step 9d) and LEMP top level and SoC (step 9e). An ALSU shell with `phase_ramp` is deferred (step 7e). See `doc/llrf_shell_unification_plan.md`.
 

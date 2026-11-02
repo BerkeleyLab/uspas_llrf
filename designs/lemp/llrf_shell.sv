@@ -202,13 +202,17 @@ end
 
 // EVR trigger (timing_core_local): after each fiducial event, accelerate or
 // standby per event_sel, with its delay trig_acc_delay or trig_stb_delay;
-// registered as the LEMP branch's fiducial was
+// both registered, as the LEMP branch's fiducial and global_delay were
 wire [3:0] evr_events_dsp;
 wire evr_trig_i;
 wire [31:0] evr_delay;
 wire [27:0] acc_cycles, stb_cycles;  // lb_clk
 reg evr_trig = 0;
-always @(posedge dsp_clk) evr_trig <= evr_trig_i;
+reg [31:0] evr_trig_delay = 0;
+always @(posedge dsp_clk) begin
+    evr_trig <= evr_trig_i;
+    evr_trig_delay <= evr_delay;
+end
 
 wire cbuf_sync;
 reg wave_trig_i = 0;
@@ -223,8 +227,9 @@ always @(posedge dsp_clk) begin
     endcase
 end
 
-// trigger delay: the EVR trigger's mode delay; none for the other sources
-wire [31:0] trig_delay = (cfg_dsp.wave_trig_sel == WAVE_TRIG_EVR) ? evr_delay : 32'd0;
+// trigger delay: trigger_delay for every source, as in the other designs,
+// plus the EVR trigger's mode delay
+wire [31:0] trig_delay = {8'd0, cfg_dsp.trigger_delay} + ((cfg_dsp.wave_trig_sel == WAVE_TRIG_EVR) ? evr_trig_delay : 32'd0);
 pulse_gen #(.AW(32)) trig_delay_gen (
     .clk        (dsp_clk),
     .trigger    (wave_trig_i),

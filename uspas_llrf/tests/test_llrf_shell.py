@@ -32,7 +32,7 @@ class TB_llrf_shell:
         # Force CW mode to allow loop tests
         config['DRV0_PULSE_MODE'] = config['DRV1_PULSE_MODE'] = 0
         # boot-time registers of the design whose map the TB reads
-        # (designs/<design>/llrf_shell.json), e.g. LEMP has no trigger_delay
+        # (designs/<design>/llrf_shell.json), e.g. LEMP has no evcode
         json_dir = Path(regmap_json_path).resolve().parent
         design = json_dir.name if json_dir.parent.name == 'designs' else None
         self.llrf = llrf = LLRFShell(config, wave_samp_per=wave_samp_per, design=design)
@@ -219,12 +219,6 @@ class TB_llrf_shell:
         min = await self.lb.read_reg('dsp_slow_adc_min', chan)
         max = await self.lb.read_reg('dsp_slow_adc_max', chan)
         return min, max
-
-    async def zero_trigger_delay(self):
-        """No delay from the trigger selection to wave_trig. LEMP has no
-        trigger_delay: only its EVR trigger is delayed (by the mode delay)."""
-        if self.lb.has_reg('trigger_delay'):
-            await self.lb.write_reg('trigger_delay', 0)
 
     async def write_init_regs(self):
         cocotb.log.debug(f'InitRegisters:\n{pformat(self.llrf.init_regs)}')
@@ -593,7 +587,7 @@ class TB_llrf_shell:
         cfg = dict(pulse_start=start, pulse_high_len=(mod_len << res_shift) + 24, res_shift=res_shift,
                    mod_len=mod_len, amp_mod_enable=1, phs_mod_enable=1, amp_setpoint=12000,
                    max_amp_setpoint=13000, phs_setpoint=-20000, phs_offset=0, amp_loop_enable=0)
-        regs = {'wave_trig_sel': int(WaveTrigSel.Software),
+        regs = {'wave_trig_sel': int(WaveTrigSel.Software), 'trigger_delay': 0,
                 f'{loop}_pulse_start': cfg['pulse_start'], f'{loop}_pulse_high_len': cfg['pulse_high_len'],
                 f'{loop}_pulse_res_shift': res_shift, f'{loop}_mod_len': mod_len,
                 f'{loop}_amp_mod_enable': 1, f'{loop}_phs_mod_enable': 1,
@@ -606,7 +600,6 @@ class TB_llrf_shell:
                      f'{other}_pulse_start': start + 7, f'{other}_pulse_high_len': 9})
         for name, value in regs.items():
             await self.lb.write_reg(name, value)
-        await self.zero_trigger_delay()
         await ClockCycles(dut.dsp_clk, 50)  # register crossing into dsp_clk
 
         model = PulseModulator(18, 32, mod_aw)
@@ -651,7 +644,7 @@ class TB_llrf_shell:
         dg = self.shell_scope('sig_buf_dval')
         wave_trig = self.shell_sig('wave_trig')
         await self.lb.write_reg('wave_trig_sel', int(WaveTrigSel.Software))
-        await self.zero_trigger_delay()
+        await self.lb.write_reg('trigger_delay', 0)
         offsets = {}
         for d in delays:
             await self.lb.write_reg('buf_delay', d)
