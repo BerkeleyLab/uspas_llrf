@@ -21,7 +21,7 @@ class TB:
 
     async def cycle(self, trigger=0, start=None, high_len=None, stb=1, res=None):
         """Drive inputs on the falling edge, step the model on the rising
-        edge, and check pulse_dval, pulse_idx and pulse_last against it."""
+        edge, and check pulse_dval, pulse_idx, pulse_clk and pulse_last against it."""
         dut = self.dut
         await FallingEdge(dut.clk)
         if start is not None:
@@ -39,6 +39,7 @@ class TB:
         m = self.model
         assert int(dut.pulse_dval.value) == m.dval, "pulse_dval"
         assert int(dut.pulse_idx.value) == m.idx, "pulse_idx"
+        assert int(dut.pulse_clk.value) == m.clk, "pulse_clk"
         assert int(dut.pulse_last.value) == m.last, "pulse_last"
         return int(dut.pulse_dval.value), int(dut.pulse_idx.value)
 

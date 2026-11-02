@@ -196,7 +196,8 @@ pulse_gen #(.AW(24)) trig_delay_gen (
     .res        (4'd0),
     .pulse_dval (wave_trig),
     .pulse_last (),
-    .pulse_idx  ()
+    .pulse_idx  (),
+    .pulse_clk  ()
 );
 assign trig_out = wave_trig;
 
@@ -359,6 +360,7 @@ loops loops (
     .drive_q         (drive_q_out),
     .pulse_dval      (),
     .pulse_idx       (),
+    .pulse_clk       (),
     .err_amp_lb      (err_out_amp_lb),
     .err_phs_lb      (err_out_phs_lb),
     .lb_clk          (lb_clk),

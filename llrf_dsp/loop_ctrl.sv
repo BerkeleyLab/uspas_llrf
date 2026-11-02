@@ -42,6 +42,7 @@ module loop_ctrl
     output pulse_dval,
     output pulse_last,
     output [PULSE_AW-1:0] pulse_idx,
+    output [PULSE_AW-1:0] pulse_clk,     // dsp clocks into the pulse (any res_shift)
     output signed [DWBB-1:0] amp_setpoint_mod,  // setpoints after modulation
     output signed [DWBB-1:0] phs_setpoint_mod,  // (and clamp), into dsp_core
 
@@ -67,7 +68,8 @@ pulse_gen #(.AW(PULSE_AW), .RW(PULSE_RW)) pulse_gen (
     .res        (cfg.pulse_res_shift),
     .pulse_last (pulse_last),
     .pulse_dval (pulse_dval),
-    .pulse_idx  (pulse_idx)
+    .pulse_idx  (pulse_idx),
+    .pulse_clk  (pulse_clk)
 );
 
 // ---------------------------------------------------------------------------

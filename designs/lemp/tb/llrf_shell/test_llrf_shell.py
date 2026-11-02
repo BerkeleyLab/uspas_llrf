@@ -152,8 +152,8 @@ async def test_dac_permit(dut):
 @cocotb.parametrize(loop=[0, 1])
 async def test_phs_shift(dut, loop):
     """loopN_phs_shift is added to the phase setpoint while the pulse is on
-    and pulse_idx << pulse_res_shift >= loopN_phs_shift_delay (plan L5: a
-    delay past the pulse end shifts nothing). Checked on every dsp clock
+    and pulse_clk (dsp clocks into the pulse, any pulse_res_shift) >=
+    loopN_phs_shift_delay (plan L5: a delay past the pulse end shifts nothing). Checked on every dsp clock
     at loop_ctrl's phs_offset, against the other loop's different values."""
     tb = TB_llrf_shell(dut, f_config='LEMP', regmap_json_path='../../llrf_shell.json')
     await tb.lb.write_reg('wave_trig_sel', int(WaveTrigSel.Software))
@@ -164,7 +164,7 @@ async def test_phs_shift(dut, loop):
     await tb.lb.write_reg(f'loop{other}_phs_shift_delay', 3)
     await tb.lb.write_reg(f'loop{other}_pulse_start', 40)
     await tb.lb.write_reg(f'loop{other}_pulse_high_len', 7)
-    for res, delay, high_len in ((0, 20, 60), (1, 21, 60), (0, 100, 60), (0, 0, 30)):
+    for res, delay, high_len in ((0, 20, 60), (1, 21, 60), (3, 13, 60), (0, 100, 60), (0, 0, 30)):
         regs = {'phs_shift': shift & mask, 'phs_shift_delay': delay, 'pulse_start': 5,
                 'pulse_high_len': high_len, 'pulse_res_shift': res}
         for k, v in regs.items():
@@ -175,14 +175,14 @@ async def test_phs_shift(dut, loop):
         for _ in range(5 + high_len + 40):
             await RisingEdge(dut.dsp_clk)
             await ReadOnly()
-            dval, idx = int(lc.pulse_dval.value), int(lc.pulse_idx.value)
-            exp = shift if dval and (idx << res) >= delay else 0
+            dval, pclk = int(lc.pulse_dval.value), int(lc.pulse_clk.value)
+            exp = shift if dval and pclk >= delay else 0
             got = lc.phs_offset.value.to_signed()
             shifted += got != 0
             if got != exp and len(errors) < 5:
-                errors.append(f"dval {dval} idx {idx}: phs_offset {got}, expected {exp}")
+                errors.append(f"dval {dval} pulse_clk {pclk}: phs_offset {got}, expected {exp}")
         assert not errors, f"res {res} delay {delay}: " + "; ".join(errors)
-        n_exp = max(0, high_len - (-(-delay >> res) << res))  # from the first table entry at or after delay
+        n_exp = max(0, high_len - delay)  # clock resolution at any res_shift
         assert shifted == n_exp, f"res {res} delay {delay}: shifted {shifted} clocks, expected {n_exp}"
 
 

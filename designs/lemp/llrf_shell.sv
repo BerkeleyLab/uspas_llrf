@@ -257,7 +257,8 @@ pulse_gen #(.AW(32)) trig_delay_gen (
     .res        (4'd0),
     .pulse_dval (wave_trig),
     .pulse_last (),
-    .pulse_idx  ()
+    .pulse_idx  (),
+    .pulse_clk  ()
 );
 assign trig_out = wave_trig;
 
@@ -397,12 +398,12 @@ bb_t drive_i_out [N_DRIVE];
 bb_t drive_q_out [N_DRIVE];
 bb_t phs_offset [N_DRIVE];
 wire [N_DRIVE-1:0] pulse_dval;
-wire [PULSE_AW-1:0] pulse_idx [N_DRIVE];
+wire [PULSE_AW-1:0] pulse_clk [N_DRIVE];
 wire signed [14:0] err_out_amp_lb [N_DRIVE];
 wire signed [14:0] err_out_phs_lb [N_DRIVE];
 // per-loop phase shift, from pulse clock loopN_phs_shift_delay to the pulse
-// end (L5: no underflow when the delay exceeds the pulse); pulse_idx counts
-// table entries, 2^pulse_res_shift clocks each (XXX plan 9c question 2)
+// end (L5: no underflow when the delay exceeds the pulse); pulse_clk counts
+// dsp clocks into the pulse whatever pulse_res_shift is (LEMP review)
 wire signed [DWBB-1:0] phs_shift [N_DRIVE];
 wire [31:0] phs_shift_delay [N_DRIVE];
 assign phs_shift[0] = cfg_dsp.loop0_phs_shift;
@@ -410,8 +411,7 @@ assign phs_shift[1] = cfg_dsp.loop1_phs_shift;
 assign phs_shift_delay[0] = cfg_dsp.loop0_phs_shift_delay;
 assign phs_shift_delay[1] = cfg_dsp.loop1_phs_shift_delay;
 generate for (ch = 0; ch < N_DRIVE; ch = ch + 1) begin: gen_drive
-    wire [PULSE_AW-1:0] pulse_clk = pulse_idx[ch] << cfg_dsp.loop[ch].pulse_res_shift;
-    assign phs_offset[ch] = (pulse_dval[ch] && pulse_clk >= phs_shift_delay[ch]) ? phs_shift[ch] : '0;
+    assign phs_offset[ch] = (pulse_dval[ch] && pulse_clk[ch] >= phs_shift_delay[ch]) ? phs_shift[ch] : '0;
     // base-band loop output for IQ waveform monitoring
     assign sig_i_data[N_ADC+ch] = drive_i_out[ch];
     assign sig_q_data[N_ADC+ch] = drive_q_out[ch];
@@ -433,7 +433,8 @@ loops loops (
     .drive_i         (drive_i_out),
     .drive_q         (drive_q_out),
     .pulse_dval      (pulse_dval),
-    .pulse_idx       (pulse_idx),
+    .pulse_idx       (),
+    .pulse_clk       (pulse_clk),
     .err_amp_lb      (err_out_amp_lb),
     .err_phs_lb      (err_out_phs_lb),
     .lb_clk          (lb_clk),

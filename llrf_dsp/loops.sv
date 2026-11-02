@@ -22,6 +22,7 @@ module loops
     output bb_t           drive_q [N_DRIVE],
     output [N_DRIVE-1:0]  pulse_dval,
     output [PULSE_AW-1:0] pulse_idx [N_DRIVE],
+    output [PULSE_AW-1:0] pulse_clk [N_DRIVE],  // dsp clocks into the pulse
     output signed [14:0]  err_amp_lb [N_DRIVE],  // lb_clk
     output signed [14:0]  err_phs_lb [N_DRIVE],
 
@@ -61,6 +62,7 @@ generate for (n = 0; n < N_DRIVE; n = n + 1) begin: gen_loops
         .pulse_dval       (pulse_dval[n]),
         .pulse_last       (),
         .pulse_idx        (pulse_idx[n]),
+        .pulse_clk        (pulse_clk[n]),
         .amp_setpoint_mod (),
         .phs_setpoint_mod (),
         .lb_clk           (lb_clk),
