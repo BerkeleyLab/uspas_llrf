@@ -78,7 +78,6 @@ class WaveTrigSel(IntEnum):
     EVR = 3
     Always = 4
     Mixed = 5
-    Fiducial = 6  # LEMP: EVR fiducial (plan L4); the base shell's default case
 
 
 class DacDriveSel(IntEnum):

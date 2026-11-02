@@ -1,9 +1,10 @@
 // LEMP llrf_shell (plan step 9c): the base shell's blocks (rx_chain with
 // the beam voltage and current channels as DC, diag, loops, tx_chain) and
-// the LEMP features of the LEMP branch (2e25cd9): fiducial selection
-// (fiducial_int_gen), the trigger delay global_delay, four PMOD triggers,
-// the per-loop phase shift, the DAC permit latch with fiducial re-arm, SSSB
-// control and timing_core_local. Registers, status words and readback
+// the LEMP features of the LEMP branch (2e25cd9), with one master trigger
+// (LEMP review of plan 9c): wave_trig_sel EVR selects timing_core_local's
+// EVR trigger (accelerate or standby, after its mode delay); wave_trig
+// restarts the four PMOD triggers and re-arms the DAC permit latch. Also
+// the per-loop phase shift and SSSB control. Registers, status words and readback
 // windows: uspas_llrf/regmap.py with designs/lemp/design.py.
 module llrf_shell
     import llrf_shell_pkg::*;
@@ -18,7 +19,7 @@ module llrf_shell
     parameter integer DSP_EV2 = 152,    //   STBY
     parameter integer DSP_EV3 = 1,      //   fiducial
     parameter integer DSP_EV4 = 10,     //   TS1&4
-    parameter integer FIDUCIAL_WINDOW = 23800,  // dsp clocks to collect ACCL/STBY after a fiducial (sim: less)
+    parameter integer EVR_TRIG_WINDOW = 23800,  // dsp clocks to collect ACCL/STBY after a fiducial (sim: less)
     localparam integer CIC_SHIFT_BASE = 7,
     localparam integer INLK_SHIFT_BASE = 11, // near 2*np.log2(CIC_BASE_PERIOD) + 2
     localparam integer MON_RW = 44           // must <= 44, see ccfilt.v:51
@@ -143,7 +144,7 @@ rx_chain #(.DC_CH_MASK(8'b1100_0000)) rx_chain (
     .lo_cos          (dds_cos),
     .lo_sin          (dds_sin)
 );
-// XXX plan 9c question 3: dsp_reset (proposal) or 0 as on the LEMP branch
+// reset with the RX DDS, so interlock_wrapper's DDC restarts with the LO (LEMP review)
 assign dds_reset_out = dsp_reset;
 
 genvar ch;
@@ -199,41 +200,16 @@ always @(posedge dsp_clk) begin
     trig_count <= dsp_reset ? 0 : trig_count + wave_trig;
 end
 
-// fiducial: fiducial_int_gen picks the ACCL or STBY event within a fiducial
-// window and gives its trigger delay as global_delay (fiducial_sel 1), or
-// wave_trig itself with no delay (fiducial_sel 0)
+// EVR trigger (timing_core_local): after each fiducial event, accelerate or
+// standby per event_sel, with its delay trig_acc_delay or trig_stb_delay;
+// registered as the LEMP branch's fiducial was
 wire [3:0] evr_events_dsp;
-wire fiducial_int_i;
-wire [31:0] global_delay_i;
+wire evr_trig_i;
+wire [31:0] evr_delay;
 wire [27:0] acc_cycles, stb_cycles;  // lb_clk
-fiducial_int_gen #(
-    .EVENT_NUM       (4),
-    .EV_ACCL         (DSP_EV1),
-    .EV_STBY         (DSP_EV2),
-    .CYCLE_COUNT_MAX (FIDUCIAL_WINDOW)
-) fiducial_int_gen (
-    .lb_clk          (lb_clk),
-    .dsp_clk         (dsp_clk),
-    .reset           (1'b0),
-    .event_strobes   (evr_events_dsp),
-    .event_sel       (cfg_dsp.event_sel),
-    .trig_acc_delay  (cfg_dsp.trig_acc_delay),
-    .trig_stb_delay  (cfg_dsp.trig_stb_delay),
-    .fiducial_int    (fiducial_int_i),
-    .global_delay    (global_delay_i),
-    .acc_cycles      (acc_cycles),
-    .stb_cycles      (stb_cycles)
-);
+reg evr_trig = 0;
+always @(posedge dsp_clk) evr_trig <= evr_trig_i;
 
-reg fiducial_int = 0;
-reg [31:0] global_delay = 0;
-always @(posedge dsp_clk) begin
-    fiducial_int <= cfg_dsp.fiducial_sel ? fiducial_int_i : wave_trig;
-    global_delay <= cfg_dsp.fiducial_sel ? global_delay_i : 32'd0;
-end
-
-// XXX plan 9c question 1: EVR (3) has no event-code trigger here
-// (timing_core_local); like the LEMP branch, it falls to the default
 wire cbuf_sync;
 reg wave_trig_i = 0;
 always @(posedge dsp_clk) begin
@@ -241,17 +217,18 @@ always @(posedge dsp_clk) begin
         WAVE_TRIG_INT:      wave_trig_i <= int_trig;
         WAVE_TRIG_EXT:      wave_trig_i <= ext_trig;
         WAVE_TRIG_SOFT:     wave_trig_i <= cfg_dsp.soft_trigger;
+        WAVE_TRIG_EVR:      wave_trig_i <= evr_trig;
         WAVE_TRIG_MIXED:    wave_trig_i <= ext_trig | cfg_dsp.soft_trigger;
-        WAVE_TRIG_FIDUCIAL: wave_trig_i <= fiducial_int;
         default:            wave_trig_i <= cbuf_sync;
     endcase
 end
 
-// trigger delay: global_delay
+// trigger delay: the EVR trigger's mode delay; none for the other sources
+wire [31:0] trig_delay = (cfg_dsp.wave_trig_sel == WAVE_TRIG_EVR) ? evr_delay : 32'd0;
 pulse_gen #(.AW(32)) trig_delay_gen (
     .clk        (dsp_clk),
     .trigger    (wave_trig_i),
-    .start      (global_delay),
+    .start      (trig_delay),
     .high_len   (32'd1),
     .stb_in     (1'b1),
     .res        (4'd0),
@@ -352,9 +329,10 @@ diag #(
 // ---------------------
 wire [15:0] evr_evcnt_lb;
 wire [0:0]  evr_ts_valid_lb;
-wire [28*4-1:0] evr_frequency_events_flat;  // lb_clk; [27:0] is event 4 (see timing_core_local)
+wire [28*4-1:0] evr_frequency_events_flat;  // lb_clk; [27:0] is DSP_EV1
 timing_core_local #(
-    .DSP_EV1 (DSP_EV1), .DSP_EV2 (DSP_EV2), .DSP_EV3 (DSP_EV3), .DSP_EV4 (DSP_EV4)
+    .DSP_EV1 (DSP_EV1), .DSP_EV2 (DSP_EV2), .DSP_EV3 (DSP_EV3), .DSP_EV4 (DSP_EV4),
+    .EVR_TRIG_WINDOW (EVR_TRIG_WINDOW)
 ) timing_evr (
     .lb_clk                (lb_clk),
     .evr_clk               (gt_rxclk),
@@ -371,20 +349,25 @@ timing_core_local #(
     .dsp_event2            (evr_events_dsp[1]),  // STBY
     .dsp_event3            (evr_events_dsp[2]),  // fiducial
     .dsp_event4            (evr_events_dsp[3]),  // TS1&4
-    .frequency_events_flat (evr_frequency_events_flat)
+    .frequency_events_flat (evr_frequency_events_flat),
+    .event_sel             (cfg_dsp.event_sel),
+    .trig_acc_delay        (cfg_dsp.trig_acc_delay),
+    .trig_stb_delay        (cfg_dsp.trig_stb_delay),
+    .evr_trig              (evr_trig_i),
+    .evr_delay             (evr_delay),
+    .acc_cycles            (acc_cycles),
+    .stb_cycles            (stb_cycles)
 );
 assign evr_events = evr_events_dsp;
 
 // ---------------------
 // DAC permit: any latched interlock clears both drives; with none latched,
-// a fiducial rising edge re-arms them from soft_driveN_enable
+// wave_trig re-arms them from soft_driveN_enable
 // ---------------------
 reg [N_DRIVE-1:0] dac_permit = '0;
-reg fiducial_int_dly = 0;
 always @(posedge dsp_clk) begin
-    fiducial_int_dly <= fiducial_int;
     if (|intlk_latch_in) dac_permit <= '0;
-    else if (fiducial_int & ~fiducial_int_dly) dac_permit <= soft_drive_enable;
+    else if (wave_trig) dac_permit <= soft_drive_enable;
 end
 
 // ---------------------
@@ -488,16 +471,15 @@ ntw_analyzer #(.KW(DWBB)) ntw (
 );
 
 // ---------------------
-// PMOD triggers: restarted by the fiducial, global_delay + trig_N_delay
-// after it; an interlock latch stops the modulator trigger (0)
+// PMOD triggers: restarted by wave_trig, trig_N_delay after it; an
+// interlock latch stops the modulator trigger (0)
 // ---------------------
 wire [3:0] trig_enable = {cfg_dsp.trig_enables[3:1], cfg_dsp.trig_enables[0] & ~|intlk_latch_in};
 generate for (ch = 0; ch < 4; ch = ch + 1) begin: gen_trig
     triggers trig (
         .clk          (dsp_clk),
-        .rst_n        (~fiducial_int),
+        .rst_n        (~wave_trig),
         .enable       (trig_enable[ch]),
-        .global_delay (global_delay),
         .cfg          (cfg_dsp.trig[ch]),
         .pmod_trigs   (pmod_trigs[ch])
     );

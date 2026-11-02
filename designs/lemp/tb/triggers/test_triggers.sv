@@ -4,13 +4,12 @@ module test_triggers (
     input         clk,
     input         rst_n,
     input         enable,
-    input  [31:0] global_delay,
     input  [31:0] width,
     input  [31:0] delay,
     output        pmod_trigs
 );
 llrf_shell_pkg::trig_cfg_t cfg;
 assign cfg = '{width: width, delay: delay};
-triggers dut (.clk(clk), .rst_n(rst_n), .enable(enable), .global_delay(global_delay), .cfg(cfg),
+triggers dut (.clk(clk), .rst_n(rst_n), .enable(enable), .cfg(cfg),
               .pmod_trigs(pmod_trigs));
 endmodule

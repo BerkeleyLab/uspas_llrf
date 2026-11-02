@@ -9,7 +9,7 @@ module test_llrf_shell #(
     parameter integer CBUF_AW = 6,
     parameter integer SIG_BUF_AW = 6,
     parameter integer F_DSP_HZ = 125_000_000,  // set small in sim to shorten the arc_inlk 0.5 s pulse
-    parameter integer FIDUCIAL_WINDOW = 200    // LEMP: 23800, shortened for sim
+    parameter integer EVR_TRIG_WINDOW = 200    // LEMP: 23800, shortened for sim
 ) (
     // ---------------------
     // Localbus interface
@@ -69,7 +69,7 @@ module test_llrf_shell #(
         .SIG_BUF_AW     (SIG_BUF_AW),
         .CBUF_AW        (CBUF_AW),
         .F_DSP_HZ       (F_DSP_HZ),
-        .FIDUCIAL_WINDOW (FIDUCIAL_WINDOW)
+        .EVR_TRIG_WINDOW (EVR_TRIG_WINDOW)
     ) llrf_shell (
         .lb_clk,
         .lb_write,

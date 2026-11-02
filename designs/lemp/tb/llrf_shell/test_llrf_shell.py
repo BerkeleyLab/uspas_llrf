@@ -23,9 +23,8 @@ class TB_llrf_shell(TB_base):
         await self.arm_dac_permit()
 
     async def arm_dac_permit(self):
-        """The DAC permit latch enables the drives (soft_driveN_enable) on a
-        fiducial rising edge; with fiducial_sel 0 the fiducial is wave_trig,
-        fired here by a software trigger."""
+        """The DAC permit latch enables the drives (soft_driveN_enable) on
+        wave_trig, fired here by a software trigger."""
         await self.lb.write_reg('wave_trig_sel', int(WaveTrigSel.Software))
         await self.lb.write_reg('soft_trigger', 1)
         await ClockCycles(self.dut.dsp_clk, 50)
@@ -188,13 +187,11 @@ async def test_phs_shift(dut, loop):
 
 @cocotb.test(timeout_time=100, timeout_unit='us')
 async def test_pmod_triggers(dut):
-    """The four PMOD triggers restart on the fiducial (wave_trig while
-    fiducial_sel is 0) and go high global_delay + trig_N_delay later for
-    trig_N_width clocks; trig_enables gates each, and an interlock latch
-    stops trigger 0 (modulator). A model of triggers.sv runs on the shell's
-    fiducial, enables and global_delay and is checked on every clock."""
+    """The four PMOD triggers restart on wave_trig and go high trig_N_delay
+    later for trig_N_width clocks; trig_enables gates each, and an
+    interlock latch stops trigger 0 (modulator). A model of triggers.sv runs
+    on the shell's wave_trig and enables and is checked on every clock."""
     tb = TB_llrf_shell(dut, f_config='LEMP', regmap_json_path='../../llrf_shell.json')
-    await tb.lb.write_reg('fiducial_sel', 0)
     await tb.lb.write_reg('wave_trig_sel', int(WaveTrigSel.Software))
     cfg = [(10 + 7 * k, 3 + 2 * k) for k in range(4)]  # (delay, width), distinct per trigger
     for k, (delay, width) in enumerate(cfg):
@@ -215,10 +212,10 @@ async def test_pmod_triggers(dut):
     async def monitor():
         while True:
             await RisingEdge(dut.dsp_clk)
-            fid, gd = int(tb.sig('fiducial_int').value), int(tb.sig('global_delay').value)
+            fid = int(tb.sig('wave_trig').value)
             en = int(tb.sig('trig_enable').value)
             for k, (delay, width) in enumerate(cfg):
-                st, dt = state[k], (gd + delay) & m32
+                st, dt = state[k], delay
                 if en >> k & 1:
                     if fid:
                         st[0] = 0
@@ -256,20 +253,19 @@ async def test_pmod_triggers(dut):
 
 
 @cocotb.test(timeout_time=200, timeout_unit='us')
-async def test_fiducial(dut):
-    """fiducial_sel 1: after an EVR fiducial (event 1), fiducial_int_gen fires
-    the fiducial with global_delay = trig_acc_delay if ACCL (151) came within
-    the window and event_sel is 151, else trig_stb_delay if STBY (152) came;
-    wave_trig (Fiducial selection) follows global_delay later. The four
-    event codes appear on evr_events."""
+async def test_evr_trig(dut):
+    """wave_trig_sel EVR: after an EVR fiducial (event 1), the EVR trigger
+    fires with delay trig_acc_delay if ACCL (151) came within the window and
+    event_sel is 151, else trig_stb_delay if STBY (152) came; wave_trig
+    follows it by that delay. The four event codes appear on evr_events."""
     tb = TB_llrf_shell(dut, f_config='LEMP', regmap_json_path='../../llrf_shell.json')
     await tb.evr_idle()
-    window = int(dut.FIDUCIAL_WINDOW.value)
+    window = int(dut.EVR_TRIG_WINDOW.value)
     acc, stb = 300, 120
-    for name, v in (('fiducial_sel', 1), ('trig_acc_delay', acc), ('trig_stb_delay', stb),
-                    ('wave_trig_sel', int(WaveTrigSel.Fiducial))):
+    for name, v in (('trig_acc_delay', acc), ('trig_stb_delay', stb),
+                    ('wave_trig_sel', int(WaveTrigSel.EVR))):
         await tb.lb.write_reg(name, v)
-    fid, wave_trig = tb.sig('fiducial_int'), tb.sig('wave_trig')
+    fid, wave_trig = tb.sig('evr_trig'), tb.sig('wave_trig')
     seen = set()
 
     async def watch_events():
@@ -280,7 +276,7 @@ async def test_fiducial(dut):
     ev_task = cocotb.start_soon(watch_events())
 
     async def message(event_sel, codes):
-        """Times (dsp clocks from the message) of the fiducial and wave_trig."""
+        """Times (dsp clocks from the message) of the EVR trigger and wave_trig."""
         await tb.lb.write_reg('event_sel', event_sel)
         t = {}
 
@@ -298,7 +294,7 @@ async def test_fiducial(dut):
             await tb.send_event(c)
         await ClockCycles(dut.dsp_clk, window + acc + 50)
         task.cancel()
-        return t, int(tb.sig('global_delay').value)
+        return t, int(tb.sig('evr_delay').value)
 
     await tb.send_event(EV_TS)
     results = {}
@@ -310,11 +306,11 @@ async def test_fiducial(dut):
         if delay is None:
             assert not t, f"event_sel {event_sel}, events {codes}: unexpected {t}"
             continue
-        assert gd == delay, f"event_sel {event_sel}, events {codes}: global_delay {gd}"
-        assert window <= t['fid'] <= window + 20, f"fiducial at {t['fid']}"
+        assert gd == delay, f"event_sel {event_sel}, events {codes}: evr_delay {gd}"
+        assert window <= t['fid'] <= window + 20, f"EVR trigger at {t['fid']}"
         results[delay] = t['wave'] - t['fid']
     ev_task.cancel()
-    # wave_trig follows the fiducial by global_delay plus a fixed latency
+    # wave_trig follows the EVR trigger by its delay plus a fixed latency
     assert results[acc] - results[stb] == acc - stb, results
     assert 0 < results[stb] - stb < 6, results
     assert seen == {0, 1, 2, 3}, f"evr_events seen {seen}"

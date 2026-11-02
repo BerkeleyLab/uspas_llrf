@@ -104,7 +104,8 @@ module fiducial_int_gen #(
         end
     end
 
-    // Measure acc and stb internal fiducal frequency
+    // Measure acc and stb internal fiducial frequency: dsp_clk cycles with
+    // the strobe high (the strobes gate the counter, no gated clocks)
     wire [1:0] fids = {fiducial_int_stb, fiducial_int_acc};
     wire [27:0] fids_freqs[1:0];
     reg ref_strobe=0;  reg [27:0] ref_cnt=0;
@@ -115,8 +116,8 @@ module fiducial_int_gen #(
     genvar freq_i;
     generate for(freq_i=0; freq_i<2; freq_i=freq_i+1) begin: freq_gcount_logic
         freq_gcount fcounter(
-            .f_in(fids[freq_i]),
-            .g_in(1'b1),
+            .f_in(dsp_clk),
+            .g_in(fids[freq_i]),
             .sysclk(lb_clk),
             .ref_strobe(ref_strobe),
             .frequency(fids_freqs[freq_i])

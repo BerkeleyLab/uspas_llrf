@@ -7,7 +7,7 @@ SIG_BUF_AW = 10
 N_TRIG = 4  # PMOD triggers
 
 # base registers the LEMP shell has no use for: timing_core_local has no
-# event code or OC decoder; the trigger delay is global_delay (plan 9c, B3)
+# event code or OC decoder; only the EVR trigger is delayed, by its mode delay (plan 9c, B3)
 DROPPED = ['evcode', 'evr_oc_delay', 'trigger_delay']
 
 
@@ -19,11 +19,10 @@ def design(rm):
         *[r for n in range(rm.N_DRIVE) for r in (
             rm.Reg(f'loop{n}_phs_shift', 18, signed=True),
             rm.Reg(f'loop{n}_phs_shift_delay', 32))],
-        # fiducial: 0 wave_trig, 1 fiducial_int_gen (ACCL/STBY events)
-        rm.Reg('fiducial_sel'),
+        # EVR trigger (wave_trig_sel EVR): accelerate or standby after each fiducial
         rm.Reg('event_sel', 8, description='151: accelerate (falls back to standby), 152: standby'),
-        rm.Reg('trig_acc_delay', 32, description='global_delay after an accelerate fiducial'),
-        rm.Reg('trig_stb_delay', 32, description='global_delay after a standby fiducial'),
+        rm.Reg('trig_acc_delay', 32, description='EVR trigger delay in accelerate (dsp clocks)'),
+        rm.Reg('trig_stb_delay', 32, description='EVR trigger delay in standby (dsp clocks)'),
         rm.Reg('trig_enables', N_TRIG),
         *[rm.Reg(f'trig_{k}_{p}', 32, inst='trig', index=k) for k in range(N_TRIG)
           for p in ('width', 'delay')],
@@ -60,7 +59,8 @@ def aliases(rm, m):
 # Intended differences from the LEMP-branch map (_baseline/llrf_shell.json,
 # 2e25cd9), on top of regmap.RENAMES/ADDITIONS/REMOVALS/WIDTH_CHANGES; checked
 # by test_regmap_compat (plan step 9c)
-COMPAT_REMOVALS = [*DROPPED, 'trig_rsts_p', 'evr_sync_status']  # B3, L3, B2
+COMPAT_REMOVALS = [*DROPPED, 'trig_rsts_p', 'evr_sync_status',  # B3, L3, B2
+                   'fiducial_sel']  # one master trigger: wave_trig_sel EVR (LEMP review)
 COMPAT_ADDITIONS = ['fault_amp']  # main since the LEMP branch split
 COMPAT_CHANGES = {  # name: (data_width, sign)
     **{f'loop{n}_phs_shift': (18, 'signed') for n in range(2)},  # 18-bit phase (was 32, low 18 used)

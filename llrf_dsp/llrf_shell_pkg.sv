@@ -20,8 +20,7 @@ package llrf_shell_pkg;
                            WAVE_TRIG_SOFT   = 3'd2,  // software trigger
                            WAVE_TRIG_EVR    = 3'd3,  // EVR trigger
                            WAVE_TRIG_ALWAYS = 3'd4,  // internal trigger, cbuf continuous
-                           WAVE_TRIG_MIXED  = 3'd5,  // external or software trigger
-                           WAVE_TRIG_FIDUCIAL = 3'd6;  // fiducial trigger (LEMP); base shell: default case
+                           WAVE_TRIG_MIXED  = 3'd5;  // external or software trigger
 
     // Register configs of the blocks (plan §2.2): uspas_llrf/regmap.py puts
     // the registers of instance <inst> (Reg(inst=<inst>)) into the field

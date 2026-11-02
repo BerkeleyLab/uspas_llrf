@@ -222,7 +222,7 @@ class TB_llrf_shell:
 
     async def zero_trigger_delay(self):
         """No delay from the trigger selection to wave_trig. LEMP has no
-        trigger_delay: its delay is global_delay, 0 while fiducial_sel is 0."""
+        trigger_delay: only its EVR trigger is delayed (by the mode delay)."""
         if self.lb.has_reg('trigger_delay'):
             await self.lb.write_reg('trigger_delay', 0)
 

@@ -252,6 +252,6 @@ def test_wave_trig_encoding():
     """WaveTrigSel (Python) and the WAVE_TRIG_* constants of llrf_shell_pkg.sv
     are the same encoding (plan L4)."""
     names = {'INT': 'Internal', 'EXT': 'External', 'SOFT': 'Software', 'EVR': 'EVR',
-             'ALWAYS': 'Always', 'MIXED': 'Mixed', 'FIDUCIAL': 'Fiducial'}
+             'ALWAYS': 'Always', 'MIXED': 'Mixed'}
     rtl = {names[m[1]]: int(m[2]) for m in re.finditer(r"WAVE_TRIG_(\w+)\s*=\s*3'd(\d+)", PKG.read_text())}
     assert rtl == {e.name: e.value for e in regmap.WaveTrigSel}
