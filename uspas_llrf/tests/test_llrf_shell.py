@@ -601,13 +601,18 @@ class TB_llrf_shell:
         for name, value in regs.items():
             await self.lb.write_reg(name, value)
         await ClockCycles(dut.dsp_clk, 50)  # register crossing into dsp_clk
+        lc = self.shell_sig('gen_loops')[n].loop_ctrl
+        # a trigger from the previous selection (Always: circle buffer sync) can
+        # start a pulse before Software takes effect; the model starts idle, so
+        # let that pulse end first
+        while int(lc.pulse_gen.counting.value):
+            await RisingEdge(dut.dsp_clk)
 
         model = PulseModulator(18, 32, mod_aw)
         for k, v in cfg.items():
             setattr(model, k, v)
         model.amp_mod_table[:n_tab] = [a & mask for a in amp_tab]
         model.phs_mod_table[:n_tab] = [p & mask for p in phs_tab]
-        lc = self.shell_sig('gen_loops')[n].loop_ctrl
         errors, seen = [], {'dval': 0, 'amp_gate': 0}
 
         async def monitor(n_cycles):
