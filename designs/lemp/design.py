@@ -19,12 +19,14 @@ def design(rm):
         *[r for n in range(rm.N_DRIVE) for r in (
             rm.Reg(f'loop{n}_phs_shift', 18, signed=True),
             rm.Reg(f'loop{n}_phs_shift_delay', 32))],
-        # EVR trigger (wave_trig_sel EVR): accelerate or standby after each fiducial
-        rm.Reg('event_sel', 8, description='151: accelerate (falls back to standby), 152: standby'),
-        rm.Reg('trig_acc_delay', 32, description='EVR trigger delay in accelerate (dsp clocks)'),
-        rm.Reg('trig_stb_delay', 32, description='EVR trigger delay in standby (dsp clocks)'),
-        rm.Reg('trig_enables', N_TRIG),
-        *[rm.Reg(f'trig_{k}_{p}', 32, inst='trig', index=k) for k in range(N_TRIG)
+        # EVR trigger (wave_trig_sel EVR): accelerate or standby after each fiducial.
+        # The trigger registers boot at 0 (EVR trigger and PMOD triggers off), so
+        # a reboot returns to that; software sets the operating values.
+        rm.Reg('event_sel', 8, init=0, description='151: accelerate (falls back to standby), 152: standby'),
+        rm.Reg('trig_acc_delay', 32, init=0, description='EVR trigger delay in accelerate (dsp clocks)'),
+        rm.Reg('trig_stb_delay', 32, init=0, description='EVR trigger delay in standby (dsp clocks)'),
+        rm.Reg('trig_enables', N_TRIG, init=0),
+        *[rm.Reg(f'trig_{k}_{p}', 32, init=0, inst='trig', index=k) for k in range(N_TRIG)
           for p in ('width', 'delay')],
         rm.Reg('sssb_rf_switch'),
         rm.Reg('sssb_rst'),

@@ -187,27 +187,26 @@ async def test_phs_shift(dut, loop):
 
 @cocotb.test(timeout_time=100, timeout_unit='us')
 async def test_pmod_triggers(dut):
-    """The four PMOD triggers restart on wave_trig and go high trig_N_delay
-    later for trig_N_width clocks; trig_enables gates each, and an
-    interlock latch stops trigger 0 (modulator). A model of triggers.sv runs
-    on the shell's wave_trig and enables and is checked on every clock."""
+    """The four PMOD triggers are one-shots restarted by wave_trig: high
+    trig_N_delay clocks later for trig_N_width clocks, then idle until the
+    next wave_trig. trig_enables gates each and enabling fires nothing, an
+    interlock latch stops trigger 0 (modulator), a wave_trig during a pulse
+    restarts it, and width 0 gives no pulse. A model of triggers.sv runs on
+    the shell's wave_trig and enables and is checked on every clock."""
     tb = TB_llrf_shell(dut, f_config='LEMP', regmap_json_path='../../llrf_shell.json')
     await tb.lb.write_reg('wave_trig_sel', int(WaveTrigSel.Software))
-    cfg = [(10 + 7 * k, 3 + 2 * k) for k in range(4)]  # (delay, width), distinct per trigger
+    cfg = [[10 + 7 * k, 3 + 2 * k] for k in range(4)]  # [delay, width], distinct per trigger
     for k, (delay, width) in enumerate(cfg):
         await tb.lb.write_reg(f'trig_{k}_delay', delay)
         await tb.lb.write_reg(f'trig_{k}_width', width)
-    # a trigger with width 0 (boot value) stays high once fired (LEMP-branch
-    # triggers.v), as earlier tests may have left them: disable to clear
     await tb.lb.write_reg('trig_enables', 0)
-    await ClockCycles(dut.dsp_clk, 20)
-    await tb.lb.write_reg('trig_enables', 0b1111)
     await ClockCycles(dut.dsp_clk, 20)
     trig = [tb.sig('gen_trig')[k].trig for k in range(4)]
     await ReadOnly()
-    state = [[int(t.counter.value), int(t.trigger.value)] for t in trig]
-    errors, highs = [], [0] * 4
-    m32 = (1 << 32) - 1
+    # [counter, running, trigger] of each trigger: idle while disabled
+    state = [[int(t.counter.value), int(t.running.value), int(t.trigger.value)] for t in trig]
+    assert state == [[0, 0, 0]] * 4, f"disabled triggers not idle: {state}"
+    errors, highs, restarts = [], [0] * 4, [0] * 4
 
     async def monitor():
         while True:
@@ -215,41 +214,67 @@ async def test_pmod_triggers(dut):
             fid = int(tb.sig('wave_trig').value)
             en = int(tb.sig('trig_enable').value)
             for k, (delay, width) in enumerate(cfg):
-                st, dt = state[k], delay
-                if en >> k & 1:
-                    if fid:
-                        st[0] = 0
-                    else:
-                        c, st[0] = st[0], (st[0] + 1) & m32
-                        st[1] = 1 if c == dt else 0 if c == (dt + width) & m32 else st[1]
-                else:
-                    st[1] = 0
+                st = state[k]
+                if not en >> k & 1:
+                    st[:] = [0, 0, 0]
+                elif fid:
+                    restarts[k] += st[1]
+                    st[:] = [0, 1, 0]
+                elif st[1]:
+                    c, st[0] = st[0], st[0] + 1
+                    if c == delay:
+                        st[2] = 1
+                    if c == delay + width:  # after the set: width 0 gives no pulse
+                        st[1:] = [0, 0]
             await ReadOnly()
             got = int(dut.pmod_trigs.value)
             for k in range(4):
                 highs[k] += got >> k & 1
-                if (got >> k & 1) != state[k][1] and len(errors) < 5:
-                    errors.append(f"t={cocotb.utils.get_sim_time('ns')} trig {k}: {got >> k & 1}, expected {state[k][1]}")
+                if (got >> k & 1) != state[k][2] and len(errors) < 5:
+                    errors.append(f"t={cocotb.utils.get_sim_time('ns')} trig {k}: {got >> k & 1}, expected {state[k][2]}")
 
     task = cocotb.start_soon(monitor())
-    # once enabled, the counters run without a fiducial and fire once (the
-    # fiducial resets the counter, not the output): settle, then count
-    await tb.soft_trigger(80)
-    highs[:] = [0] * 4
-    for _ in range(3):
-        await tb.soft_trigger(80)
-    first = highs[:]
+    # enabling arms nothing: no pulse until the first wave_trig
+    await tb.lb.write_reg('trig_enables', 0b1111)
+    await ClockCycles(dut.dsp_clk, 100)
+    on_enable = highs[:]
+    widths = [w for _, w in cfg]
+
+    async def high_clocks(n_trig, gap=80):
+        """High clocks of each trigger over n_trig wave_trigs gap clocks apart."""
+        start = highs[:]
+        for _ in range(n_trig):
+            await tb.soft_trigger(gap)
+        return [h - s for h, s in zip(highs, start)]
+
+    three = await high_clocks(3)
+    # a latched interlock stops trigger 0 only
     dut.intlk_latch_in.value = 0b10
-    await tb.soft_trigger(80)
+    latched = await high_clocks(1)
     dut.intlk_latch_in.value = 0
+    # trig_enables gates each trigger
     await tb.lb.write_reg('trig_enables', 0b0101)
+    gated = await high_clocks(1)
+    spaced = restarts[:]
+    # back-to-back wave_trigs restart the pulses in flight; trigger 3 with
+    # width 0 (the boot value) never goes high
+    await tb.lb.write_reg('trig_3_width', 0)
+    await tb.lb.write_reg('trig_enables', 0b1111)
+    await ClockCycles(dut.dsp_clk, 50)  # register crossing into dsp_clk
+    cfg[3][1] = 0
+    before = highs[:]
+    await tb.soft_trigger(25)  # into the pulses of triggers 2 and 3
     await tb.soft_trigger(80)
     task.cancel()
     assert not errors, "\n".join(errors)
-    assert first == [3 * w for _, w in cfg], f"high clocks per trigger {first}"
-    assert highs[0] == first[0] + cfg[0][1], "latched interlock did not stop trigger 0"
-    assert highs[1] == first[1] + cfg[1][1] and highs[3] == first[3] + cfg[3][1], "enables"
-    assert highs[2] == first[2] + 2 * cfg[2][1]
+    assert on_enable == [0] * 4, f"enabling fired triggers: high clocks {on_enable}"
+    assert three == [3 * w for w in widths], f"high clocks over 3 wave_trigs {three}"
+    assert latched == [0] + widths[1:], f"interlock latch: high clocks {latched}"
+    assert gated == [widths[0], 0, widths[2], 0], f"trig_enables 0b0101: high clocks {gated}"
+    assert spaced == [0] * 4, f"wave_trigs 80 clocks apart restarted a pulse: {spaced}"
+    assert any(restarts[:3]), f"back-to-back wave_trigs restarted no pulse: {restarts}"
+    assert highs[3] == before[3], "trigger 3 with width 0 went high"
+    cocotb.log.info(f'PMOD triggers: high clocks {highs}, restarts {restarts}')
 
 
 @cocotb.test(timeout_time=200, timeout_unit='us')
