@@ -7,7 +7,7 @@ This directory contains the DSP configuration and static register mapping for th
 - **Frequency Configuration (`FSET`)**: `LEMP`
 - **`llrf_shell` Flavor**: **LEMP** (`llrf_shell.sv`, plan step 9c): the base shell's blocks (ADC 6 and 7, beam voltage and current, as DC channels on the monitor path) plus the LEMP features of the LEMP branch (2e25cd9):
   - one master trigger, as in the other designs (plan D27): `wave_trig_sel` alone selects the source of `wave_trig`. EVR (3), the LEMP operating mode, selects the EVR trigger of `timing_core_local.v`: after each fiducial (event 1) it fires once if accelerate (151) or standby (152) came within the window (`event_sel` 151: accelerate, else standby; 152: standby only), and `wave_trig` follows it by that mode's delay (`trig_acc_delay`, `trig_stb_delay`); `trigger_delay` delays every source;
-  - four PMOD triggers (`triggers.sv`, `trig_N_width`/`trig_N_delay` as `cfg_dsp.trig[N]`, `trig_enables`), restarted by `wave_trig` and firing `trig_N_delay` after it; an interlock latch stops trigger 0 (modulator);
+  - four PMOD triggers (`triggers.sv`, `trig_N_width`/`trig_N_delay` as `cfg_dsp.trig[N]`, `trig_enables`), one-shots restarted by `wave_trig` and firing `trig_N_delay` after it; an interlock latch stops trigger 0 (modulator);
   - per-loop phase shift `loopN_phs_shift` from `loopN_phs_shift_delay` dsp clocks into the pulse to its end, at clock resolution whatever `pulse_res_shift` is (D28);
   - the DAC permit latch: any latched interlock (`intlk_latch_in`) turns both drives off; `wave_trig` re-arms them from `soft_driveN_enable`;
   - SSSB control (`sssb_rf_switch`, `sssb_rst`, inverted outputs; `sssb_alarm`, `sssb_rf_status` status);
@@ -50,6 +50,10 @@ flowchart LR
   - The trigger comes with its mode delay, `trig_acc_delay` or `trig_stb_delay`. So `wave_trig`, the RF pulse and the PMOD triggers shift together between accelerate and standby timing.
   - In the other designs, `timing_core`'s EVR trigger is a single programmable event code (`evcode`). LEMP operation is `wave_trig_sel` = EVR (3), with `event_sel` and the two mode delays set from software.
 - **PMOD triggers** (`triggers.sv`): four delay/width pulses for external devices, restarted by `wave_trig` and firing `trig_N_delay` dsp clocks after it, `trig_N_width` clocks long, each enabled by a `trig_enables` bit. A latched interlock blocks trigger 0, the modulator trigger.
+  - Each trigger is a one-shot: one pulse per `wave_trig`, then idle until the next one. Enabling a trigger fires nothing until the next `wave_trig`.
+  - A `wave_trig` during a pulse ends it and starts a new one, `trig_N_delay` after the new trigger.
+  - `trig_N_width` = 0 gives no pulse.
+  - These fix three quirks of the LEMP branch's `triggers.v`: width 0 left the output high, enabling fired once without a trigger, and a trigger during a pulse stretched it.
 - **DAC permit latch:** any latched interlock (`intlk_latch_in` from `interlock_wrapper`, plan step 9d) turns both drives off at once. The next `wave_trig` re-arms them from `soft_driveN_enable`, so a changed enable also takes effect at the next trigger.
 - **Rates:** `evr_frequency_event1..4` (the four event codes), `acc_cycles` and `stb_cycles` (the accelerate and standby triggers). They are counted on `dsp_clk`, gated by the events, and read as status words.
 
