@@ -1,0 +1,116 @@
+[*]
+[*] GTKWave Analyzer v3.3.118 (w)1999-2023 BSI
+[*] Wed Sep 18 22:09:55 2024
+[*]
+[dumpfile] "/u1/donna/WORKING/LEMP_LCLS-I/uspas_llrf/interlock/interlock_wrapper.vcd"
+[dumpfile_mtime] "Wed Sep 18 22:07:09 2024"
+[dumpfile_size] 16747008
+[savefile] "/u1/donna/WORKING/LEMP_LCLS-I/uspas_llrf/interlock/interlock_wrapper_kr_amp.gtkw"
+[timestart] 672000
+[size] 2550 1384
+[pos] -1 -1
+*-18.000000 1058400 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] interlock_wrapper_tb.
+[treeopen] interlock_wrapper_tb.dut.
+[treeopen] interlock_wrapper_tb.dut.kr_amp_phs.
+[sst_width] 275
+[signals_width] 319
+[sst_expanded] 1
+[sst_vpaned_height] 465
+@420
+interlock_wrapper_tb.cc
+@28
+interlock_wrapper_tb.dsp_clk
+@88420
+interlock_wrapper_tb.dds_sin[17:0]
+@20000
+-
+@88022
+interlock_wrapper_tb.dds_cos[17:0]
+@20000
+-
+@28
+interlock_wrapper_tb.fiducial
+@200
+-
+@8420
+interlock_wrapper_tb.adc[15:0]
+@20000
+-
+@8420
+interlock_wrapper_tb.dut.kly_rev_in[15:0]
+@20000
+-
+-
+@28
+interlock_wrapper_tb.dut.kr_amp_max_rst
+@200
+-
+@22
+interlock_wrapper_tb.beam_cur_in[15:0]
+@200
+-
+@22
+interlock_wrapper_tb.beam_vol_in[15:0]
+@200
+-
+@28
+interlock_wrapper_tb.dut.mod_permit
+interlock_wrapper_tb.dut.status_modulator
+@200
+-
+@28
+interlock_wrapper_tb.init_done
+interlock_wrapper_tb.fail
+@200
+-
+-adc_to_amp_phs
+@8420
+interlock_wrapper_tb.kly_rev_in[15:0]
+@20000
+-
+-
+@200
+-wash_filter
+@28
+interlock_wrapper_tb.dut.kr_amp_phs.wash_filter.rst
+interlock_wrapper_tb.dut.kr_amp_phs.wash_filter.clk
+@22
+interlock_wrapper_tb.dut.kr_amp_phs.wash_filter.a_data[15:0]
+interlock_wrapper_tb.dut.kr_amp_phs.wash_filter.o_data[15:0]
+@200
+-noniq_ddc
+@28
+interlock_wrapper_tb.dut.kr_amp_phs.noniq_ddc.i_sel
+@22
+interlock_wrapper_tb.dut.kr_amp_phs.noniq_ddc.o_data[16:0]
+@200
+-fiq_interp
+@28
+interlock_wrapper_tb.dut.kr_amp_phs.interp.a_trig
+@22
+interlock_wrapper_tb.dut.kr_amp_phs.interp.q_data[17:0]
+@200
+-cordicg_b22
+@22
+interlock_wrapper_tb.dut.kr_amp_phs.rx_cordic.xin[17:0]
+interlock_wrapper_tb.dut.kr_amp_phs.rx_cordic.yin[17:0]
+@8420
+interlock_wrapper_tb.dut.kly_rev_out[17:0]
+@20000
+-
+-
+@22
+interlock_wrapper_tb.dut.kr_amp_thr[16:0]
+@28
+interlock_wrapper_tb.dut.kly_rev_above_thr
+@200
+-
+@22
+interlock_wrapper_tb.dut.kr_amp_max[16:0]
+@28
+interlock_wrapper_tb.dut.kr_amp_max_rst
+@200
+-
+[pattern_trace] 1
+[pattern_trace] 0

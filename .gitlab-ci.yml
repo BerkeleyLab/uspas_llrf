@@ -59,6 +59,20 @@ llrf_cdc_test:
     paths:
       - designs/uspas/llrf_shell_cdc.txt
 
+lemp_interlock_test:
+  stage: test
+  script:
+    - make -C designs/lemp/interlock
+
+lemp_interlock_cdc_test:
+  stage: test
+  script:
+    - make -C designs/lemp/interlock interlock_wrapper_cdc.txt
+  artifacts:
+    when: always
+    paths:
+      - designs/lemp/interlock/interlock_wrapper_cdc.txt
+
 marble_bsp_test:
   stage: test
   script:
