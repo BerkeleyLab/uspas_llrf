@@ -4,7 +4,8 @@ module timing_core_local #(
     parameter DSP_EV1 = 1,  // Configurable event code to route to dsp_clk.
     parameter DSP_EV2 = 2,
     parameter DSP_EV3 = 3,
-    parameter DSP_EV4 = 4
+    parameter DSP_EV4 = 4,
+    parameter EVR_TRIG_WINDOW = 23800  // dsp clocks to collect ACCL/STBY after a fiducial
 ) (
     input             lb_clk,
     // Fiber interface
@@ -31,7 +32,18 @@ module timing_core_local #(
     output            dsp_event4,   // DSP_EV4
 
     // in lb_clk domain, ready for reading by host
-    output [28*EVENT_NUM-1:0] frequency_events_flat
+    output [28*EVENT_NUM-1:0] frequency_events_flat,
+
+    // EVR trigger (dsp_clk): after each fiducial (DSP_EV3), one strobe if
+    // DSP_EV1 (accelerate) or DSP_EV2 (standby) came within the window, per
+    // event_sel, with its delay (trig_acc_delay or trig_stb_delay)
+    input  [7:0]      event_sel,       // DSP_EV1: accelerate, else standby; DSP_EV2: standby only
+    input  [31:0]     trig_acc_delay,
+    input  [31:0]     trig_stb_delay,
+    output            evr_trig,
+    output [31:0]     evr_delay,
+    output [27:0]     acc_cycles,      // lb_clk: rates of the accelerate and standby triggers
+    output [27:0]     stb_cycles
 );
 
     // ---------------------
@@ -113,20 +125,42 @@ module timing_core_local #(
     flag_xdomain i_hb (.clk1(evr_clk), .flagin_clk1(evr_evstrobe[EVCODE_HEARTBEAT_MARKER]),
                         .clk2(dsp_clk), .flagout_clk2(dsp_hb_marker));
 
-    // Measure event code frequency
-    wire [EVENT_NUM-1:0] dsp_events = {dsp_event1, dsp_event2, dsp_event3, dsp_event4};
+    // Measure event code frequency: dsp_clk cycles with the strobe high (the
+    // strobes gate the counter, no gated clocks); [27:0] is DSP_EV1
+    wire [EVENT_NUM-1:0] dsp_events = {dsp_event4, dsp_event3, dsp_event2, dsp_event1};
     reg ref_strobe=0;  reg [27:0] ref_cnt=0;
     always @(posedge lb_clk) {ref_strobe, ref_cnt} <= ref_cnt + 1'b1;
 
     genvar freq_i;
     generate for(freq_i=0; freq_i<EVENT_NUM; freq_i=freq_i+1) begin: freq_gcount_logic
         freq_gcount fcounter(
-            .f_in(dsp_events[freq_i]),
-            .g_in(1'b1),
+            .f_in(dsp_clk),
+            .g_in(dsp_events[freq_i]),
             .sysclk(lb_clk),
             .ref_strobe(ref_strobe),
             .frequency(frequency_events_flat[28*(freq_i+1)-1:28*freq_i])
         );
     end endgenerate
+
+    // EVR trigger: one decision per fiducial (from the LEMP branch's
+    // fiducial_int_gen); event_strobes in its order ACCL, STBY, fiducial
+    fiducial_int_gen #(
+        .EVENT_NUM       (EVENT_NUM),
+        .EV_ACCL         (DSP_EV1),
+        .EV_STBY         (DSP_EV2),
+        .CYCLE_COUNT_MAX (EVR_TRIG_WINDOW)
+    ) evr_trig_gen (
+        .lb_clk          (lb_clk),
+        .dsp_clk         (dsp_clk),
+        .reset           (1'b0),
+        .event_strobes   ({dsp_event4, dsp_event3, dsp_event2, dsp_event1}),
+        .event_sel       (event_sel),
+        .trig_acc_delay  (trig_acc_delay),
+        .trig_stb_delay  (trig_stb_delay),
+        .fiducial_int    (evr_trig),
+        .global_delay    (evr_delay),
+        .acc_cycles      (acc_cycles),
+        .stb_cycles      (stb_cycles)
+    );
 
 endmodule

@@ -14,7 +14,8 @@ def wrap_signed(value, width):
 
 class PulseGen:
     """pulse_gen.v: pulse_dval for count in [start, start+high_len),
-    pulse_idx = (count - start) >> res registered with pulse_dval."""
+    pulse_idx = (count - start) >> res and pulse_clk = count - start
+    registered with pulse_dval."""
 
     def __init__(self, aw=32):
         self.aw = aw
@@ -25,6 +26,7 @@ class PulseGen:
         self.counting = 0
         self.dval = 0
         self.idx = 0
+        self.clk = 0
 
     @property
     def last(self):
@@ -46,7 +48,8 @@ class PulseGen:
         else:
             pc = 0
         self.dval = int(in_pulse)
-        self.idx = (((self.pc - start) & self.mask) >> res) if in_pulse else 0
+        self.clk = ((self.pc - start) & self.mask) if in_pulse else 0
+        self.idx = self.clk >> res
         self.end_val = (start + high_len) & self.mask1
         self.pc = pc
         self.counting = counting

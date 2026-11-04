@@ -1,4 +1,5 @@
 import argparse
+import dataclasses
 import pprint
 import numpy as np
 import json
@@ -71,7 +72,7 @@ class LLRFShell(LLRF_DSP):
         """
         int_trig_period = self.config['DEN_DDS'] * \
             round(1e9 / self.config['DSP_CLK_CYCLE'] / self.config['DEN_DDS'] / int_trig_rate_hz)
-        self.init_regs = self.LLRFInitRegisters(
+        regs = dict(
             rx_dds_amplitude=self.rx.dds.amp,
             rx_dds_phase_shift=self.encode_phase(-self.rx.dds.phase_shift_deg),
             rx_dds_phase_step=self.rx.dds.phase_step,
@@ -108,8 +109,11 @@ class LLRFShell(LLRF_DSP):
             # uses the IQ waveforms and snapshots on sig_buf transfer.
             slow_snap_cic=self.config['SLOW_SNAP_CIC'],
             int_trigger_period=int_trig_period,
-            evcode=self.config['EVCODE']
         )
+        # EVR event code of timing_core (not in the LEMP map: timing_core_local)
+        if 'evcode' in {f.name for f in dataclasses.fields(self.LLRFInitRegisters)}:
+            regs['evcode'] = self.config['EVCODE']
+        self.init_regs = self.LLRFInitRegisters(**regs)
 
     @property
     def rx_iq_gain(self):

@@ -25,6 +25,8 @@ LIB_SRC += $(addprefix $(SERIAL_IO_DIR)/EVG_EVR/, $(EVR_SRC))
 LIB_SRC += $(BEDROCK_DIR)/cordic/cstageg.v $(BEDROCK_DIR)/cordic/addsubg.v
 LIB_SRC += $(BEDROCK_DIR)/localbus/jit_rad_gateway.v
 LIB_SRC += cordicg_b22.v
+# design-specific sources (designs/<d>/Makefile, before this file)
+LIB_SRC += $(DESIGN_LIB_SRC)
 
 VFLAGS_DEP += -I$(GEN_DIR)
 VFLAGS += -g2012
@@ -37,7 +39,7 @@ cordicg_b22.v:
 SV_SRC  = $(APP_DSP_DIR)/llrf_shell_pkg.sv $(GEN_DIR)/llrf_shell_regmap_pkg.sv
 SV_SRC += $(addprefix $(APP_DSP_DIR)/, monitor_inlk.sv arc_inlk.sv ntw_analyzer.sv loop_ctrl.sv)
 SV_SRC += $(addprefix $(APP_DSP_DIR)/, lb_xdomain.sv lb_rd_mux.sv rx_chain.sv tx_chain.sv diag.sv loops.sv)
-SV_SRC += $(GEN_DIR)/llrf_shell_regs.sv $(SHELL_SRC)
+SV_SRC += $(DESIGN_SV_SRC) $(GEN_DIR)/llrf_shell_regs.sv $(SHELL_SRC)
 
 $(GEN_DIR)/%_regmap_pkg.sv $(GEN_DIR)/%_regs.sv $(GEN_DIR)/%.json: $(REGMAP_PY) $(DESIGN_PY)
 	$(PYTHON) $(REGMAP_PY) $(addprefix -d ,$(DESIGN_PY)) -o $(GEN_DIR)

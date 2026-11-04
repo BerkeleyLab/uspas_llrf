@@ -112,7 +112,8 @@ pulse_gen #(.AW(32)) sig_buf_trig_gen (
     .res        (4'd0),
     .pulse_dval (sig_buf_dval),
     .pulse_last (sig_buf_last),
-    .pulse_idx  ()
+    .pulse_idx  (),
+    .pulse_clk  ()
 );
 
 genvar ch;
@@ -187,7 +188,8 @@ pulse_gen #(.AW(32)) cbuf_trig_gen (
     .res        (4'd0),
     .pulse_dval (cbuf_trig),
     .pulse_last (),
-    .pulse_idx  ()
+    .pulse_idx  (),
+    .pulse_clk  ()
 );
 
 wire [CBUF_DW-1:0] cbuf_out;

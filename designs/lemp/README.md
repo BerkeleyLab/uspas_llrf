@@ -5,10 +5,57 @@ This directory contains the DSP configuration and static register mapping for th
 ## Design Architecture & Shell Flavor
 
 - **Frequency Configuration (`FSET`)**: `LEMP`
-- **`llrf_shell` Flavor**: **Baseline** (`SHELL_SRC = ../uspas/llrf_shell.sv` in the Makefile)
-- **Register map**: the base map in `uspas_llrf/regmap.py`, with `design.py` (1k signal buffers, `iq_buf` window)
-- **Testbench**: Uses unified cocotb runner `tb/llrf_shell/` based on `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell`.
-- **LEMP-only blocks** (from the LEMP branch, not yet in a shell; LEMP's own shell comes in plan step 9): `fiducial_int_gen.v` (fiducial and event-strobe timing; test in `tb/fiducial_int_gen/`), `triggers.v` (PMOD trigger pulse; test in `tb/triggers/`), `timing_core_local.v` (LEMP variant of the EVR timing core). `make -C tb` runs the block tests.
+- **`llrf_shell` Flavor**: **LEMP** (`llrf_shell.sv`, plan step 9c): the base shell's blocks (ADC 6 and 7, beam voltage and current, as DC channels on the monitor path) plus the LEMP features of the LEMP branch (2e25cd9):
+  - one master trigger, as in the other designs (plan D27): `wave_trig_sel` alone selects the source of `wave_trig`. EVR (3), the LEMP operating mode, selects the EVR trigger of `timing_core_local.v`: after each fiducial (event 1) it fires once if accelerate (151) or standby (152) came within the window (`event_sel` 151: accelerate, else standby; 152: standby only), and `wave_trig` follows it by that mode's delay (`trig_acc_delay`, `trig_stb_delay`); `trigger_delay` delays every source;
+  - four PMOD triggers (`triggers.sv`, `trig_N_width`/`trig_N_delay` as `cfg_dsp.trig[N]`, `trig_enables`), one-shots restarted by `wave_trig` and firing `trig_N_delay` after it; an interlock latch stops trigger 0 (modulator);
+  - per-loop phase shift `loopN_phs_shift` from `loopN_phs_shift_delay` dsp clocks into the pulse to its end, at clock resolution whatever `pulse_res_shift` is (D28);
+  - the DAC permit latch: any latched interlock (`intlk_latch_in`) turns both drives off; `wave_trig` re-arms them from `soft_driveN_enable`;
+  - SSSB control (`sssb_rf_switch`, `sssb_rst`, inverted outputs; `sssb_alarm`, `sssb_rf_status` status);
+  - `timing_core_local.v` (event codes 151, 152, 1, 10 to `evr_events`, their rates as `evr_frequency_event1..4`; the EVR trigger from `fiducial_int_gen.v`; rates counted on `dsp_clk`, gated by the events).
+- **Register map**: the base map in `uspas_llrf/regmap.py` with `design.py`: 1k signal buffers, the `iq_buf` window, the LEMP registers and status words (addresses from the allocator), and the intended differences from the LEMP-branch map (checked by `test_regmap_compat`)
+- **Testbench**: `tb/llrf_shell/` subclasses `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell` (DC channels excluded from loopback, the DAC permit armed after boot) and adds `test_dc`, `test_sssb`, `test_dac_permit`, `test_phs_shift`, `test_pmod_triggers` and `test_evr_trig`. `make -C tb` runs the block tests of `fiducial_int_gen`, `triggers` and `timing_core_local`.
+
+---
+
+## Timing and Trigger Scheme
+
+What differs from the other designs: where the EVR trigger comes from, the four PMOD triggers, and the DAC permit latch. As in every design, `wave_trig` is the one master trigger: `wave_trig_sel` selects its source, `trigger_delay` delays it, and it starts the RF pulse in both loops (`loopN_pulse_start`, `loopN_pulse_high_len`), the buffer captures (after `buf_delay`) and `trig_out`.
+
+```mermaid
+flowchart LR
+    subgraph EVR["timing_core_local (EVR, gt_rxclk to dsp_clk)"]
+        direction TB
+        EV["event codes<br/>1 fiducial, 151 ACCL,<br/>152 STBY, 10 TS1&4"]
+        WIN["fiducial window<br/>(23800 dsp clocks after event 1)<br/>collects 151 / 152"]
+        DEC{"event_sel<br/>151: ACCL, else STBY<br/>152: STBY only"}
+        EV --> WIN --> DEC
+    end
+    DEC -- "evr_trig +<br/>trig_acc_delay or<br/>trig_stb_delay" --> MUX
+    SRC["Internal, External,<br/>Software, Mixed"] --> MUX{"wave_trig_sel<br/>(EVR = 3)"}
+    MUX --> DLY["delay:<br/>trigger_delay<br/>(+ mode delay for EVR)"]
+    DLY -- wave_trig --> LOOPS["loops: RF pulse,<br/>modulation, phase shift"]
+    DLY -- wave_trig --> DIAG["diag: buffer captures,<br/>trig_out"]
+    DLY -- "wave_trig (restart)" --> PMOD["4 PMOD triggers<br/>trig_N_delay, trig_N_width,<br/>trig_enables"]
+    DLY -- "wave_trig (re-arm)" --> PERM["DAC permit latch<br/>soft_driveN_enable"]
+    INTLK["intlk_latch_in<br/>(interlock_wrapper)"] -- "clear both drives" --> PERM
+    INTLK -- "block trigger 0" --> PMOD
+    PERM -- drive_permit --> LOOPS
+    EV -. "evr_events[3:0]" .-> OUT["PMOD2 monitor (top level)"]
+    PMOD -. "pmod_trigs[3:0]:<br/>modulator, SSSB, scope, spare" .-> PINS["PMOD1, HDMI LVDS (top level)"]
+```
+
+- **EVR trigger** (`timing_core_local.v`, with `fiducial_int_gen.v` inside):
+  - Of the four event codes routed to `dsp_clk` (`evr_events`), three decide the trigger. The fiducial (1) opens a window; accelerate (151) and standby (152) are collected in it. Event 10 is only routed out and rate-counted.
+  - At the window's end, `event_sel` picks the trigger: 151 takes accelerate if it came, else standby; 152 takes standby only; other values never fire.
+  - The trigger comes with its mode delay, `trig_acc_delay` or `trig_stb_delay`. So `wave_trig`, the RF pulse and the PMOD triggers shift together between accelerate and standby timing.
+  - In the other designs, `timing_core`'s EVR trigger is a single programmable event code (`evcode`). LEMP operation is `wave_trig_sel` = EVR (3), with `event_sel` and the two mode delays set from software.
+- **PMOD triggers** (`triggers.sv`): four delay/width pulses for external devices, restarted by `wave_trig` and firing `trig_N_delay` dsp clocks after it, `trig_N_width` clocks long, each enabled by a `trig_enables` bit. A latched interlock blocks trigger 0, the modulator trigger.
+  - Each trigger is a one-shot: one pulse per `wave_trig`, then idle until the next one. Enabling a trigger fires nothing until the next `wave_trig`.
+  - A `wave_trig` during a pulse ends it and starts a new one, `trig_N_delay` after the new trigger.
+  - `trig_N_width` = 0 gives no pulse.
+  - These fix three quirks of the LEMP branch's `triggers.v`: width 0 left the output high, enabling fired once without a trigger, and a trigger during a pulse stretched it.
+- **DAC permit latch:** any latched interlock (`intlk_latch_in` from `interlock_wrapper`, plan step 9d) turns both drives off at once. The next `wave_trig` re-arms them from `soft_driveN_enable`, so a changed enable also takes effect at the next trigger.
+- **Rates:** `evr_frequency_event1..4` (the four event codes), `acc_cycles` and `stb_cycles` (the accelerate and standby triggers). They are counted on `dsp_clk`, gated by the events, and read as status words.
 
 ---
 
@@ -163,4 +210,8 @@ flowchart LR
 | `dac_drive_sel` | 2-bit unsigned | RW | DAC multiplexer selection (`2`: I0I1) |
 | `prl_adc_chan` | 3-bit unsigned | RW | Phase reference channel (`3`) |
 | `loop0_adc_chan`, `loop1_adc_chan` | 3-bit unsigned | RW | Loop 0/1 feedback channel (`0`) |
-| `evcode` | 8-bit unsigned | RW | Event receiver trigger code (`151`) |
+| `event_sel` | 8-bit unsigned | RW | EVR trigger mode (151: accelerate, falls back to standby; 152: standby) |
+| `trig_acc_delay`, `trig_stb_delay` | 32-bit unsigned | RW | EVR trigger delay in accelerate / standby mode (dsp clocks) |
+| `trig_enables`, `trig_N_width`, `trig_N_delay` | 4-, 32-bit unsigned | RW | PMOD triggers 0..3: enables, width and delay after `wave_trig` (dsp clocks) |
+| `loopN_phs_shift`, `loopN_phs_shift_delay` | 18-bit signed, 32-bit unsigned | RW | Loop N phase step and its start in the pulse (dsp clocks) |
+| `sssb_rf_switch`, `sssb_rst` | 1-bit unsigned | RW | SSSB RF switch and reset (outputs inverted) |

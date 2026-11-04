@@ -2,7 +2,9 @@
 // high while the count is in [start, start+high_len), and pulse_last flags the
 // end of the pulse. pulse_idx = (count - start) >> res is registered with
 // pulse_dval (valid while pulse_dval is high, 0 otherwise) and indexes
-// per-pulse lookup tables, one entry per 2^res strobes.
+// per-pulse lookup tables, one entry per 2^res strobes. pulse_clk =
+// count - start, registered the same way: the strobe count into the pulse,
+// at full resolution whatever res is.
 module pulse_gen #(
     parameter AW=12,
     parameter RW=4
@@ -15,7 +17,8 @@ module pulse_gen #(
     input [RW-1:0] res,
     output pulse_last,
     output reg pulse_dval,
-    output reg [AW-1:0] pulse_idx
+    output reg [AW-1:0] pulse_idx,
+    output reg [AW-1:0] pulse_clk
 );
 
 // AW+1 bits, so start + high_len cannot wrap
@@ -46,6 +49,7 @@ always @(posedge clk) begin
         pc <= 0;
     pulse_dval <= in_pulse;
     pulse_idx  <= in_pulse ? pc_rel[AW-1:0] >> res : {AW{1'b0}};
+    pulse_clk  <= in_pulse ? pc_rel[AW-1:0] : {AW{1'b0}};
 end
 assign  pulse_last = counting && is_last;
 endmodule

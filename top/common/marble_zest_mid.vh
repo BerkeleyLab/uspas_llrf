@@ -218,6 +218,7 @@ llrf_shell #(
     // to wave trigger
     .trig_out        (trig_from_dsp),  // output
     .ext_trigger     (trig_to_dsp)   // input
+`include "design_shell_ports.vh"
 );
 
 // ----------------------------------

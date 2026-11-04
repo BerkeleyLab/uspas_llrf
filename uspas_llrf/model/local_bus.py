@@ -75,6 +75,10 @@ class LocalbusAppMaster(LocalBusMaster):
         self.reg_map = RegisterMap(regmap_json_path)
         super().__init__(entity, clock, name, read_latency, **kwargs)
 
+    def has_reg(self, reg_name):
+        """Whether the register map has reg_name (design maps differ)."""
+        return getattr(self.reg_map, reg_name, None) is not None
+
     async def write_reg(self, reg_name, data, offset=0):
         """Write data to a register by name."""
         reg = getattr(self.reg_map, reg_name, None)

@@ -6,7 +6,7 @@ COCOTB_TOPLEVEL       = test_llrf_shell
 COCOTB_TEST_MODULES   = test_llrf_shell
 
 VERILOG_SOURCES += $(DESIGN_DSP_DIR)/llrf_shell_expand.v
-VERILOG_SOURCES += $(APP_DSP_DIR)/test_llrf_shell.sv
+VERILOG_SOURCES += test_llrf_shell.sv  # LEMP ports
 CUSTOM_SIM_DEPS += $(DESIGN_DSP_DIR)/llrf_shell.json
 
 # module parameters

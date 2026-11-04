@@ -1,6 +1,7 @@
 from uspas_llrf import (LLRFShell, DacDriveSel, LocalbusAppMaster,
                         InlkFaultMode, wrap_phase, clip_int, dsp_config,
                         PulseModulator, WaveTrigSel, gen_mod_tables)
+from pathlib import Path
 import cocotb
 import random
 from cocotb.clock import Clock
@@ -16,7 +17,7 @@ import itertools
 class TB_llrf_shell:
     def __init__(self, dut, f_config='USPAS', wave_samp_per=1,
                  amp_exp=None, phs_exp=None,
-                 regmap_json_path='llrf_shell.json'):
+                 regmap_json_path='llrf_shell.json', dc_adcs=()):
         dut._log.setLevel(logging.INFO)
         self.dut = dut
         self.cbuf_aw = dut.CBUF_AW.value.to_unsigned()
@@ -30,7 +31,11 @@ class TB_llrf_shell:
         config['TX_AFE_SPECTRAL_FLIP'] = False
         # Force CW mode to allow loop tests
         config['DRV0_PULSE_MODE'] = config['DRV1_PULSE_MODE'] = 0
-        self.llrf = llrf = LLRFShell(config, wave_samp_per=wave_samp_per)
+        # boot-time registers of the design whose map the TB reads
+        # (designs/<design>/llrf_shell.json), e.g. LEMP has no evcode
+        json_dir = Path(regmap_json_path).resolve().parent
+        design = json_dir.name if json_dir.parent.name == 'designs' else None
+        self.llrf = llrf = LLRFShell(config, wave_samp_per=wave_samp_per, design=design)
         self.lb = LocalbusAppMaster(
             dut, dut.lb_clk, regmap_json_path=regmap_json_path)
         self.log_banner(f'Simulating: {f_config}')
@@ -50,10 +55,12 @@ class TB_llrf_shell:
         self.loopback_dac, self.feedback_dac = 0, 1
         self.feedback_adc = self.llrf.feedback_adc
         self.phaseref_adc = self.llrf.phaseref_adc
-        # pick a random available ADC channel for loopback test
+        # pick a random available ADC channel for loopback test; DC channels
+        # (dc_adcs, LEMP beam voltage and current) bypass the DDC on the monitor path
+        self.dc_adcs = tuple(dc_adcs)
         available_adcs = [
             ch for ch in range(8)
-            if ch not in [self.phaseref_adc, self.feedback_adc]]
+            if ch not in [self.phaseref_adc, self.feedback_adc, *self.dc_adcs]]
         self.loopback_adc = random.choice(available_adcs)
         cocotb.log.warning(
             f'phaseref_adc: {self.phaseref_adc}, '
@@ -594,13 +601,18 @@ class TB_llrf_shell:
         for name, value in regs.items():
             await self.lb.write_reg(name, value)
         await ClockCycles(dut.dsp_clk, 50)  # register crossing into dsp_clk
+        lc = self.shell_sig('gen_loops')[n].loop_ctrl
+        # a trigger from the previous selection (Always: circle buffer sync) can
+        # start a pulse before Software takes effect; the model starts idle, so
+        # let that pulse end first
+        while int(lc.pulse_gen.counting.value):
+            await RisingEdge(dut.dsp_clk)
 
         model = PulseModulator(18, 32, mod_aw)
         for k, v in cfg.items():
             setattr(model, k, v)
         model.amp_mod_table[:n_tab] = [a & mask for a in amp_tab]
         model.phs_mod_table[:n_tab] = [p & mask for p in phs_tab]
-        lc = self.shell_sig('gen_loops')[n].loop_ctrl
         errors, seen = [], {'dval': 0, 'amp_gate': 0}
 
         async def monitor(n_cycles):
