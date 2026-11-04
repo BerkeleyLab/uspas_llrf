@@ -1,0 +1,78 @@
+[*]
+[*] GTKWave Analyzer v3.3.118 (w)1999-2023 BSI
+[*] Thu Oct  3 20:14:46 2024
+[*]
+[dumpfile] "/u1/donna/WORKING/LEMP_LCLS-I/uspas_llrf/interlock/interlock_wrapper.vcd"
+[dumpfile_mtime] "Thu Oct  3 20:05:35 2024"
+[dumpfile_size] 24343514
+[savefile] "/u1/donna/WORKING/LEMP_LCLS-I/uspas_llrf/interlock/test_amplitude.gtkw"
+[timestart] 0
+[size] 2549 1384
+[pos] 0 -1
+*-20.982340 13843200 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] interlock_wrapper_tb.
+[sst_width] 275
+[signals_width] 451
+[sst_expanded] 1
+[sst_vpaned_height] 451
+@200
+-
+-KLYSTRON REVERSE TEST
+@28
+interlock_wrapper_tb.fiducial
+interlock_wrapper_tb.dut.kly_rev_above_thr
+@22
+interlock_wrapper_tb.dut.intlk_firstf[7:0]
+interlock_wrapper_tb.dut.intlk_fault[7:0]
+interlock_wrapper_tb.dut.intlk_latch[7:0]
+@200
+-
+@22
+interlock_wrapper_tb.dut.kr_amp_max[17:0]
+interlock_wrapper_tb.dut.kr_amp_thr[17:0]
+@200
+-
+-
+-BEAM VOLTAGE TEST
+@28
+interlock_wrapper_tb.fiducial
+interlock_wrapper_tb.dut.beam_vol_above_thr
+@22
+interlock_wrapper_tb.dut.intlk_fault[7:0]
+interlock_wrapper_tb.dut.intlk_latch[7:0]
+interlock_wrapper_tb.dut.intlk_intlk_reset[7:0]
+interlock_wrapper_tb.dut.intlk_intlk_byp[7:0]
+@200
+-
+@420
+interlock_wrapper_tb.dut.beam_vol_in[15:0]
+@22
+interlock_wrapper_tb.dut.beam_vol_max[15:0]
+interlock_wrapper_tb.dut.beam_vol_min[15:0]
+@420
+interlock_wrapper_tb.dut.beam_vol_thr[15:0]
+@200
+-
+-
+-BEAM CURRENT TEST
+@28
+interlock_wrapper_tb.fiducial
+interlock_wrapper_tb.dut.beam_cur_above_thr
+@22
+interlock_wrapper_tb.dut.intlk_fault[7:0]
+interlock_wrapper_tb.dut.intlk_latch[7:0]
+interlock_wrapper_tb.dut.intlk_intlk_reset[7:0]
+interlock_wrapper_tb.dut.intlk_intlk_byp[7:0]
+@200
+-
+@420
+interlock_wrapper_tb.dut.beam_cur_in[15:0]
+@22
+interlock_wrapper_tb.dut.beam_cur_max[15:0]
+interlock_wrapper_tb.dut.beam_cur_min[15:0]
+@420
+interlock_wrapper_tb.dut.beam_cur_thr[15:0]
+@200
+-
+[pattern_trace] 1
+[pattern_trace] 0

@@ -1,0 +1,137 @@
+[*]
+[*] GTKWave Analyzer v3.3.118 (w)1999-2023 BSI
+[*] Mon Sep 30 01:05:22 2024
+[*]
+[dumpfile] "/u1/donna/WORKING/LEMP_LCLS-I/uspas_llrf/interlock/interlock_wrapper.vcd"
+[dumpfile_mtime] "Mon Sep 30 01:03:02 2024"
+[dumpfile_size] 914876
+[savefile] "/u1/donna/WORKING/LEMP_LCLS-I/uspas_llrf/interlock/interlock_wrapper_test.gtkw"
+[timestart] 0
+[size] 2550 1384
+[pos] -1 -1
+*-19.884035 3830400 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] interlock_wrapper_tb.
+[treeopen] interlock_wrapper_tb.dut.
+[treeopen] interlock_wrapper_tb.dut.kr_amp_phs.
+[sst_width] 275
+[signals_width] 478
+[sst_expanded] 1
+[sst_vpaned_height] 519
+@200
+-INPUT SIGNALS
+-
+@28
+interlock_wrapper_tb.dut.status_modulator
+@200
+-TEST PLL
+@28
+interlock_wrapper_tb.dut.intlk.pll_ok
+interlock_wrapper_tb.dut.test_clock_ok
+@200
+-
+@22
+interlock_wrapper_tb.dut.intlk_intlk_reset[7:0]
+interlock_wrapper_tb.dut.intlk_intlk_byp[7:0]
+@200
+-
+@22
+interlock_wrapper_tb.dut.intlk_fault[7:0]
+interlock_wrapper_tb.dut.intlk_latch[7:0]
+interlock_wrapper_tb.dut.intlk_firstf[7:0]
+@28
+interlock_wrapper_tb.dut.intlk_trig
+@200
+-
+-
+-TEST LO FAULT
+@28
+interlock_wrapper_tb.dut.intlk.lo_fault
+interlock_wrapper_tb.dut.test_lo_fault_r
+@200
+-
+@22
+interlock_wrapper_tb.dut.intlk_intlk_reset[7:0]
+interlock_wrapper_tb.dut.intlk_intlk_byp[7:0]
+@200
+-
+@22
+interlock_wrapper_tb.dut.intlk_fault[7:0]
+interlock_wrapper_tb.dut.intlk_latch[7:0]
+interlock_wrapper_tb.dut.intlk_firstf[7:0]
+@28
+interlock_wrapper_tb.dut.intlk_trig
+@200
+-
+-
+-TEST KR AMPLITUDE FAULT
+@24
+interlock_wrapper_tb.AMPI
+@200
+-
+@420
+interlock_wrapper_tb.dut.kr_amp_phs.wash_filter.a_data[15:0]
+interlock_wrapper_tb.dut.kr_amp_phs.wash_filter.o_data[15:0]
+interlock_wrapper_tb.dut.kr_amp_phs.noniq_ddc.o_data[16:0]
+@20000
+-
+@420
+interlock_wrapper_tb.dut.kr_amp_phs.interp.i_data[17:0]
+interlock_wrapper_tb.dut.kr_amp_phs.interp.q_data[17:0]
+@200
+-
+@24
+interlock_wrapper_tb.dut.kr_amp_phs.rx_cordic.xout[17:0]
+@200
+-
+@23
+interlock_wrapper_tb.dut.kr_amp_thr[17:0]
+@28
+interlock_wrapper_tb.dut.kly_rev_above_thr
+interlock_wrapper_tb.dut.intlk.kr_amp_fault
+@20000
+-
+@28
+interlock_wrapper_tb.dut.kr_amp_max_rst
+@20000
+-
+@22
+interlock_wrapper_tb.dut.intlk_intlk_reset[7:0]
+interlock_wrapper_tb.dut.intlk_intlk_byp[7:0]
+@20000
+-
+@22
+interlock_wrapper_tb.dut.intlk_latch[7:0]
+interlock_wrapper_tb.dut.intlk_fault[7:0]
+interlock_wrapper_tb.dut.intlk_firstf[7:0]
+@20000
+-
+@200
+-
+-
+-
+-
+-TEST BEAM CURRENT AND VOLTAGE FAULT
+@28
+interlock_wrapper_tb.pulse_in
+@200
+-
+-
+-
+-
+-
+-
+-
+-
+@28
+interlock_wrapper_tb.dut.intlk.admin_timeout
+interlock_wrapper_tb.dut.intlk.epics_timeout
+interlock_wrapper_tb.dut.intlk.bov_fault
+interlock_wrapper_tb.dut.intlk.boc_fault
+interlock_wrapper_tb.dut.intlk.kr_amp_fault
+interlock_wrapper_tb.dut.intlk.status_modulator
+@22
+interlock_wrapper_tb.dut.intlk.intlk_byp[7:0]
+interlock_wrapper_tb.dut.intlk.intlk_fault[7:0]
+interlock_wrapper_tb.dut.intlk.intlk_latch[7:0]
+[pattern_trace] 1
+[pattern_trace] 0

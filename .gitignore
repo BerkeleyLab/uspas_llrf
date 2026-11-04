@@ -38,6 +38,13 @@ designs/*/llrf_shell_yosys.json
 *.wdb
 *xsim_*.backup.jou
 llrf_dsp/cordicg_b22.v
+designs/lemp/interlock/cordicg_b22.v
+designs/lemp/interlock/settings.vams
+designs/lemp/interlock/interlock_wrapper.json
+designs/lemp/interlock/interlock_wrapper_expand.v
+designs/lemp/interlock/interlock_wrapper_cdc_expand.v
+designs/lemp/interlock/interlock_wrapper_yosys.json
+designs/lemp/interlock/interlock_wrapper_cdc.txt
 llrf_dsp/tests/*/cordicg_b22.v
 llrf_dsp/llrf_shell_expand.v
 llrf_dsp/llrf_shell_init_regs.json
