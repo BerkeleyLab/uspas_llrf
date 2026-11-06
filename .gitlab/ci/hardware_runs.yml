@@ -1,0 +1,95 @@
+# Hardware runs: program a Marble on the deploy runner with the bitstream
+# from llrf_synthesis and test it. Included by .gitlab-ci.yml.
+.hw_run:
+  stage: run
+  tags:
+    - deploy
+  resource_group: hw_uspas
+  # the rules of the llrf_synthesis instance it needs (same TARGET); a needs
+  # on a job missing from the pipeline makes GitLab reject the pipeline
+  rules:
+    - !reference [.rules, rtl]
+  variables:
+    MARBLE_SERIAL: 42
+    # SoC console tty of that Marble on the runner (no udev /dev/serial/by-id in the job)
+    CONSOLE_PORT: /dev/ttyUSB9
+
+alsu_run:
+  extends: .hw_run
+  variables:
+    TARGET: alsu  # for the rules, as in the llrf_synthesis it needs
+    EVG_F: 125.1e6
+    CLK_F: 458.7e6
+  needs:
+    - job: llrf_synthesis
+      parallel:
+        matrix:
+          - TARGET: alsu
+  script:
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM4 -f ${EVG_F}  # EVG ref
+    - python3 -m uspas_llrf.tools.dual_evg -r
+    - sleep 10
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
+    - cd top/alsu
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL}
+    - sleep 8
+    - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
+    - make system_console_test MARBLE_SERIAL=${MARBLE_SERIAL} CONSOLE_PORT=${CONSOLE_PORT}
+
+awa_run:
+  extends: .hw_run
+  variables:
+    TARGET: awa
+    CLK_F: 1320e6
+  needs:
+    - job: llrf_synthesis
+      parallel:
+        matrix:
+          - TARGET: awa
+  script:
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
+    - cd top/awa
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL}
+    - sleep 8
+    - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
+    - make system_console_test MARBLE_SERIAL=${MARBLE_SERIAL} CONSOLE_PORT=${CONSOLE_PORT}
+
+lemp_run:
+  extends: .hw_run
+  variables:
+    TARGET: lemp
+    EVG_F: 119e6
+    CLK_F: 2856e6
+  needs:
+    - job: llrf_synthesis
+      parallel:
+        matrix:
+          - TARGET: lemp
+  script:
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM4 -f ${EVG_F}  # EVG ref
+    - python3 -m uspas_llrf.tools.dual_evg -r
+    - sleep 10
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
+    - cd top/lemp
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL}
+    - sleep 8
+    - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
+    - make system_console_test MARBLE_SERIAL=${MARBLE_SERIAL} CONSOLE_PORT=${CONSOLE_PORT}
+
+uspas_run:
+  extends: .hw_run
+  variables:
+    TARGET: uspas
+    CLK_F: 460e6
+  needs:
+    - job: llrf_synthesis
+      parallel:
+        matrix:
+          - TARGET: uspas
+  script:
+    - python3 -m uspas_llrf.tools.erasynth_micro -p /dev/ttyACM5 -f ${CLK_F}  # CLK ref
+    - cd top/uspas
+    - make system_config MARBLE_SERIAL=${MARBLE_SERIAL}
+    - sleep 8
+    - make system_test MARBLE_SERIAL=${MARBLE_SERIAL}
+    - make system_console_test MARBLE_SERIAL=${MARBLE_SERIAL} CONSOLE_PORT=${CONSOLE_PORT}
