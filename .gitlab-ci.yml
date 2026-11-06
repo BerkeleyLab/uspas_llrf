@@ -23,34 +23,165 @@ default:
     - pip install -e .
     - sv2v --version  # CI image: v0.0.12-19-g7808819 (doc/developer_guide.md)
 
+# Each job runs only when files it depends on change (rules:changes). In a
+# branch pipeline the push is compared with the branch's previous commit; the
+# first push of a new branch, and pipelines run from the web UI, a schedule
+# or a tag, run every job. A job matches if any of its path groups does.
+# Matrix jobs (TARGET) substitute their own design into the paths, so a
+# design builds and tests only for its own files and the shared ones.
+.paths:
+  # every job: CI, build setup, Python package, bedrock/modbus submodules
+  common: &common
+    - .gitlab-ci.yml
+    - dir_list.mk
+    - settings.mk
+    - pyproject.toml
+    - .gitmodules
+    - submodules/*
+    - submodules/**/*
+  # Python sources of the generated register maps, init values and models
+  regmap_py: &regmap_py
+    - uspas_llrf/*.py
+    - uspas_llrf/settings.json
+    - uspas_llrf/model/**/*.py
+  # what the tests import: the package (its __init__ imports app/) and the
+  # shared testbench; not tools/
+  test_py: &test_py
+    - uspas_llrf/*.py
+    - uspas_llrf/settings.json
+    - uspas_llrf/model/**/*.py
+    - uspas_llrf/app/**/*.py
+    - uspas_llrf/tests/**/*.{py,json}
+  # all Python (flake8)
+  python: &python
+    - uspas_llrf/**/*.{py,json}
+    - llrf_dsp/tests/**/*.py
+  # shell blocks and their tests
+  llrf_dsp: &llrf_dsp
+    - llrf_dsp/**/*.{v,sv,vh,svh,vlt,py,mk}
+    - llrf_dsp/**/Makefile
+  # shell RTL only (no tests)
+  llrf_dsp_rtl: &llrf_dsp_rtl
+    - llrf_dsp/*.{v,sv,vh,svh}
+  # design shells, register maps and their testbenches, all designs
+  designs: &designs
+    - designs/**/*.{v,sv,vh,svh,py,json,mk}
+    - designs/**/Makefile
+  # build rules and the base shell, which alsu, awa and pip-ii also build
+  designs_shared: &designs_shared
+    - designs/rules.mk
+    - designs/uspas/llrf_shell.sv
+  marble_bsp: &marble_bsp
+    - marble_bsp/**/*.{v,vh,json,mk,py,xdc}
+    - marble_bsp/**/Makefile
+  soc_common: &soc_common
+    - soc/common/**/*.{v,vh,sv,c,h,S,lds,mk,py,toml,xdc,txt}
+    - soc/common/**/Makefile
+  top_common: &top_common
+    - top/common/**/*.{v,vh,sv,xdc,tcl,mk,cfg,csv,json}
+  # one design's firmware and bitstream sources (matrix variable TARGET)
+  target_rtl: &target_rtl
+    - designs/$TARGET/*.{v,sv,vh,svh,py}
+    - designs/$TARGET/Makefile
+    - designs/$TARGET/interlock/**/*.{v,vh,json,mk,py}
+    - designs/$TARGET/interlock/Makefile
+    - soc/$TARGET/**/*.{v,vh,sv,c,h,S,lds,mk,py,toml,xdc,txt}
+    - soc/$TARGET/**/Makefile
+    - top/$TARGET/**/*.{v,vh,sv,xdc,tcl,mk,cfg,csv,json}
+    - top/$TARGET/**/Makefile
+  # one design's shell, register map and testbench (matrix variable TARGET)
+  target_tests: &target_tests
+    - designs/$TARGET/**/*.{v,sv,vh,svh,py,json,mk}
+    - designs/$TARGET/**/Makefile
+  # the SoC jobs build with the default DESIGN, uspas
+  soc_uspas: &soc_uspas
+    - designs/uspas/*.{v,sv,vh,svh,py}
+    - designs/uspas/Makefile
+    - soc/uspas/**/*.{v,vh,sv,c,h,S,lds,mk,py,toml,xdc,txt}
+    - soc/uspas/**/Makefile
+
+.rules:
+  soc: &rules_soc
+    - changes: *common
+    - changes: *regmap_py
+    - changes: *llrf_dsp_rtl
+    - changes: *designs_shared
+    - changes: *marble_bsp
+    - changes: *soc_common
+    - changes: *soc_uspas
+
+  # one design's bitstream (TARGET), and the hardware run that needs it
+  rtl: &rules_rtl
+    - changes: *common
+    - changes: *regmap_py
+    - changes: *llrf_dsp_rtl
+    - changes: *designs_shared
+    - changes: *marble_bsp
+    - changes: *soc_common
+    - changes: *top_common
+    - changes: *target_rtl
+
 flake8_check:
   stage: test
+  rules:
+    - changes: *common
+    - changes: *python
   script:
    - flake8 uspas_llrf llrf_dsp/tests
 
 regmap_test:
   stage: test
+  rules:
+    - changes: *common
+    - changes: *test_py
+    - changes: *llrf_dsp_rtl
+    - changes: *designs
   script:
     - pytest uspas_llrf/tests/test_regmap.py
 
 sv_lint:
   stage: test
+  rules:
+    - changes: *common
+    - changes: *regmap_py
+    - changes: *llrf_dsp
+    - changes: *designs
   script:
     - for d in uspas alsu lemp awa pip-ii; do make -C designs/$d lint || exit 1; done
 
 llrf_dsp_test:
   stage: test
+  rules:
+    - changes: *common
+    - changes: *test_py
+    - changes: *llrf_dsp
   script:
     - cd llrf_dsp
     - make
 
 lemp_unit_test:
   stage: test
+  rules:
+    - changes: *common
+    - changes: *test_py
+    - changes: *llrf_dsp_rtl
+    - changes:
+        - designs/rules.mk
+        - designs/lemp/**/*.{v,sv,vh,svh,py,json,mk}
+        - designs/lemp/**/Makefile
   script:
     - make -C designs/lemp/tb
 
 llrf_cdc_test:
   stage: test
+  rules:
+    - changes: *common
+    - changes: *regmap_py
+    - changes: *llrf_dsp_rtl
+    - changes:
+        - designs/rules.mk
+        - designs/uspas/*.{v,sv,vh,svh,py}
+        - designs/uspas/Makefile
   script:
     - cd designs/uspas
     - make llrf_shell_expand.v && make llrf_shell_cdc.txt
@@ -61,11 +192,17 @@ llrf_cdc_test:
 
 lemp_interlock_test:
   stage: test
+  rules: &rules_interlock
+    - changes: *common
+    - changes: *llrf_dsp_rtl
+    - changes:
+        - designs/lemp/interlock/**/*
   script:
     - make -C designs/lemp/interlock
 
 lemp_interlock_cdc_test:
   stage: test
+  rules: *rules_interlock
   script:
     - make -C designs/lemp/interlock interlock_wrapper_cdc.txt
   artifacts:
@@ -75,12 +212,21 @@ lemp_interlock_cdc_test:
 
 marble_bsp_test:
   stage: test
+  rules:
+    - changes: *common
+    - changes: *marble_bsp
   script:
     - cd marble_bsp
     - make
 
 llrf_shell_test:
   stage: test_designs
+  rules:
+    - changes: *common
+    - changes: *test_py
+    - changes: *llrf_dsp_rtl
+    - changes: *designs_shared
+    - changes: *target_tests
   script:
     - cd designs
     - make -C ${TARGET}/tb/llrf_shell
@@ -90,18 +236,21 @@ llrf_shell_test:
 
 soc_system_test:
   stage: test
+  rules: *rules_soc
   script:
     - cd soc/common/sim
     - make
 
 soc_system_top_test:
   stage: test
+  rules: *rules_soc
   script:
     - cd soc/common/top_sim
     - make
 
 soc_synthesis:
   stage: synthesis
+  rules: *rules_soc
   script:
     - cd soc/common/synth
     - make
@@ -114,6 +263,7 @@ soc_synthesis:
 
 llrf_synthesis:
   stage: synthesis
+  rules: *rules_rtl
   script:
     - make -C top/${TARGET}
   artifacts:
@@ -128,9 +278,11 @@ llrf_synthesis:
 
 alsu_run:
   variables:
+    TARGET: alsu  # for the rules, as in its llrf_synthesis
     EVG_F: 125.1e6
     CLK_F: 458.7e6
   stage: run
+  rules: *rules_rtl  # the same as its llrf_synthesis, which it needs
   tags:
     - deploy
   resource_group: hw_uspas
@@ -152,8 +304,10 @@ alsu_run:
 
 awa_run:
   variables:
+    TARGET: awa  # for the rules, as in its llrf_synthesis
     CLK_F: 1320e6
   stage: run
+  rules: *rules_rtl  # the same as its llrf_synthesis, which it needs
   tags:
     - deploy
   resource_group: hw_uspas
@@ -172,9 +326,11 @@ awa_run:
 
 lemp_run:
   variables:
+    TARGET: lemp  # for the rules, as in its llrf_synthesis
     EVG_F: 119e6
     CLK_F: 2856e6
   stage: run
+  rules: *rules_rtl  # the same as its llrf_synthesis, which it needs
   tags:
     - deploy
   resource_group: hw_uspas
@@ -196,8 +352,10 @@ lemp_run:
 
 uspas_run:
   variables:
+    TARGET: uspas  # for the rules, as in its llrf_synthesis
     CLK_F: 460e6
   stage: run
+  rules: *rules_rtl  # the same as its llrf_synthesis, which it needs
   tags:
     - deploy
   resource_group: hw_uspas
