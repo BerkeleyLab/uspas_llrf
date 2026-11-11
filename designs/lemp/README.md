@@ -60,6 +60,30 @@ flowchart LR
 
 ---
 
+## Top Level and Pins (`top/lemp/`, plan step 9e)
+
+`make -C top/lemp` builds the LEMP bitstream on the shared `top/common/` base. The LEMP parts are in `top/lemp/`, as on the LEMP branch's `top/marble_zest` (2e25cd9):
+- `design_mid.vh`: `interlock_wrapper` on localbus segment 2 (`designs/lemp/interlock/`) and the pin logic below;
+- `design_shell_ports.vh` and `design_shell_wires.vh`: the LEMP shell ports;
+- `design.xdc`: the PMOD pulls.
+
+The `Makefile` defines release the PMODs from the SoC (`DESIGN_OWNS_PMOD1/2`, `DESIGN_OWNS_ZEST_PMOD1/2`), and add segment 2 to the localbus read mux (`DESIGN_LB_SEG2`).
+
+| Pins | Direction | Signal |
+|---|---|---|
+| PMOD1[1], HDMI_SCL | out | LLRF permit relay: any latched interlock (bits 0–6) |
+| PMOD1[3] and HDMI_CEC | in | modulator status; both must be high (`status_modulator` of `interlock_wrapper`) |
+| PMOD1[4] | out | modulator trigger: PMOD trigger 0 and `mod_permit_out` |
+| PMOD1[7:5] | out | PMOD triggers 1–3 (SSSB gate, scope, spare) |
+| PMOD1[0], [2] | — | not used (pulled up) |
+| PMOD2 | out | `{evr_events, pmod_trigs}`, for diagnostics |
+| ZEST_PMOD1[3], [6] | out | SSSB RF switch, reset (active low) |
+| ZEST_PMOD1[2], [7] | in | SSSB alarm, RF status |
+| ZEST_PMOD2 | — | 5-LED board, not driven |
+| HDMI CK (LVDS) | out | modulator trigger, copper: trigger 0 and `mod_permit_out` |
+| HDMI D1 (LVDS) | out | modulator trigger, fiber: `~trigger 0 & mod_permit_out` |
+| HDMI D0, D2 (LVDS) | out | SSSB gate, scope trigger (inverted) |
+
 ## Frequency and Clocking Summary
 
 | Signal | Ratio | Frequency | Unit |

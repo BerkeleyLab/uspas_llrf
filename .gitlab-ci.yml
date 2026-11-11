@@ -1,3 +1,12 @@
+# Branch pipelines only: with job rules, a push to a branch with an open MR
+# would also create a merge-request pipeline (duplicate jobs, and hardware
+# runs twice). Web, scheduled and tag pipelines still run.
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - when: always
+
 stages:
   - test
   - test_designs

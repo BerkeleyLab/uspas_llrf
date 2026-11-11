@@ -1,14 +1,13 @@
-// LEMP llrf_shell ports (designs/lemp/llrf_shell.sv). Until the LEMP top level
-// (plan step 9e) connects interlock_wrapper and the pins, the inputs are held
-// inactive: no interlock latched, SSSB alarm and RF status low.
+// LEMP llrf_shell ports (designs/lemp/llrf_shell.sv), connected in
+// design_mid.vh: interlock_wrapper, PMOD triggers, SSSB and EVR events
 ,
-.intlk_latch_in     (8'b0),
-.sssb_alarm         (1'b0),
-.sssb_rf_status     (1'b0),
-.dds_reset_out      (),
-.dds_cos            (),
-.dds_sin            (),
-.pmod_trigs         (),
-.sssb_rf_switch_out (),
-.sssb_rst_out       (),
-.evr_events         ()
+.intlk_latch_in     (intlk_latch),
+.sssb_alarm         (sssb_alarm),
+.sssb_rf_status     (sssb_rf_status),
+.dds_reset_out      (dds_reset),
+.dds_cos            (dds_cos),
+.dds_sin            (dds_sin),
+.pmod_trigs         (pmod_trigs),
+.sssb_rf_switch_out (sssb_rf_switch),
+.sssb_rst_out       (sssb_rst),
+.evr_events         (evr_events)
