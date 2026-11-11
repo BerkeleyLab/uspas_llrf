@@ -18,7 +18,7 @@ class LLRFModule:
         self.num, self.den = num, den
         self.omega = 2 * np.pi * self.num / self.den  # non_iq angle
         self.z = np.exp(1j * self.omega)
-        self._gain = 1
+        self._gain = 1 + 0j
         self._submodules = []
 
     @property
@@ -36,7 +36,7 @@ class LLRFModule:
     @submodules.setter
     def submodules(self, val) -> None:
         self._submodules = val
-        self._gain = 1
+        self._gain = 1 + 0j
         for m in val:
             self._gain *= m.gain
 
@@ -232,8 +232,8 @@ class CICWaveRecorder(LLRFModule):
               Must be multiple of den. Defaults to 22.
             shift_base (int): scaling factor as cc_shift_base parameter.
                 number of bits to discard to avoid saturation.
-            shift_add (int): additional shift to be added on register wave_shift.
-                This is to allow headroom for various FSETS.
+            shift_add (int): additional shift to be added on register
+                wave_shift. This is to allow headroom for various FSETS.
             wave_samp_per (int): wave sample period.
         """
         super().__init__(num, den)
@@ -256,7 +256,9 @@ class CICWaveRecorder(LLRFModule):
         cic_bit_growth = 2 * np.log2(cic_R)
         cic_snr_bit_growth = np.log2(cic_R / 2) / 2
         full_shift = np.floor(cic_bit_growth - cic_snr_bit_growth)
-        self._wave_shift = int(max((full_shift - self.shift_base), 0)) + self.shift_add
+        self._wave_shift = (
+            int(max((full_shift - self.shift_base), 0)) + self.shift_add
+        )
         self._gain = 2**(cic_bit_growth - self.shift_base - self._wave_shift)
 
     @property
@@ -302,6 +304,171 @@ class RX(LLRFModule):
         self.cordic = CORDIC(
             num=self.num, den=self.den, phase_shift_deg=phase_shift_deg)
         self.submodules += [self.cordic]
+
+
+class CICFilter:
+    def __init__(self, R: int = 22, M: int = 1, N: int = 2,
+                 add_gain: float = 1.0) -> None:
+        """Cascaded Integrator-Comb (CIC) filter.
+        Args:
+            R (int): decimation factor. Defaults to 22.
+            M (int): differential delay. Defaults to 1.
+            N (int): number of stages. Defaults to 2.
+            add_gain (float): additional gain factor. Defaults to 1.0.
+        """
+        self.R = R
+        self.M = M
+        self.N = N
+        self.add_gain = add_gain
+
+    def cic_complex_gain_iir(self, f_norm):
+        """ Calculate complex gain at normalized frequency f_norm,
+        using the IIR form of the CIC filter transfer function.
+        H(z) = (1 - z^(-RM))^N / (1 - z^(-M))^N, where z = e^(j*2*pi*f_norm)
+        Note: doesn't work for DC due to 0/0, use cic_complex_gain() instead.
+        """
+        R, M, N = self.R, self.M, self.N
+        z = np.exp(1j * 2 * np.pi * f_norm)
+        gain = ((1 - z**(-R * M)) / (1 - z**(-1))) ** N
+        gain *= self.add_gain
+        return gain
+
+    def cic_complex_gain(self, f_norm):
+        """Calculate complex gain at normalized frequency f_norm,
+        equivalent to the IIR form of the CIC filter transfer function,
+        but handles the DC case (f_norm=0) safely.
+
+        From H(z) = (1 - z^(-RM))^N / (1 - z^(-M))^N, using Euler identity
+            1-e^(-j\theta) = e^(-j\theta/2) * 2j * sin(\theta/2)
+        H(f) = ( sin(pi*f*R*M) / sin(pi*f) )^N * e^(-j * pi * f * (RM - 1) * N)
+        """
+        R, M, N = self.R, self.M, self.N
+        # Convert input to numpy array to support both scalars and arrays
+        f = np.asarray(f_norm, dtype=float)
+
+        # Initialize output array
+        gain = np.zeros_like(f, dtype=complex)
+
+        # Handle the DC case (z = 0) safely
+        dc_mask = (f == 0)
+        gain[dc_mask] = (R * M) ** N
+
+        # Calculate gain for all non-zero frequencies
+        non_dc = ~dc_mask
+        f = f[non_dc]
+
+        mag_ratio = (np.sin(np.pi * f * R * M) / np.sin(np.pi * f)) ** N
+        phase_comp = np.exp(-1j * np.pi * f * (R * M - 1) * N)
+        gain[non_dc] = mag_ratio * phase_comp
+
+        # apply additional gain factor (e.g. scaling in gateware)
+        gain *= self.add_gain
+        # Return a scalar if the input was a scalar, otherwise return the array
+        if gain.ndim == 0:
+            return complex(gain)
+        return gain
+
+    def calc_freqz(self, num_points=1024):
+        """Calculate frequency response of the CIC filter.
+        Returns:
+            f (np.array): normalized frequency array (0 to 0.5).
+            h (np.array): complex gain at each frequency.
+        """
+        f = np.linspace(0, 0.5, num_points)
+        h = self.cic_complex_gain(f)
+        return f, h
+
+    @property
+    def gain(self):
+        """DC gain of the CIC filter (scalar complex/float)."""
+        return self.cic_complex_gain(0)
+
+
+class CICSimple(CICFilter):
+    def __init__(self, ex: int = 5) -> None:
+        """Simple first-order CIC filter and decimator.
+            Gateware: cic_simple_s.v
+        Mathmatically identical to a simple moving average (boxcar window)
+        of length RM.
+        Args:
+            ex (int): decimation factor exponent (decimation = 2^ex).
+        """
+        R = 1 << ex
+        add_gain = 1.0 / R  # right shifted by ex bits
+        super().__init__(R=R, M=1, N=1, add_gain=add_gain)
+
+
+class CICSimple2(CICFilter):
+    def __init__(self, ex: int = 4) -> None:
+        """Simple second-order CIC filter and decimator (N=2, M=1).
+            Gateware: cic_filter.v
+        Mathematically identical to a moving average by
+        convolution of two boxcar windows of length RM,
+        resulting in a triangular window.
+
+        Args:
+            ex (int): decimation factor exponent (decimation R = 2^ex).
+        """
+        R = 1 << ex
+        add_gain = 1.0 / (R * R)  # right shifted by 2*ex bits
+        super().__init__(R=R, M=1, N=2, add_gain=add_gain)
+
+
+class BPM(LLRFModule):
+    def __init__(self, num: int = 4, den: int = 11,
+                 dds_amp: int = 74840,
+                 ex0: int = 5, ex1: int = 8, ex2: int = 10) -> None:
+        """Beam Position Monitor (BPM) DSP chain.
+            Gateware: cic_bpm.v, cic_mag3.v, positionCalc.v, ddc.v, dds.v
+
+        Args:
+            num (int): numerator of IF / Fs. Defaults to 4.
+            den (int): denominator of IF / Fs. Defaults to 11.
+            dds_amp (int): amplitude parameter of shared LO DDS.
+            ex0 (int): decimation exponent for Turn-by-Turn (TbT, rate 0).
+            ex1 (int): decimation exponent for Fast Acquisition (FA, rate 1).
+            ex2 (int): decimation exponent for Slow Acquisition (SA, rate 2).
+        """
+        super().__init__(num, den)
+        self.ex0 = ex0
+        self.ex1 = ex1
+        self.ex2 = ex2
+        self.dds = DDS(amp=dds_amp, num=num, den=den)
+        self.washout = WashoutFilter(num=num, den=den)
+        self.ddc = DDC(num=num, den=den)
+        self.cordic = CORDIC(num=num, den=den)
+        self.cic_tbt = CICSimple2(ex=ex0)
+        self.cic_fa = CICSimple2(ex=ex1)
+        self.cic_sa = CICSimple2(ex=ex2)
+        self.submodules += [
+            self.washout,
+            self.dds,
+            self.ddc,
+            self.cordic,
+            self.cic_tbt,
+            self.cic_fa,
+            self.cic_sa,
+        ]
+
+    @property
+    def decimation_rates(self) -> dict:
+        return {
+            'tbt': 1 << self.ex0,
+            'fa': 1 << self.ex1,
+            'sa': 1 << self.ex2,
+        }
+
+    @staticmethod
+    def calc_position(mag0, mag1, mag2, mag3, kx=1.0, ky=1.0, kq=1.0):
+        """Calculate beam position (X, Y), quadrupole (Q), and sum (S)
+        from 4 button pickup signal magnitudes (A=0, B=1, C=2, D=3).
+        """
+        mag_sum = mag0 + mag1 + mag2 + mag3
+        denom = np.where(mag_sum == 0, 1.0, mag_sum)
+        x = kx * ((mag0 + mag3) - (mag1 + mag2)) / denom
+        y = ky * ((mag0 + mag1) - (mag2 + mag3)) / denom
+        q = kq * ((mag0 + mag2) - (mag1 + mag3)) / denom
+        return {'x': x, 'y': y, 'q': q, 'sum': mag_sum}
 
 
 class DUC(LLRFModule):
