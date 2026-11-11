@@ -156,7 +156,6 @@ int main(void) {
 #ifdef DESIGN_FAST_MAIN_LOOP
     // No fixed delay, so design_poll() runs as often as possible (ALSU Modbus)
     uint32_t time_ms = 0, new_time_ms = 0;
-    int update_in_progress = 0;
 #else
     unsigned cnt=0;
 #endif
@@ -169,11 +168,7 @@ int main(void) {
 
 #ifdef DESIGN_FAST_MAIN_LOOP
         new_time_ms = uptime_ms();
-        if (((new_time_ms - time_ms) >= 1000) || update_in_progress) { // update rate 1 Hz
-            // update_in_progress is never cleared, so after the first second
-            // the status is refreshed on every iteration (alsu_fork behavior)
-            if (marble_init_data.enable_poll_status)
-                update_in_progress = 1;
+        if ((new_time_ms - time_ms) >= 1000) {  // update rate 1 Hz
             update_bsp_status();
             time_ms = new_time_ms;
         }
