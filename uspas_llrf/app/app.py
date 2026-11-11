@@ -400,7 +400,7 @@ class LLRFApp(LEEPDevice):
         f, pxx = signal.periodogram(
             df_sig.T, fs, 'flattop',
             scaling='spectrum', nfft=8192)
-        psd_dbfs = 10 * np.log10(pxx) - fsdb
+        psd_dbfs = 10 * np.log10(np.maximum(pxx, 1e-12)) - fsdb
         df_psd = pd.DataFrame(psd_dbfs.T, columns=df_sig.columns)
         df_psd['Freq [Hz]'] = f
         df_psd.set_index('Freq [Hz]', inplace=True)
