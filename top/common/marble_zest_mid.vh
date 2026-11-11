@@ -8,7 +8,8 @@
 // and handles localbus segmentation based on lb_addr[21:18]
 //   0  to llrf_shell
 //   1  to marble_bsp
-//   2+ design IP (top/<design>/design_mid.vh)
+//   2+ design IP (top/<design>/design_mid.vh; segment 2 is read when the
+//      design defines DESIGN_LB_SEG2)
 
 // localbus master declaration, driven by badger (located inside marble_bsp)
 wire        m_lb_clk;
@@ -86,8 +87,16 @@ system #(
 `else
     .PMOD1          (PMOD2),
 `endif
+`ifdef DESIGN_OWNS_ZEST_PMOD1
+    .PMOD2          (),  // ZEST_PMOD1 used by design_mid.vh
+`else
     .PMOD2          (ZEST_PMOD1),
+`endif
+`ifdef DESIGN_OWNS_ZEST_PMOD2
+    .PMOD3          (),  // ZEST_PMOD2 used by design_mid.vh
+`else
     .PMOD3          (ZEST_PMOD2),
+`endif
     .trig_from_dsp    (trig_from_dsp),
     .trig_to_dsp    (trig_to_dsp),
     .uart_tx        (UART_TX),
@@ -156,6 +165,9 @@ always @(*) begin
     case(lb_addr_mux)
     4'h0: lb_rdata_r = lb_rdata_0;
     4'h1: lb_rdata_r = lb_rdata_1;
+`ifdef DESIGN_LB_SEG2  // design_mid.vh drives lb_rdata_2
+    4'h2: lb_rdata_r = lb_rdata_2;
+`endif
     default: lb_rdata_r = 32'hdeaddead;
     endcase
 end
@@ -184,6 +196,8 @@ assign drive_permit_in = 1'b1;
 assign slow_permit_in  = 1'b1;
 assign arc_permit_in   = 3'b0;
 `endif
+// Declarations of design signals used in design_shell_ports.vh
+`include "design_shell_wires.vh"
 llrf_shell #(
     .F_DSP_HZ       ($rtoi(`DSP_FREQ_MHZ * 1e6))  // arc_inlk pulse timing (A2)
 ) llrf_inst (

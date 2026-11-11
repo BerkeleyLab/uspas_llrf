@@ -90,7 +90,8 @@ t_reg32 regmap_amc7823[] = {
     // addr = {PG[1:0], 1'b0, ADR[4:0]}
     // { (1<<6) | 0xc, 0xbb30}, // # AMC7823 RESET register, invoke system reset
     { (1<<6) | 0xb, 0x8080}, // # ADC
-    { (1<<6) | 0xd, 0x8010}, // # PWR Down: only enable ADC and PREFB
+    // PADC_PDAC7_PDAC6_PDAC5__PDAC4_PDAC3_PDAC2_PDAC1__PDAC0_PTS_PREFB_X__X_X_X_X
+    { (1<<6) | 0xd, 0x8010}, // # PWR Down: ADC on; DACs, reference buffer (PREFB) and current source (PTS) off; bit 4 don't care
 };
 
 #ifndef DSP_FREQ_MHZ

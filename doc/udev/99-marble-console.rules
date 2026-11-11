@@ -1,5 +1,12 @@
-# Marble SoC console (FTDI 0403:6011, interface 02): turn off hang-up on close,
-# so closing a terminal leaves RTS asserted. The UART's RTS line resets the SoC
-# when released (UART_CTS edge in top/common/marble_zest_mid.vh).
+# Marble USB (FTDI FT4232H, 0403:6011): JTAG for openocd (make system_config)
+# and the SoC console UART.
 # Install: sudo cp 99-marble-console.rules /etc/udev/rules.d/ && sudo udevadm control --reload
+
+# Access without root for members of the plugdev group, for every FTDI device
+# (vendor 0403)
+ACTION=="add", SUBSYSTEMS=="usb", ATTRS{idVendor}=="0403", GROUP="plugdev", MODE="660"
+
+# SoC console (interface 02): turn off hang-up on close, so closing a terminal
+# leaves RTS asserted. The UART's RTS line resets the SoC when released
+# (UART_CTS edge in top/common/marble_zest_mid.vh).
 SUBSYSTEM=="tty", ENV{ID_VENDOR_ID}=="0403", ENV{ID_MODEL_ID}=="6011", ENV{ID_MODEL}=="Marble", ENV{ID_USB_INTERFACE_NUM}=="02", RUN+="/bin/stty -F /dev/%k -hupcl"
