@@ -11,7 +11,10 @@ DacDriveSel, InlkFaultMode) come from here.
 
 Outputs, written by the command line below:
 - llrf_shell_regmap_pkg.sv: cfg_<domain>_t and status_<domain>_t structs,
-  ADDR_* constants, MAP_SIG_BUF_AW and MAP_MOD_AW;
+  ADDR_* constants, MAP_SIG_BUF_AW and MAP_MOD_AW. The registers of a block
+  instance form one field of the block's config type, cfg_<domain>.<inst>
+  of type <inst>_cfg_t (llrf_shell_pkg.sv), or an array of them for
+  indexed registers;
 - llrf_shell_regs.sv: register storage and decode, the readback mirror, the
   status banks, the write strobes of writable windows (modulation tables)
   and the readback mux over every window;
@@ -97,8 +100,12 @@ class Reg:
 
     kind: 'rw' holds the written value; 'strobe' is high for one cycle
     after the write (newad single-cycle).
-    inst: block instance whose port the register drives; the port name is
-    the register name without the '<inst>_' prefix.
+    inst: block instance that takes the register as a member of its config
+    struct <inst>_cfg_t (llrf_shell_pkg.sv), or as a table port; the member
+    (port) name is the register name without the '<inst>_' prefix.
+    index: element of an instance array: the register is member port of
+    cfg_<domain>.<inst>[index] and is named <inst><index>_<port> (D21:
+    loopN_<port>) or <inst>_<index>_<port> (LEMP's trig_N_<port>).
     enum: IntEnum of the register (or table entry) encoding.
     init: value the firmware writes at boot (init_llrf.c); None: not written.
     The model overrides it with values derived from the DSP configuration.
@@ -110,6 +117,7 @@ class Reg:
     signed: bool = False
     aw: int = 0
     inst: Optional[str] = None
+    index: Optional[int] = None
     enum: Optional[type[IntEnum]] = None
     init: Optional[int] = None
     description: str = ''
@@ -118,7 +126,8 @@ class Reg:
         assert self.domain in DOMAINS, (self.name, self.domain)
         assert self.kind in ('rw', 'strobe'), (self.name, self.kind)
         assert not (self.aw and self.kind != 'rw'), self.name
-        assert not self.inst or self.name.startswith(self.inst + '_'), self.name
+        assert not self.inst or self.name.startswith(self.prefix), self.name
+        assert self.index is None or (self.inst and not self.aw), self.name
         assert not (self.init is not None and (self.aw or self.kind != 'rw')), self.name
         if self.enum is not None:
             for e in self.enum:
@@ -127,9 +136,16 @@ class Reg:
             self.init = self.value(self.init)
 
     @property
+    def prefix(self):
+        if self.index is None:
+            return f'{self.inst}_'
+        p = f'{self.inst}{self.index}_'
+        return p if self.name.startswith(p) else f'{self.inst}_{self.index}_'
+
+    @property
     def port(self):
         assert self.inst is not None, self.name
-        return self.name[len(self.inst) + 1:]
+        return self.name[len(self.prefix):]
 
     def value(self, v):
         """v as the register holds it: an int (or enum member) in range."""
@@ -141,19 +157,25 @@ class Reg:
         return v
 
 
+def loop_reg(n, port, width=1, **kw):
+    """Register of feedback loop n: member port of cfg_dsp.loop[n]
+    (loop_cfg_t, the loops block)."""
+    return Reg(f'loop{n}_{port}', width, inst='loop', index=n, **kw)
+
+
 def loop_regs(n):
     w = 18
-    return [Reg(f'loop{n}_amp_setpoint', w, signed=True, init=0),
-            Reg(f'loop{n}_max_amp_setpoint', w, signed=True, init=0),
-            Reg(f'loop{n}_phs_setpoint', w, signed=True, init=0),
-            Reg(f'loop{n}_Kp_amp', w, signed=True, init=0),
-            Reg(f'loop{n}_Kp_phs', w, signed=True, init=0),
-            Reg(f'loop{n}_Ki_amp', w, signed=True, init=0),
-            Reg(f'loop{n}_Ki_phs', w, signed=True, init=0),
-            Reg(f'loop{n}_amp_enable', init=0),
-            Reg(f'loop{n}_phs_enable', init=0),
-            Reg(f'loop{n}_amp_reset', init=0),
-            Reg(f'loop{n}_phs_reset', init=0)]
+    return [loop_reg(n, 'amp_setpoint', w, signed=True, init=0),
+            loop_reg(n, 'max_amp_setpoint', w, signed=True, init=0),
+            loop_reg(n, 'phs_setpoint', w, signed=True, init=0),
+            loop_reg(n, 'Kp_amp', w, signed=True, init=0),
+            loop_reg(n, 'Kp_phs', w, signed=True, init=0),
+            loop_reg(n, 'Ki_amp', w, signed=True, init=0),
+            loop_reg(n, 'Ki_phs', w, signed=True, init=0),
+            loop_reg(n, 'amp_enable', init=0),
+            loop_reg(n, 'phs_enable', init=0),
+            loop_reg(n, 'amp_reset', init=0),
+            loop_reg(n, 'phs_reset', init=0)]
 
 
 def base_regs():
@@ -170,8 +192,8 @@ def base_regs():
         Reg('cic_base_period', 7, init=14),
         Reg('cic_wave_shift', 4, init=0),
         Reg('inlk_wave_shift', 4, init=0),
-        Reg('inlk_permit_mask', 10, init=0),
-        Reg('arc_permit_mask', 8, init=0),
+        Reg('inlk_permit_mask', 10, init=0, inst='inlk'),
+        Reg('arc_permit_mask', 8, init=0, inst='arc'),
         Reg('rx_dds_phase_step', 32, init=0),
         Reg('rx_dds_phase_shift', 19, signed=True, init=0),
         Reg('rx_dds_modulo', 12, init=0),
@@ -179,17 +201,17 @@ def base_regs():
         Reg('rx_phase_offset', 19, signed=True, init=0),
         Reg('tx_phase_offset', 19, signed=True, init=0),
         Reg('prl_adc_chan', 3, init=0),
-        *[Reg(f'loop{n}_adc_chan', 3, init=0) for n in range(N_DRIVE)],
+        *[loop_reg(n, 'adc_chan', 3, init=0) for n in range(N_DRIVE)],
         *[r for n in range(N_DRIVE) for r in loop_regs(n)],
         Reg('dsp_reset', kind='strobe'),
-        *[Reg(f'loop{n}_pulse_{f}', 32, init=v) for n in range(N_DRIVE)
+        *[loop_reg(n, f'pulse_{f}', 32, init=v) for n in range(N_DRIVE)
           for f, v in (('start', 0), ('high_len', 10))],
         # pulse modulation (loop_ctrl); all 0 keeps CW behavior
         *[r for n in range(N_DRIVE) for r in (
-            Reg(f'loop{n}_pulse_res_shift', 4, init=0),
-            Reg(f'loop{n}_mod_len', MOD_AW + 1, init=0, description='modulation table entries used'),
-            Reg(f'loop{n}_amp_mod_enable', init=0),
-            Reg(f'loop{n}_phs_mod_enable', init=0))],
+            loop_reg(n, 'pulse_res_shift', 4, init=0),
+            loop_reg(n, 'mod_len', MOD_AW + 1, init=0, description='modulation table entries used'),
+            loop_reg(n, 'amp_mod_enable', init=0),
+            loop_reg(n, 'phs_mod_enable', init=0))],
         *[Reg(f'drv{n}_pulse_mode', init=0) for n in range(N_DRIVE)],
         *[Reg(f'soft_drive{n}_enable', init=1) for n in range(N_DRIVE)],
         Reg('ntw_amp_enable'),
@@ -307,6 +329,17 @@ def base_status():
     return status
 
 
+def place_status(status, new, domain='lb'):
+    """status plus new [(name, width)] words at the addresses after the
+    last word of domain (D24: design words are placed, not pinned)."""
+    addr = max(s.addr for s in status if s.domain == domain) + 1
+    placed = [Status(name, width, addr + ix, domain=domain) for ix, (name, width) in enumerate(new)]
+    banks = {s.addr >> 4: s.domain for s in status}
+    for s in placed:
+        assert banks.get(s.addr >> 4, domain) == domain, f"{s.name}: bank {s.addr >> 4:x} is not {domain}"
+    return status + placed
+
+
 def sig_buf_bases(sig_buf_aw):
     """Packed signal buffers (§1.1): raw ADC, then I and Q of the ADC and
     drive channels, each 2^sig_buf_aw deep, from SIG_BUF_BASE."""
@@ -395,8 +428,22 @@ def check(regs):
     names = [r.name for r in regs]
     dup = sorted({n for n in names if names.count(n) > 1})
     assert not dup, f"duplicate registers {dup}"
-    insts = [r.inst for r in regs if r.inst]
-    assert insts == sorted(insts, key=insts.index), "instance registers must be contiguous"
+    for inst, cfg in inst_cfgs(regs).items():
+        assert len({r.domain for rs in cfg for r in rs}) == 1, f"instance {inst} spans domains"
+        ports = [sorted(r.port for r in rs) for rs in cfg]
+        assert all(p == ports[0] for p in ports), f"elements of instance {inst} differ"
+
+
+def inst_cfgs(regs):
+    """{inst: [registers of element 0, element 1, ...]} of the config
+    struct members (tables excluded); one element unless indexed."""
+    cfg = {}
+    for r in regs:
+        if r.inst and not r.aw:
+            cfg.setdefault(r.inst, {}).setdefault(r.index, []).append(r)
+    for inst, el in cfg.items():
+        assert list(el) == [None] or sorted(el) == list(range(len(el))), f"instance {inst}: indices {list(el)}"
+    return {inst: [el[k] for k in sorted(el, key=lambda k: k or 0)] for inst, el in cfg.items()}
 
 
 def allocate(regs, base=RW_BASE):
@@ -469,14 +516,33 @@ def field(name, width, signed=False):
     return f"        logic {'signed ' if signed else ''}[{width - 1}:0] {name};\n"
 
 
+def cfg_domains(m):
+    """Register domains with at least one register (a cfg_<domain>_t each)."""
+    return [dom for dom in DOMAINS if any(r.domain == dom and not r.aw for r in m.regs)]
+
+
+def cfg_fields(m, dom):
+    """Members of cfg_<dom>_t: plain registers, and one <inst>_cfg_t
+    member (array if indexed) where the instance's first register is."""
+    cfgs, out = inst_cfgs(m.regs), []
+    for r in m.regs:
+        if r.domain != dom or r.aw:
+            continue
+        if not r.inst:
+            out.append(field(r.name, r.width))
+        elif r is cfgs[r.inst][0][0]:
+            n = len(cfgs[r.inst])
+            dims = f" [{n - 1}:0]" if r.index is not None else ""
+            out.append(f"        {r.inst}_cfg_t{dims} {r.inst};\n")
+    return "".join(out)
+
+
 def pkg_sv(m, source):
     addr, _, mirror_aw = allocate(m.regs)
     out = [f"// Generated by uspas_llrf/regmap.py from {source}; do not edit.\n",
-           "package llrf_shell_regmap_pkg;\n"]
-    for dom in DOMAINS:
-        regs = [r for r in m.regs if r.domain == dom and not r.aw]
-        fields = "".join(field(r.name, r.width) for r in regs)
-        out.append(f"    typedef struct packed {{\n{fields}    }} cfg_{dom}_t;\n")
+           "package llrf_shell_regmap_pkg;\n", "    import llrf_shell_pkg::*;\n"]
+    for dom in cfg_domains(m):
+        out.append(f"    typedef struct packed {{\n{cfg_fields(m, dom)}    }} cfg_{dom}_t;\n")
     for dom in ('lb', 'dsp'):
         st = [s for s in m.status if s.domain == dom]
         fields = "".join(field(s.name, s.width, s.signed) for s in st)
@@ -507,14 +573,27 @@ def decode_sv(r, addr):
     if r.aw:
         return out + (f"dpram #(.aw({r.aw}), .dw({r.width})) dp_{name} (\n"
                       f"    .clka({lb}_clk), .addra({lb}_addr[{r.aw - 1}:0]), .dina({lb}_data[{msb}:0]),"
-                      f" .wena(we_{name}),\n"
+                      f" .wena(we_{name}), .douta(),\n"
                       f"    .clkb({lb}_clk), .addrb({name}_addr), .doutb({name}));\n")
     out += f"reg [{msb}:0] {name} = 0;\n"
     if r.kind == 'strobe':
         out += f"always @(posedge {lb}_clk) {name} <= we_{name} ? {lb}_data[{msb}:0] : {r.width}'b0;\n"
     else:
         out += f"always @(posedge {lb}_clk) if (we_{name}) {name} <= {lb}_data[{msb}:0];\n"
-    return out + f"assign cfg_{r.domain}.{name} = {name};\n"
+    return out + ("" if r.inst else f"assign cfg_{r.domain}.{name} = {name};\n")
+
+
+def inst_assign_sv(regs):
+    """Config struct of each instance (element), as a named assignment
+    pattern: a member missing on either side fails to compile."""
+    out = []
+    for inst, cfg in inst_cfgs(regs).items():
+        for rs in cfg:
+            r0 = rs[0]
+            lhs = f"cfg_{r0.domain}.{inst}" + ("" if r0.index is None else f"[{r0.index}]")
+            members = ", ".join(f"{r.port}: {r.name}" for r in rs)
+            out.append(f"assign {lhs} = '{{{members}}};\n")
+    return "\n// block configs (llrf_shell_pkg <inst>_cfg_t)\n" + "".join(out) if out else ""
 
 
 def regs_sv(m, source):
@@ -527,7 +606,7 @@ def regs_sv(m, source):
     io = ["    input lb_clk,", f"    input [{LB_HI}:0] lb_addr,", "    input lb_write,", "    input lb_read,",
           "    input [31:0] lb_wdata,", "    input lb_prefill,", "    output [31:0] lb_rdata,",
           f"    output [{LB_HI}:0] lb_addr_d1,", "    input dsp_clk,", "    input dac_clk,", "    input gt_rxclk,"]
-    io += [f"    output cfg_{dom}_t cfg_{dom}," for dom in DOMAINS]
+    io += [f"    output cfg_{dom}_t cfg_{dom}," for dom in cfg_domains(m)]
     for r in tables:
         io += [f"    input [{r.aw - 1}:0] {r.name}_addr,", f"    output [{r.width - 1}:0] {r.name},"]
     io += ["    input status_lb_t status_lb,", "    input status_dsp_t status_dsp,",
@@ -553,11 +632,12 @@ def regs_sv(m, source):
            "    .lb2_clk(lb2_clk), .lb2_write(lb2_write), .lb2_addr(lb2_addr), .lb2_data(lb2_data),\n"
            "    .lb3_clk(lb3_clk), .lb3_write(lb3_write), .lb3_addr(lb3_addr), .lb3_data(lb3_data)\n);\n\n"]
     out += [decode_sv(r, addr[r.name]) for r in m.regs]
+    out.append(inst_assign_sv(m.regs))
     out.append(f"\n// readback mirror of the rw registers\nwire [31:0] mirror_out;\n"
                f"wire mirror_write = lb_write & (lb_addr[{LB_HI}:{mirror_aw}] =="
                f" {LB_HI + 1 - mirror_aw}'h{mirror_base >> mirror_aw:x});\n"
                f"dpram #(.aw({mirror_aw}), .dw(32)) mirror (\n"
-               f"    .clka(lb_clk), .addra(lb_addr[{mirror_aw - 1}:0]), .dina(lb_data), .wena(mirror_write),\n"
+               f"    .clka(lb_clk), .addra(lb_addr[{mirror_aw - 1}:0]), .dina(lb_data), .wena(mirror_write), .douta(),\n"
                f"    .clkb(lb_clk), .addrb(lb_addr[{mirror_aw - 1}:0]), .doutb(mirror_out));\n")
     for bank in sorted({s.addr >> 4 for s in m.status}):
         st = [s for s in m.status if s.addr >> 4 == bank]
@@ -611,8 +691,9 @@ def design_file(design):
 
 def design_scope(fname=None):
     """Namespace of designs/<d>/design.py (empty for the base map). It may
-    define SIG_BUF_AW, design(rm) returning the registers and aliases(rm, m)
-    returning extra aliases; rm is this module."""
+    define SIG_BUF_AW, design(rm) returning the registers, status(rm)
+    returning the status words and aliases(rm, m) returning extra aliases;
+    rm is this module."""
     scope = {}
     if fname:
         with open(fname) as f:
@@ -631,13 +712,16 @@ def load_design(fname=None):
 
 def load_map(fname=None):
     """Register map of a design: registers from load_design(), status words
-    from the base, blocks with the design's SIG_BUF_AW, and aliases."""
+    from status(rm) or the base, blocks with the design's SIG_BUF_AW, and
+    aliases."""
     import sys
+    rm = sys.modules[__name__]
     scope = design_scope(fname)
     sig_buf_aw = scope.get('SIG_BUF_AW', SIG_BUF_AW)
-    m = RegMap(load_design(fname), base_status(), base_blocks(sig_buf_aw), base_aliases(), sig_buf_aw)
+    status = scope.get('status', lambda rm: rm.base_status())(rm)
+    m = RegMap(load_design(fname), status, base_blocks(sig_buf_aw), base_aliases(), sig_buf_aw)
     if 'aliases' in scope:
-        m.aliases += scope['aliases'](sys.modules[__name__], m)
+        m.aliases += scope['aliases'](rm, m)
     windows(m)
     return m
 

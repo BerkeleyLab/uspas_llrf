@@ -8,7 +8,7 @@ t_reg32 regmap_lmk01801[] = {
     // RESET            ="1",
     { 0x0, 0x1UL },
     // CLKin1_MUX       ="01",
-    // CLKin1_DIV       ="000",
+    // CLKin1_DIV       ="000",   # 2856 / 8 = 357 MHz
     // CLKin0_MUX       ="01"
     // CLKin0_DIV       ="110",   # 2856 / 6 = 476 MHz
     // RESET            ="0",
@@ -24,14 +24,14 @@ t_reg32 regmap_lmk01801[] = {
     // CLKout0_TYPE     ="001"    # LVDS  ADC1
     // hex(0b0000_0001_0001_0001_000_001_001_001)
     { 0x1, 0x0111049UL },
-    // CLKout13_TYPE    ="0000",  # Powerdown
+    // CLKout13_TYPE    ="0001",  # LVDS, 25.5 MHz LO reference (below)
     // CLKout12_TYPE    ="0000",  # Powerdown
     // CLKout11_TYPE    ="0110",  # CMOS J24 U.FL
     // CLKout10_TYPE    ="0001",  # LVDS J20 SMA
     // CLKout9_TYPE     ="0000",  # Powerdown
     // CLKout8_TYPE     ="0000"   # Powerdown
-    // hex(0b0000_0000_0000_0110_0001_0000_0000)
-    { 0x2, 0x6100UL },
+    // hex(0b0000_0001_0000_0110_0001_0000_0000)
+    { 0x2, 0x106100UL },
     // SYNC1_AUTO       ="0",     # SYNC by R4/R5
     // SYNC0_AUTO       ="1",     # SYNC by R5
     // SYNC1_FAST       ="1",
@@ -43,12 +43,13 @@ t_reg32 regmap_lmk01801[] = {
     { 0x3, 0x11b0000UL },
     // CLKout12_13_DDLY ="0000000000"
     { 0x4, 0x0UL },
-    // CLKout12_13_DIV  ="00000000001",
-    // CLKout8_11_DIV   ="011",  # J20, J24         @ 1/3, 158.67 MHz
-    // CLKout4_7_DIV    ="010",  # FPGA, DAC, J12,  @ 1/2, 238 MHz
-    // CLKout0_3_DIV    ="100"   # ADC1/2, J13      @ 1/4, 119 MHz
-    // hex(0b0000_00000000001_00_0_0_011_010_100)
-    { 0x5, 0x20d4UL },
+    // CLKout12_13_DIV  ="00000001110", # CLKout13         @ 1/14,  25.5 MHz,
+    //                                  mixed with 2856 MHz for the 2830.5 MHz downconversion LO
+    // CLKout8_11_DIV   ="011",         # J20, J24         @ 1/3,  119.0 MHz
+    // CLKout4_7_DIV    ="010",         # FPGA, DAC, J12,  @ 1/2,  238.0 MHz
+    // CLKout0_3_DIV    ="100"          # ADC1/2, J13      @ 1/4,  119.0 MHz
+    // hex(0b0000_00000001110_00_0_0_011_010_100)
+    { 0x5, 0x1C0D4UL },
     // uWireLock =      ="1"
     // hex(0b101111_1)
     { 0xf, 0x5fUL }  // Lock
@@ -88,8 +89,17 @@ t_reg32 regmap_ad7794[] = {
 t_reg32 regmap_amc7823[] = {
     // addr = {PG[1:0], 1'b0, ADR[4:0]}
     // { (1<<6) | 0xc, 0xbb30}, // # AMC7823 RESET register, invoke system reset
+
+    // X_RSTC_DAVF_0___X_X_X_X___SREF_GREF_ECNVT_X___X_X_X_X 
+    //{ (1<<6) | 0xa, 0x8080}, // # Status/Configuration. Default 0x4000
     { (1<<6) | 0xb, 0x8080}, // # ADC
-    { (1<<6) | 0xd, 0x8010}, // # PWR Down: only enable ADC and PREFB
+
+    // PADC_PDAC7_PDAC6_PDAC5__PDAC4_PDAC3_PDAC2_PDAC1__PDAC0_PTS_PREFB_X__X_X_X_X
+    // ADC and precision current source (PTS, drives the chassis thermistor) on;
+    // DACs and reference buffer (PREFB) off, bit 4 don't care. With
+    // SREF = GREF = 0 (reset values, 0xa is not
+    // written) the current source works without PREFB: 0.5 V / RSET (AMC7823 Table 7)
+    { (1<<6) | 0xd, 0x8050}, // # PWR Down
 };
 
 #ifndef DSP_FREQ_MHZ

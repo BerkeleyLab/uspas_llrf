@@ -1,4 +1,6 @@
-module monitor_inlk #(
+module monitor_inlk
+    import llrf_shell_pkg::*;
+#(
     parameter N_CH = 10
 ) (
     input           clk,
@@ -17,14 +19,14 @@ module monitor_inlk #(
     output reg [15:0]   fault_amp_out,
     output reg [16:0]   fault_phs_out,
 
-    input [15:0]    amp_lo, // external
-    output [3:0]    amp_lo_addr, // external address for amp_lo
-    input [15:0]    amp_hi, // external
-    output [3:0]    amp_hi_addr, // external address for amp_hi
-    input [0:0]     reset_inlk, // external single-cycle
-    input [1:0]     inlk_mode, // external
-    output [3:0]    inlk_mode_addr, // external address for inlk_mode
-    input [9:0]     permit_mask,
+    input inlk_cfg_t cfg,
+    // register tables, one entry per channel
+    input [15:0]    amp_lo,
+    output [INLK_AW-1:0] amp_lo_addr,
+    input [15:0]    amp_hi,
+    output [INLK_AW-1:0] amp_hi_addr,
+    input [1:0]     inlk_mode,
+    output [INLK_AW-1:0] inlk_mode_addr,
 
     output [N_CH-1:0] cmp_status_hi,
     output [N_CH-1:0] cmp_status_lo,
@@ -62,6 +64,7 @@ cordicg_b22 #(.nstg(20), .width(16)) cordic_detect(
     .yin        (y_value),
     .phasein    (17'b0),
     .xout       (mon_amp_out),
+    .yout       (),
     .phaseout   (mon_phs_out)
 );
 
@@ -105,12 +108,12 @@ always @(posedge clk) begin
     //  Interlocks trip when inlk_* are high (latched with reset below)
     if (wave_valid) begin
         for (ix = 0; ix < N_CH; ix = ix+1)
-            if (wave_cnt == 2*ix+1) begin
+            if (wave_cnt == 5'(2*ix+1)) begin
                 high[ix] <= cmpg_hi; low[ix]  <= cmpg_lo; inlk_ok[ix] <= ~inlk_trip;
             end
     end
 
-    inlk_latch_r <= inlk_ok & ({N_CH{reset_inlk}} | inlk_latch_r);
+    inlk_latch_r <= inlk_ok & ({N_CH{cfg.reset_inlk}} | inlk_latch_r);
     // stop recording at falling edge, to latch first fault and values
     if (record_status_en) begin
         first_inlk <= inlk_ok;
@@ -126,7 +129,7 @@ assign cmp_status_lo  = low;
 assign first_fault_status = first_inlk;
 assign inlk_status = inlk_ok;
 // permit mask: 1 to include, 0 to ignore
-assign inlk_permit_out = & (~permit_mask[N_CH-1:0] | inlk_latch);
+assign inlk_permit_out = & (~cfg.permit_mask[N_CH-1:0] | inlk_latch);
 assign mon_valid_out = wave_valid;
 assign mon_addr_out = wave_cnt[4:1];
 

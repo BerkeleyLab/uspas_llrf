@@ -1,10 +1,12 @@
 """Register map checks (plan §2.4): the generated llrf_shell.json against the
 step-1 baselines, the ALSU Modbus map, the boot-time registers of the model,
-the allocator and the SoC address-map header script."""
+the allocator, the SoC address-map header script and the block config
+structs."""
 import dataclasses
 import importlib.util
 import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -29,31 +31,38 @@ def build_json(design):
     return json.loads((d / 'llrf_shell.json').read_text())
 
 
-def compat_errors(base, gen):
+def compat_errors(base, gen, scope=None):
     """Differences in name, data_width, sign and access, apart from
-    regmap.RENAMES, regmap.ADDITIONS, regmap.REMOVALS and regmap.WIDTH_CHANGES.
-    Addresses and addr_width may change (D1, D5)."""
+    regmap.RENAMES, regmap.ADDITIONS, regmap.REMOVALS and regmap.WIDTH_CHANGES,
+    and the design's COMPAT_REMOVALS, COMPAT_ADDITIONS and COMPAT_CHANGES
+    ({name: (data_width, sign)}) from design.py (scope). Addresses and
+    addr_width may change (D1, D5)."""
+    scope = scope or {}
+    removals = set(regmap.REMOVALS) | set(scope.get('COMPAT_REMOVALS', []))
+    changes = scope.get('COMPAT_CHANGES', {})
     errors = []
     for k, b in base.items():
         if k in gen:
+            if k in changes and (gen[k].get('data_width'), gen[k].get('sign')) == changes[k]:
+                continue
             errors += [f"{k}: {f} {b.get(f)} -> {gen[k].get(f)}"
                        for f in ('data_width', 'sign', 'access') if b.get(f) != gen[k].get(f)
                        and not (f == 'data_width' and regmap.WIDTH_CHANGES.get(k) == gen[k].get(f))]
-        elif k not in regmap.REMOVALS and not all(n in gen for n in regmap.RENAMES.get(k, [None])):
+        elif k not in removals and not all(n in gen for n in regmap.RENAMES.get(k, [None])):
             errors.append(f"{k}: missing")
-    allowed = set(regmap.ADDITIONS) | {n for new in regmap.RENAMES.values() for n in new}
+    allowed = set(regmap.ADDITIONS) | set(scope.get('COMPAT_ADDITIONS', []))
+    allowed |= {n for new in regmap.RENAMES.values() for n in new}
     errors += [f"{k}: not in the baseline" for k in gen if k not in base and k not in allowed]
     return errors
 
 
-@pytest.mark.parametrize('design', [
-    *DESIGNS[:-1],
-    pytest.param('lemp', marks=pytest.mark.xfail(
-        strict=True, reason="baseline is the LEMP-branch JSON; designs/lemp matches it after steps 9-10")),
-])
+@pytest.mark.parametrize('design', DESIGNS)
 def test_regmap_compat(design):
+    """The design's map against its step-1 baseline; LEMP's baseline is the
+    LEMP-branch map (2e25cd9), its intended differences are in design.py."""
     base = json.loads((TOP / 'designs' / design / '_baseline' / 'llrf_shell.json').read_text())
-    errors = compat_errors(base, build_json(design))
+    scope = regmap.design_scope(regmap.design_file(design))
+    errors = compat_errors(base, build_json(design), scope)
     assert not errors, "\n".join(errors)
 
 
@@ -162,57 +171,87 @@ def test_readback_windows(design):
         assert covered == hi - lo, f"{name}: [{lo:#x}, {hi:#x}) not fully decoded"
 
 
-# --- `// external` ports of the block instances that own registers -------
+# --- block config structs: <inst>_cfg_t in llrf_shell_pkg.sv ---------------
 
-EXTERNAL_PORT = re.compile(
-    r"^\s*(input|output)\s+(?:signed\s+)?(?:\[(\d+):(\d+)\])?\s*(\w+)\s*,?\s*"
-    r"//\s*external(?:\s+(single-cycle))?(?:\s+address for (\w+))?", re.M)
-
-
-def external_ports(module):
-    """{port: (direction, width, single_cycle, address_of)} of the ports
-    marked `// external` in llrf_dsp/<module>.v."""
-    text = (TOP / 'llrf_dsp' / f'{module}.v').read_text()
-    return {m[4]: (m[1], int(m[2]) - int(m[3]) + 1 if m[2] else 1, bool(m[5]), m[6])
-            for m in EXTERNAL_PORT.finditer(text)}
+PKG = TOP / 'llrf_dsp' / 'llrf_shell_pkg.sv'
+CFG_STRUCT = re.compile(r"typedef struct packed \{(.*?)\}\s*(\w+)_cfg_t;", re.S)
+CFG_MEMBER = re.compile(r"^\s*logic\s+(signed\s+)?(?:\[([\w+\- ]+):(\d+)\])?\s*(\w+);[ \t]*(//\s*strobe)?", re.M)
 
 
-def instance_modules():
-    """{instance: module} of the register-owning instances in the SV shell."""
-    src = (TOP / 'designs' / 'uspas' / 'llrf_shell.sv').read_text()
-    src += (TOP / 'llrf_dsp' / 'diag.sv').read_text()
-    insts = {r.inst for r in regmap.base_regs() if r.inst}
-    found = {}
-    for inst in insts:
-        m = re.search(rf"^\s*(\w+)\s*(?:#\s*\([^;]*?\))?\s+{inst}\s*\(", src, re.M)
-        assert m, f"instance {inst} not found"
-        found[inst] = m[1]
-    return found
+def pkg_params(text):
+    """{name: value} of the integer localparams in text."""
+    return {m[1]: int(m[2]) for m in re.finditer(r"localparam int (\w+) = (\d+);", text)}
 
 
-@pytest.mark.parametrize('inst', sorted({r.inst for r in regmap.base_regs() if r.inst}))
-def test_external_ports(inst):
-    """Every `// external` port of the instance's module has a register with
-    the same width and kind (single-cycle = strobe; an `address for` output
-    makes a table of that address width), and every register of the
-    instance has such a port."""
-    module = instance_modules()[inst]
-    ports = external_ports(module)
-    regs = {r.port: r for r in regmap.base_regs() if r.inst == inst}
+def cfg_structs(text):
+    """{inst: {member: (width, signed, strobe)}} of the <inst>_cfg_t types in
+    text; a member's MSB may use the package's localparams (PULSE_AW-1)."""
+    params = pkg_params(text)
+
+    def msb(expr):  # N, NAME or NAME+-N
+        m = re.fullmatch(r"\s*(\w+)\s*(?:([+-])\s*(\d+))?\s*", expr)
+        assert m, expr
+        base = int(m[1]) if m[1].isdigit() else params[m[1]]
+        return base + (int(m[3]) if m[2] == '+' else -int(m[3]) if m[2] else 0)
+    return {m[2]: {f[4]: (msb(f[2]) - int(f[3]) + 1 if f[2] else 1, bool(f[1]), bool(f[5]))
+                   for f in CFG_MEMBER.finditer(m[1])}
+            for m in CFG_STRUCT.finditer(text)}
+
+
+@pytest.mark.parametrize('design', DESIGNS)
+def test_cfg_structs(design):
+    """The registers of each block instance are the members of its
+    <inst>_cfg_t: same names (a mismatch also fails to compile), widths,
+    signedness and kind (`// strobe` members are strobe registers). The monitor_inlk tables
+    have INLK_AW address bits."""
+    regs = regmap.load_design(regmap.design_file(design))
+    text = PKG.read_text()
+    structs = cfg_structs(text)
     errors = []
-    for port, (direction, width, single_cycle, address_of) in ports.items():
-        if direction == 'output':
-            r = regs.get(address_of)
-            if r is None or r.aw != width:
-                errors.append(f"{module}.{port}: table {inst}_{address_of} with aw {width} expected")
+    for inst, elements in regmap.inst_cfgs(regs).items():
+        members = structs.get(inst)
+        if members is None:
+            errors.append(f"instance {inst}: no {inst}_cfg_t in {PKG.name}")
             continue
-        r = regs.get(port)
-        if r is None:
-            errors.append(f"{module}.{port}: no register {inst}_{port}")
-            continue
-        if r.width != width:
-            errors.append(f"{inst}_{port}: width {r.width}, port {width}")
-        if (r.kind == 'strobe') != single_cycle:
-            errors.append(f"{inst}_{port}: kind {r.kind}, port {'single-cycle' if single_cycle else 'level'}")
-    errors += [f"{r.name}: {module} has no `// external` port {p}" for p, r in regs.items() if p not in ports]
+        for rs in elements:
+            got = {r.port: (r.width, r.signed, r.kind == 'strobe') for r in rs}
+            errors += [f"{inst}_cfg_t.{p}: (width, signed, strobe) {members.get(p)}, register {rs[0].prefix}{p} {v}"
+                       for p, v in got.items() if members.get(p) != v]
+            errors += [f"{inst}_cfg_t.{p}: no register" for p in members if p not in got]
+    inlk_aw = pkg_params(text)['INLK_AW']
+    errors += [f"{r.name}: aw {r.aw}, INLK_AW {inlk_aw}" for r in regs if r.inst == 'inlk' and r.aw and r.aw != inlk_aw]
     assert not errors, "\n".join(errors)
+
+
+def test_inst_array(tmp_path):
+    """Indexed registers make an array of the instance's config struct,
+    cfg_<domain>.<inst>[k], each element assigned as a named pattern; sv2v
+    accepts the generated package and register file. Elements must have
+    the same members."""
+    m = regmap.load_map()
+    m.regs += [regmap.Reg(f'trg_{k}_{p}', 32, inst='trg', index=k) for k in range(2) for p in ('width', 'delay')]
+    regmap.check(m.regs)
+    pkg, regs = regmap.pkg_sv(m, 'test'), regmap.regs_sv(m, 'test')
+    assert "        trg_cfg_t [1:0] trg;\n" in pkg
+    assert "assign cfg_dsp.trg[1] = '{width: trg_1_width, delay: trg_1_delay};\n" in regs
+    with pytest.raises(AssertionError, match="elements of instance trg differ"):
+        regmap.check(m.regs[:-1])
+    sv2v = shutil.which('sv2v')
+    if sv2v is None:
+        pytest.skip("sv2v not found")
+    typedef = "    typedef struct packed { logic [31:0] width; logic [31:0] delay; } trg_cfg_t;\n"
+    files = {'llrf_shell_pkg.sv': PKG.read_text().replace("endpackage", typedef + "endpackage"),
+             'llrf_shell_regmap_pkg.sv': pkg, 'llrf_shell_regs.sv': regs}
+    for name, text in files.items():
+        (tmp_path / name).write_text(text)
+    r = subprocess.run([sv2v, *(str(tmp_path / f) for f in files)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+
+
+def test_wave_trig_encoding():
+    """WaveTrigSel (Python) and the WAVE_TRIG_* constants of llrf_shell_pkg.sv
+    are the same encoding (plan L4)."""
+    names = {'INT': 'Internal', 'EXT': 'External', 'SOFT': 'Software', 'EVR': 'EVR',
+             'ALWAYS': 'Always', 'MIXED': 'Mixed'}
+    rtl = {names[m[1]]: int(m[2]) for m in re.finditer(r"WAVE_TRIG_(\w+)\s*=\s*3'd(\d+)", PKG.read_text())}
+    assert rtl == {e.name: e.value for e in regmap.WaveTrigSel}

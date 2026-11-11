@@ -1,0 +1,100 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Thu Feb 20 01:38:16 2025
+[*]
+[dumpfile] "/home/dejorge/Documents/LEMP/uspas_llrf/interlock/interlock_wrapper.vcd"
+[dumpfile_mtime] "Thu Feb 20 01:35:55 2025"
+[dumpfile_size] 67146446
+[savefile] "/home/dejorge/Documents/LEMP/uspas_llrf/interlock/interlock_wrapper.gtkw"
+[timestart] 0
+[size] 3394 1376
+[pos] -1 -1
+*-22.000000 17276000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] interlock_wrapper_tb.
+[treeopen] interlock_wrapper_tb.dut.
+[sst_width] 275
+[signals_width] 319
+[sst_expanded] 1
+[sst_vpaned_height] 458
+@420
+interlock_wrapper_tb.cc
+@28
+interlock_wrapper_tb.dsp_clk
+@88420
+interlock_wrapper_tb.dds_sin[17:0]
+@20000
+-
+@88022
+interlock_wrapper_tb.dds_cos[17:0]
+@20000
+-
+@28
+interlock_wrapper_tb.fiducial
+@200
+-
+@8420
+interlock_wrapper_tb.adc[15:0]
+@20000
+-
+@8420
+interlock_wrapper_tb.dut.kly_rev_in[15:0]
+@20000
+-
+-
+@28
+interlock_wrapper_tb.dut.kr_amp_max_rst
+@200
+-
+@22
+interlock_wrapper_tb.beam_cur_in[15:0]
+@200
+-
+@22
+interlock_wrapper_tb.beam_vol_in[15:0]
+@200
+-
+@28
+interlock_wrapper_tb.dut.mod_permit
+interlock_wrapper_tb.dut.status_modulator
+@200
+-
+@28
+interlock_wrapper_tb.init_done
+interlock_wrapper_tb.fail
+@200
+-
+@8420
+interlock_wrapper_tb.dut.kly_rev_out[17:0]
+@20000
+-
+-
+@22
+interlock_wrapper_tb.dut.kr_amp_thr[16:0]
+@28
+interlock_wrapper_tb.dut.kly_rev_above_thr
+@200
+-
+@28
+interlock_wrapper_tb.dut.kr_amp_max_rst
+@200
+-
+@22
+interlock_wrapper_tb.dut.kly_rev_out[17:0]
+@200
+-
+@22
+interlock_wrapper_tb.dut.intlk_fault[7:0]
+interlock_wrapper_tb.dut.intlk_latch[7:0]
+interlock_wrapper_tb.dut.intlk_firstf[7:0]
+@28
+interlock_wrapper_tb.dut.intlk_trig
+interlock_wrapper_tb.dut.debouncer_stat_mod.clk
+interlock_wrapper_tb.dut.status_modulator
+interlock_wrapper_tb.dut.debouncer_stat_mod.PB
+interlock_wrapper_tb.dut.debouncer_stat_mod.PB_sync_1
+interlock_wrapper_tb.dut.debouncer_stat_mod.PB_state_r
+interlock_wrapper_tb.dut.debouncer_stat_mod.PB_state
+@23
+interlock_wrapper_tb.dut.debouncer_stat_mod.PB_cnt[7:0]
+[pattern_trace] 1
+[pattern_trace] 0

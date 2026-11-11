@@ -1,0 +1,30 @@
+[timestart] 91
+[size] 1233 602
+[pos] 0 0
+*-6.735974 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 210
+[signals_width] 166
+[sst_expanded] 1
+[sst_vpaned_height] 155
+@22
+interlock_mon_tb.byp[5:0]
+interlock_mon_tb.reset[5:0]
+@200
+-fault inputs
+@28
+interlock_mon_tb.pll_ok
+interlock_mon_tb.epics_timeout
+interlock_mon_tb.resctl_permit
+interlock_mon_tb.resctl_link_fault
+interlock_mon_tb.ssa_fault
+interlock_mon_tb.rfs_quench
+@200
+-outputs
+@22
+interlock_mon_tb.intlk_fault[5:0]
+interlock_mon_tb.intlk_firstf[5:0]
+interlock_mon_tb.intlk_latch[5:0]
+@28
+interlock_mon_tb.intlk_trig
+[pattern_trace] 1
+[pattern_trace] 0

@@ -1,6 +1,6 @@
 // Base llrf_shell (plan §2.1): the generated register file, the shared
-// blocks (rx_chain, diag, tx_chain), and the design-owned permits, trigger
-// selection, feedback loops, network analyzer and EVR timing.
+// blocks (rx_chain, diag, loops, tx_chain), and the design-owned permits,
+// trigger selection, network analyzer and EVR timing.
 // Registers, status words and readback windows: uspas_llrf/regmap.py.
 module llrf_shell
     import llrf_shell_pkg::*;
@@ -65,7 +65,7 @@ status_lb_t status_lb;
 status_dsp_t status_dsp;
 wire [LB_ADW-1:0] lb_addr_d1;
 wire xfer_snap;
-wire [3:0] inlk_amp_lo_addr, inlk_amp_hi_addr, inlk_inlk_mode_addr;
+wire [INLK_AW-1:0] inlk_amp_lo_addr, inlk_amp_hi_addr, inlk_inlk_mode_addr;
 wire [15:0] inlk_amp_lo, inlk_amp_hi;
 wire [1:0] inlk_inlk_mode;
 wire [31:0] rd_circle_ready, rd_sig_buf_ready, rd_sig_iq_buf_ready, rd_slow;
@@ -100,9 +100,9 @@ wire dsp_reset = cfg_dsp.dsp_reset;
 // RX
 // ---------------------
 adc_t adc [N_ADC];
-bb_t sig_i_data [N_CH];  // ADC channels, then drives
+bb_t sig_i_data [N_CH];  // to diag: ADC channels (monitor path), then drives
 bb_t sig_q_data [N_CH];
-bb_t rx_i [N_ADC], rx_q [N_ADC];
+bb_t rx_i [N_ADC], rx_q [N_ADC], mon_i [N_ADC], mon_q [N_ADC];
 rx_chain rx_chain (
     .dsp_clk         (dsp_clk),
     .dsp_reset       (dsp_reset),
@@ -113,13 +113,17 @@ rx_chain rx_chain (
     .dds_modulo      (cfg_dsp.rx_dds_modulo),
     .adc             (adc),
     .sig_i           (rx_i),
-    .sig_q           (rx_q)
+    .sig_q           (rx_q),
+    .mon_i           (mon_i),
+    .mon_q           (mon_q),
+    .lo_cos          (),
+    .lo_sin          ()
 );
 
 genvar ch;
 generate for (ch = 0; ch < N_ADC; ch = ch + 1) begin: gen_rx
-    assign sig_i_data[ch] = rx_i[ch];
-    assign sig_q_data[ch] = rx_q[ch];
+    assign sig_i_data[ch] = mon_i[ch];
+    assign sig_q_data[ch] = mon_q[ch];
 end endgenerate
 
 // ---------------------
@@ -142,7 +146,7 @@ wire [0:0] sum_drive_enable = internal_permit_out && external_permit_in;
 
 assign fast_permit_out = internal_permit_out;
 assign fast_rf_permit_out = internal_permit_out;
-// per-drive registers, indexed in the loop generate below
+// per-drive registers, to the loops block
 wire [N_DRIVE-1:0] soft_drive_enable = {cfg_dsp.soft_drive1_enable, cfg_dsp.soft_drive0_enable};
 wire [N_DRIVE-1:0] drv_pulse_mode = {cfg_dsp.drv1_pulse_mode, cfg_dsp.drv0_pulse_mode};
 assign evg_permit_out = soft_drive_enable[0] && sum_drive_enable;  // XXX ALSU specific
@@ -190,7 +194,10 @@ pulse_gen #(.AW(24)) trig_delay_gen (
     .high_len   (24'd1),
     .stb_in     (1'b1),
     .res        (4'd0),
-    .pulse_dval (wave_trig)
+    .pulse_dval (wave_trig),
+    .pulse_last (),
+    .pulse_idx  (),
+    .pulse_clk  ()
 );
 assign trig_out = wave_trig;
 
@@ -236,19 +243,14 @@ diag #(
     .cbuf_post_delay       (cfg_dsp.cbuf_post_delay),
     .dsp_tag               (cfg_dsp.dsp_tag),
     .slow_snap_cic         (cfg_dsp.slow_snap_cic),
-    .inlk_permit_mask      (cfg_dsp.inlk_permit_mask),
-    .arc_permit_mask       (cfg_dsp.arc_permit_mask),
+    .inlk_cfg              (cfg_dsp.inlk),
+    .arc_cfg               (cfg_dsp.arc),
     .inlk_amp_lo           (inlk_amp_lo),
     .inlk_amp_lo_addr      (inlk_amp_lo_addr),
     .inlk_amp_hi           (inlk_amp_hi),
     .inlk_amp_hi_addr      (inlk_amp_hi_addr),
     .inlk_inlk_mode        (inlk_inlk_mode),
     .inlk_inlk_mode_addr   (inlk_inlk_mode_addr),
-    .inlk_reset_inlk       (cfg_dsp.inlk_reset_inlk),
-    .arc_reset_latch       (cfg_dsp.arc_reset_latch),
-    .arc_reset_arc_dev     (cfg_dsp.arc_reset_arc_dev),
-    .arc_test_mask         (cfg_dsp.arc_test_mask),
-    .arc_test_stb          (cfg_dsp.arc_test_stb),
     .arc_permit_in         (arc_permit_in),
     .arc_test_out          (arc_test_out),
     .arc_reset_out         (arc_reset_out),
@@ -323,7 +325,7 @@ timing_core timing_evr (
 );
 
 // ---------------------
-// Feedback loops with pulse modulation (loop_ctrl)
+// Feedback loops with pulse modulation
 // ---------------------
 // XXX network analyzer setpoints bypassed for now
 wire signed [DWBB-1:0] amp_setpoint_ntw;
@@ -331,141 +333,44 @@ wire signed [DWBB-1:0] phs_setpoint_ntw;
 
 bb_t drive_i_out [N_DRIVE];
 bb_t drive_q_out [N_DRIVE];
-wire signed [14:0] err_out_amp [0:N_DRIVE-1];
-wire signed [14:0] err_out_phs [0:N_DRIVE-1];
-wire signed [14:0] err_out_amp_lb [0:N_DRIVE-1];
-wire signed [14:0] err_out_phs_lb [0:N_DRIVE-1];
-wire [DWBB-1:0] lb_rdata_amp_mod [0:N_DRIVE-1];
-wire [DWBB-1:0] lb_rdata_phs_mod [0:N_DRIVE-1];
-
-// per-loop registers, indexed in the generate below
-wire signed [DWBB-1:0] amp_setpoint [0:N_DRIVE-1];
-wire signed [DWBB-1:0] max_amp_setpoint [0:N_DRIVE-1];
-wire signed [DWBB-1:0] phs_setpoint [0:N_DRIVE-1];
-wire signed [DWBB-1:0] Kp_amp [0:N_DRIVE-1];
-wire signed [DWBB-1:0] Kp_phs [0:N_DRIVE-1];
-wire signed [DWBB-1:0] Ki_amp [0:N_DRIVE-1];
-wire signed [DWBB-1:0] Ki_phs [0:N_DRIVE-1];
-wire [N_DRIVE-1:0] amp_loop_enable, phs_loop_enable, amp_loop_reset, phs_loop_reset;
-wire [31:0] pulse_start [0:N_DRIVE-1];
-wire [31:0] pulse_high_len [0:N_DRIVE-1];
-wire [3:0] res_shift [0:N_DRIVE-1];
-wire [MAP_MOD_AW:0] mod_len [0:N_DRIVE-1];
-wire [N_DRIVE-1:0] amp_mod_enable, phs_mod_enable;
-wire signed [DWBB-1:0] field_i_data [0:N_DRIVE-1];
-wire signed [DWBB-1:0] field_q_data [0:N_DRIVE-1];
-
-assign pulse_start[0] = cfg_dsp.loop0_pulse_start;
-assign pulse_high_len[0] = cfg_dsp.loop0_pulse_high_len;
-assign res_shift[0] = cfg_dsp.loop0_pulse_res_shift;
-assign mod_len[0] = cfg_dsp.loop0_mod_len;
-assign amp_mod_enable[0] = cfg_dsp.loop0_amp_mod_enable;
-assign phs_mod_enable[0] = cfg_dsp.loop0_phs_mod_enable;
-assign amp_setpoint[0] = cfg_dsp.loop0_amp_setpoint;
-assign max_amp_setpoint[0] = cfg_dsp.loop0_max_amp_setpoint;
-assign phs_setpoint[0] = cfg_dsp.loop0_phs_setpoint;
-assign Kp_amp[0] = cfg_dsp.loop0_Kp_amp;
-assign Kp_phs[0] = cfg_dsp.loop0_Kp_phs;
-assign Ki_amp[0] = cfg_dsp.loop0_Ki_amp;
-assign Ki_phs[0] = cfg_dsp.loop0_Ki_phs;
-assign amp_loop_enable[0] = cfg_dsp.loop0_amp_enable;
-assign phs_loop_enable[0] = cfg_dsp.loop0_phs_enable;
-assign amp_loop_reset[0] = cfg_dsp.loop0_amp_reset;
-assign phs_loop_reset[0] = cfg_dsp.loop0_phs_reset;
-
-assign pulse_start[1] = cfg_dsp.loop1_pulse_start;
-assign pulse_high_len[1] = cfg_dsp.loop1_pulse_high_len;
-assign res_shift[1] = cfg_dsp.loop1_pulse_res_shift;
-assign mod_len[1] = cfg_dsp.loop1_mod_len;
-assign amp_mod_enable[1] = cfg_dsp.loop1_amp_mod_enable;
-assign phs_mod_enable[1] = cfg_dsp.loop1_phs_mod_enable;
-assign amp_setpoint[1] = cfg_dsp.loop1_amp_setpoint;
-assign max_amp_setpoint[1] = cfg_dsp.loop1_max_amp_setpoint;
-assign phs_setpoint[1] = cfg_dsp.loop1_phs_setpoint;
-assign Kp_amp[1] = cfg_dsp.loop1_Kp_amp;
-assign Kp_phs[1] = cfg_dsp.loop1_Kp_phs;
-assign Ki_amp[1] = cfg_dsp.loop1_Ki_amp;
-assign Ki_phs[1] = cfg_dsp.loop1_Ki_phs;
-assign amp_loop_enable[1] = cfg_dsp.loop1_amp_enable;
-assign phs_loop_enable[1] = cfg_dsp.loop1_phs_enable;
-assign amp_loop_reset[1] = cfg_dsp.loop1_amp_reset;
-assign phs_loop_reset[1] = cfg_dsp.loop1_phs_reset;
-
-assign field_i_data[0] = sig_i_data[cfg_dsp.loop0_adc_chan];
-assign field_q_data[0] = sig_q_data[cfg_dsp.loop0_adc_chan];
-assign field_i_data[1] = sig_i_data[cfg_dsp.loop1_adc_chan];
-assign field_q_data[1] = sig_q_data[cfg_dsp.loop1_adc_chan];
-
-generate for (ch = 0; ch < N_DRIVE; ch = ch + 1) begin: gen_loops
-    loop_ctrl #(
-        .DWBB       (DWBB),
-        .EW         (15),
-        .PULSE_AW   (32),
-        .MOD_AW     (MAP_MOD_AW),
-        .RW         (4)
-    ) loop_ctrl (
-        .dsp_clk          (dsp_clk),
-        .dsp_reset        (dsp_reset),
-        .trig             (wave_trig),
-        .pulse_start      (pulse_start[ch]),
-        .pulse_high_len   (pulse_high_len[ch]),   // unit: DSP_CLK_CYCLE
-        .res_shift        (res_shift[ch]),
-        .pulse_mode       (drv_pulse_mode[ch]),
-        .drive_permit     (soft_drive_enable[ch] && sum_drive_enable),
-        .mod_len          (mod_len[ch]),
-        .amp_mod_enable   (amp_mod_enable[ch]),
-        .phs_mod_enable   (phs_mod_enable[ch]),
-        .phs_offset       ({DWBB{1'b0}}),
-        .amp_setpoint     (amp_setpoint[ch]),
-        .max_amp_setpoint (max_amp_setpoint[ch]),
-        .phs_setpoint     (phs_setpoint[ch]),
-        .Kp_amp           (Kp_amp[ch]),
-        .Kp_phs           (Kp_phs[ch]),
-        .Ki_amp           (Ki_amp[ch]),
-        .Ki_phs           (Ki_phs[ch]),
-        .amp_loop_enable  (amp_loop_enable[ch]),
-        .phs_loop_enable  (phs_loop_enable[ch]),
-        .amp_loop_reset   (amp_loop_reset[ch]),
-        .phs_loop_reset   (phs_loop_reset[ch]),
-        .rx_phase_offset  (cfg_dsp.rx_phase_offset),
-        .tx_phase_offset  (cfg_dsp.tx_phase_offset),
-        .field_i          (field_i_data[ch]),
-        .field_q          (field_q_data[ch]),
-        .drive_i          (drive_i_out[ch]),
-        .drive_q          (drive_q_out[ch]),
-        .drive_on         (),
-        .amp_measured     (),
-        .phs_measured     (),
-        .err_amp          (err_out_amp[ch]),
-        .err_phs          (err_out_phs[ch]),
-        .pulse_dval       (),
-        .pulse_last       (),
-        .pulse_idx        (),
-        .amp_setpoint_mod (),
-        .phs_setpoint_mod (),
-        .lb_clk           (lb_clk),
-        .lb_addr          (lb_addr[MAP_MOD_AW-1:0]),
-        .lb_wdata         (lb_wdata[DWBB-1:0]),
-        .lb_write_amp_mod (wr_amp_mod[ch]),
-        .lb_write_phs_mod (wr_phs_mod[ch]),
-        .lb_rdata_amp_mod (lb_rdata_amp_mod[ch]),
-        .lb_rdata_phs_mod (lb_rdata_phs_mod[ch])
-    );
-    assign rd_amp_mod[ch] = {{(32-DWBB){lb_rdata_amp_mod[ch][DWBB-1]}}, lb_rdata_amp_mod[ch]};
-    assign rd_phs_mod[ch] = {{(32-DWBB){lb_rdata_phs_mod[ch][DWBB-1]}}, lb_rdata_phs_mod[ch]};
-
-    data_xdomain #(.size(30)) loop_err_xdomain (
-        .clk_in   (dsp_clk),
-        .gate_in  (dsp_tick),
-        .data_in  ({err_out_amp[ch], err_out_phs[ch]}),
-        .clk_out  (lb_clk),
-        .data_out ({err_out_amp_lb[ch], err_out_phs_lb[ch]})
-    );
-
+bb_t phs_offset [N_DRIVE];
+wire signed [14:0] err_out_amp_lb [N_DRIVE];
+wire signed [14:0] err_out_phs_lb [N_DRIVE];
+generate for (ch = 0; ch < N_DRIVE; ch = ch + 1) begin: gen_drive
+    assign phs_offset[ch] = '0;
     // base-band loop output for IQ waveform monitoring
     assign sig_i_data[N_ADC+ch] = drive_i_out[ch];
     assign sig_q_data[N_ADC+ch] = drive_q_out[ch];
 end endgenerate
+
+loops loops (
+    .dsp_clk         (dsp_clk),
+    .dsp_reset       (dsp_reset),
+    .dsp_tick        (dsp_tick),
+    .cfg             (cfg_dsp.loop),
+    .rx_phase_offset (cfg_dsp.rx_phase_offset),
+    .tx_phase_offset (cfg_dsp.tx_phase_offset),
+    .trig            (wave_trig),
+    .pulse_mode      (drv_pulse_mode),
+    .drive_permit    (soft_drive_enable & {N_DRIVE{sum_drive_enable}}),
+    .phs_offset      (phs_offset),
+    .sig_i           (rx_i),
+    .sig_q           (rx_q),
+    .drive_i         (drive_i_out),
+    .drive_q         (drive_q_out),
+    .pulse_dval      (),
+    .pulse_idx       (),
+    .pulse_clk       (),
+    .err_amp_lb      (err_out_amp_lb),
+    .err_phs_lb      (err_out_phs_lb),
+    .lb_clk          (lb_clk),
+    .lb_addr         (lb_addr[MAP_MOD_AW-1:0]),
+    .lb_wdata        (lb_wdata[DWBB-1:0]),
+    .wr_amp_mod      (wr_amp_mod),
+    .wr_phs_mod      (wr_phs_mod),
+    .rd_amp_mod      (rd_amp_mod),
+    .rd_phs_mod      (rd_phs_mod)
+);
 
 // ---------------------
 // TX
@@ -499,16 +404,13 @@ ntw_analyzer #(.KW(DWBB)) ntw (
     .trig             (ntw_trig_i),
     .ext_amp_enable   (cfg_dsp.ntw_amp_enable),
     .ext_phs_enable   (cfg_dsp.ntw_phs_enable),
-    .amp_setpoint     (cfg_dsp.loop0_amp_setpoint),
-    .phs_setpoint     (cfg_dsp.loop0_phs_setpoint),
+    .amp_setpoint     (cfg_dsp.loop[0].amp_setpoint),
+    .phs_setpoint     (cfg_dsp.loop[0].phs_setpoint),
     .ntw_phase_debug  (ntw_phase_debug),
     .ntw_cos_debug    (ntw_cos_debug),
     .amp_stp_ntw      (amp_setpoint_ntw), // final amplitude setpoint after excitation
     .phs_stp_ntw      (phs_setpoint_ntw),
-    .lo_amp           (cfg_dsp.ntw_lo_amp),
-    .modulo           (cfg_dsp.ntw_modulo),
-    .phase_step_h     (cfg_dsp.ntw_phase_step_h),
-    .phase_step_l     (cfg_dsp.ntw_phase_step_l)
+    .cfg              (cfg_dsp.ntw)
 );
 
 // ---------------------

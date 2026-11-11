@@ -35,20 +35,15 @@ module diag
     input  [15:0]         cbuf_post_delay,
     input  [7:0]          dsp_tag,
     input                 slow_snap_cic,
-    input  [9:0]          inlk_permit_mask,
-    input  [7:0]          arc_permit_mask,
+    input  inlk_cfg_t     inlk_cfg,          // monitor_inlk
+    input  arc_cfg_t      arc_cfg,           // arc_inlk
     // monitor_inlk thresholds and modes (register tables)
     input  [15:0]         inlk_amp_lo,
-    output [3:0]          inlk_amp_lo_addr,
+    output [INLK_AW-1:0]  inlk_amp_lo_addr,
     input  [15:0]         inlk_amp_hi,
-    output [3:0]          inlk_amp_hi_addr,
+    output [INLK_AW-1:0]  inlk_amp_hi_addr,
     input  [1:0]          inlk_inlk_mode,
-    output [3:0]          inlk_inlk_mode_addr,
-    input                 inlk_reset_inlk,
-    input                 arc_reset_latch,
-    input                 arc_reset_arc_dev,
-    input  [7:0]          arc_test_mask,
-    input                 arc_test_stb,
+    output [INLK_AW-1:0]  inlk_inlk_mode_addr,
 
     // ARC detectors
     input  [2:0]          arc_permit_in,
@@ -116,7 +111,9 @@ pulse_gen #(.AW(32)) sig_buf_trig_gen (
     .stb_in     (1'b1),
     .res        (4'd0),
     .pulse_dval (sig_buf_dval),
-    .pulse_last (sig_buf_last)
+    .pulse_last (sig_buf_last),
+    .pulse_idx  (),
+    .pulse_clk  ()
 );
 
 genvar ch;
@@ -189,7 +186,10 @@ pulse_gen #(.AW(32)) cbuf_trig_gen (
     .high_len   (32'd1),
     .stb_in     (1'b1),
     .res        (4'd0),
-    .pulse_dval (cbuf_trig)
+    .pulse_dval (cbuf_trig),
+    .pulse_last (),
+    .pulse_idx  (),
+    .pulse_clk  ()
 );
 
 wire [CBUF_DW-1:0] cbuf_out;
@@ -277,7 +277,7 @@ wire [15:0] fault_amp_out;
 wire [16:0] fault_phs_out;
 monitor_inlk #(.N_CH(N_CH)) inlk (
     .clk               (dsp_clk),
-    .permit_mask       (inlk_permit_mask),
+    .cfg               (inlk_cfg),
     .mon_data          (inlk_data),
     .mon_valid         (inlk_dval),
     .mon_last          (inlk_last),
@@ -302,7 +302,6 @@ monitor_inlk #(.N_CH(N_CH)) inlk (
     .amp_lo_addr       (inlk_amp_lo_addr),
     .amp_hi            (inlk_amp_hi),
     .amp_hi_addr       (inlk_amp_hi_addr),
-    .reset_inlk        (inlk_reset_inlk),
     .inlk_mode         (inlk_inlk_mode),
     .inlk_mode_addr    (inlk_inlk_mode_addr)
 );
@@ -316,18 +315,14 @@ wire arc_permit_sum;
 wire arc_testing;
 arc_inlk #(.N_CH(3), .F_CLK(F_DSP_HZ)) arc (
     .clk              (dsp_clk),
-    .permit_mask      (arc_permit_mask),
+    .cfg              (arc_cfg),
     .dev_permit_in    (arc_permit_in),
     .dev_test_out     (arc_test_out),
     .dev_reset_out    (arc_reset_out),
     .permit_raw_out   (arc_permit_raw),
     .permit_latch_out (arc_permit_latch),
     .permit_sum_out   (arc_permit_sum),
-    .testing_out      (arc_testing),
-    .reset_latch      (arc_reset_latch),
-    .reset_arc_dev    (arc_reset_arc_dev),
-    .test_mask        (arc_test_mask),
-    .test_stb         (arc_test_stb)
+    .testing_out      (arc_testing)
 );
 
 assign inlk_arc_permit = inlk_permit_out & arc_permit_sum;
@@ -342,6 +337,7 @@ dpram #(.aw(4), .dw(16+17)) dp_llrf_amp_mon (
     .addra  (mon_addr_out),
     .dina   ({mon_amp_out, mon_phs_out}),
     .wena   (mon_valid_out),
+    .douta  (),
     .clkb   (lb_clk),
     .addrb  (lb_addr[3:0]),
     .doutb  ({mon_amp_lb, mon_phs_lb})
@@ -354,12 +350,13 @@ data_xdomain #(.size(5*N_CH+1)) inlk_stat_xdomain (
     .gate_in  (dsp_tick),
     .data_in  ({inlk_permit_out, first_fault_status, inlk_latch, inlk_status, inlk_hi, inlk_lo}),
     .clk_out  (lb_clk),
-    .data_out ({inlk_permit_out_lb, first_fault_status_lb, inlk_latch_lb, inlk_status_lb, inlk_hi_lb, inlk_lo_lb})
+    .data_out ({inlk_permit_out_lb, first_fault_status_lb, inlk_latch_lb, inlk_status_lb, inlk_hi_lb, inlk_lo_lb}),
+    .gate_out ()
 );
 
 // Latch fault record amplitude per channel, addressed by fault_addr_out
 reg [16*N_CH-1:0] fault_amp_r = 0;
-always @(posedge dsp_clk) if (fault_valid_out && fault_addr_out < N_CH)
+always @(posedge dsp_clk) if (fault_valid_out && fault_addr_out < 4'(N_CH))
     fault_amp_r[16*fault_addr_out +: 16] <= fault_amp_out;
 
 wire [16*N_CH-1:0] fault_amp_xd;
@@ -368,9 +365,10 @@ data_xdomain #(.size(16*N_CH)) fault_amp_xdomain (
     .gate_in  (dsp_tick),
     .data_in  (fault_amp_r),
     .clk_out  (lb_clk),
-    .data_out (fault_amp_xd)
+    .data_out (fault_amp_xd),
+    .gate_out ()
 );
-wire [15:0] fault_amp_lb = lb_addr_d1[3:0] < N_CH ? fault_amp_xd[16*lb_addr_d1[3:0] +: 16] : 16'h0;
+wire [15:0] fault_amp_lb = lb_addr_d1[3:0] < 4'(N_CH) ? fault_amp_xd[16*lb_addr_d1[3:0] +: 16] : 16'h0;
 assign rd_fault_amp = {16'b0, fault_amp_lb};
 
 data_xdomain #(.size(1+3+3+1)) arc_stat_xdomain (
@@ -378,7 +376,8 @@ data_xdomain #(.size(1+3+3+1)) arc_stat_xdomain (
     .gate_in  (dsp_tick),
     .data_in  ({arc_testing, arc_permit_sum, arc_permit_latch, arc_permit_raw}),
     .clk_out  (lb_clk),
-    .data_out ({arc_testing_lb, arc_permit_sum_lb, arc_permit_latch_lb, arc_permit_raw_lb})
+    .data_out ({arc_testing_lb, arc_permit_sum_lb, arc_permit_latch_lb, arc_permit_raw_lb}),
+    .gate_out ()
 );
 
 endmodule

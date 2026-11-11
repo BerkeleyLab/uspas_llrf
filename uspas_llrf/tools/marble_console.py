@@ -9,6 +9,11 @@ The UART's RTS line resets the SoC when released (UART_CTS edge in
 top/common/marble_zest_mid.vh); opening the port asserts it, and hang-up on
 close is turned off so closing the port does not release it.
 
+The main loop handles a received character only between its 1 Hz status
+updates, which read the Zest ADCs and can take a good part of a second, and
+opening the port can bring a stray byte. So the query keeps reading until the
+GIT_REV_ID line arrives, and is sent up to --tries times.
+
     python -m uspas_llrf.tools.marble_console PORT [--git-id HEX]
 """
 import argparse
@@ -27,8 +32,10 @@ def open_console(port, baudrate=115200):
     return ser
 
 
-def query_help(ser, timeout=3.0):
-    """Send '?' and return the console's reply until it goes quiet."""
+def query_help(ser, timeout=5.0):
+    """Send '?' and return the console's reply: up to timeout seconds, or
+    until it goes quiet after the GIT_REV_ID line (bytes before that line,
+    such as a stray byte from opening the port, do not end the reply)."""
     ser.reset_input_buffer()
     ser.write(b'?')
     reply, t_end, t_quiet = b'', time.monotonic() + timeout, None
@@ -36,7 +43,8 @@ def query_help(ser, timeout=3.0):
         chunk = ser.read(256)
         if chunk:
             reply += chunk
-            t_quiet = time.monotonic() + 0.3
+            if b'GIT_REV_ID:' in reply and b'\n' in reply.split(b'GIT_REV_ID:', 1)[1]:
+                t_quiet = time.monotonic() + 0.3
         elif t_quiet is not None and time.monotonic() > t_quiet:
             break
     return reply.decode('utf-8', errors='replace')
@@ -58,14 +66,20 @@ def main():
     parser.add_argument('port', help='console tty, e.g. /dev/serial/by-id/usb-LBNL_Marble_000037-if02-port0')
     parser.add_argument('--git-id', help='expected GIT_REV_ID (hex, e.g. the short commit id)')
     parser.add_argument('--baudrate', type=int, default=115200)
-    parser.add_argument('--timeout', type=float, default=3.0)
+    parser.add_argument('--timeout', type=float, default=5.0, help='seconds per try')
+    parser.add_argument('--tries', type=int, default=3)
     args = parser.parse_args()
 
+    rev = None
     with open_console(args.port, args.baudrate) as ser:
-        reply = query_help(ser, args.timeout)
-    rev = git_rev_id(reply)
+        for n in range(1, args.tries + 1):
+            reply = query_help(ser, args.timeout)
+            rev = git_rev_id(reply)
+            if rev is not None:
+                break
+            print(f"try {n}: no console help from {args.port}; received {reply!r}")
     if rev is None:
-        print(f"FAIL: no console help from {args.port}; received {reply!r}")
+        print(f"FAIL: no console help from {args.port} in {args.tries} tries")
         sys.exit(1)
     if args.git_id is not None and rev != int(args.git_id, 16):
         print(f"FAIL: GIT_REV_ID {rev:08x}, expected {args.git_id}")

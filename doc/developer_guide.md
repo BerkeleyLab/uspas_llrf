@@ -41,7 +41,7 @@ The DSP testbenches use cocotb with Verilator (default) or Icarus Verilog.
 ```bash
 cd llrf_dsp
 
-# Run DSP core subsystem cocotb tests (dds, ddc, duc, llrf_dsp, cic_waves, pulse_gen)
+# Run DSP core subsystem cocotb tests (dds, ddc, duc, pulse_gen, loop_ctrl, rx_chain, llrf_dsp, cic_waves)
 make
 
 # Run a single cocotb test suite for DSP submodules (from llrf_dsp/tests/<suite>)
@@ -51,6 +51,11 @@ cd tests/duc && make
 cd tests/llrf_dsp && make
 cd tests/cic_waves && make
 cd tests/pulse_gen && make
+
+# Lint the shell's SystemVerilog sources with Verilator (per CI job sv_lint): any
+# warning fails, width warnings included. The Verilog library is waived in
+# llrf_dsp/lint_waivers.vlt; the cocotb TBs build with -Wno-width for its sake.
+make -C designs/uspas lint
 
 # Build standalone design package / IP artifacts (e.g., uspas, pip-ii, awa, etc.)
 cd ../designs/uspas && make
@@ -122,14 +127,14 @@ make system_console_test MARBLE_SERIAL=61
 make console MARBLE_SERIAL=61
 ```
 
-**SoC console and reset.** The Marble's USB UART RTS line drives the SoC reset: the top level resets the SoC on its release (`UART_CTS` edge, `top/common/marble_zest_mid.vh`). By default Linux releases RTS when a program closes the port ("hang up on close"), so quitting a terminal such as `pyserial-miniterm` reboots the SoC. `make console` turns this off with `stty -F <port> -hupcl` before starting miniterm. To make it the default for any terminal program, install the udev rule once per host:
+**SoC console and reset.** The Marble's USB UART RTS line drives the SoC reset: the top level resets the SoC on its release (`UART_CTS` edge, `top/common/marble_zest_mid.vh`). By default Linux releases RTS when a program closes the port ("hang up on close"), so quitting a terminal such as `pyserial-miniterm` reboots the SoC. `make console` turns this off with `stty -F <port> -hupcl` before starting miniterm. To make it the default for any terminal program, install the udev rules once per host. They also let members of the `plugdev` group use the Marble's FTDI device (JTAG for `make system_config`, and the console) without root:
 
 ```bash
 sudo cp doc/udev/99-marble-console.rules /etc/udev/rules.d/
 sudo udevadm control --reload   # applies when the Marble's USB port next appears
 ```
 
-Without the rule, run `stty -F /dev/serial/by-id/usb-LBNL_Marble_<6-digit serial>-if02-port0 -hupcl` once after each power cycle or USB re-plug.
+Add yourself to the group with `sudo usermod -aG plugdev $USER` (log in again to apply). Without the rules, run `stty -F /dev/serial/by-id/usb-LBNL_Marble_<6-digit serial>-if02-port0 -hupcl` once after each power cycle or USB re-plug.
 
 ---
 
@@ -164,7 +169,7 @@ uspas_llrf/
 │   └── <design>/              # Per-design firmware: design.mk, settings_design.h, init_zest.c, init_marble.c
 ├── top/
 │   ├── common/                # Top-level FPGA integration (`marble_zest_top.v`), top_rules.mk, Vivado TCL, topsim
-│   └── <design>/              # Per-design build directory (Makefile; optional design_io.vh, design_mid.vh)
+│   └── <design>/              # Per-design build directory (Makefile; optional design_mid.vh, design_shell_ports.vh, design_shell_wires.vh, design.xdc)
 ├── epics/                     # EPICS Display Builder UI screens (BOB files)
 └── doc/                       # System documentation and Jupyter demonstration notebooks
 ```

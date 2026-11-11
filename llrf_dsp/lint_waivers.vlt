@@ -1,0 +1,5 @@
+`verilator_config
+// `make lint` (designs/rules.mk) checks the SystemVerilog sources of the
+// shell. The Verilog library (bedrock, the llrf_dsp .v blocks, the
+// generated CORDIC) is read as library files and not linted here.
+lint_off -file "*.v"

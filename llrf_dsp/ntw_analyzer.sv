@@ -1,5 +1,7 @@
 `timescale 1ns / 1ns
-module ntw_analyzer #(
+module ntw_analyzer
+    import llrf_shell_pkg::*;
+#(
     parameter KW = 18  // signal width
 ) (
     input clk,
@@ -10,10 +12,7 @@ module ntw_analyzer #(
     input signed [KW-1:0] amp_setpoint,       // Incoming amplitude setpoint
     input signed [KW-1:0] phs_setpoint,       // Incoming phase setpoint
 
-    input [17:0] lo_amp,                  // external; Amplitude level
-    input [11:0] modulo,                  // external;
-    input [31:0] phase_step_h,            // external;
-    input [11:0] phase_step_l,            // external;
+    input ntw_cfg_t cfg,                      // excitation amplitude and frequency
 
     output signed [KW-1:0] ntw_cos_debug,      // for debug only
     output signed [KW:0] ntw_phase_debug,      // for debug only
@@ -26,15 +25,15 @@ module ntw_analyzer #(
 // Phase accumulator
 wire [18:0] phase;
 ph_acc_general #(.DWL(12), .DWH(32)) ph_acc_ntw(.clk(clk), .reset(trig), .phase_acc(phase),
-	.phase_step_h(phase_step_h), .phase_step_l(phase_step_l),
-	.modulo(modulo)
+	.phase_step_h(cfg.phase_step_h), .phase_step_l(cfg.phase_step_l),
+	.modulo(cfg.modulo)
 );
 
 // CORDIC to generate sin and cos from phase
 wire signed [17:0] cosa, sina;
 cordicg_b22 #(.width(18), .nstg(20), .def_op(0)) ntw_cordicg_b22 (
 	.clk(clk), .opin(2'b00),
-	.xin(lo_amp), .yin(18'd0), .phasein(phase),
+	.xin(cfg.lo_amp), .yin(18'd0), .phasein(phase),
 	.xout(cosa), .yout(sina), .phaseout()
 );
 

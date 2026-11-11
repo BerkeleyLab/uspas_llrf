@@ -1,13 +1,11 @@
-module arc_inlk #(
+module arc_inlk
+    import llrf_shell_pkg::*;
+#(
     parameter N_CH = 3,
     parameter F_CLK=125_000_000  // clk frequency [Hz], sets the 0.5 s test/reset pulse
 ) (
     input               clk,
-    input [0:0]         reset_latch, // external single-cycle
-    input [0:0]         reset_arc_dev,  // external single-cycle
-    input [7:0]         permit_mask,
-    input [7:0]         test_mask, // external
-    input [0:0]         test_stb,  // external single-cycle
+    input arc_cfg_t     cfg,
 
     // status readout
     output [N_CH-1:0]   permit_raw_out,
@@ -25,17 +23,18 @@ reg [N_CH-1:0] permit_latch_r=0;
 reg [N_CH-1:0] permit_rbk=0;
 
 always @(posedge clk) begin
-    permit_latch_r <= dev_permit_in & ({N_CH{reset_latch}} | permit_latch_r);
+    permit_latch_r <= dev_permit_in & ({N_CH{cfg.reset_latch}} | permit_latch_r);
 end
 
 assign permit_latch_out = permit_latch_r;
-assign permit_sum_out = & ( ~permit_mask[N_CH-1:0] | permit_latch_r);
+assign permit_sum_out = & ( ~cfg.permit_mask[N_CH-1:0] | permit_latch_r);
 assign permit_raw_out = permit_rbk;
 
 localparam real ASSERT_TIME_S = 0.5; // 0.5 seconds
 localparam MAX_COUNT = $rtoi(ASSERT_TIME_S*F_CLK);
 localparam CW = $clog2(MAX_COUNT);
 reg [CW-1:0] counter=0;
+localparam integer COUNT_LAST = MAX_COUNT-1;  // sliced below: no parameter-width cast, which sv2v keeps
 
 reg testing=1'b0;
 reg [N_CH:0] reset_test_mask_r=0;
@@ -46,17 +45,17 @@ assign testing_out = testing;
 always @(posedge clk) begin
   permit_rbk <= dev_permit_in;
   if (testing) begin
-    if (counter == MAX_COUNT-1) begin
+    if (counter == COUNT_LAST[CW-1:0]) begin
       testing <= 1'b0;
       counter <= 0;
     end else begin
       counter <= counter + 1;
     end
   end else begin
-    if (test_stb | reset_arc_dev) begin
+    if (cfg.test_stb | cfg.reset_arc_dev) begin
       // Ignore test_mask if reset requested
-      if (reset_arc_dev) reset_test_mask_r <= {1'b1, {N_CH{1'b0}}};
-      else reset_test_mask_r <= {1'b0, test_mask[N_CH-1:0]};
+      if (cfg.reset_arc_dev) reset_test_mask_r <= {1'b1, {N_CH{1'b0}}};
+      else reset_test_mask_r <= {1'b0, cfg.test_mask[N_CH-1:0]};
       testing <= 1'b1;
     end
   end
