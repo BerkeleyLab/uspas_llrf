@@ -3,6 +3,7 @@ from scipy import signal
 import matplotlib.pyplot as plt
 import json
 from pathlib import Path
+from scipy.optimize import curve_fit
 
 
 with open(Path(__file__).parent.joinpath('settings.json')) as f:
@@ -65,3 +66,63 @@ def plot_ps(f, psd_dbfs, title='', annotate=False):
         for ix, p in enumerate(psd_dbfs):
             ax.plot(f, p, label='adc' + str(ix))
         ax.legend()
+
+
+def fit_sine(y_data, initial_guess, verbose=False):
+    x_data = np.arange(0, len(y_data))
+    params, covariance = curve_fit(sine_wave, x_data,
+                                   y_data,
+                                   p0=initial_guess)
+
+    A_fit, f_fit, phi_fit, C_fit = params
+
+    # Generate fitted curve
+    x_fit = np.linspace(0, len(x_data), 1000)
+    y_fit = sine_wave(x_fit, A_fit, f_fit, phi_fit, C_fit)
+
+    return x_fit, y_fit, A_fit
+
+
+def sine_wave(x, A, f, phi, C):
+    return A * np.sin(2 * np.pi * f * x + phi) + C
+
+
+def plot_raw_bufs_df(raw_wfms_df):
+    fig, axes = plt.subplots(2, 4, sharex=True, sharey=True)
+    fig.set_size_inches(25, 7)
+    raw_wfms_df['adc0'].plot(ax=axes[0][0], label='SLED FWD', legend=True)
+    raw_wfms_df['adc1'].plot(ax=axes[0][1], label='KLY FWD', legend=True)
+    raw_wfms_df['adc2'].plot(ax=axes[0][2], label='KLY REV', legend=True)
+    raw_wfms_df['adc3'].plot(ax=axes[0][3], label='PRL', legend=True)
+    raw_wfms_df['adc4'].plot(ax=axes[1][0], label='SSSB', legend=True)
+    raw_wfms_df['adc5'].plot(ax=axes[1][1], label='Spare', legend=True)
+    raw_wfms_df['adc6'].plot(ax=axes[1][2], label='Beam Voltage', legend=True)
+    raw_wfms_df['adc7'].plot(ax=axes[1][3], label='Beam Current', legend=True)
+    axes[0][0].set_ylabel("Amplitude [Counts]")
+    axes[1][0].set_ylabel("Amplitude [Counts]")
+    for row in axes:
+        for ax in row:
+            ax.legend(loc="upper right")
+
+
+def plot_iq_wfms_df(df_iq, ylim_amp=(-100, 40000), len_ns=9000):
+    ylim_phs = (-200, 200)
+    fig, axes = plt.subplots(2, 3, sharex=True)
+    fig.set_size_inches(20, 10)
+    for i in range(10):
+        if i > 7:
+            ch = 'drv' + str(i - 8)
+            df_iq[[ch + '_amp']].loc[:len_ns].plot(ax=axes[0][2],
+                                                   ylim=ylim_amp)
+            df_iq[[ch + '_phs']].loc[:len_ns].plot(ax=axes[1][2],
+                                                   ylim=ylim_phs)
+        else:
+            c = i // 4
+            ch = 'adc' + str(i)
+            df_iq[[ch + '_amp']].loc[:len_ns].plot(ax=axes[0][c],
+                                                   ylim=ylim_amp)
+            df_iq[[ch + '_phs']].loc[:len_ns].plot(ax=axes[1][c],
+                                                   ylim=ylim_phs)
+    ax_list = axes.flatten()
+    for ax in ax_list:
+        ax.legend(loc='upper right')

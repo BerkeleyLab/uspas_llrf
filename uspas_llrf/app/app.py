@@ -79,6 +79,11 @@ class LLRFApp(LEEPDevice):
         self._chan_keep = value
 
     @property
+    def wfm_len(self):
+        """Signal buffer depth, 2**SIG_BUF_AW (2048; LEMP 1024), from the ROM regmap"""
+        return 1 << self.regmap['adc0_i_buf']['addr_width']
+
+    @property
     def cic_n_chan(self):
         return bin(self.chan_keep).count('1')
 
@@ -283,9 +288,34 @@ class LLRFApp(LEEPDevice):
         logger.debug(f"Read {wfms.shape[0]} IQ waveforms, length {wfms.shape[1]}")
         return wfms
 
-    def get_iq_wfms_df(self):
+    def read_iq_buf(self):
+        """ Read iq_buf in ADC count unit.
+            Returns a 2D array of shape (n_chan, wfm_len)
+        """
+        self.write_reg('sig_buf_flip', 1)
+        while (self.read_reg('sig_iq_buf_ready') != 0xfffff):
+            time.sleep(0.001)
+        iq_buf_raw = np.array(self.reg_read(['iq_buf']))[0]
+        total_len = self.wfm_len * 2 * len(self.signals)
+        iq_buf = self.decode_iq_buf(iq_buf_raw[:total_len])
+        iq_buf[:self.n_adc] /= self.model.rx_iq_gain
+        iq_buf[-self.n_dac:] *= self.model.tx_iq_gain
+        return iq_buf
+
+    def decode_iq_buf(self, iq_buf):
+        n_chan = len(self.signals)
+        darray = iq_buf.reshape(2 * n_chan, -1)
+        iq_arrays = np.array([
+            (darray[ix] + 1j * darray[ix + n_chan])
+            for ix in range(n_chan)])
+        return iq_arrays
+
+    def get_iq_wfms_df(self, single_buffer=False):
         """returns a DataFrame of all IQ waveforms, in ADC count unit"""
-        iq_wfms = self.read_iq_wfms()
+        if single_buffer:
+            iq_wfms = self.read_iq_buf()
+        else:
+            iq_wfms = self.read_iq_wfms()
         df = pd.DataFrame(iq_wfms.T, columns=self.signals)
         df['Time [ns]'] = np.arange(iq_wfms.shape[-1]) * self.dsp_clk_ns
         df.set_index('Time [ns]', inplace=True)
