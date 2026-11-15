@@ -30,6 +30,7 @@ module test_cic_waves
 
     input  signed [DW-1:0]     slow_bridge_data_in [0:N_ADC-1],
     input      [63:0]          evr_timestamp,
+    input      [16*4-1:0]      slow_aux,      // 4 words after the cycle counter, as in diag.sv
 
     input      [6:0]           cic_wave_samp_per,
     input      [N_CH-1:0]      cic_chan_keep,
@@ -127,7 +128,8 @@ module test_cic_waves
         .CBUF_DW       (CBUF_DW),
         .CBUF_AW       (CBUF_AW),
         .CIC_SHIFT_BASE(CIC_SHIFT_BASE),
-        .INLK_SHIFT_BASE(INLK_SHIFT_BASE)
+        .INLK_SHIFT_BASE(INLK_SHIFT_BASE),
+        .N_SLOW_AUX    (4)
     ) dut (
         .dsp_clk            (dsp_clk),
         .dsp_reset          (dsp_reset),
@@ -137,6 +139,7 @@ module test_cic_waves
         .slow_bridge_data_in(slow_bridge_data_in_flat),
         .slow_snap          (cbuf_transferred),
         .evr_timestamp      (evr_timestamp),
+        .slow_aux           (slow_aux),
 
         .cic_wave_samp_per  (cic_wave_samp_per),
         .cic_chan_keep      (cic_chan_keep),

@@ -52,6 +52,7 @@ module loop_ctrl
     output [PULSE_AW-1:0] pulse_clk,     // dsp clocks into the pulse (any res_shift)
     output signed [DWBB-1:0] amp_setpoint_mod,  // setpoints after modulation
     output signed [DWBB-1:0] phs_setpoint_mod,  // (and clamp), into dsp_core
+    output [DWBB:0] sin_phase,                  // the sinusoid's dds phase (slow data, step 13b)
 
     // modulation table localbus port
     input lb_clk,
@@ -112,7 +113,7 @@ dds #(.DWLO(DWBB), .DWH(32)) sin_dds (
     .modulo       (cfg.sin_modulo),
     .cos_out      (sin_mod),
     .sin_out      (),
-    .phase_out    ()
+    .phase_out    (sin_phase)
 );
 
 // gates, aligned with the table read data (1 clock after the index)

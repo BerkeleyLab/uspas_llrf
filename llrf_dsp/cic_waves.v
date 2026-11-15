@@ -14,7 +14,8 @@ module cic_waves #(
     parameter integer CBUF_DW=24,       // CCFilt output width; Must be 20 if using half-band filter
     parameter integer CBUF_AW=13,
     parameter integer CIC_SHIFT_BASE=7,
-    parameter integer INLK_SHIFT_BASE=12
+    parameter integer INLK_SHIFT_BASE=12,
+    parameter integer N_SLOW_AUX=1      // 16-bit words appended to the slow data
 ) (
     // dsp_clk domain
     // cic and inlk waves
@@ -26,6 +27,7 @@ module cic_waves #(
     input [DW*N_ADC-1:0]       slow_bridge_data_in,     // flattened raw adc data to slow_bridge
     input                      slow_snap,
     input [63:0]               evr_timestamp,
+    input [DW*N_SLOW_AUX-1:0]  slow_aux,     // slow data words after the cycle counter, snapshot like evr_timestamp
 
     // Control registers
     input [6:0]                cic_wave_samp_per,
@@ -204,7 +206,7 @@ module cic_waves #(
     //     and snap for validation of a waveform if register changed in between
     // ---------------------
     wire [15:0] cbuf_stat2_lsb = cbuf_stat2;
-    slow_bridge_shell #(.AW(7), .DW(DW), .N_CH(N_ADC)) slow_bridge (
+    slow_bridge_shell #(.AW(7), .DW(DW), .N_CH(N_ADC), .N_AUX(N_SLOW_AUX)) slow_bridge (
         .lb_clk         (lb_clk),
         .lb_addr        (lb_addr[6:0]),
         .lb_read        (lb_read),
@@ -219,6 +221,7 @@ module cic_waves #(
         .buf_ready      (cbuf_ready),
         .data_in        (slow_bridge_data_in),
         .evr_timestamp  (evr_timestamp),
+        .aux_data       (slow_aux),
 
         .slow_snap      (slow_snap),
         .slow_ready     (slow_ready)

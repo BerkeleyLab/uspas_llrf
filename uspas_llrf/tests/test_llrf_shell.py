@@ -2,10 +2,11 @@ from uspas_llrf import (LLRFShell, DacDriveSel, LocalbusAppMaster, DDS,
                         InlkFaultMode, wrap_phase, clip_int, dsp_config,
                         PulseModulator, WaveTrigSel, gen_mod_tables)
 from pathlib import Path
+from uspas_llrf.model.slow_bridge import decode_slow_data, slow_data_n_words, SLOW_DATA_OFFSET
 import cocotb
 import random
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, ClockCycles, ReadOnly
+from cocotb.triggers import RisingEdge, FallingEdge, ClockCycles, ReadOnly
 from cocotb.handle import Immediate
 import logging
 import numpy as np
@@ -658,6 +659,55 @@ class TB_llrf_shell:
         for lp in (loop, other):
             await self.lb.write_reg(f'{lp}_amp_sin_enable', 0)
             await self.lb.write_reg(f'{lp}_phs_sin_enable', 0)
+
+    async def test_sin_phase_snapshot(self, n_buffers=2):
+        """Each loop's sinusoid phase in the slow data (plan step 13b): the
+        dds phases at the buffer sync that ends the buffer handed over (the
+        instant of the EVR timestamp), loop 0 first. The loops run different
+        frequencies (7/33, 1/4093), so swapped loops or words fail. CW designs only
+        (SLOW_SNAP_CIC: the slow data follows the circle buffer)."""
+        dut = self.dut
+        self.log_banner('Sinusoid phase snapshot')
+        assert self.llrf.init_regs.slow_snap_cic, 'needs SLOW_SNAP_CIC=1'
+        await self.write_init_regs()  # free-running circle buffer, chan_keep
+        # 7/33 and 1/4093 coincide only every 135069 clocks (2/11 = 6/33 would
+        # at every 33, which ALSU's buffer syncs hit)
+        for n, (num, den) in enumerate(((7, 33), (1, 4093))):
+            h, lo, modulo = DDS(num=num, den=den, dwh=32, dwl=12).calc_dds_config(dwh=32, dwl=12)
+            for name, v in (('sin_phase_step_h', h), ('sin_phase_step_l', lo), ('sin_modulo', modulo)):
+                await self.lb.write_reg(f'loop{n}_{name}', v)
+        lc = [self.shell_sig('gen_loops')[n].loop_ctrl for n in range(2)]
+        cbuf_sync, transferred = self.shell_sig('cbuf_sync'), self.shell_sig('cbuf_transferred')
+        syncs, xfers = [], []
+
+        async def watch():
+            k = 0
+            while True:
+                await FallingEdge(dut.dsp_clk)  # values the next rising edge samples
+                k += 1
+                if int(cbuf_sync.value):
+                    syncs.append((k, [int(c.sin_phase.value) for c in lc]))
+                if int(transferred.value):
+                    xfers.append(k)
+        task = cocotb.start_soon(watch())
+        n_words = SLOW_DATA_OFFSET + slow_data_n_words(8)  # N_ADC
+        for _ in range(n_buffers):
+            # flip and wait for the hand-over and the slow data (the waveform
+            # itself is not read)
+            await self.lb.write_reg('circle_buf_flip', 1)
+            await RisingEdge(transferred)
+            await self.wait_slow_ready()
+            words = [await self.lb.read_reg('dsp_slow_data', ix) for ix in range(n_words)]
+            slow = decode_slow_data(words, n_adc=8)
+            k_x = xfers[-1]
+            k_s, exp = [x for x in syncs if x[0] < k_x][-1]
+            cocotb.log.info(f'sin_phase {list(slow.sin_phase)}, expected {exp} '
+                            f'(sync {k_x - k_s} clock(s) before the transfer)')
+            assert k_x - k_s == 1, 'transfer not right after a buffer sync'
+            assert list(slow.sin_phase) == exp, \
+                f'sin_phase {list(slow.sin_phase)} != dds phases {exp} at the buffer sync'
+            assert len(set(exp)) == 2
+        task.cancel()
 
     async def test_buf_delay(self, delays=(0, 1, 37)):
         """buf_delay moves the signal buffer capture (sig_buf_dval) and the

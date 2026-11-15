@@ -66,3 +66,9 @@ async def test_pulse_modulation(dut, loop):
 async def test_buf_delay(dut):
     tb = TB_llrf_shell(dut, f_config='ALSU', regmap_json_path='../../llrf_shell.json')
     await tb.test_buf_delay()
+
+
+@cocotb.test(timeout_time=200, timeout_unit='us')
+async def test_sin_phase_snapshot(dut):
+    tb = TB_llrf_shell(dut, f_config='ALSU', regmap_json_path='../../llrf_shell.json')
+    await tb.test_sin_phase_snapshot()

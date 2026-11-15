@@ -16,6 +16,12 @@ Word layout, starting at offset 0x11:
     ..     cycle counter    8 words, low byte of each used, LSB first:
                             {fast[2:0], 5'b0}, count[7:0], ..., count[55:48]
                             (bedrock dsp/timestamp.v, 59-bit cycle counter)
+    ..     sin_phase[n_loops]  2 words per loop, loop 0 first (plan step 13b):
+                            {13'b0, phase[18:16]}, phase[15:0], the loop's
+                            sinusoid dds phase (2**19 = 360 deg) at the
+                            buffer sync that ended the buffer handed over,
+                            the same instant as the EVR timestamp
+                            (firmware before step 13b: not meaningful)
 """
 from dataclasses import dataclass, field
 import numpy as np
@@ -24,14 +30,17 @@ SLOW_DATA_OFFSET = 0x11
 SLOW_STATUS_WORDS = ['cbuf_stat1', 'cbuf_stat2', 'cbuf_count', 'tag', 'tag_old']
 SLOW_EVR_TS_WORDS = 4
 SLOW_CYCLE_WORDS = 8
+SLOW_SIN_PHASE_WORDS = 2       # per loop
+SIN_PHASE_BITS = 19            # loop_ctrl's dds phase_out
 CBUF_STAT1_RECORD_TYPE = 1 << 15   # 1: normal record, 0: stopped on fault
 CBUF_STAT1_BUFF_WRAP = 1 << 14
 CBUF_STAT1_ADDR_MASK = CBUF_STAT1_BUFF_WRAP - 1
 
 
-def slow_data_n_words(n_adc=8):
+def slow_data_n_words(n_adc=8, n_loops=2):
     """Number of meaningful words after SLOW_DATA_OFFSET."""
-    return len(SLOW_STATUS_WORDS) + 2 * n_adc + SLOW_EVR_TS_WORDS + SLOW_CYCLE_WORDS
+    return (len(SLOW_STATUS_WORDS) + 2 * n_adc + SLOW_EVR_TS_WORDS + SLOW_CYCLE_WORDS
+            + SLOW_SIN_PHASE_WORDS * n_loops)
 
 
 @dataclass(eq=False)
@@ -47,6 +56,7 @@ class SlowData:
     evr_seconds: int = 0
     evr_ticks: int = 0
     cycles: int = 0
+    sin_phase: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=np.int64))
     raw: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=np.uint32))
 
     @property
@@ -74,6 +84,12 @@ class SlowData:
     def evr_timestamp(self):
         return (self.evr_seconds << 32) | self.evr_ticks
 
+    @property
+    def sin_phase_deg(self):
+        """Each loop's sinusoid phase at the sync that ended the buffer, in
+        degrees [0, 360)."""
+        return self.sin_phase * (360 / (1 << SIN_PHASE_BITS))
+
     def __eq__(self, other):
         if not isinstance(other, SlowData):
             return NotImplemented
@@ -87,7 +103,7 @@ class SlowData:
                 f" cycles={self.cycles} >")
 
 
-def decode_slow_data(words, n_adc=8, offset=SLOW_DATA_OFFSET):
+def decode_slow_data(words, n_adc=8, offset=SLOW_DATA_OFFSET, n_loops=2):
     """Decode raw dsp_slow_data words into a SlowData.
 
     Args:
@@ -96,9 +112,10 @@ def decode_slow_data(words, n_adc=8, offset=SLOW_DATA_OFFSET):
             at the status words (offset=0).
         n_adc: number of ADC channels in min/max.
         offset: index of cbuf_stat1 in `words`.
+        n_loops: number of loops whose sinusoid phase follows.
     """
     raw = np.asarray(list(words), dtype=np.uint32) & 0xFFFF
-    n = slow_data_n_words(n_adc)
+    n = slow_data_n_words(n_adc, n_loops)
     assert len(raw) >= offset + n, \
         f'need {offset + n} slow words, got {len(raw)}'
     w = raw[offset:offset + n]
@@ -118,7 +135,10 @@ def decode_slow_data(words, n_adc=8, offset=SLOW_DATA_OFFSET):
     count = 0
     for b in reversed(cyc[1:]):
         count = (count << 8) | b
+    pos += SLOW_CYCLE_WORDS
+    hi, lo = w[pos:pos + SLOW_SIN_PHASE_WORDS * n_loops].reshape(n_loops, 2).T.astype(np.int64)
+    sin_phase = ((hi << 16) | lo) & ((1 << SIN_PHASE_BITS) - 1)
     return SlowData(
         **status, adc_min=adc_min, adc_max=adc_max,
         evr_seconds=ts >> 32, evr_ticks=ts & 0xFFFFFFFF,
-        cycles=(count << 3) | fast, raw=raw)
+        cycles=(count << 3) | fast, sin_phase=sin_phase, raw=raw)
