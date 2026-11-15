@@ -3,9 +3,10 @@ MODULE     = llrf_shell
 GEN_DIR    = _gen
 REGMAP_PY  = $(USPAS_LLRF_DIR)/regmap.py
 DESIGN_PY  = $(wildcard design.py)
-# the design shell (SystemVerilog): shared blocks, generated register file;
-# designs that reuse the base shell set SHELL_SRC = ../uspas/llrf_shell.sv
-SHELL_SRC ?= llrf_shell.sv
+# the design shell (SystemVerilog): shared blocks, generated register file.
+# The default is the base shell, llrf_dsp/llrf_shell.sv; a design with its own
+# shell (lemp) sets SHELL_SRC = llrf_shell.sv before including this file
+SHELL_SRC ?= $(APP_DSP_DIR)/llrf_shell.sv
 SV2V      ?= sv2v
 
 .PHONY: all

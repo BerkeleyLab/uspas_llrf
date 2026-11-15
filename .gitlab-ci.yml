@@ -77,10 +77,9 @@ default:
   designs: &designs
     - designs/**/*.{v,sv,vh,svh,py,json,mk}
     - designs/**/Makefile
-  # build rules and the base shell, which alsu, awa and pip-ii also build
+  # build rules shared by all designs (the base shell, llrf_dsp/llrf_shell.sv, is in llrf_dsp_rtl)
   designs_shared: &designs_shared
     - designs/rules.mk
-    - designs/uspas/llrf_shell.sv
   marble_bsp: &marble_bsp
     - marble_bsp/**/*.{v,vh,json,mk,py,xdc}
     - marble_bsp/**/Makefile
