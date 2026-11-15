@@ -19,6 +19,7 @@ Typical usage examples:
 import numpy
 from datetime import datetime
 import leep
+from uspas_llrf.model.slow_bridge import decode_slow_data
 
 
 def wave_collect_run(dev, count, filewritepath=None):
@@ -46,34 +47,18 @@ def wave_collect_run(dev, count, filewritepath=None):
 
 
 def interpret_slow_data(slw_d):
-    # cbuf_stat1, cbuf_stat2, cbuf_count, tag, tag_old,
-    # adc0_min, adc1_min, ..., adc6_min, adc7_min,
-    # adc0_max, adc1_max, ..., adc6_max, adc7_max,
-    # evr_seconds (pulse_id), evr_evticks, timestamp
-
-    cbuf_stat1 = slw_d[0]
-    cbuf_stat2 = slw_d[1]
-    cbuf_count = slw_d[2]
-    tag = slw_d[3]
-    tag_old = slw_d[4]
-
-    mins = [int(slw_d[m]) - 65536 if slw_d[m] > 32767 else int(slw_d[m])
-            for m in range(5, 13)]
-    maxs = [int(slw_d[m]) - 65536 if slw_d[m] > 32767 else int(slw_d[m])
-            for m in range(13, 21)]
-
-    # Pulse_id at 360 Hz. Only uses 17 bits. That's about 6 mins. Why?
-    pulse_id = slw_d[21] * (2 ** 16) + slw_d[22]
-
-    # Counter at dsp clk (119MHz). Resets with pulseid
-    ticks = slw_d[23] * (2 ** 16) + slw_d[24]
-
-    # FPGA internal Timestamp
-    fw_ts = slw_d[25]
-
+    """Decode slow data words that start at cbuf_stat1 (dsp_slow_data[17:])
+    with uspas_llrf.model.slow_bridge.decode_slow_data. Returns
+    (cbuf_stat1, cbuf_stat2, cbuf_count, tag, tag_old, mins, maxs,
+     pulse_id, ticks, fw_ts): pulse_id and ticks are the EVR timestamp's
+    seconds (360 Hz pulse ID) and ticks, fw_ts the first word of the FPGA
+    cycle counter.
+    """
+    sd = decode_slow_data(slw_d, offset=0)
     return (
-        cbuf_stat1, cbuf_stat2, cbuf_count, tag, tag_old,
-        mins, maxs, pulse_id, ticks, fw_ts
+        sd.cbuf_stat1, sd.cbuf_stat2, sd.cbuf_count, sd.tag, sd.tag_old,
+        [int(v) for v in sd.adc_min], [int(v) for v in sd.adc_max],
+        sd.evr_seconds, sd.evr_ticks, int(sd.raw[25])
     )
 
 
