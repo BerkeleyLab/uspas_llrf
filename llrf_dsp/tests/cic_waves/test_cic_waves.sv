@@ -170,7 +170,7 @@ module test_cic_waves
 
     // ---------------------
     // Read-only address space decoding
-    // Mirrors designs/uspas/llrf_shell.v: registered address, then a
+    // Mirrors llrf_dsp/llrf_shell.sv: registered address, then a
     // registered data mux. slow_rdata comes out of the slow_bridge dpram
     // one lb_clk after lb_addr, same as cbuf_out, so both fit in the
     // READ_DELAY=3 budget of LocalBusMaster.
@@ -192,7 +192,7 @@ module test_cic_waves
                 if (addr_hit_cbuf) begin
                     rd_data <= {{(32-CBUF_DW){1'b0}}, cbuf_out};
                 end else if (addr_hit_slow) begin
-                    rd_data <= {16'b0, slow_rdata};  // slow_bridge_shell window, see 18'h109?? in llrf_shell.v
+                    rd_data <= {16'b0, slow_rdata};  // slow_bridge_shell window, see 18'h109?? in llrf_shell.sv
                 end else begin
                     rd_data <= 32'hDEAD_BEEF;
                 end

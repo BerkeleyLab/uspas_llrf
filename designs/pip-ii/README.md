@@ -5,7 +5,7 @@ This directory contains the advanced DSP configuration and static register mappi
 ## Design Architecture & Shell Flavor
 
 - **Frequency Configuration (`FSET`)**: `AWA`
-- **`llrf_shell` Flavor**: **Baseline** (`SHELL_SRC = ../uspas/llrf_shell.sv` in the Makefile), with the pulse modulation of `loop_ctrl`
+- **`llrf_shell` Flavor**: **Baseline** (`llrf_dsp/llrf_shell.sv`, the default `SHELL_SRC`), with the pulse modulation of `loop_ctrl`
 - **Register map**: the base map in `uspas_llrf/regmap.py` (2k signal buffers, `0x800` stride)
 - **Testbench**: Uses unified cocotb runner `tb/llrf_shell/` based on `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell`.
 

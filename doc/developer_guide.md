@@ -15,7 +15,7 @@ Required system & FPGA tools:
 - **Verilator** (v5.038+ tested) or **Icarus Verilog** (v12.0 tested)
 - **cocotb** (v2.0.1)
 - **Yosys** (for synthesis & CDC checks)
-- **sv2v** (v0.0.12-19-g7808819 in CI; v0.0.12 and v0.0.13 give identical output): converts the SystemVerilog shells (`designs/*/llrf_shell.sv`, `llrf_dsp/*.sv`) into `llrf_shell_expand.v` for Vivado, Yosys and the testbenches
+- **sv2v** (v0.0.12-19-g7808819 in CI; v0.0.12 and v0.0.13 give identical output): converts the SystemVerilog shells (`llrf_dsp/llrf_shell.sv`, `designs/lemp/llrf_shell.sv`, `llrf_dsp/*.sv`) into `llrf_shell_expand.v` for Vivado, Yosys and the testbenches
 - **Xilinx Vivado 2022.1+** (for bitstream synthesis and `top_sim`)
 - Submodules: LBNL `submodules/bedrock` (must be initialized: `git submodule update --init --recursive`)
 
@@ -154,10 +154,10 @@ uspas_llrf/
 ├── designs/                   # Facility designs: shell selection (SHELL_SRC), register map extensions, testbenches
 │   ├── rules.mk               # Centralized make rules for all designs (register file generation, sv2v expansion, CDC checks)
 │   ├── README.md              # Detailed overview of design variants and frequency configuration matrix
-│   ├── uspas/                 # Base SystemVerilog shell llrf_shell.sv, used by every design
+│   ├── uspas/                 # USPAS design: Makefile, testbench, README
 │   ├── lemp/                  # design.py: 1k signal buffers and the iq_buf window
-│   └── alsu/, awa/, pip-ii/   # Designs on the base shell (SHELL_SRC = ../uspas/llrf_shell.sv)
-├── llrf_dsp/                  # Verilog DSP core & submodules (DDC, DUC, DDS, PI scalar, CIC filters, interlocks)
+│   └── alsu/, awa/, pip-ii/   # Designs on the base shell (the default SHELL_SRC)
+├── llrf_dsp/                  # Verilog DSP core & submodules (DDC, DUC, DDS, PI scalar, CIC filters, interlocks), and the base SystemVerilog shell llrf_shell.sv
 │   ├── tests/                 # Cocotb testbenches verifying individual DSP submodules
 │   ├── dds.v, ddc.v, duc.v    # NCO / Direct Digital Synthesis, Non-IQ Down-Converter, Up-Converter
 │   ├── dsp_core.v             # Baseband PI feedback controller with CORDIC polar/rectangular transforms
@@ -184,7 +184,7 @@ uspas_llrf/
    - The top-level entry key for synthesis and build configuration is `DESIGN` (`uspas`, `alsu`, `lemp`, `awa`, `pip-ii`).
    - `DESIGN` automatically maps to `FSET` (`USPAS`, `ALSU`, `LEMP`, `AWA`) in `settings.mk` and `uspas_llrf/settings.json`.
 5. **LLRF Shell**:
-   - Every design uses the base SystemVerilog shell `designs/uspas/llrf_shell.sv` (`SHELL_SRC` in the design Makefile): shared blocks in `llrf_dsp/` (`rx_chain`, `diag`, `loop_ctrl` with the amplitude and phase pulse modulation tables, `tx_chain`) and the register file generated from `uspas_llrf/regmap.py` (a design's `design.py` may extend it; LEMP sets 1k signal buffers).
+   - Every design but LEMP uses the base SystemVerilog shell `llrf_dsp/llrf_shell.sv` (the default `SHELL_SRC` in `designs/rules.mk`; LEMP sets its own in its Makefile): shared blocks in `llrf_dsp/` (`rx_chain`, `diag`, `loop_ctrl` with the amplitude and phase pulse modulation tables, `tx_chain`) and the register file generated from `uspas_llrf/regmap.py` (a design's `design.py` may extend it; LEMP sets 1k signal buffers).
    - Unified cocotb testbench `uspas_llrf.tests.test_llrf_shell.TB_llrf_shell` verifies all designs in `designs/<design>/tb/llrf_shell/`, including the shell-level pulse modulation test.
    - Roadmap (`doc/llrf_shell_unification_plan.md`): thin ALSU and LEMP shells over the same blocks.
 6. **Analog Frontend TX Spectral Flip**: Supports `tx_afe_spectral_flip` XORed with `duc_spectral_flip` for hardware RF mixing polarity compensation.

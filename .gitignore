@@ -13,6 +13,7 @@
 *_ipx/
 *_autogen/
 designs/*/_gen/
+marble_bsp/_gen/
 soc/**/*/*.o
 *.elf
 *.map
