@@ -675,6 +675,7 @@ Deferred (D13): `LEMP_bypass` (klystron reverse interlock bypass), `LEMP_LCLSI_u
     - remove the `top/marble_zest` and `soc/marble_zest` forwarders
     - retire `alsu_fork`
     - record §1.2.1 (generic loop modulator) as a follow-up item
+    Done as: the README, `doc/README.md` and `doc/developer_guide.md` already describe `make -C top/<design>` and the shared blocks with per-design shells, tops and SoCs (updated with steps 2–9). Removed the `top/marble_zest/Makefile` and `soc/marble_zest/{sim,synth,top_sim}/Makefile` forwarders; the demo notebooks program the board through `top/<design>/`. `designs/README.md`'s chassis I/O table shows main's LEMP pins (`top/lemp`). `alsu_fork` (bb162b7) is fully merged into `main` (step 3); the branch is deleted and tag `alsu_fork_deployed` marks bb162b7, the deployed ALSU version. §1.2.1 stays recorded as future work (its heading, R8, and steps 13–14 for the sinusoidal modulation source).
 
 After step 11 (requested 2026-10-20, 2026-11-03 and 2026-11-10, not yet scheduled):
 

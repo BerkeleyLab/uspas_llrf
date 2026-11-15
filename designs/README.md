@@ -50,19 +50,19 @@ This directory contains the accelerator facility designs: which `llrf_shell` eac
 
 ## Chassis I/O
 
-The connections of miscellaneous signals to the Marble / Zest IO ports. The base top level (`top/common/`) routes the four PMODs through the SoC, whose firmware selects the trigger input and output pins per `FSET` (`soc/common/system.c`); a design that owns a PMOD drives it from `top/<design>/design_mid.vh` instead (`DESIGN_OWNS_PMOD1`/`PMOD2`).
+The connections of miscellaneous signals to the Marble / Zest IO ports. The base top level (`top/common/`) routes the four PMODs through the SoC, whose firmware selects the trigger input and output pins per `FSET` (`soc/common/system.c`); a design that owns a PMOD drives it from `top/<design>/design_mid.vh` instead (`DESIGN_OWNS_PMOD1`/`PMOD2`, `DESIGN_OWNS_ZEST_PMOD1`/`ZEST_PMOD2`).
 
-| | **USPAS** | **ALSU** | **LEMP** (LEMP branch, see note) | **AWA** (`FSET` AWA) |
+| | **USPAS** | **ALSU** | **LEMP** | **AWA** (`FSET` AWA) |
 |----------------------:|:-----------------------------:|:---------------------------:|:-----------------------------:|:------------------------------:|
 | Marble MMC PMOD (J16) | Front panel OLED | Front panel OLED | Front panel OLED | |
-| Marble PMOD1 (J12) | Trigger input [0], output [1] | ARC detectors | Trigger output, interlock I/O | |
-| Marble PMOD2 (J13) | | Interlock I/O (FO board) | | Front panel LED |
+| Marble PMOD1 (J12) | Trigger input [0], output [1] | ARC detectors | Rear I/O board: triggers, permit relay, modulator status | |
+| Marble PMOD2 (J13) | | Interlock I/O (FO board) | Trigger and EVR event diagnostics | Front panel LED |
 | Marble QSFP2 Ch.1 | | Timing EVR | Timing EVR | |
-| Zest PMOD1 (J17) | | Modbus RTU [3:0] | | Up converter enable [7:6] |
+| Zest PMOD1 (J17) | | Modbus RTU [3:0] | SSSB controls | Up converter enable [7:6] |
 | Zest PMOD2 (J18) | | | | Trigger input [1] |
 | Zest SMA (J20) | | | | Up converter LO helper (LMK output) |
-| Zest HDMI (J19) | | | Rear panel I/O | |
+| Zest HDMI (J19) | | | Rear I/O board: LVDS triggers, permit relay, modulator status | |
 
-Sources: USPAS and AWA trigger pins and up converter enables in `soc/common/system.c`; ALSU in `top/alsu/design_mid.vh`; the AWA J20 clock in `soc/awa/init_zest.c`. The EVR receiver on QSFP2 Ch.1 is in every design's top level; only ALSU and LEMP use it.
+Sources: USPAS and AWA trigger pins and up converter enables in `soc/common/system.c`; ALSU in `top/alsu/design_mid.vh`; LEMP in `top/lemp/design_mid.vh`; the AWA J20 clock in `soc/awa/init_zest.c`. The EVR receiver on QSFP2 Ch.1 is in every design's top level; only ALSU and LEMP use it.
 
-Note: the LEMP column is the deployed LEMP branch (`top/marble_zest` there). On main, `lemp` still uses the base top level until its own `top/lemp/` (plan step 9e).
+`designs/lemp/README.md` has LEMP's full pin table.

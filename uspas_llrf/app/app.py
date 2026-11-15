@@ -11,12 +11,46 @@ logger = logging.getLogger(__name__)
 
 
 class LLRFApp(LEEPDevice):
+    @staticmethod
+    def wait_ready(addr='192.168.19.42:803', timeout=30.0, poll=0.5):
+        """Wait until a freshly configured board serves LEEP, has passed its
+        boot self-test and has filled bsp_info_buf (the firmware refreshes it
+        at 1 Hz from its main loop). Use after `make system_config`, before
+        LLRFApp(): the board answers Ethernet only seconds after the FPGA is
+        configured, the first packets wait for ARP, and a ROM read that times
+        out leaves LEEPDevice without a register map. LLRFApp() calls it
+        (wait=10 s). Returns the seconds waited; raises TimeoutError.
+        """
+        t0 = time.monotonic()
+        state = 'no LEEP reply'
+        while True:
+            try:
+                dev = LEEPDevice(addr, timeout=0.5)
+                if dev.regmap is None:
+                    state = 'no config ROM'
+                elif not dev.reg_read(['system_bist_pass'])[0]:
+                    state = 'boot self-test not passed'
+                elif not np.any(dev.reg_read(['bsp_info_buf'])[0]):
+                    state = 'bsp_info_buf not filled yet'
+                else:
+                    return time.monotonic() - t0
+            except (OSError, RuntimeError, ValueError, KeyError) as e:
+                state = f'no LEEP reply ({type(e).__name__})'
+            if time.monotonic() - t0 > timeout:
+                raise TimeoutError(f'{addr} not ready after {timeout} s: {state}')
+            time.sleep(poll)
+
     def __init__(self, addr='192.168.19.42:803', conf='LEMP',
                  chan_keep=0x3ff,
                  wave_samp_per=1,
                  loopback_test=False,
                  assert_system_bist=True,
-                 timeout=0.1, **kwargs):
+                 timeout=0.1, wait=10.0, **kwargs):
+        # The first exchange after `make system_config` has to resolve the
+        # board's MAC (ARP) and outlasts LEEP's single 0.1 s try; wait_ready
+        # retries until the board answers. wait=0 skips it.
+        if wait:
+            self.wait_ready(addr, timeout=wait)
         self.init_rom_addr = 0x04000
         super().__init__(addr, timeout, **kwargs)
 
@@ -133,6 +167,20 @@ class LLRFApp(LEEPDevice):
             ('chan_keep', self.chan_keep)
         ])
         logger.debug(f'chan_keep: {self.chan_keep:#018b}')
+        if self.regmap and 'intlk_intlk_byp' in self.regmap:
+            # LEMP interlock_wrapper (localbus segment 2): its sources boot
+            # faulted (test bits and thresholds 0, watchdogs expired), and a
+            # latched interlock holds both drives off until the next wave_trig
+            # after the latch clears. Bypass all eight and reset the latches.
+            self.reg_write([('intlk_intlk_byp', 0xff)])
+            self.reg_write([('intlk_intlk_reset', 0xff)])
+        # A drive permit drop before this (e.g. at boot, before the bypass)
+        # froze the circle buffer as a fault record; take it, so the next
+        # circle buffer read is current.
+        try:
+            self.take_cbuf()
+        except TimeoutError:
+            logger.debug('no circle buffer handed over (triggered mode?)')
 
     def init_loop(self, loop='loop0', close_loop=False,
                   amp_setp_adc=2e4, phs_setp_deg=0,
@@ -257,10 +305,19 @@ class LLRFApp(LEEPDevice):
                  'drive_permit_out', 'soft_drive0_enable', 'soft_drive1_enable']
         return {n: int(v) for n, v in zip(names, self.reg_read(names))}
 
-    def read_raw_bufs(self):
+    def flip_sig_buf(self, ready_reg, mask, timeout=1.0):
+        """Flip the signal buffers and wait until every buffer in mask is
+        ready. In triggered modes a buffer only fills after a trigger;
+        raises TimeoutError if they are not ready within timeout."""
         self.write_reg('sig_buf_flip', 1)
-        while (self.read_reg('sig_buf_ready') != 0xff):
+        t0 = time.monotonic()
+        while (self.read_reg(ready_reg) & mask) != mask:
+            if time.monotonic() - t0 > timeout:
+                raise TimeoutError(f'{ready_reg} mask {mask:#x} not set in {timeout} s')
             time.sleep(0.001)
+
+    def read_raw_bufs(self):
+        self.flip_sig_buf('sig_buf_ready', 0xff)
         return np.array(self.reg_read(
             [f'{ch}_buf' for ch in self.signals[:self.n_adc]]), dtype=np.int16)
 
@@ -276,9 +333,7 @@ class LLRFApp(LEEPDevice):
         """ Read I, Q waveforms of all waveforms in ADC count unit.
             Returns a 2D array of shape (n_chan, 2**SIG_BUF_AW) (2048; LEMP 1024)
         """
-        self.write_reg('sig_buf_flip', 1)
-        while (self.read_reg('sig_iq_buf_ready') != 0xfffff):
-            time.sleep(0.001)
+        self.flip_sig_buf('sig_iq_buf_ready', 0xfffff)
         iq_wfms = np.array(self.reg_read(
             [f'{ch}_i_buf' for ch in self.signals]
             + [f'{ch}_q_buf' for ch in self.signals]))
@@ -292,9 +347,7 @@ class LLRFApp(LEEPDevice):
         """ Read iq_buf in ADC count unit.
             Returns a 2D array of shape (n_chan, wfm_len)
         """
-        self.write_reg('sig_buf_flip', 1)
-        while (self.read_reg('sig_iq_buf_ready') != 0xfffff):
-            time.sleep(0.001)
+        self.flip_sig_buf('sig_iq_buf_ready', 0xfffff)
         iq_buf_raw = np.array(self.reg_read(['iq_buf']))[0]
         total_len = self.wfm_len * 2 * len(self.signals)
         iq_buf = self.decode_iq_buf(iq_buf_raw[:total_len])
@@ -375,6 +428,18 @@ class LLRFApp(LEEPDevice):
             'cycles': slow.cycles}
         return df
 
+    def take_cbuf(self, timeout=1.0):
+        """Flip and wait until the next completed circle buffer is handed
+        to the reader, without reading it (see read_cbuf_data). A buffer
+        frozen as a fault record (record_en drop) restarts recording only
+        once it is handed over, so taking it discards the fault record.
+        """
+        if not getattr(self, '_cbuf_armed', False):
+            self.write_reg('circle_buf_flip', 1)
+            self._cbuf_armed = True
+        self.wait_circle_ready(mask=0b11, timeout=timeout)
+        self._cbuf_armed = False
+
     def read_cbuf_data(self, timeout=1.0):
         """Read the circle buffer, flipping first to request a new one.
 
@@ -386,11 +451,7 @@ class LLRFApp(LEEPDevice):
         that arrived in between.
         Raises TimeoutError if no buffer is handed over within timeout.
         """
-        if not getattr(self, '_cbuf_armed', False):
-            self.write_reg('circle_buf_flip', 1)
-            self._cbuf_armed = True
-        self.wait_circle_ready(mask=0b11, timeout=timeout)
-        self._cbuf_armed = False
+        self.take_cbuf(timeout=timeout)
         d = np.array(self.read_reg('circle_data'))
         # total 2**16 samples, needs to truncate and reshape to (n_chan, 2**16/n_chan) for decoding
         max_samples = 2**16 // self.cic_n_chan // 2
