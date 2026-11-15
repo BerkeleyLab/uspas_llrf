@@ -491,7 +491,9 @@ class LLRFApp(LEEPDevice):
         f, pxx = signal.periodogram(
             df_sig.T, fs, 'flattop',
             scaling='spectrum', nfft=8192)
-        psd_dbfs = 10 * np.log10(np.maximum(pxx, 1e-12)) - fsdb
+        # the floor only avoids log10(0): a closed loop's phase noise is
+        # well below the former 1e-12 (it clipped at -207 dBFS)
+        psd_dbfs = 10 * np.log10(np.maximum(pxx, 1e-30)) - fsdb
         df_psd = pd.DataFrame(psd_dbfs.T, columns=df_sig.columns)
         df_psd['Freq [Hz]'] = f
         df_psd.set_index('Freq [Hz]', inplace=True)
