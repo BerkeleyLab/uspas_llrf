@@ -39,7 +39,8 @@ dds #(.DWLO(DWLO)) tx_dds (
     .phase_step_l (dds_phase_step[11:0]),
     .modulo       (dds_modulo),
     .cos_out      (duc_cos),
-    .sin_out      (duc_sin)
+    .sin_out      (duc_sin),
+    .phase_out    ()
 );
 
 wire signed [DW-1:0] dac_i_out [0:N_DRIVE-1];

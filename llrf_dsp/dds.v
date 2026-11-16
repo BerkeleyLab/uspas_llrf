@@ -13,7 +13,8 @@ module dds #(
     input [DWL-1:0] phase_step_l,
     input [DWL-1:0] modulo,
     output signed [DWLO-1:0] sin_out,
-    output signed [DWLO-1:0] cos_out
+    output signed [DWLO-1:0] cos_out,
+    output signed [DWLO:0] phase_out   // phase into the CORDIC (accumulator + phase_shift)
 );
 
     wire signed [DWLO-1:0] cosd, sind;
@@ -28,6 +29,7 @@ module dds #(
     );
 
     wire signed [DWLO:0] dds_phase = phase_acc + phase_shift;
+    assign phase_out = dds_phase;
     cordicg_b22 #(.nstg(20), .width(DWLO)) cordic (
         .clk            (clk),
         .opin           (2'b00),

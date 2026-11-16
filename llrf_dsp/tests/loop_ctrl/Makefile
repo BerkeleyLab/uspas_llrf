@@ -12,6 +12,8 @@ VERILOG_SOURCES += $(DSP_DIR)/dpram.v \
                    $(APP_DSP_DIR)/pi_scalar.v \
                    $(APP_DSP_DIR)/dsp_core.v \
                    $(APP_DSP_DIR)/pulse_gen.v \
+                   $(APP_DSP_DIR)/ph_acc_general.v \
+                   $(APP_DSP_DIR)/dds.v \
                    $(APP_DSP_DIR)/$(DUT).sv test_$(DUT).sv
 
 include ../cocotb_inc.mk

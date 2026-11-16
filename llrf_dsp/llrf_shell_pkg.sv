@@ -47,13 +47,6 @@ package llrf_shell_pkg;
     } arc_cfg_t;                   // arc_inlk
 
     typedef struct packed {
-        logic [17:0] lo_amp;
-        logic [11:0] modulo;
-        logic [31:0] phase_step_h;
-        logic [11:0] phase_step_l;
-    } ntw_cfg_t;                   // ntw_analyzer
-
-    typedef struct packed {
         logic        [2:0]  adc_chan;          // field: ADC channel
         logic signed [17:0] amp_setpoint;
         logic signed [17:0] max_amp_setpoint;
@@ -72,6 +65,13 @@ package llrf_shell_pkg;
         logic        [MOD_AW:0]     mod_len;          // table entries used, saturated to 2^MOD_AW
         logic               amp_mod_enable;
         logic               phs_mod_enable;
+        // sinusoidal modulation (CW: not gated by the pulse, free-running), dds with DWH 32
+        logic               amp_sin_enable;
+        logic               phs_sin_enable;
+        logic        [17:0] sin_amplitude;
+        logic        [11:0] sin_modulo;
+        logic        [31:0] sin_phase_step_h;
+        logic        [11:0] sin_phase_step_l;
     } loop_cfg_t;                  // loop_ctrl (loops): cfg_dsp.loop[n], registers loopN_*
 
     typedef struct packed {

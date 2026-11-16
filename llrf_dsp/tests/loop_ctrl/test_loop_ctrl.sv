@@ -17,6 +17,12 @@ module test_loop_ctrl #(
     input [MOD_AW:0] mod_len,
     input amp_mod_enable,
     input phs_mod_enable,
+    input amp_sin_enable,
+    input phs_sin_enable,
+    input [DWBB-1:0] sin_amplitude,
+    input [11:0] sin_modulo,
+    input [31:0] sin_phase_step_h,
+    input [11:0] sin_phase_step_l,
     input signed [DWBB-1:0] phs_offset,
     input signed [DWBB-1:0] amp_setpoint,
     input signed [DWBB-1:0] max_amp_setpoint,
@@ -60,7 +66,10 @@ assign cfg = '{adc_chan: 3'd0, amp_setpoint: amp_setpoint, max_amp_setpoint: max
                amp_enable: amp_loop_enable, phs_enable: phs_loop_enable,
                amp_reset: amp_loop_reset, phs_reset: phs_loop_reset,
                pulse_start: pulse_start, pulse_high_len: pulse_high_len, pulse_res_shift: res_shift,
-               mod_len: mod_len, amp_mod_enable: amp_mod_enable, phs_mod_enable: phs_mod_enable};
+               mod_len: mod_len, amp_mod_enable: amp_mod_enable, phs_mod_enable: phs_mod_enable,
+               amp_sin_enable: amp_sin_enable, phs_sin_enable: phs_sin_enable,
+               sin_amplitude: sin_amplitude, sin_modulo: sin_modulo,
+               sin_phase_step_h: sin_phase_step_h, sin_phase_step_l: sin_phase_step_l};
 
 loop_ctrl #(.EW(15)) dut (
     .dsp_clk(dsp_clk), .dsp_reset(dsp_reset), .cfg(cfg),

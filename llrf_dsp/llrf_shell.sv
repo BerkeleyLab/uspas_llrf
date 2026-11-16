@@ -328,8 +328,7 @@ timing_core timing_evr (
 // Feedback loops with pulse modulation
 // ---------------------
 // XXX network analyzer setpoints bypassed for now
-wire signed [DWBB-1:0] amp_setpoint_ntw;
-wire signed [DWBB-1:0] phs_setpoint_ntw;
+bb_t amp_setpoint_mod [N_DRIVE], phs_setpoint_mod [N_DRIVE];  // status: setpoints after the modulation
 
 bb_t drive_i_out [N_DRIVE];
 bb_t drive_q_out [N_DRIVE];
@@ -363,6 +362,8 @@ loops loops (
     .pulse_clk       (),
     .err_amp_lb      (err_out_amp_lb),
     .err_phs_lb      (err_out_phs_lb),
+    .amp_setpoint_mod (amp_setpoint_mod),
+    .phs_setpoint_mod (phs_setpoint_mod),
     .lb_clk          (lb_clk),
     .lb_addr         (lb_addr[MAP_MOD_AW-1:0]),
     .lb_wdata        (lb_wdata[DWBB-1:0]),
@@ -390,27 +391,6 @@ tx_chain tx_chain (
     .dac_drive_sel        (cfg_dac.dac_drive_sel),
     .dac_data_a_out       (dac_data_a_out),
     .dac_data_b_out       (dac_data_b_out)
-);
-
-// ---------------------
-// Network analyzer feature
-// ---------------------
-// XXX replace by dds.v
-wire ntw_trig_i = (cfg_dsp.ntw_amp_enable || cfg_dsp.ntw_phs_enable) ? cbuf_sync : 0;
-wire signed [17:0] ntw_cos_debug;
-wire signed [18:0] ntw_phase_debug;
-ntw_analyzer #(.KW(DWBB)) ntw (
-    .clk              (dsp_clk),
-    .trig             (ntw_trig_i),
-    .ext_amp_enable   (cfg_dsp.ntw_amp_enable),
-    .ext_phs_enable   (cfg_dsp.ntw_phs_enable),
-    .amp_setpoint     (cfg_dsp.loop[0].amp_setpoint),
-    .phs_setpoint     (cfg_dsp.loop[0].phs_setpoint),
-    .ntw_phase_debug  (ntw_phase_debug),
-    .ntw_cos_debug    (ntw_cos_debug),
-    .amp_stp_ntw      (amp_setpoint_ntw), // final amplitude setpoint after excitation
-    .phs_stp_ntw      (phs_setpoint_ntw),
-    .cfg              (cfg_dsp.ntw)
 );
 
 // ---------------------
@@ -443,11 +423,11 @@ reg [31:0] evr_live_ts_hi = 0;
 always @(posedge dsp_clk) if (xfer_snap) evr_live_ts_hi <= evr_live_ts_dsp[63:32];
 assign status_dsp.evr_live_ts_lo = evr_live_ts_dsp[31:0];
 assign status_dsp.evr_live_ts_hi = evr_live_ts_hi;
-assign status_dsp.amp_setpoint_ntw = amp_setpoint_ntw;
-assign status_dsp.phs_setpoint_ntw = phs_setpoint_ntw;
+assign status_dsp.loop0_amp_setpoint_mod = amp_setpoint_mod[0];
+assign status_dsp.loop0_phs_setpoint_mod = phs_setpoint_mod[0];
 assign status_dsp.sig_buf_count = sig_buf_count;
-assign status_dsp.ntw_cos_debug = ntw_cos_debug;
-assign status_dsp.ntw_phase_debug = ntw_phase_debug;
+assign status_dsp.loop1_amp_setpoint_mod = amp_setpoint_mod[1];
+assign status_dsp.loop1_phs_setpoint_mod = phs_setpoint_mod[1];
 assign status_dsp.trig_count = trig_count;
 assign status_dsp.fast_permit_out = inlk_arc_permit;
 assign status_dsp.drive_permit_in = drive_permit_sync;
