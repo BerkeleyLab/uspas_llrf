@@ -48,9 +48,10 @@ class LLRFShell(LLRF_DSP):
         self.tx = TX(num=self.config['TX_NUM_DDS'], den=self.config['TX_DEN_DDS'],
                      dds_amp=self.config['LO_AMP'])
         self.tx.dds.phase_shift_deg = -np.angle(self.tx.gain, deg=True)
-        # pre-compensate TX phase to match DAC IF phase, applied to tx_cordic
-        # very tricky to understand!
-        tx_phase_off_cycles = self.config['TX_DEN_DDS'] - self.CORDIC_NSTG
+        # pre-compensate TX phase to match DAC IF phase, applied to tx_cordic:
+        # (den - latency) cycles of the TX IF are the phase of the tx_cordic's
+        # CORDIC_LATENCY clocks of delay
+        tx_phase_off_cycles = self.config['TX_DEN_DDS'] - self.CORDIC_LATENCY
         self.tx.add_tx_cordic(
             -tx_phase_off_cycles * np.rad2deg(self.tx.omega))
         self.cic_inlk = CICWaveRecorder(

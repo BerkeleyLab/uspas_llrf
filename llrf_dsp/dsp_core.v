@@ -34,7 +34,7 @@ module dsp_core #(
 );
 
 // gain: 1.64676
-// delay: 20 cycles
+// delay: 21 cycles (cordicg_b22 with nstg 20: nstg + 1)
 wire signed [KW-1:0] amp_measured_raw;
 wire signed [KW:0] phs_measured_raw;
 cordicg_b22 #(.nstg(20), .width(KW)) rx_cordic (
@@ -79,7 +79,7 @@ pi_scalar #(.KW(KW), .EW(EW), .WRAP(1)) pi_phs (
 );
 
 // compensate measured lo shift
-// delay: 20 cycles
+// delay: 21 cycles (cordicg_b22 with nstg 20: nstg + 1)
 cordicg_b22 #(.nstg(20), .width(KW)) tx_cordic (
     .clk        (clk),
     .opin       (2'b00),

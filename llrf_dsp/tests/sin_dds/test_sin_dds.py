@@ -96,9 +96,8 @@ class TB:
         lag = min(range(40), key=err)
         cocotb.log.info(f"CORDIC latency {lag} clocks, max error {err(lag):.2f} "
                         f"counts at amplitude {amp_exp:.1f}")
-        # phase_out leaves the accumulator register, one clock after the
-        # input the model's CORDIC_LATENCY counts from
-        assert lag == model.CORDIC_LATENCY - 1, f"latency {lag}, model {model.CORDIC_LATENCY} - 1"
+        # phase_out is the CORDIC's phase input
+        assert lag == model.CORDIC_LATENCY, f"latency {lag}, model {model.CORDIC_LATENCY}"
         assert err(lag) < 1e-3 * amp_exp, "CORDIC output off by more than 0.1% of the amplitude"
 
 
