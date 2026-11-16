@@ -303,6 +303,47 @@ A pair of CORDIC are used to convert the complex signal to between rectangular a
 
   [`cocotb`](https://docs.cocotb.org/en/stable/index.html) tests will go through all test cases for various frequency settings, each has a test of RX, open loop and close loop responses. The results are integrated as part of the gitlab Continuous Integration, where the configuration can be found at [.gitlab-ci.cml](.gitlab-ci.cml).
 
+### Loop transfer function (Bode plot)
+
+Each loop's stability margins (amplitude and phase loops) come from its transfer function, measured by modulating the loop's setpoint and recording the response. `loop_ctrl` has two modulation sources, both added to the setpoints (amplitude saturated, then the open-loop clamp; phase wrapped):
+
+| Source | Registers (loop N) | Use |
+|---|---|---|
+| Sinusoid: a `dds` with a 32 + 12-bit phase step, free-running, not gated by the pulse | `loopN_amp_sin_enable`, `loopN_phs_sin_enable`, `loopN_sin_amplitude`, `loopN_sin_modulo`, `loopN_sin_phase_step_h`, `loopN_sin_phase_step_l` | one frequency per capture (a point of the Bode plot) |
+| Modulation tables (AWG): 2^14 entries, each held 2^`loopN_pulse_res_shift` dsp clocks, played from the loop trigger while the pulse is on | `loopN_amp_mod`, `loopN_phs_mod`, `loopN_mod_len`, `loopN_amp_mod_enable`, `loopN_phs_mod_enable`, `loopN_pulse_*` | a chirp: the whole response from one capture |
+
+In both cases the drive (`drvN` waveform channel) and the field (the loop's ADC channel) are recorded in the same circle buffer. At the excitation frequencies:
+
+* the plant is P = field / drive (the excitation's phase cancels, and so does the CIC recorder's response, which is the same for both channels);
+* the loop gain is L = C·P, with C the PI controller (`loopN_Kp_*`, `loopN_Ki_*`), giving the gain and phase margins;
+* the closed-loop response to the setpoint is T = L / (1 + L), and the sensitivity is S = 1 / (1 + L).
+
+**Sinusoid.** The dds runs free (reset only by `dsp_reset`) so that the loop settles into its steady-state response; restarting it on every trigger would jump its phase and excite the loop's transient. `DDS.calc_dds_config(dwh=32, dwl=12)` gives the registers for an exact `num/den` of the dsp clock, and `dds_config_for_freq(freq, f_s)` gives them for any frequency (binary 44-bit step, resolution f_s / 2^44). Its phase relative to the waveforms is unknown, so T is computed from L rather than measured; plan step 13b adds the dds phase per captured buffer to the slow data, to measure T = field / setpoint as a check.
+
+**Chirp in the modulation tables.** The table starts on the loop trigger, the same trigger that frames the circle buffer, so the excitation is known sample by sample and T = field / setpoint can be measured directly. In a CW design the tables are free for this: set `drvN_pulse_mode` 0 (the drive is not gated; the modulation does not depend on it), `loopN_pulse_high_len` at least `loopN_mod_len` × 2^`res`, and the amplitude or phase table enable.
+
+Timing, with f_dsp the dsp clock, `n_ch` the channels kept (`chan_keep`) and `res` = `loopN_pulse_res_shift`:
+
+| Quantity | Formula | USPAS, `wave_samp_per` 127 |
+|---|---|---|
+| Recorder sample period | `cic_base_period` × `wave_samp_per` / f_dsp | 23 × 127 × 8.7 ns = 25.4 µs (39.4 kHz, Nyquist 19.7 kHz) |
+| Samples per channel | 2^15 / `n_ch` | 8192 (4 channels) |
+| Buffer duration | samples × sample period | 208 ms (4 channels; 2: 416 ms; 10: 83 ms) |
+| Table duration | 2^14 × 2^`res` / f_dsp | `res` 11: 292 ms; `res` 12: 584 ms (up to 4.7 s) |
+| Table entry rate | f_dsp / 2^`res` | `res` 11: 56 kHz; `res` 12: 28 kHz |
+
+Pick the smallest `res` whose table covers the buffer: 11 for the 4-channel, 208 ms capture. The table then updates faster than the recorder samples (56 kHz against 39.4 kHz). For 2 channels (416 ms) `res` 12 is needed, and the table, at 28 kHz, has clean content only up to about 14 kHz. Each table entry is held for 2^`res` clocks (a staircase: a sinc roll-off and half an entry of delay); it cancels in P = field / drive.
+
+**Periodic chirp.** In the always trigger mode the loop trigger is the buffer sync, so the table restarts with every buffer. If the chirp lasts exactly one buffer, the excitation is periodic: after the first buffer the loop is in periodic steady state, with no start-up transient in the data and no spectral leakage. That needs
+
+`loopN_mod_len` × 2^`res` = samples per channel × `cic_base_period` × `wave_samp_per`,
+
+with a whole number of samples per buffer, i.e. `n_ch` 1, 2, 4 or 8. USPAS, 4 channels: 8192 × 23 × 127 = 23,928,832 clocks = 11684 × 2^11, so `loopN_mod_len` = 11684 at `res` 11 (ALSU, `cic_base_period` 22: 11176). The pulse must end by the next buffer sync, since `pulse_gen` ignores a trigger while it is counting (`loopN_pulse_high_len` = `loopN_mod_len` × 2^`res`; to verify in simulation at the boundary).
+
+A chirp generated in RTL (a second phase accumulator ramping the dds's phase step) would give a continuous-phase sweep at the full dsp rate and leave the tables free for pulse shaping. It is only needed for a pulsed design measuring with its tables in use, or for excitation above the table's Nyquist frequency; at `wave_samp_per` 127 the recorder's 19.7 kHz is the limit.
+
+**Dual-loop tests.** `dac_drive_sel` routes the drives to the two DACs. USPAS boots with `I0Q0`: both DACs carry loop 0 (I and Q), and loop 1's drive reaches no DAC. To run both loops, set `I0I1` (DAC A = loop 0, DAC B = loop 1).
+
 ### Waveform recorder
 
 Three functions are integrated in the [llrf_dsp/cic_waves.v](llrf_dsp/cic_waves.v):

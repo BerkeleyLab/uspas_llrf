@@ -25,6 +25,8 @@ module loops
     output [PULSE_AW-1:0] pulse_clk [N_DRIVE],  // dsp clocks into the pulse
     output signed [14:0]  err_amp_lb [N_DRIVE],  // lb_clk
     output signed [14:0]  err_phs_lb [N_DRIVE],
+    output bb_t           amp_setpoint_mod [N_DRIVE],  // setpoints into dsp_core, after
+    output bb_t           phs_setpoint_mod [N_DRIVE],  // the modulation (tables, sinusoid)
 
     // localbus: modulation tables
     input                 lb_clk,
@@ -63,8 +65,8 @@ generate for (n = 0; n < N_DRIVE; n = n + 1) begin: gen_loops
         .pulse_last       (),
         .pulse_idx        (pulse_idx[n]),
         .pulse_clk        (pulse_clk[n]),
-        .amp_setpoint_mod (),
-        .phs_setpoint_mod (),
+        .amp_setpoint_mod (amp_setpoint_mod[n]),
+        .phs_setpoint_mod (phs_setpoint_mod[n]),
         .lb_clk           (lb_clk),
         .lb_addr          (lb_addr),
         .lb_wdata         (lb_wdata),

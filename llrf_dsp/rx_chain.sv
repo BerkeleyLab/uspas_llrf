@@ -35,7 +35,8 @@ dds #(.DWLO(DWLO)) rx_dds (
     .phase_step_l (dds_phase_step[11:0]),
     .modulo       (dds_modulo),
     .cos_out      (cosd),
-    .sin_out      (sind)
+    .sin_out      (sind),
+    .phase_out    ()
 );
 assign lo_cos = cosd;
 assign lo_sin = sind;

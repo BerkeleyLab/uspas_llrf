@@ -54,7 +54,8 @@ class LLRFModule:
 class DDS(LLRFModule):
     def __init__(
             self, amp: int = 74840, phase_shift_deg: float = 0,
-            width: int = 18, num: int = 4, den: int = 11) -> None:
+            width: int = 18, num: int = 4, den: int = 11,
+            dwh: int = 20, dwl: int = 12) -> None:
         """ Direct Digital Synthesizer using a phase accumulator and a CORDIC,
         which is in Polar -> Rect mode.
         Gateware: ph_acc.v and cordicg_b22.v.
@@ -65,6 +66,10 @@ class DDS(LLRFModule):
             width (int): data width of CORDIC and the sinusoidal output ports.
             num (int): numerator of IF / Fs. Defaults to 4.
             den (int): denominator of IF / Fs. Defaults to 11.
+            dwh (int): width of the binary (high) part of the phase step,
+                dds.v's DWH. Defaults to 20 (rx/tx DDS); the network
+                analyzer's dds uses 32.
+            dwl (int): width of the non-binary (low) part, dds.v's DWL.
         """
         super().__init__(num, den)
         self.width = width
@@ -72,8 +77,8 @@ class DDS(LLRFModule):
         self._amp = amp
         self._phase_shift_deg = phase_shift_deg
         self.update_gain()
-        self.dwh = dwh = 20  # high part of phase step
-        self.dwl = dwl = 32 - self.dwh  # low part of phase step
+        self.dwh = dwh  # high part of phase step
+        self.dwl = dwl  # low part of phase step
         self.phase_step_h, self.phase_step_l, self.modulo = \
             self.calc_dds_config(dwh, dwl)
         self.phase_step = (self.phase_step_h << dwl) | self.phase_step_l
@@ -119,6 +124,17 @@ class DDS(LLRFModule):
         scale = 360 if deg else (2 * np.pi)
         p = wrap_phase(phs, deg) / scale * 2**(self.phs_shift_width)
         return to_signed(p, width=self.phs_shift_width)
+
+
+def dds_config_for_freq(freq: float, f_s: float, dwh: int = 32, dwl: int = 12) -> tuple:
+    """dds.v registers (phase_step_h, phase_step_l, modulo) for any frequency
+    freq at sample rate f_s, with modulo 0: the phase step is binary over
+    dwh + dwl bits (resolution f_s / 2**(dwh + dwl), about 7 uHz for the
+    network analyzer's dds at DWH 32). For an exact num/den of f_s, use
+    DDS.calc_dds_config instead.
+    """
+    step = round(freq / f_s * 2**(dwh + dwl)) % 2**(dwh + dwl)
+    return step >> dwl, step & (2**dwl - 1), 0
 
 
 class DDC(LLRFModule):

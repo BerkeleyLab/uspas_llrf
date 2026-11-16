@@ -4,7 +4,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge
 
-from uspas_llrf import PulseModulator
+from uspas_llrf import DDS, PulseModulator
 
 DWBB = 18
 SAT_MAX = (1 << (DWBB - 1)) - 1
@@ -12,7 +12,10 @@ SAT_MIN = -(1 << (DWBB - 1))
 
 # loop_ctrl inputs read by the model on every edge (signed ones as signed)
 CFG_UNSIGNED = ['pulse_start', 'pulse_high_len', 'res_shift', 'mod_len',
-                'amp_mod_enable', 'phs_mod_enable', 'amp_loop_enable']
+                'amp_mod_enable', 'phs_mod_enable', 'amp_loop_enable',
+                'amp_sin_enable', 'phs_sin_enable']
+# sinusoid (dds) settings, not part of the model: its output is
+SIN_CFG = ['sin_amplitude', 'sin_modulo', 'sin_phase_step_h', 'sin_phase_step_l']
 CFG_SIGNED = ['amp_setpoint', 'max_amp_setpoint', 'phs_setpoint', 'phs_offset']
 
 
@@ -25,10 +28,11 @@ class TB:
         self.mod_aw = int(dut.MOD_AW.value)
         self.model = PulseModulator(DWBB, int(dut.PULSE_AW.value), self.mod_aw)
         self.errors = []
+        self.sin_log = []  # (dds cos_out, phase_out) per dsp clock
         for name in ['trig', 'pulse_mode', 'phs_loop_enable', 'amp_loop_reset',
                      'phs_loop_reset', 'Kp_amp', 'Kp_phs', 'Ki_amp', 'Ki_phs',
                      'rx_phase_offset', 'tx_phase_offset', 'field_i', 'field_q',
-                     'lb_addr', 'lb_wdata', 'lb_write_amp_mod', 'lb_write_phs_mod'] + CFG_UNSIGNED + CFG_SIGNED:
+                     'lb_addr', 'lb_wdata', 'lb_write_amp_mod', 'lb_write_phs_mod'] + CFG_UNSIGNED + CFG_SIGNED + SIN_CFG:
             getattr(dut, name).value = 0
         dut.max_amp_setpoint.value = SAT_MAX
         dut.dsp_reset.value = 0
@@ -39,6 +43,7 @@ class TB:
 
     async def monitor(self):
         dut, m = self.dut, self.model
+        sin = 0  # dds output before the edge, read in the previous ReadOnly
         while True:
             await RisingEdge(dut.dsp_clk)
             for name in CFG_UNSIGNED:
@@ -46,8 +51,10 @@ class TB:
             for name in CFG_SIGNED:
                 setattr(m, name, getattr(dut, name).value.to_signed())
             drive_permit, pulse_mode = int(dut.drive_permit.value), int(dut.pulse_mode.value)
-            m.step(int(dut.trig.value))
+            m.step(int(dut.trig.value), sin)
             await ReadOnly()
+            sin = dut.dut.sin_mod.value.to_signed()
+            self.sin_log.append((sin, int(dut.dut.sin_dds.phase_out.value)))
             drive_on = m.drive_on(drive_permit, pulse_mode)
             got = {'pulse_dval': int(dut.pulse_dval.value), 'pulse_idx': int(dut.pulse_idx.value),
                    'amp_setpoint_mod': dut.amp_setpoint_mod.value.to_signed(),
@@ -68,7 +75,7 @@ class TB:
         """Set loop_ctrl configuration inputs on the next falling edge."""
         await FallingEdge(self.dut.dsp_clk)
         for name, value in cfg.items():
-            assert name in CFG_UNSIGNED + CFG_SIGNED, name
+            assert name in CFG_UNSIGNED + CFG_SIGNED + SIN_CFG, name
             getattr(self.dut, name).value = value
 
     async def write_mod_tables(self, amp, phs):
@@ -232,3 +239,68 @@ async def test_random(dut):
                            pulse_mode=rng.randrange(2))
     await tb.cycle()
     tb.check()
+
+
+def sin_cfg(num, den, amp_frac=0.9):
+    """dds settings for num/den of the dsp clock (32 + 12-bit phase step)
+    and an amplitude amp_frac of full scale."""
+    m = DDS(num=num, den=den, dwh=32, dwl=12)
+    h, lo, modulo = m.calc_dds_config(dwh=32, dwl=12)
+    return dict(sin_amplitude=int(amp_frac * m.full_scale_amp), sin_modulo=modulo,
+                sin_phase_step_h=h, sin_phase_step_l=lo)
+
+
+@cocotb.test(timeout_time=10, timeout_unit='ms')
+@cocotb.parametrize(amp_sin_enable=[0, 1], phs_sin_enable=[0, 1], pulse=[0, 1])
+async def test_sin_modulation(dut, amp_sin_enable, phs_sin_enable, pulse):
+    """The sinusoid adds to the amplitude (saturated, clamped open loop) and
+    phase (wrapped) setpoints when enabled, with or without a pulse and on
+    top of the tables: CW, not gated by the pulse."""
+    tb = TB(dut)
+    rng = random.Random(amp_sin_enable * 4 + phs_sin_enable * 2 + pulse)
+    await tb.write_mod_tables(rand_table(rng, 32, -3000, 3000), rand_table(rng, 32))
+    await tb.configure(pulse_start=3, pulse_high_len=60, mod_len=32,
+                       amp_mod_enable=1, phs_mod_enable=1,
+                       amp_sin_enable=amp_sin_enable, phs_sin_enable=phs_sin_enable,
+                       amp_setpoint=20000, phs_setpoint=SAT_MAX - 3000,
+                       max_amp_setpoint=90000, **sin_cfg(7, 33))
+    for _ in range(200):  # CW, no trigger
+        await tb.cycle()
+    if pulse:
+        await tb.pulse()
+    tb.check()
+    sins = {s for s, _ in tb.sin_log[-150:]}
+    assert len(sins) > 20 and max(sins) > 100000, "the dds is not running"
+
+
+@cocotb.test(timeout_time=10, timeout_unit='ms')
+@cocotb.parametrize(amp_loop_enable=[0, 1])
+async def test_sin_saturation(dut, amp_loop_enable):
+    """Setpoint, table entry and sinusoid near full scale: the three-term
+    sum saturates at the DWBB limits, both signs."""
+    tb = TB(dut)
+    amp = [SAT_MAX, SAT_MIN] * 8
+    await tb.write_mod_tables(amp, [0] * len(amp))
+    await tb.configure(pulse_start=0, pulse_high_len=200, mod_len=len(amp), amp_mod_enable=1,
+                       amp_sin_enable=1, amp_setpoint=SAT_MAX - 1000, max_amp_setpoint=100000,
+                       amp_loop_enable=amp_loop_enable, res_shift=3, **sin_cfg(1, 11, 0.95))
+    await tb.pulse()
+    await tb.configure(amp_setpoint=SAT_MIN + 1000)
+    await tb.pulse()
+
+
+@cocotb.test(timeout_time=10, timeout_unit='ms')
+async def test_sin_free_running(dut):
+    """The sinusoid runs free: triggers (and the pulses they start) do not
+    disturb its phase, which follows the phase accumulator without a jump."""
+    tb = TB(dut)
+    await tb.configure(phs_sin_enable=1, pulse_start=2, pulse_high_len=30, **sin_cfg(7, 33))
+    trigs = (20, 157, 280)  # gaps not multiples of 33
+    for k in range(400):
+        await tb.cycle(trig=int(k in trigs))
+    tb.check()
+    phase = [p for _, p in tb.sin_log[-400:]]
+    # 7/33 is exact: the phase repeats every 33 clocks, through the triggers
+    assert all(phase[k + 33] == phase[k] for k in range(len(phase) - 33)), \
+        "the sinusoid's phase jumped"
+    assert len(set(phase)) == 33

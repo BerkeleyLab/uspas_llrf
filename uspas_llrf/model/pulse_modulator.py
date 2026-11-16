@@ -1,5 +1,7 @@
 """Bit-accurate, cycle-level models of llrf_dsp/pulse_gen.v and the pulse
-modulation in llrf_dsp/loop_ctrl.v, used as cocotb scoreboards.
+and sinusoidal modulation in llrf_dsp/loop_ctrl.sv, used as cocotb
+scoreboards. The sinusoid (loop_ctrl's dds) is an input to step(): the dds
+itself is checked by llrf_dsp/tests/ntw_dds.
 
 Each step() is one dsp_clk rising edge: next values are computed from the
 current register state and the inputs, then committed.
@@ -56,10 +58,12 @@ class PulseGen:
 
 
 class PulseModulator:
-    """loop_ctrl.v pulse counter, modulation tables and modulated setpoints.
+    """loop_ctrl.sv pulse counter, modulation tables, sinusoidal modulation
+    and modulated setpoints.
 
     The setpoints follow pulse_idx/pulse_dval by 2 clocks: the table read
-    (dpram latches the index) and the output register.
+    (dpram latches the index) and the output register. The sinusoid is not
+    gated by the pulse: when enabled, the dds output of that clock is added.
     """
 
     def __init__(self, dwbb=18, pulse_aw=32, mod_aw=14):
@@ -78,6 +82,8 @@ class PulseModulator:
         self.mod_len = 0
         self.amp_mod_enable = 0
         self.phs_mod_enable = 0
+        self.amp_sin_enable = 0
+        self.phs_sin_enable = 0
         self.amp_setpoint = 0
         self.max_amp_setpoint = 0
         self.phs_setpoint = 0
@@ -96,17 +102,19 @@ class PulseModulator:
     def drive_on(self, drive_permit, pulse_mode):
         return int(drive_permit and (self.pulse.dval if pulse_mode else 1))
 
-    def step(self, trigger=0):
+    def step(self, trigger=0, sin=0):
+        """One dsp_clk edge; sin is the dds output (cos_out) before it."""
         p = self.pulse
         mod_len = min(self.mod_len, self.mod_size)
         in_mod = p.dval and p.idx < mod_len
         amp_mod = wrap_signed(self.amp_mod_table[self.mod_addr], self.dwbb)
         phs_mod = wrap_signed(self.phs_mod_table[self.mod_addr], self.dwbb)
-        amp = self.sat(self.amp_setpoint + (amp_mod if self.amp_mod_gate else 0))
+        amp = self.sat(self.amp_setpoint + (amp_mod if self.amp_mod_gate else 0)
+                       + (sin if self.amp_sin_enable else 0))
         if not self.amp_loop_enable and amp > self.max_amp_setpoint:
             amp = self.max_amp_setpoint
         phs = wrap_signed(self.phs_setpoint + (phs_mod if self.phs_mod_gate else 0)
-                          + self.phs_offset, self.dwbb)
+                          + (sin if self.phs_sin_enable else 0) + self.phs_offset, self.dwbb)
         # commit
         self.amp_sp, self.phs_sp = amp, phs
         self.amp_mod_gate = int(in_mod and self.amp_mod_enable)

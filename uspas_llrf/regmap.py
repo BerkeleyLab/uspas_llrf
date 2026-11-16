@@ -64,14 +64,21 @@ RENAMES = {
     'pulse_modulation_enable': ['loop0_amp_mod_enable', 'loop1_amp_mod_enable'],
     'pulse0_lut': ['loop0_amp_mod'],
     'pulse1_lut': ['loop1_amp_mod'],
+    # network analyzer -> each loop's sinusoidal modulation, step 13 (D32)
+    **{f'ntw_{old}': [f'loop{n}_{new}' for n in range(2)] for old, new in (
+        ('lo_amp', 'sin_amplitude'), ('modulo', 'sin_modulo'), ('phase_step_h', 'sin_phase_step_h'),
+        ('phase_step_l', 'sin_phase_step_l'), ('amp_enable', 'amp_sin_enable'), ('phs_enable', 'phs_sin_enable'))},
 }
 ADDITIONS = ['arc_testing',                                               # D18, step 3
              *[f'loop{n}_{x}' for n in range(2) for x in ('phs_mod', 'phs_mod_enable')],  # step 7d
-             'buf_delay']                                                 # LEMP, step 8
+             'buf_delay',                                                 # LEMP, step 8
+             *[f'loop{n}_{x}_setpoint_mod' for n in range(2) for x in ('amp', 'phs')]]
 # registers whose data_width changed on purpose: name -> new width
 WIDTH_CHANGES = {f'loop{n}_pulse_{f}': 32 for n in range(2) for f in ('start', 'high_len')}  # step 7d
 REMOVALS = ['iq_buf',                     # 2K designs: only LEMP keeps it (D1), step 7b
-            'dac0_raw_out', 'dac1_raw_out']  # awa: zero-valued buffers retired (§1.3), step 7b
+            'dac0_raw_out', 'dac1_raw_out',  # awa: zero-valued buffers retired (§1.3), step 7b
+            # ntw status words; their slots hold the loops' modulated setpoints, step 13
+            'amp_setpoint_ntw', 'phs_setpoint_ntw', 'ntw_cos_debug', 'ntw_phase_debug']
 
 
 class WaveTrigSel(IntEnum):
@@ -178,7 +185,19 @@ def loop_regs(n):
             loop_reg(n, 'amp_enable', init=0),
             loop_reg(n, 'phs_enable', init=0),
             loop_reg(n, 'amp_reset', init=0),
-            loop_reg(n, 'phs_reset', init=0)]
+            loop_reg(n, 'phs_reset', init=0)] + sin_regs(n)
+
+
+def sin_regs(n):
+    """Sinusoidal modulation of loop n (loop_ctrl's dds, 32 + 12-bit phase
+    step, D32, D34): the CW excitation for the loop's transfer function,
+    free-running."""
+    return [loop_reg(n, 'amp_sin_enable', init=0),
+            loop_reg(n, 'phs_sin_enable', init=0),
+            loop_reg(n, 'sin_amplitude', 18, init=0),
+            loop_reg(n, 'sin_modulo', 12, init=0),
+            loop_reg(n, 'sin_phase_step_h', 32, init=0),
+            loop_reg(n, 'sin_phase_step_l', 12, init=0)]
 
 
 def base_regs():
@@ -217,8 +236,6 @@ def base_regs():
             loop_reg(n, 'phs_mod_enable', init=0))],
         *[Reg(f'drv{n}_pulse_mode', init=0) for n in range(N_DRIVE)],
         *[Reg(f'soft_drive{n}_enable', init=1) for n in range(N_DRIVE)],
-        Reg('ntw_amp_enable'),
-        Reg('ntw_phs_enable'),
         Reg('system_bist_pass'),
         Reg('wave_trig_sel', 3, enum=WaveTrigSel, init=WaveTrigSel.Always),
         Reg('trigger_delay', 24, init=0),
@@ -246,11 +263,6 @@ def base_regs():
         Reg('arc_reset_arc_dev', kind='strobe', inst='arc'),
         Reg('arc_test_mask', 8, inst='arc'),
         Reg('arc_test_stb', kind='strobe', inst='arc'),
-        # ntw_analyzer ntw
-        Reg('ntw_lo_amp', 18, inst='ntw'),
-        Reg('ntw_modulo', 12, inst='ntw'),
-        Reg('ntw_phase_step_h', 32, inst='ntw'),
-        Reg('ntw_phase_step_l', 12, inst='ntw'),
     ]
     return regs
 
@@ -323,8 +335,8 @@ def base_status():
     # dsp_clk bank: evr_live_ts_lo must be slot 0, so the 64-bit timestamp
     # is read consistently (see jit_rad_gateway_demo.v)
     dsp = [('evr_live_ts_lo', 32, False), ('evr_live_ts_hi', 32, False),
-           ('amp_setpoint_ntw', 18, True), ('phs_setpoint_ntw', 18, True),
-           ('sig_buf_count', 32, False), ('ntw_cos_debug', 18, True), ('ntw_phase_debug', 19, True),
+           ('loop0_amp_setpoint_mod', 18, True), ('loop0_phs_setpoint_mod', 18, True),
+           ('sig_buf_count', 32, False), ('loop1_amp_setpoint_mod', 18, True), ('loop1_phs_setpoint_mod', 18, True),
            ('trig_count', 32, False), ('fast_permit_out', 1, False), ('drive_permit_in', 1, False),
            ('slow_permit_in', 1, False), ('evg_permit_out', 1, False), ('hpa_permit_out', 1, False),
            ('drive_permit_out', 1, False)]

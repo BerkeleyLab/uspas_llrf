@@ -1,4 +1,4 @@
-from uspas_llrf import (LLRFShell, DacDriveSel, LocalbusAppMaster,
+from uspas_llrf import (LLRFShell, DacDriveSel, LocalbusAppMaster, DDS,
                         InlkFaultMode, wrap_phase, clip_int, dsp_config,
                         PulseModulator, WaveTrigSel, gen_mod_tables)
 from pathlib import Path
@@ -569,7 +569,9 @@ class TB_llrf_shell:
         through the localbus, the pulse started by the shell's trigger path
         (software trigger), and the modulated setpoints, pulse_dval and
         pulse_idx checked on every dsp_clk edge against PulseModulator.
-        mod_len is shorter than the pulse, so the table window ends inside it."""
+        mod_len is shorter than the pulse, so the table window ends inside it.
+        The loop's sinusoid (step 13) adds to both setpoints, free-running
+        through the trigger; the model takes the dds output of each clock."""
         dut = self.dut
         n = int(loop[-1])
         self.log_banner(f'Pulse modulation {loop}')
@@ -599,6 +601,15 @@ class TB_llrf_shell:
         regs.update({f'{other}_pulse_res_shift': res_shift + 2, f'{other}_mod_len': 3,
                      f'{other}_amp_mod_enable': 0, f'{other}_phs_mod_enable': 0,
                      f'{other}_pulse_start': start + 7, f'{other}_pulse_high_len': 9})
+        # sinusoids: 7/33 on this loop (amplitude and phase), 2/11 on the
+        # other (amplitude only)
+        for lp, (num, den), amp_en, phs_en in ((loop, (7, 33), 1, 1), (other, (2, 11), 1, 0)):
+            sin = DDS(num=num, den=den, dwh=32, dwl=12)
+            h, lo, modulo = sin.calc_dds_config(dwh=32, dwl=12)
+            regs.update({f'{lp}_sin_amplitude': int(0.02 * sin.full_scale_amp), f'{lp}_sin_modulo': modulo,
+                         f'{lp}_sin_phase_step_h': h, f'{lp}_sin_phase_step_l': lo,
+                         f'{lp}_amp_sin_enable': amp_en, f'{lp}_phs_sin_enable': phs_en})
+        cfg.update(amp_sin_enable=1, phs_sin_enable=1)
         for name, value in regs.items():
             await self.lb.write_reg(name, value)
         await ClockCycles(dut.dsp_clk, 50)  # register crossing into dsp_clk
@@ -614,15 +625,18 @@ class TB_llrf_shell:
             setattr(model, k, v)
         model.amp_mod_table[:n_tab] = [a & mask for a in amp_tab]
         model.phs_mod_table[:n_tab] = [p & mask for p in phs_tab]
-        errors, seen = [], {'dval': 0, 'amp_gate': 0}
+        errors, seen = [], {'dval': 0, 'amp_gate': 0, 'sin': set()}
 
         async def monitor(n_cycles):
             trig = 0   # trig as sampled at the next edge
+            sin = 0    # dds output before the next edge
             for k in range(n_cycles):
                 await RisingEdge(dut.dsp_clk)
-                model.step(trig)
+                model.step(trig, sin)
                 await ReadOnly()
                 trig = int(lc.trig.value)
+                sin = lc.sin_mod.value.to_signed()
+                seen['sin'].add(sin)
                 got = (int(lc.pulse_dval.value), int(lc.pulse_idx.value),
                        lc.amp_setpoint_mod.value.to_signed(), lc.phs_setpoint_mod.value.to_signed())
                 exp = (model.pulse.dval, model.pulse.idx, model.amp_sp, model.phs_sp)
@@ -639,7 +653,11 @@ class TB_llrf_shell:
         assert not errors, "\n".join(errors)
         assert seen['dval'] == cfg['pulse_high_len'], f"pulse lasted {seen['dval']} clocks"
         assert seen['amp_gate'] == mod_len << res_shift, f"amplitude table on for {seen['amp_gate']} clocks"
+        assert len(seen['sin']) >= 17, f"sinusoid took {len(seen['sin'])} values"  # cos at 7/33: 17
         cocotb.log.info(f'{loop}: {seen["dval"]} pulse clocks, table applied for {seen["amp_gate"]}')
+        for lp in (loop, other):
+            await self.lb.write_reg(f'{lp}_amp_sin_enable', 0)
+            await self.lb.write_reg(f'{lp}_phs_sin_enable', 0)
 
     async def test_buf_delay(self, delays=(0, 1, 37)):
         """buf_delay moves the signal buffer capture (sig_buf_dval) and the
