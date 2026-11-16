@@ -1,12 +1,18 @@
 // Aux info synchronized with waveform
-// total n_words = 5 + 2*N_CH must be < 2**AW, address starting from 0x11
+// total n_words = 5 + 2*N_CH + 4 + 8 + N_AUX must be < 2**AW - 0x11, address starting from 0x11
 // AW >=6 when N_CH==8
-// content see static_regmap.json, dsp_slow_*
-// {buf_stat1, buf_stat2, buf_count, 8'h0, tag, 8'h0, tag_old, sig_min_max, evr_timestamp, timestamp}
+// content see uspas_llrf/model/slow_bridge.py
+// {buf_stat1, buf_stat2, buf_count, 8'h0, tag, 8'h0, tag_old, sig_min_max, evr_timestamp, timestamp, aux}
+// aux (N_AUX 16-bit words, first word in the MSBs of aux_data) is snapshot at
+// buf_sync like evr_timestamp, double-buffered: the slow data shifted out on
+// slow_snap holds the values at the buf_sync that ended the buffer handed
+// over (llrf_dsp/tests/cic_waves, test_cic_waves_slow_aux). It follows the 8
+// timestamp words.
 module slow_bridge_shell #(
     parameter AW    = 7,
     parameter N_CH  = 8,
-    parameter DW    = 16
+    parameter DW    = 16,
+    parameter N_AUX = 1
 ) (
     // 32-bit local bus (slave)
     input           lb_clk,
@@ -26,6 +32,7 @@ module slow_bridge_shell #(
     input [DW*N_CH-1:0] data_in,
 
     input [63:0]    evr_timestamp, // N.B. evr_timestamp must be aligned with start of buffer
+    input [DW*N_AUX-1:0] aux_data, // snapshot at buf_sync like evr_timestamp
 
     input           slow_snap, // Typically 'buf_transferred' so we save auxiliary data
                                // pertaining to the just-completed buffer
@@ -84,20 +91,34 @@ module slow_bridge_shell #(
     );
 
     wire [DW-1:0] timestamp_pad = {8'h0, timestamp};
+    // aux_data, double-buffered like evr_timestamp below; after the 8
+    // timestamp words, its words (first word first) follow into the
+    // evr_timestamp shift register in place of timestamp_pad
+    localparam TS_WORDS = 8;
+    reg [DW*N_AUX-1:0] aux_snap1=0, aux_snap2=0;
+    reg [5:0] tail_cnt=0;  // words shifted into evr_ts_snap since slow_snap
+    wire aux_turn = tail_cnt >= TS_WORDS;
+    wire [DW-1:0] aux_word = evr_ts_rd ? aux_snap1[DW*N_AUX-1 -: DW] : aux_snap2[DW*N_AUX-1 -: DW];
+    wire [DW-1:0] tail_word = aux_turn ? aux_word : timestamp_pad;
     // Double-buffer evr_timestamp so we can simultaneously snapshot current and transfer previous
     reg [63:0] evr_ts_snap1, evr_ts_snap2;
     reg evr_ts_rd=0;
     always @(posedge dsp_clk) begin
         if (buf_sync) begin
-            if (evr_ts_rd^slow_snap) evr_ts_snap2 <= evr_timestamp;
-            else                     evr_ts_snap1 <= evr_timestamp;
+            if (evr_ts_rd^slow_snap) begin evr_ts_snap2 <= evr_timestamp; aux_snap2 <= aux_data; end
+            else                     begin evr_ts_snap1 <= evr_timestamp; aux_snap1 <= aux_data; end
         end
         if (slow_snap) evr_ts_rd <= ~evr_ts_rd;
+        if (slow_snap) tail_cnt <= 0;
+        else if (shifting && !(&tail_cnt)) tail_cnt <= tail_cnt + 1'b1;
 
-        // Shift out EVR timestamp MSB word first; follow with local cycle counter (timestamp_pad)
+        // Shift out EVR timestamp MSB word first; follow with local cycle counter
+        // (timestamp_pad), then the aux words
         if (shifting) begin
-            if ( evr_ts_rd) evr_ts_snap1 <= {evr_ts_snap1[64-DW-1:0], timestamp_pad};
-            if (!evr_ts_rd) evr_ts_snap2 <= {evr_ts_snap2[64-DW-1:0], timestamp_pad};
+            if ( evr_ts_rd) evr_ts_snap1 <= {evr_ts_snap1[64-DW-1:0], tail_word};
+            if (!evr_ts_rd) evr_ts_snap2 <= {evr_ts_snap2[64-DW-1:0], tail_word};
+            if (aux_turn &&  evr_ts_rd) aux_snap1 <= aux_snap1 << DW;
+            if (aux_turn && !evr_ts_rd) aux_snap2 <= aux_snap2 << DW;
         end
     end
     wire [DW-1:0] evr_ts_word = evr_ts_rd ? evr_ts_snap1[64-DW +:DW] : evr_ts_snap2[64-DW +:DW];

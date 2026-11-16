@@ -25,6 +25,7 @@ module diag
     input                 cbuf_free_run,
     input                 record_en,         // drive enabled: record, first fault detection
     input  [63:0]         evr_timestamp,
+    input  [DWBB:0]       sin_phase [N_DRIVE],  // each loop's sinusoid phase, into the slow data
 
     // configuration, dsp_clk domain
     input  [6:0]          wave_samp_per,
@@ -201,6 +202,16 @@ wire inlk_dval, inlk_last;
 // slow readout snapshot: on cbuf transfer (CW) or I/Q buffer transfer (pulsed)
 wire slow_snap = slow_snap_cic ? cbuf_transferred : sig_buf_iq_transferred[0];
 
+// words after the cycle counter in the slow data, snapshot at the buffer
+// sync that ends the buffer handed over, like the EVR timestamp (step 13b):
+// per loop, the sinusoid's 19-bit phase as two words,
+// {13'b0, phase[18:16]} then phase[15:0]; loop 0 first
+localparam N_SLOW_AUX = 2 * N_DRIVE;
+logic [16*N_SLOW_AUX-1:0] slow_aux;
+always_comb
+    for (int n = 0; n < N_DRIVE; n++)
+        slow_aux[16*N_SLOW_AUX-1-32*n -: 32] = {13'b0, sin_phase[n]};
+
 wire [15:0] slow_rdata;
 wire slow_ready;
 cic_waves #(
@@ -212,7 +223,8 @@ cic_waves #(
     .CBUF_AW            (CBUF_AW),
     .CBUF_DW            (CBUF_DW),
     .CIC_SHIFT_BASE     (CIC_SHIFT_BASE),
-    .INLK_SHIFT_BASE    (INLK_SHIFT_BASE)
+    .INLK_SHIFT_BASE    (INLK_SHIFT_BASE),
+    .N_SLOW_AUX         (N_SLOW_AUX)
 ) cic_waves (
     .dsp_clk            (dsp_clk),
     .dsp_reset          (dsp_reset),
@@ -222,6 +234,7 @@ cic_waves #(
     .slow_bridge_data_in(adc_data_in),
     .slow_snap          (slow_snap),
     .evr_timestamp      (evr_timestamp),
+    .slow_aux           (slow_aux),
     .cic_wave_samp_per  (wave_samp_per),
 
     .cic_chan_keep      (chan_keep),

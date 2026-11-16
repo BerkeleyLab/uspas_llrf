@@ -257,6 +257,7 @@ wire [31:0] sig_buf_count;
 wire [N_CH-1:0] inlk_hi_lb, inlk_lo_lb, inlk_status_lb, first_fault_status_lb, inlk_latch_lb;
 wire [0:0] inlk_permit_out_lb, arc_permit_sum_lb, arc_testing_lb;
 wire [2:0] arc_permit_raw_lb, arc_permit_latch_lb;
+logic [DWBB:0] sin_phase [N_DRIVE];  // each loop's sinusoid phase (loops), into the slow data
 diag #(
     .F_DSP_HZ        (F_DSP_HZ),
     .CBUF_DW         (CBUF_DW),
@@ -278,6 +279,7 @@ diag #(
     .cbuf_free_run         (cfg_dsp.wave_trig_sel == WAVE_TRIG_ALWAYS),
     .record_en             (sum_drive_enable),
     .evr_timestamp         (evr_live_ts_dsp),
+    .sin_phase             (sin_phase),
     .wave_samp_per         (cfg_dsp.wave_samp_per),
     .chan_keep             (cfg_dsp.chan_keep),
     .cic_base_period       (cfg_dsp.cic_base_period),
@@ -426,6 +428,7 @@ loops loops (
     .err_phs_lb      (err_out_phs_lb),
     .amp_setpoint_mod (amp_setpoint_mod),
     .phs_setpoint_mod (phs_setpoint_mod),
+    .sin_phase        (sin_phase),
     .lb_clk          (lb_clk),
     .lb_addr         (lb_addr[MAP_MOD_AW-1:0]),
     .lb_wdata        (lb_wdata[DWBB-1:0]),

@@ -1,7 +1,7 @@
 import numpy as np
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, ClockCycles, First
+from cocotb.triggers import RisingEdge, FallingEdge, ClockCycles, First
 from uspas_llrf import dsp_config, wrap_phase, CICWaveRecorder, LocalBusMaster
 from uspas_llrf.model.slow_bridge import (
     decode_slow_data, slow_data_n_words, SLOW_DATA_OFFSET)
@@ -412,3 +412,53 @@ async def test_cic_waves_inlk_continuous(dut):
         f'inlk data changed across {len(set(datas))} distinct frames'
     cocotb.log.info(f'{len(frames)} inlk frames, period {periods}, '
                     f'{edges} stream_valid edges, data {datas[0][:4]}')
+
+
+@cocotb.test(timeout_time=400, timeout_unit='us')
+async def test_cic_waves_slow_aux(dut):
+    """The words after the cycle counter in the slow data (slow_aux: each
+    loop's sinusoid phase in the shells, plan step 13b) are snapshot at a
+    buffer sync, like the EVR timestamp, and belong to the buffer handed
+    over: slow_aux is driven with a free-running clock counter, and after
+    each transfer the slow data holds the counter at the sync that ends
+    that buffer (the transfer follows it by one clock). The words before
+    them do not move."""
+    tb = TB(dut)
+    await tb.reset()
+    await tb.configure()
+    await tb.set_wave_trig_sel('WAVE_TRIG_ALWAYS')
+    syncs, transfers = [], []   # counter values at cbuf_sync / cbuf_transferred
+
+    async def drive_counter():
+        count = 0
+        while True:
+            await FallingEdge(tb.dsp_clk)
+            # the next rising edge samples these buf_sync/transfer values
+            # together with slow_aux = count + 1
+            sync, xfer = int(dut.cbuf_sync.value), int(dut.cbuf_transferred.value)
+            count += 1
+            dut.slow_aux.value = count
+            if sync:
+                syncs.append(count)
+            if xfer:
+                transfers.append(count)
+    cocotb.start_soon(drive_counter())
+    await tb.stream_iq_data()
+    base = SLOW_DATA_OFFSET + slow_data_n_words(tb.N_ADC, n_loops=0)
+    for _ in range(3):
+        for _ in range(2):  # buffers recorded in between
+            await RisingEdge(dut.cbuf_sync)
+        await tb.lb.write(tb.P_ADDR_CBUF_FLIP, 1)
+        await RisingEdge(dut.cbuf_transferred)
+        await ClockCycles(tb.dsp_clk, 200)  # the slow data shifts into its RAM (2**7 words)
+        slow = await tb.read_slow_data()
+        assert slow.evr_timestamp == tb.EVR_TS, 'the words before slow_aux moved'
+        aux = 0
+        for v in slow.raw[base:base + 4]:
+            aux = (aux << 16) | int(v)
+        xfer = transfers[-1]
+        before = [s for s in syncs if s <= xfer]
+        cocotb.log.info(f'slow_aux {aux}, transfer at {xfer}, syncs before {before[-3:]}')
+        assert aux in syncs, f'slow_aux {aux} is not the counter at a buffer sync'
+        assert aux == before[-1] and xfer - aux == 1, \
+            f'slow_aux {aux}: not the sync ending the buffer handed over at {xfer} (syncs {before[-3:]})'
