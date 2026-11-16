@@ -69,7 +69,8 @@ class TB:
     async def test(self):
         cocotb.log.info(f'LLRF Model:\n{self.model}')
         amp_exp, phs_off = await self.init_test()
-        await ClockCycles(self.dut.clk, self.model.CORDIC_LATENCY)
+        # the phase accumulator's register, then the CORDIC
+        await ClockCycles(self.dut.clk, 1 + self.model.CORDIC_LATENCY)
         await self.check_sig(amp_exp, phs_off)
 
 

@@ -3,10 +3,12 @@ from ..utils import wrap_phase, to_signed
 
 
 class LLRFModule:
-    # 1.646760258
-    CORDIC_NSTG = 21  # cordic_g22.v: nstg=21
-    CORDIC_LATENCY = CORDIC_NSTG + 1
-    CORDIC_GAIN = np.prod([np.sqrt(1 + 4**-n) for n in range(CORDIC_NSTG)])
+    # cordicg_b22 as every llrf_dsp instance uses it (nstg 20; the generated
+    # module's default is 21): inputs registered, stage 0, then rotations by
+    # 2**-n for n = 0 .. nstg-2, the output taken after stage nstg-1
+    CORDIC_NSTG = 20
+    CORDIC_LATENCY = CORDIC_NSTG + 1  # dsp clocks, input to output
+    CORDIC_GAIN = np.prod([np.sqrt(1 + 4**-n) for n in range(CORDIC_NSTG - 1)])  # 1.646760258
 
     def __init__(self, num: int = 4, den: int = 11) -> None:
         """Base class for LLRF DSP module
