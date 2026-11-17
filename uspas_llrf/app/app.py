@@ -201,8 +201,11 @@ class LLRFApp(LEEPDevice):
             (f'{loop}_Ki_phs', ki_phs),
         ])
 
-    def close_loop(self, loop='loop0'):
-        self.reg_write([
+    def close_loop(self, loop='loop0', amp_setp_adc=None, phs_setp_deg=None):
+        """Close the loop. With amp_setp_adc (and phs_setp_deg), the
+        setpoints are written in closed-loop units in the same exchange, so
+        the field target in ADC counts is kept."""
+        self.reg_write(self._setpoint_writes(loop, amp_setp_adc, phs_setp_deg, True) + [
             (f'{loop}_amp_reset', True),
             (f'{loop}_phs_reset', True),
             (f'{loop}_amp_enable', True),
@@ -211,11 +214,45 @@ class LLRFApp(LEEPDevice):
             (f'{loop}_phs_reset', False),
         ])
 
-    def open_loop(self, loop='loop0'):
+    def open_loop(self, loop='loop0', amp_setp_adc=None, phs_setp_deg=None):
+        """Open the loop. With amp_setp_adc (and phs_setp_deg), the
+        setpoints are written in open-loop units in the same exchange."""
         self.reg_write([
             (f'{loop}_amp_enable', False),
             (f'{loop}_phs_enable', False),
-        ])
+        ] + self._setpoint_writes(loop, amp_setp_adc, phs_setp_deg, False))
+
+    def _setpoint_writes(self, loop, amp_setp_adc, phs_setp_deg, closed):
+        """Register writes of a loop's setpoints given in ADC counts and
+        degrees, in closed-loop (measured amplitude, x |rx gain|) or
+        open-loop (drive amplitude, / |tx gain|) units, as init_loop()."""
+        calc = self.model.calc_close_loop_setp if closed else self.model.calc_open_loop_setp
+        amp, phs = calc(amp_setp_adc or 0, phs_setp_deg or 0)
+        writes = []
+        if amp_setp_adc is not None:
+            writes.append((f'{loop}_amp_setpoint', amp))
+        if phs_setp_deg is not None:
+            writes.append((f'{loop}_phs_setpoint', phs))
+        return writes
+
+    def loop_closed(self, loop='loop0'):
+        """True if the loop's amplitude loop is enabled (its setpoint is then
+        in closed-loop units)."""
+        return bool(self.read_reg(f'{loop}_amp_enable'))
+
+    def set_loop_setpoint(self, loop='loop0', amp_setp_adc=None, phs_setp_deg=None):
+        """Write a loop's setpoints in ADC counts and degrees, converted for
+        its current state (open or closed amplitude loop)."""
+        self.reg_write(self._setpoint_writes(
+            loop, amp_setp_adc, phs_setp_deg, self.loop_closed(loop)))
+
+    def get_loop_setpoint(self, loop='loop0'):
+        """A loop's setpoints in ADC counts and degrees, and whether its
+        amplitude loop is closed."""
+        closed = self.loop_closed(loop)
+        amp, phs = self.reg_read([f'{loop}_amp_setpoint', f'{loop}_phs_setpoint'])
+        gain = abs(self.model.rx.gain) if closed else 1 / abs(self.model.tx.gain)
+        return float(amp) / gain, float(phs) / (1 << 18) * 360, closed
 
     def read_reg(self, name):
         """ read a single register by given name """
