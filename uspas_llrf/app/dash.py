@@ -261,6 +261,24 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
     app = dash.Dash(__name__,
                     title=f"LLRF Live - {llrf_app.app_name} @ {dev_addr}")
 
+    # Loop setpoints in calibrated units (ADC counts, degrees), as
+    # LLRFApp.init_loop() takes them, read back for the loop's state
+    setp_init = {}
+    for n in range(2):
+        try:
+            amp, phs, _ = llrf_app.get_loop_setpoint(f'loop{n}')
+            setp_init[n] = (round(amp), round(phs, 2))
+        except Exception as e:
+            logger.warning(f"Could not read loop{n} setpoints, defaulting: {e}")
+            setp_init[n] = (20000, 0)
+    adc_chan_init = {}
+    for n in range(2):
+        try:
+            adc_chan_init[n] = int(llrf_app.read_reg(f'loop{n}_adc_chan'))
+        except Exception as e:
+            logger.warning(f"Could not read loop{n}_adc_chan: {e}")
+            adc_chan_init[n] = None
+
     # Pulse start/length registers count dsp_clk cycles; the UI works in ns.
     # Slider step is one clk period so every position is an exact clk count.
     t_clk_ns = llrf_app.config['DSP_CLK_CYCLE']
@@ -503,22 +521,34 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
                                        'gap': '10px', 'marginBottom': '12px'},
                                 children=[
                                     html.Div([
-                                        html.Label("Amp Setpoint [cnt]:",
+                                        html.Label("Field ADC (loop0_adc_chan):",
+                                                   style={'fontSize': '11px',
+                                                          'fontWeight': 'bold'}),
+                                        dcc.Dropdown(id='loop0-adc-chan',
+                                                     options=[{'label': f'adc{c}', 'value': c}
+                                                              for c in range(8)],
+                                                     value=adc_chan_init[0],
+                                                     clearable=False,
+                                                     style={'width': '90%'})
+                                    ]),
+                                    html.Div(),
+                                    html.Div([
+                                        html.Label("Amp Setpoint [ADC cnt]:",
                                                    style={'fontSize': '11px',
                                                           'fontWeight': 'bold'}),
                                         dcc.Input(id='loop0-amp-setp',
                                                   type='number',
-                                                  value=20000,
+                                                  value=setp_init[0][0],
                                                   debounce=True,
                                                   style={'width': '90%'})
                                     ]),
                                     html.Div([
-                                        html.Label("Phs Setpoint [cnt/raw]:",
+                                        html.Label("Phs Setpoint [deg]:",
                                                    style={'fontSize': '11px',
                                                           'fontWeight': 'bold'}),
                                         dcc.Input(id='loop0-phs-setp',
                                                   type='number',
-                                                  value=0,
+                                                  value=setp_init[0][1],
                                                   debounce=True,
                                                   style={'width': '90%'})
                                     ]),
@@ -667,22 +697,34 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
                                        'gap': '10px', 'marginBottom': '12px'},
                                 children=[
                                     html.Div([
-                                        html.Label("Amp Setpoint [cnt]:",
+                                        html.Label("Field ADC (loop1_adc_chan):",
+                                                   style={'fontSize': '11px',
+                                                          'fontWeight': 'bold'}),
+                                        dcc.Dropdown(id='loop1-adc-chan',
+                                                     options=[{'label': f'adc{c}', 'value': c}
+                                                              for c in range(8)],
+                                                     value=adc_chan_init[1],
+                                                     clearable=False,
+                                                     style={'width': '90%'})
+                                    ]),
+                                    html.Div(),
+                                    html.Div([
+                                        html.Label("Amp Setpoint [ADC cnt]:",
                                                    style={'fontSize': '11px',
                                                           'fontWeight': 'bold'}),
                                         dcc.Input(id='loop1-amp-setp',
                                                   type='number',
-                                                  value=20000,
+                                                  value=setp_init[1][0],
                                                   debounce=True,
                                                   style={'width': '90%'})
                                     ]),
                                     html.Div([
-                                        html.Label("Phs Setpoint [cnt/raw]:",
+                                        html.Label("Phs Setpoint [deg]:",
                                                    style={'fontSize': '11px',
                                                           'fontWeight': 'bold'}),
                                         dcc.Input(id='loop1-phs-setp',
                                                   type='number',
-                                                  value=0,
+                                                  value=setp_init[1][1],
                                                   debounce=True,
                                                   style={'width': '90%'})
                                     ]),
@@ -1469,19 +1511,26 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
 
     @app.callback(
         Output('init-status', 'children'),
+        Output('loop0-amp-setp', 'value'),
+        Output('loop0-phs-setp', 'value'),
+        Output('loop1-amp-setp', 'value'),
+        Output('loop1-phs-setp', 'value'),
         Input('init-loopback-btn', 'n_clicks'),
         prevent_initial_call=True
     )
     def init_loopback_demo(n_clicks):
+        keep = (dash.no_update,) * 4
         if n_clicks and n_clicks > 0:
             try:
                 llrf_app.init_cw_demo()
                 llrf_app.init_loop('loop0', amp_setp_adc=2e4)
                 llrf_app.init_loop('loop1', amp_setp_adc=2e4)
-                return f"Demo initialized ({time.strftime('%H:%M:%S')})"
+                # the setpoint fields show what init_loop wrote
+                return (f"Demo initialized ({time.strftime('%H:%M:%S')})",
+                        20000, 0, 20000, 0)
             except Exception as e:
-                return f"Init failed: {e}"
-        return ""
+                return (f"Init failed: {e}",) + keep
+        return ("",) + keep
 
     @app.callback(
         Output('loop0-status-msg', 'children'),
@@ -1489,6 +1538,7 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
         Input('loop0-close-btn', 'n_clicks'),
         Input('loop0-amp-setp', 'value'),
         Input('loop0-phs-setp', 'value'),
+        Input('loop0-adc-chan', 'value'),
         Input('loop0-kp-amp', 'value'),
         Input('loop0-ki-amp', 'value'),
         Input('loop0-kp-phs', 'value'),
@@ -1499,7 +1549,7 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
         prevent_initial_call=True
     )
     def control_loop0(open_clicks, close_clicks,
-                      amp_setp, phs_setp,
+                      amp_setp, phs_setp, adc_chan,
                       kp_amp, ki_amp, kp_phs, ki_phs,
                       en0_val, start0_val, len0_val):
         ctx = dash.callback_context
@@ -1509,18 +1559,25 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
         trig_id = prop_id.split('.')[0]
 
         try:
+            # the setpoints follow the loop's state: rewritten in the new
+            # state's units with the open/close, so the ADC-count target holds
             if trig_id == 'loop0-open-btn':
-                llrf_app.open_loop('loop0')
+                llrf_app.open_loop('loop0', amp_setp, phs_setp)
                 return f"Loop0 OPENED at {time.strftime('%H:%M:%S')}"
             elif trig_id == 'loop0-close-btn':
-                llrf_app.close_loop('loop0')
+                llrf_app.close_loop('loop0', amp_setp, phs_setp)
                 return f"Loop0 CLOSED at {time.strftime('%H:%M:%S')}"
             elif trig_id == 'loop0-amp-setp' and amp_setp is not None:
-                llrf_app.write_reg('loop0_amp_setpoint', int(amp_setp))
-                return f"Wrote loop0_amp_setpoint={amp_setp} at {time.strftime('%H:%M:%S')}"
+                llrf_app.set_loop_setpoint('loop0', amp_setp_adc=amp_setp)
+                raw = llrf_app.read_reg('loop0_amp_setpoint')
+                return f"Wrote loop0 amplitude setpoint {amp_setp} ADC cnt (register {raw}) at {time.strftime('%H:%M:%S')}"
             elif trig_id == 'loop0-phs-setp' and phs_setp is not None:
-                llrf_app.write_reg('loop0_phs_setpoint', int(phs_setp))
-                return f"Wrote loop0_phs_setpoint={phs_setp} at {time.strftime('%H:%M:%S')}"
+                llrf_app.set_loop_setpoint('loop0', phs_setp_deg=phs_setp)
+                raw = llrf_app.read_reg('loop0_phs_setpoint')
+                return f"Wrote loop0 phase setpoint {phs_setp} deg (register {raw}) at {time.strftime('%H:%M:%S')}"
+            elif trig_id == 'loop0-adc-chan' and adc_chan is not None:
+                llrf_app.write_reg('loop0_adc_chan', int(adc_chan))
+                return f"Wrote loop0_adc_chan={adc_chan} (field from adc{adc_chan}) at {time.strftime('%H:%M:%S')}"
             elif trig_id == 'loop0-kp-amp' and kp_amp is not None:
                 llrf_app.write_reg('loop0_Kp_amp', int(kp_amp))
                 return f"Wrote loop0_Kp_amp={kp_amp} at {time.strftime('%H:%M:%S')}"
@@ -1556,6 +1613,7 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
         Input('loop1-close-btn', 'n_clicks'),
         Input('loop1-amp-setp', 'value'),
         Input('loop1-phs-setp', 'value'),
+        Input('loop1-adc-chan', 'value'),
         Input('loop1-kp-amp', 'value'),
         Input('loop1-ki-amp', 'value'),
         Input('loop1-kp-phs', 'value'),
@@ -1566,7 +1624,7 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
         prevent_initial_call=True
     )
     def control_loop1(open_clicks, close_clicks,
-                      amp_setp, phs_setp,
+                      amp_setp, phs_setp, adc_chan,
                       kp_amp, ki_amp, kp_phs, ki_phs,
                       en1_val, start1_val, len1_val):
         ctx = dash.callback_context
@@ -1576,18 +1634,25 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
         trig_id = prop_id.split('.')[0]
 
         try:
+            # the setpoints follow the loop's state: rewritten in the new
+            # state's units with the open/close, so the ADC-count target holds
             if trig_id == 'loop1-open-btn':
-                llrf_app.open_loop('loop1')
+                llrf_app.open_loop('loop1', amp_setp, phs_setp)
                 return f"Loop1 OPENED at {time.strftime('%H:%M:%S')}"
             elif trig_id == 'loop1-close-btn':
-                llrf_app.close_loop('loop1')
+                llrf_app.close_loop('loop1', amp_setp, phs_setp)
                 return f"Loop1 CLOSED at {time.strftime('%H:%M:%S')}"
             elif trig_id == 'loop1-amp-setp' and amp_setp is not None:
-                llrf_app.write_reg('loop1_amp_setpoint', int(amp_setp))
-                return f"Wrote loop1_amp_setpoint={amp_setp} at {time.strftime('%H:%M:%S')}"
+                llrf_app.set_loop_setpoint('loop1', amp_setp_adc=amp_setp)
+                raw = llrf_app.read_reg('loop1_amp_setpoint')
+                return f"Wrote loop1 amplitude setpoint {amp_setp} ADC cnt (register {raw}) at {time.strftime('%H:%M:%S')}"
             elif trig_id == 'loop1-phs-setp' and phs_setp is not None:
-                llrf_app.write_reg('loop1_phs_setpoint', int(phs_setp))
-                return f"Wrote loop1_phs_setpoint={phs_setp} at {time.strftime('%H:%M:%S')}"
+                llrf_app.set_loop_setpoint('loop1', phs_setp_deg=phs_setp)
+                raw = llrf_app.read_reg('loop1_phs_setpoint')
+                return f"Wrote loop1 phase setpoint {phs_setp} deg (register {raw}) at {time.strftime('%H:%M:%S')}"
+            elif trig_id == 'loop1-adc-chan' and adc_chan is not None:
+                llrf_app.write_reg('loop1_adc_chan', int(adc_chan))
+                return f"Wrote loop1_adc_chan={adc_chan} (field from adc{adc_chan}) at {time.strftime('%H:%M:%S')}"
             elif trig_id == 'loop1-kp-amp' and kp_amp is not None:
                 llrf_app.write_reg('loop1_Kp_amp', int(kp_amp))
                 return f"Wrote loop1_Kp_amp={kp_amp} at {time.strftime('%H:%M:%S')}"
@@ -1909,10 +1974,6 @@ def main():
         help='LEEP device address (e.g. 192.168.19.37:803)'
     )
     parser.add_argument(
-        '--conf', default='USPAS',
-        help='Facility configuration (e.g. USPAS, ALSU, LEMP, AWA)'
-    )
-    parser.add_argument(
         '--host', default='0.0.0.0',
         help='Dash server host IP'
     )
@@ -1930,8 +1991,28 @@ def main():
     )
     args = parser.parse_args()
 
-    llrf = LLRFApp(addr=args.addr, conf=args.conf, assert_system_bist=(not args.bypass_bist))
+    conf = board_conf(args.addr)
+    llrf = LLRFApp(addr=args.addr, conf=conf, assert_system_bist=(not args.bypass_bist))
     run_dash(llrf, host=args.host, port=args.port, debug=args.debug)
+
+
+def board_conf(addr):
+    """The configuration of the board at addr: the design of the bitstream it
+    runs (descript, e.g. 'alsu' -> 'ALSU'). The model's gains, and with them
+    the setpoints and monitors in ADC counts, must be the board's, so there
+    is no override."""
+    from leep.raw import LEEPDevice
+    from uspas_llrf import dsp_config
+    try:
+        LLRFApp.wait_ready(addr)
+        design = str(LEEPDevice(addr, timeout=0.5).descript).strip().upper()
+    except Exception as e:
+        raise SystemExit(f"Could not read the board's design (descript) at {addr}: {e}")
+    if design not in dsp_config:
+        raise SystemExit(f"Board design {design!r} has no configuration "
+                         f"(known: {', '.join(dsp_config)})")
+    logger.info(f"Configuration {design} from the board's bitstream")
+    return design
 
 
 if __name__ == '__main__':

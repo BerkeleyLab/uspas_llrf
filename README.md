@@ -126,9 +126,9 @@ A web based dashboard is available to show its dashboard:
 
 ```bash
 pip install -e .
-python -m uspas_llrf.app.dash --addr 192.168.19.42:803 --conf USPAS
+python -m uspas_llrf.app.dash --addr 192.168.19.42:803
 ```
-`--conf` is the design's `FSET` (USPAS, ALSU, LEMP or AWA).
+The configuration (USPAS, ALSU, LEMP or AWA) comes from the bitstream the board runs (its `descript`).
 
 ### Boot-load soft core program
 
