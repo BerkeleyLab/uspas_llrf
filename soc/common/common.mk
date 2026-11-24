@@ -27,8 +27,11 @@ SRC_V += $(DSP_DIR)/phaset.v $(DSP_DIR)/phase_diff.v
 SRCS   =  system.c print.c i2c_soft.c timer.c console.c evr_gt_wrapper.c design_hooks.c
 SRCS  +=  printf.c iserdes.c
 SRCS  +=  settings.h
-SRCS  +=  $(BOARD_SUPPORT_DIR)/marble_soc/firmware/marble.c
-SRCS  +=  $(BOARD_SUPPORT_DIR)/zest_soc/firmware/zest.c
+# By name and vpath, so their objects are built in the build directory: they
+# include settings.h, which includes soc/<design>/settings_design.h, so each
+# design needs its own (an object next to the source would be shared)
+SRCS  +=  marble.c zest.c
+vpath %.c $(BOARD_SUPPORT_DIR)/marble_soc/firmware $(BOARD_SUPPORT_DIR)/zest_soc/firmware
 SRCS  +=  init_zest.c
 SRCS  +=  init_marble.c
 OBJS  =  $(subst .c,.o,$(filter %.c, $(SRCS))) startup_irq.o
