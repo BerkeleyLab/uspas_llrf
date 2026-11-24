@@ -2,12 +2,15 @@ LLRF_DIR = $(SOC_COMMON_DIR)/llrf
 LLRF_AUTO = init_llrf.c llrf_regs_addr.h marble_regs_addr.h
 
 INC_DIR   += -I$(LLRF_DIR)
-SRCS      +=  $(LLRF_DIR)/llrf.c init_llrf.c
+# llrf.c by name and vpath: it includes the design's llrf_regs_addr.h, so its
+# object is built in each build directory, not next to the shared source
+SRCS      +=  llrf.c init_llrf.c
+vpath %.c $(LLRF_DIR)
 
 DESIGN        ?= uspas
 DESIGN_DSP_DIR = $(DESIGNS_DIR)/$(DESIGN)
 
-$(LLRF_DIR)/llrf.o: $(LLRF_AUTO)
+llrf.o:             $(LLRF_AUTO)
 ui.o:               $(LLRF_AUTO)
 system.o:           $(LLRF_AUTO)
 
