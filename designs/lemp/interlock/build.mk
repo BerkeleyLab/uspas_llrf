@@ -17,7 +17,7 @@ settings.vams: settings.json
 
 $(DEPDIR)/$(APP_NAME).d: $(APP_NAME).v $(VERILOG_AUTOGEN)
 	@set -e; mkdir -p $(DEPDIR); \
-	$(MAKEDEP) && (printf "$(APP_NAME)_expand.v $(APP_NAME)_cdc_expand.v $(APP_NAME).f $@: "; \
+	$(MAKEDEP) && (printf "$(APP_NAME)_cdc_expand.v $(APP_NAME).f $@: "; \
 	sort -ur $@.$$$$ | tr '\n' ' '; printf "\n" ) > $@ && rm -f $@.$$$$
 
 $(AUTOGEN_DIR)/%_expand.v: %.v $(AUTOGEN_DIR)/%_auto.vh $(AUTOGEN_DIR)/addr_map_%.vh
@@ -35,19 +35,14 @@ $(AUTOGEN_DIR)/scalar_%_regmap.json: %.v
 	mkdir -p $(AUTOGEN_DIR); \
 	$(PYTHON) $(BUILD_DIR)/reverse_json.py $< > $@
 
-# this is to avoid vivado critical warnings about duplicated / redefination of module since they are already in DSP
-EXCLUDE = $(addprefix $(DSP_DIR)/, dpram.v fwashout.v reg_tech_cdc.v flag_xdomain.v fiq_interp.v data_xdomain.v)
-EXCLUDE += $(addprefix $(APP_DSP_DIR)/, noniq_ddc.v ddc.v) cordicg_b22.v
-EXCLUDE += $(addprefix $(BEDROCK_DIR)/localbus/, jit_rad_gateway.v)
-EXCLUDE += $(addprefix $(CORDIC_DIR)/, cstageg.v addsubg.v)
-$(APP_NAME)_expand.v: $(APP_NAME).v
-	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(filter-out $(EXCLUDE),$(filter %.v, $^))
-
+# one preprocessed file for the CDC check (Makefile)
 $(APP_NAME)_cdc_expand.v: $(APP_NAME).v
 	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(filter %.v, $^)
 
-# source list for the top level (top/lemp, top/common/top_rules.mk): the
-# include directories, then the scanned sources (the .d file), absolute paths
+# source list for the top level (top/lemp, top/common/top_rules.mk; Vivado,
+# lint and topsim read it): the include directories, then the scanned sources
+# (the .d file), absolute paths; the merged list keeps one copy of the
+# modules the shell shares
 $(APP_NAME).f: $(APP_NAME).v
 	printf '%s\n' $(addprefix +incdir+,$(abspath $(patsubst -I%,%,$(filter -I%,$(VFLAGS_DEP))) .)) $(abspath $(filter %.v, $^)) > $@
 
@@ -83,5 +78,5 @@ ifeq (,$(MAKECMDGOALS))
 endif
 CLEAN += settings.vams
 CLEAN += $(APP_NAME).json $(APP_NAME)_init_regs.json
-CLEAN += $(APP_NAME)_expand.v $(APP_NAME).f
+CLEAN += $(APP_NAME).f
 CLEAN += cordicg_b22.v

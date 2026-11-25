@@ -7,11 +7,10 @@ include ../../dir_list.mk
 SYNTH_OPT += -DDESIGN_OWNS_PMOD1 -DDESIGN_OWNS_PMOD2 -DDESIGN_OWNS_ZEST_PMOD1 -DDESIGN_OWNS_ZEST_PMOD2
 SYNTH_OPT += -DDESIGN_LB_SEG2
 INTLK_DIR  = $(DESIGNS_DIR)/lemp/interlock
-IP_EXPAND += $(INTLK_DIR)/interlock_wrapper_expand.v
 BLOCK_F   += $(INTLK_DIR)/interlock_wrapper.f
 IP_JSON   += $(INTLK_DIR)/interlock_wrapper.json
 XDC_FILES += design.xdc
 include $(TOP_COMMON_DIR)/top_rules.mk
 
-$(INTLK_DIR)/interlock_wrapper_expand.v $(INTLK_DIR)/interlock_wrapper.json $(INTLK_DIR)/interlock_wrapper.f: FORCE
+$(INTLK_DIR)/interlock_wrapper.json $(INTLK_DIR)/interlock_wrapper.f: FORCE
 	$(MAKE) -C $(dir $@) $(notdir $@)

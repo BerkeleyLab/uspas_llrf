@@ -42,7 +42,6 @@ llrf_dsp/cordicg_b22.v
 designs/lemp/interlock/cordicg_b22.v
 designs/lemp/interlock/settings.vams
 designs/lemp/interlock/interlock_wrapper.json
-designs/lemp/interlock/interlock_wrapper_expand.v
 designs/lemp/interlock/interlock_wrapper_cdc_expand.v
 designs/lemp/interlock/interlock_wrapper_yosys.json
 designs/lemp/interlock/interlock_wrapper_cdc.txt
@@ -61,10 +60,8 @@ soc/**/synth/system_top.xdc
 marble_bsp/construct_tx_table.v
 marble_bsp/rtefi_blob.v
 marble_bsp/rtefi_preblob.vh
-marble_bsp/marble_bsp_expand.v
 top/*/top.xdc
 top/*/system_top.xdc
-soc/**/synth/system_expand.v
 soc/**/*/system32.dat
 soc/**/synth/zest_fmc_dp.xdc
 soc/**/synth/zest_pinmap.txt

@@ -33,7 +33,7 @@ Moved from the LEMP branch (2e25cd9) as-is (plan D23): newad, localbus segment 2
 
 - `make`: builds and runs `interlock_wrapper_tb` (self-checking, "Validation: PASS"). CI job `lemp_interlock_test`.
 - `make interlock_wrapper_cdc.txt`: CDC check of `interlock_wrapper_skin.v` with all modules, from `interlock_wrapper_cdc_expand.v`. CI job `lemp_interlock_cdc_test`.
-- `make interlock_wrapper_expand.v interlock_wrapper.json`: for the top level. The expand leaves out the modules `llrf_shell_expand.v` already has (`EXCLUDE` in `build.mk`).
+- `make interlock_wrapper.f interlock_wrapper.json`: for the top level (`top/lemp`). The source list names every module the wrapper uses; the top's merged list keeps one copy of those the shell shares.
 - `interlock_mon_tb.v` is a waveform-only TB that does not compile against the current `interlock_mon` (as on the LEMP branch); it is not built.
 
 Changes from the LEMP branch:

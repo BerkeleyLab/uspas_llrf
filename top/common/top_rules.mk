@@ -6,7 +6,7 @@
 #   include $(TOP_COMMON_DIR)/top_rules.mk
 #
 # Override hooks (set or extend them in top/<design>/Makefile before the include):
-#   IP_EXPAND  += extra expanded IP sources
+#   BLOCK_F    += extra blocks' source lists (<block>.f, merged with the others)
 #   IP_JSON    += extra register maps merged into the config ROM
 #   TOP_SRC    += extra top-level sources (Verilog, netlists)
 #   XDC_FILES  += extra constraints, appended to system_top.xdc
@@ -22,7 +22,7 @@ include $(TOP)settings.mk
 
 SOC_DESIGN    ?= $(DESIGN)
 SOC_BUILD_DIR  = $(SOC_DIR)/$(SOC_DESIGN)/build
-# Firmware, system_expand.v and zest_fmc_dp.xdc are built per design in
+# Firmware, system.f and zest_fmc_dp.xdc are built per design in
 # soc/<design>/build/ with the shared SoC synth Makefile
 SOC_MAKE       = mkdir -p $(SOC_BUILD_DIR) && $(MAKE) -C $(SOC_BUILD_DIR) -f $(abspath $(SOC_COMMON_DIR)/synth/Makefile) DESIGN=$(SOC_DESIGN)
 
@@ -40,22 +40,20 @@ vpath %.c $(BUILD_DIR)
 .PHONY: all system_config system_test system_console_test evr_test console clean topsim topsim_test
 all: $(TARGET)_top_$(DESIGN).bit
 
-IP_EXPAND := $(BSP_DIR)/marble_bsp_expand.v $(SOC_BUILD_DIR)/system_expand.v $(DESIGNS_DIR)/$(DESIGN)/llrf_shell_expand.v $(IP_EXPAND)
-
 SUB_IP_DIR = $(BSP_DIR)/ $(DESIGNS_DIR)/$(DESIGN)/
 
-$(BSP_DIR)/marble_bsp_expand.v $(BSP_DIR)/marble_bsp.f: FORCE
+$(BSP_DIR)/marble_bsp.f: FORCE
 	$(MAKE) -C $(dir $@) $(notdir $@)
-$(SOC_BUILD_DIR)/system_expand.v $(SOC_BUILD_DIR)/system.f: FORCE
+$(SOC_BUILD_DIR)/system.f: FORCE
 	$(SOC_MAKE) $(notdir $@)
-$(DESIGNS_DIR)/$(DESIGN)/llrf_shell_expand.v $(DESIGNS_DIR)/$(DESIGN)/llrf_shell.f: FORCE
+$(DESIGNS_DIR)/$(DESIGN)/llrf_shell.f: FORCE
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
 # Source lists: each block's make writes <block>.f (include directories, then
 # its sources, absolute paths, one per line; Verilator -f and iverilog -c read
 # it), and the top level merges them without duplicates (the bedrock modules
-# the blocks share). The lint and topsim read these lists; Vivado still reads
-# the expanded files (plan step 14a).
+# the blocks share). Vivado (through the .d file), the lint and topsim read
+# the merged list.
 BLOCK_F := $(BSP_DIR)/marble_bsp.f $(SOC_BUILD_DIR)/system.f $(DESIGNS_DIR)/$(DESIGN)/llrf_shell.f $(BLOCK_F)
 # top/<design>/ first: its design hooks take precedence over top/common/'s
 MERGE_F  = $(PYTHON) $(TOP_COMMON_DIR)/merge_src_lists.py -o $@ --incdir $(CURDIR) $(TOP_COMMON_DIR) \
@@ -106,9 +104,10 @@ top.xdc: $(BOARD_SUPPORT_DIR)/marble/Marble.xdc $(PIN_MAP)
 system_top.xdc: $(TOP_COMMON_DIR)/timing.xdc $(SOC_BUILD_DIR)/zest_fmc_dp.xdc top.xdc $(XDC_FILES)
 	cat $^ > $@
 
-# Construct an overall (configuration-dependent) .d file.
-$(TARGET)_top.d: $(TOP_COMMON_DIR)/$(TARGET)_top.v config_romx.v $(BEDROCK_DIR)/serial_io/gmii_to_rgmii.v $(IP_EXPAND) $(TOP_SRC) system_top.xdc $(SOC_BUILD_DIR)/system32.dat
-	echo $^ | tr ' ' '\n' > $@
+# Vivado's file list (marble_zest_top.tcl): the merged source list, its
+# +incdir+ lines included, then the constraints and the firmware image
+$(TARGET)_top.d: $(TARGET)_top.f system_top.xdc $(SOC_BUILD_DIR)/system32.dat
+	{ cat $<; printf '%s\n' $(abspath $(filter-out $<,$^)); } > $@
 
 #: Build bitstream
 $(TARGET)_top_$(DESIGN).bit: $(TOP_COMMON_DIR)/$(TARGET)_top.tcl $(GT_TCL) $(GITID_TCL) $(TARGET)_top.d bit_stamp_mod
