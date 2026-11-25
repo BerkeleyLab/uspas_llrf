@@ -1,3 +1,5 @@
+`default_nettype none
+
 // Localbus readback mux over N windows. Window i covers
 // [BASE[i], BASE[i] + 2^WAW[i]); an address in no window reads 32'hfaceface.
 // The read address is registered with lb_read, and the data one read cycle
@@ -9,10 +11,10 @@ module lb_rd_mux #(
     parameter logic [N*LB_ADW-1:0] BASE = '0,
     parameter logic [N*5-1:0] WAW = '0
 ) (
-    input                     lb_clk,
-    input                     lb_read,
-    input        [LB_ADW-1:0] lb_addr,
-    input        [31:0]       rdata [N],
+    input wire                lb_clk,
+    input wire                lb_read,
+    input wire   [LB_ADW-1:0] lb_addr,
+    input wire   [31:0]       rdata [N],
     output logic [LB_ADW-1:0] lb_addr_d1 = '0,  // for sources selected after the dpram
     output logic [31:0]       lb_rdata = '0
 );
@@ -23,7 +25,7 @@ function automatic logic hit(logic [LB_ADW-1:0] a, int i);
     return (a >> waw) == (base >> waw);
 endfunction
 
-always @(posedge lb_clk) if (lb_read) begin
+always_ff @(posedge lb_clk) if (lb_read) begin
     lb_addr_d1 <= lb_addr;
     lb_rdata <= 32'hfaceface;
     for (int i = 0; i < N; i++)
@@ -31,3 +33,5 @@ always @(posedge lb_clk) if (lb_read) begin
 end
 
 endmodule
+
+`default_nettype wire

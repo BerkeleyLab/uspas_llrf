@@ -1,54 +1,49 @@
+`default_nettype none
+
 module monitor_inlk
     import llrf_shell_pkg::*;
 #(
     parameter N_CH = 10
 ) (
-    input           clk,
+    input wire      clk,
 
-    input [15:0]    mon_data,
-    input           mon_valid,
-    input           mon_last,
+    input wire [15:0]    mon_data,
+    input wire      mon_valid,
+    input wire      mon_last,
 
-    output          mon_valid_out,
-    output [3:0]    mon_addr_out,
-    output signed [15:0]   mon_amp_out,
-    output signed [16:0]   mon_phs_out,
+    output logic    mon_valid_out,
+    output logic [3:0]    mon_addr_out,
+    output logic signed [15:0]   mon_amp_out,
+    output logic signed [16:0]   mon_phs_out,
 
-    output reg          fault_valid_out,
-    output reg [3:0]    fault_addr_out,
-    output reg [15:0]   fault_amp_out,
-    output reg [16:0]   fault_phs_out,
+    output logic          fault_valid_out = 0,
+    output logic [3:0]    fault_addr_out = 0,
+    output logic [15:0]   fault_amp_out = 0,
+    output logic [16:0]   fault_phs_out = 0,
 
-    input inlk_cfg_t cfg,
+    input wire inlk_cfg_t cfg,
     // register tables, one entry per channel
-    input [15:0]    amp_lo,
-    output [INLK_AW-1:0] amp_lo_addr,
-    input [15:0]    amp_hi,
-    output [INLK_AW-1:0] amp_hi_addr,
-    input [1:0]     inlk_mode,
-    output [INLK_AW-1:0] inlk_mode_addr,
+    input wire [15:0]    amp_lo,
+    output logic [INLK_AW-1:0] amp_lo_addr,
+    input wire [15:0]    amp_hi,
+    output logic [INLK_AW-1:0] amp_hi_addr,
+    input wire [1:0]     inlk_mode,
+    output logic [INLK_AW-1:0] inlk_mode_addr,
 
-    output [N_CH-1:0] cmp_status_hi,
-    output [N_CH-1:0] cmp_status_lo,
-    output [N_CH-1:0] inlk_status,
-    output [N_CH-1:0] first_fault_status,
-    output [N_CH-1:0] inlk_latch,
-    input           record_status_en,  // trigger for latching faults
-    output          inlk_permit_out
+    output logic [N_CH-1:0] cmp_status_hi,
+    output logic [N_CH-1:0] cmp_status_lo,
+    output logic [N_CH-1:0] inlk_status,
+    output logic [N_CH-1:0] first_fault_status,
+    output logic [N_CH-1:0] inlk_latch,
+    input wire      record_status_en,  // trigger for latching faults
+    output logic    inlk_permit_out
 );
-
-initial begin
-    fault_valid_out = 0;
-    fault_addr_out = 0;
-    fault_amp_out = 0;
-    fault_phs_out = 0;
-end
 
 wire signed [15:0] iq_values = mon_data;
 
-reg xy=0;
-reg signed [15:0] x_value=0, y_value=0, x_value_pre=0;
-always @(posedge clk) begin
+logic xy=0;
+logic signed [15:0] x_value=0, y_value=0, x_value_pre=0;
+always_ff @(posedge clk) begin
     if (mon_valid) begin
         xy <= mon_last ? 0 : ~xy;
         x_value_pre <= xy ? x_value_pre : iq_values;
@@ -77,9 +72,9 @@ reg_delay #(.dw(2), .len(22)) delay0(
     .dout   ({mon_valid_delay, mon_last_delay})
 );
 
-reg [4:0] wave_cnt_pre=0; // 1 cycle earlier than mon_amp_out for reading out threshold
-reg [4:0] wave_cnt=0;     // matches the frame
-reg wave_valid=0;
+logic [4:0] wave_cnt_pre=0; // 1 cycle earlier than mon_amp_out for reading out threshold
+logic [4:0] wave_cnt=0;     // matches the frame
+logic wave_valid=0;
 assign amp_lo_addr = wave_cnt_pre[4:1];
 assign amp_hi_addr = wave_cnt_pre[4:1];
 assign inlk_mode_addr = wave_cnt_pre[4:1];
@@ -88,12 +83,12 @@ assign inlk_mode_addr = wave_cnt_pre[4:1];
 // powers on smoothly in fail-safe mode, needs an explicit reset
 // to enable RF.
 // inlk_latch is inlk_valid
-reg [N_CH-1:0] inlk_latch_r=0;
-reg [N_CH-1:0] high=0, low=0, inlk_ok=0, first_inlk=0; // all active high
-reg cmpg_lo=0, cmpg_hi=0;
+logic [N_CH-1:0] inlk_latch_r=0;
+logic [N_CH-1:0] high=0, low=0, inlk_ok=0, first_inlk=0; // all active high
+logic cmpg_lo=0, cmpg_hi=0;
 wire inlk_trip = (inlk_mode=={cmpg_hi,cmpg_lo}) | ((inlk_mode==2'b10)&(cmpg_hi|~cmpg_lo));
 integer ix;
-always @(posedge clk) begin
+always_ff @(posedge clk) begin
     cmpg_lo  <= mon_amp_out >= amp_lo;
     cmpg_hi  <= mon_amp_out >= amp_hi;
     wave_cnt_pre <= mon_last_delay ? 0 : wave_cnt_pre + mon_valid_delay;
@@ -134,3 +129,5 @@ assign mon_valid_out = wave_valid;
 assign mon_addr_out = wave_cnt[4:1];
 
 endmodule
+
+`default_nettype wire

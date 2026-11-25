@@ -438,7 +438,7 @@ class TB_llrf_shell:
         self.set_dac_drive_sel(loop)
         assert self.llrf.init_regs.slow_snap_cic, \
             'test_record_stop needs SLOW_SNAP_CIC=1 (slow block on cbuf_transferred)'
-        # post_delay=0 never generates buf_stop, see cic_waves.v
+        # post_delay=0 never generates buf_stop, see cic_waves.sv
         await self.lb.write_reg('cbuf_post_delay', post_delay)
         # test_fast_interlock may have left the permit tripped
         await self.release_fast_interlock()

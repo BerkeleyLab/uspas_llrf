@@ -346,7 +346,7 @@ A chirp generated in RTL (a second phase accumulator ramping the dds's phase ste
 
 ### Waveform recorder
 
-Three functions are integrated in the [llrf_dsp/cic_waves.v](llrf_dsp/cic_waves.v):
+Three functions are integrated in the [llrf_dsp/cic_waves.sv](llrf_dsp/cic_waves.sv):
 
 * Dynamic waveform with a run-time configurable CIC filter and channel selector. The decimation factor is the production of `cic_base_period` and `wave_samp_per` registers. The CIC filter response and calibration factors are calculated at the `CICWaveRecorder` class in `llrf_dsp.py`.
 * A circular buffer that captures the CIC waveform, associated with diagnostic data including minimum and maximum value of each channel, 64 bit timestamp and fault status. Trigger logic, pre and post trigger buffer, fault freezing features are included.

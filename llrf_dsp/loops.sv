@@ -1,3 +1,5 @@
+`default_nettype none
+
 // Feedback loops (plan §2.2): one loop_ctrl per drive, with pulse
 // modulation, its registers (cfg_dsp.loop[n], loop_cfg_t), the error words
 // to lb_clk and the modulation table readback. The design shell supplies
@@ -5,38 +7,38 @@
 module loops
     import llrf_shell_pkg::*;
 (
-    input                 dsp_clk,
-    input                 dsp_reset,
-    input                 dsp_tick,              // error words to lb_clk
-    input  loop_cfg_t [N_DRIVE-1:0] cfg,
-    input  [DWBB:0]       rx_phase_offset,
-    input  [DWBB:0]       tx_phase_offset,
-    input                 trig,                  // pulse start
-    input  [N_DRIVE-1:0]  pulse_mode,            // 1: drive only while the pulse is on
-    input  [N_DRIVE-1:0]  drive_permit,          // drive enable and permits
-    input  bb_t           phs_offset [N_DRIVE],  // added to the phase setpoint
-    input  bb_t           sig_i [N_ADC],         // field: channel cfg[n].adc_chan
-    input  bb_t           sig_q [N_ADC],
+    input wire            dsp_clk,
+    input wire            dsp_reset,
+    input wire            dsp_tick,              // error words to lb_clk
+    input wire loop_cfg_t [N_DRIVE-1:0] cfg,
+    input wire [DWBB:0]       rx_phase_offset,
+    input wire [DWBB:0]       tx_phase_offset,
+    input wire            trig,                  // pulse start
+    input wire [N_DRIVE-1:0]  pulse_mode,            // 1: drive only while the pulse is on
+    input wire [N_DRIVE-1:0]  drive_permit,          // drive enable and permits
+    input wire bb_t           phs_offset [N_DRIVE],  // added to the phase setpoint
+    input wire bb_t           sig_i [N_ADC],         // field: channel cfg[n].adc_chan
+    input wire bb_t           sig_q [N_ADC],
 
     output bb_t           drive_i [N_DRIVE],
     output bb_t           drive_q [N_DRIVE],
-    output [N_DRIVE-1:0]  pulse_dval,
-    output [PULSE_AW-1:0] pulse_idx [N_DRIVE],
-    output [PULSE_AW-1:0] pulse_clk [N_DRIVE],  // dsp clocks into the pulse
-    output signed [14:0]  err_amp_lb [N_DRIVE],  // lb_clk
-    output signed [14:0]  err_phs_lb [N_DRIVE],
+    output logic [N_DRIVE-1:0]  pulse_dval,
+    output logic [PULSE_AW-1:0] pulse_idx [N_DRIVE],
+    output logic [PULSE_AW-1:0] pulse_clk [N_DRIVE],  // dsp clocks into the pulse
+    output logic signed [14:0]  err_amp_lb [N_DRIVE],  // lb_clk
+    output logic signed [14:0]  err_phs_lb [N_DRIVE],
     output bb_t           amp_setpoint_mod [N_DRIVE],  // setpoints into dsp_core, after
     output bb_t           phs_setpoint_mod [N_DRIVE],  // the modulation (tables, sinusoid)
-    output [DWBB:0]       sin_phase [N_DRIVE],         // each loop's sinusoid phase
+    output logic [DWBB:0]       sin_phase [N_DRIVE],         // each loop's sinusoid phase
 
     // localbus: modulation tables
-    input                 lb_clk,
-    input  [MOD_AW-1:0]   lb_addr,
-    input  [DWBB-1:0]     lb_wdata,
-    input  [N_DRIVE-1:0]  wr_amp_mod,
-    input  [N_DRIVE-1:0]  wr_phs_mod,
-    output [31:0]         rd_amp_mod [N_DRIVE],
-    output [31:0]         rd_phs_mod [N_DRIVE]
+    input wire            lb_clk,
+    input wire [MOD_AW-1:0]   lb_addr,
+    input wire [DWBB-1:0]     lb_wdata,
+    input wire [N_DRIVE-1:0]  wr_amp_mod,
+    input wire [N_DRIVE-1:0]  wr_phs_mod,
+    output logic [31:0]         rd_amp_mod [N_DRIVE],
+    output logic [31:0]         rd_phs_mod [N_DRIVE]
 );
 
 genvar n;
@@ -91,3 +93,5 @@ generate for (n = 0; n < N_DRIVE; n = n + 1) begin: gen_loops
 end endgenerate
 
 endmodule
+
+`default_nettype wire

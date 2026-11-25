@@ -1,3 +1,5 @@
+`default_nettype none
+
 // LEMP PMOD trigger: a one-shot armed by rst_n (wave_trig in the LEMP
 // shell, which already carries the EVR mode delay). After rst_n rises the
 // counter runs; the output is high for cfg.width clocks from counter ==
@@ -12,21 +14,21 @@
 module triggers
     import llrf_shell_pkg::*;
 (
-    input         clk,
-    input         rst_n,
-    input         enable,
-    input  trig_cfg_t cfg,
-    output        pmod_trigs
+    input wire    clk,
+    input wire    rst_n,
+    input wire    enable,
+    input wire trig_cfg_t cfg,
+    output logic  pmod_trigs
 );
 
     // 33 bits, so delay + width cannot wrap
     wire [32:0] start_cnt = {1'b0, cfg.delay};
     wire [32:0] end_cnt = start_cnt + {1'b0, cfg.width};
-    reg [32:0] counter = 33'h0;
-    reg running = 1'b0;
-    reg trigger = 1'b0;
+    logic [32:0] counter = 33'h0;
+    logic running = 1'b0;
+    logic trigger = 1'b0;
 
-    always @(posedge clk) begin
+    always_ff @(posedge clk) begin
         if (!enable) begin
             counter <= 33'h0;
             running <= 1'b0;
@@ -49,3 +51,5 @@ module triggers
     assign pmod_trigs = trigger;
 
 endmodule
+
+`default_nettype wire

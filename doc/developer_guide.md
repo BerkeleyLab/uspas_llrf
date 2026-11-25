@@ -187,7 +187,7 @@ uspas_llrf/
 │   ├── tests/                 # Cocotb testbenches verifying individual DSP submodules
 │   ├── dds.v, ddc.v, duc.v    # NCO / Direct Digital Synthesis, Non-IQ Down-Converter, Up-Converter
 │   ├── dsp_core.v             # Baseband PI feedback controller with CORDIC polar/rectangular transforms
-│   ├── cic_waves.v            # CIC decimation filters, multi-channel circular waveform capture buffer & fast interlocks
+│   ├── cic_waves.sv           # CIC decimation filters, multi-channel circular waveform capture buffer & fast interlocks
 │   └── pulse_gen.v            # Trigger and gating pulse generation
 ├── marble_bsp/                # Marble FPGA board support package (Local Bus, Packet Badger UDP/Ethernet, EVR timing, MMC)
 ├── soc/

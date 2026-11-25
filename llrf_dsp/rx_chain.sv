@@ -1,3 +1,5 @@
+`default_nettype none
+
 // RX path (plan §2.2): the RX LO and one DDC per ADC channel, sharing the
 // I/Q divider state. DC_CH_MASK channels (LEMP beam voltage and current)
 // bypass the DDC on the monitor path: I = ADC sample << (DWBB-DW), Q = 0
@@ -7,22 +9,22 @@ module rx_chain
 #(
     parameter logic [N_ADC-1:0] DC_CH_MASK = '0
 ) (
-    input                 dsp_clk,
-    input                 dsp_reset,
-    input  [DW*N_ADC-1:0] adc_data_in,
+    input wire            dsp_clk,
+    input wire            dsp_reset,
+    input wire [DW*N_ADC-1:0] adc_data_in,
     // RX LO
-    input  [17:0]         dds_amplitude,
-    input  [18:0]         dds_phase_shift,
-    input  [31:0]         dds_phase_step,
-    input  [11:0]         dds_modulo,
+    input wire [17:0]         dds_amplitude,
+    input wire [18:0]         dds_phase_shift,
+    input wire [31:0]         dds_phase_step,
+    input wire [11:0]         dds_modulo,
 
     output adc_t          adc [N_ADC],    // raw samples
     output bb_t           sig_i [N_ADC],  // baseband, to the loops
     output bb_t           sig_q [N_ADC],
     output bb_t           mon_i [N_ADC],  // baseband or DC, to diag
     output bb_t           mon_q [N_ADC],
-    output [DWLO-1:0]     lo_cos,         // RX LO (LEMP interlock)
-    output [DWLO-1:0]     lo_sin
+    output logic [DWLO-1:0]     lo_cos,         // RX LO (LEMP interlock)
+    output logic [DWLO-1:0]     lo_sin
 );
 
 wire signed [DWLO-1:0] cosd, sind;
@@ -42,8 +44,8 @@ assign lo_cos = cosd;
 assign lo_sin = sind;
 
 // synchronize I/Q divider state for multiple DDC channels
-reg i_sel = 0;
-always @(posedge dsp_clk) i_sel <= dsp_reset ? 0 : ~i_sel;
+logic i_sel = 0;
+always_ff @(posedge dsp_clk) i_sel <= dsp_reset ? 0 : ~i_sel;
 
 genvar ch;
 generate for (ch = 0; ch < N_ADC; ch = ch + 1) begin: gen_ddc
@@ -70,3 +72,5 @@ generate for (ch = 0; ch < N_ADC; ch = ch + 1) begin: gen_ddc
 end endgenerate
 
 endmodule
+
+`default_nettype wire
