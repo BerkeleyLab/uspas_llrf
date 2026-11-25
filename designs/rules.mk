@@ -14,7 +14,7 @@ all: $(MODULE)_expand.v $(MODULE).json
 
 APP_DSP_SRC += slow_bridge_shell.v sig_buf.v pulse_gen.v pi_scalar.v ph_acc_general.v
 APP_DSP_SRC += noniq_ddc.v interp_xdomain.v interpolator.v
-APP_DSP_SRC += dsp_core.v dds.v ddc.v dac_duc.v cic_waves.v cic_timing.v
+APP_DSP_SRC += dsp_core.v dds.v ddc.v dac_duc.v cic_timing.v
 DSP_SRC     += timestamp.v serialize.v serializer_multichannel.v reg_tech_cdc.v reg_delay.v
 DSP_SRC     += minmax.v fwashout.v freq_gcount.v freq_count.v flag_xdomain.v fiq_interp.v
 DSP_SRC     += fchan_subset.v dpram.v double_inte_smp.v doublediff.v demand_gpt.v data_xdomain.v
@@ -39,7 +39,7 @@ cordicg_b22.v:
 # (uspas_llrf/regmap.py, extended by design.py)
 SV_SRC  = $(APP_DSP_DIR)/llrf_shell_pkg.sv $(GEN_DIR)/llrf_shell_regmap_pkg.sv
 SV_SRC += $(addprefix $(APP_DSP_DIR)/, monitor_inlk.sv arc_inlk.sv loop_ctrl.sv)
-SV_SRC += $(addprefix $(APP_DSP_DIR)/, lb_xdomain.sv lb_rd_mux.sv rx_chain.sv tx_chain.sv diag.sv loops.sv)
+SV_SRC += $(addprefix $(APP_DSP_DIR)/, lb_xdomain.sv lb_rd_mux.sv rx_chain.sv tx_chain.sv cic_waves.sv diag.sv loops.sv)
 SV_SRC += $(DESIGN_SV_SRC) $(GEN_DIR)/llrf_shell_regs.sv $(SHELL_SRC)
 
 $(GEN_DIR)/%_regmap_pkg.sv $(GEN_DIR)/%_regs.sv $(GEN_DIR)/%.json: $(REGMAP_PY) $(DESIGN_PY)

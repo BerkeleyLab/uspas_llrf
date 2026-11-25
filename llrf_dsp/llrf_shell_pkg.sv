@@ -1,3 +1,5 @@
+`default_nettype none
+
 // Types and constants shared by the llrf_shell blocks and design shells
 // (plan §2.3). The register map types are generated separately
 // (designs/<d>/_gen/llrf_shell_regmap_pkg.sv).
@@ -32,6 +34,19 @@ package llrf_shell_pkg;
     localparam int PULSE_AW = 32;  // loop_ctrl pulse counter
     localparam int PULSE_RW = 4;   // loop_ctrl pulse resolution shift
     localparam int MOD_AW = 14;    // loop_ctrl modulation table depth 2^MOD_AW
+
+    // cic_waves' control registers, built by the shells from registers that
+    // keep their own names (wave_samp_per, chan_keep, cic_base_period,
+    // cic_wave_shift, inlk_wave_shift, cbuf_post_delay, dsp_tag)
+    typedef struct packed {
+        logic [6:0]      wave_samp_per;
+        logic [N_CH-1:0] chan_keep;
+        logic [6:0]      base_period;
+        logic [3:0]      wave_shift;
+        logic [3:0]      inlk_wave_shift;
+        logic [15:0]     post_delay;
+        logic [7:0]      dsp_tag;
+    } cic_cfg_t;                   // cic_waves
 
     typedef struct packed {
         logic       reset_inlk;    // strobe
@@ -79,3 +94,5 @@ package llrf_shell_pkg;
         logic [31:0] delay;        // dsp clocks after global_delay
     } trig_cfg_t;                  // triggers (LEMP): cfg_dsp.trig[n], registers trig_N_*
 endpackage
+
+`default_nettype wire

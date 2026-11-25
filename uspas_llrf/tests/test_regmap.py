@@ -179,8 +179,15 @@ CFG_MEMBER = re.compile(r"^\s*logic\s+(signed\s+)?(?:\[([\w+\- ]+):(\d+)\])?\s*(
 
 
 def pkg_params(text):
-    """{name: value} of the integer localparams in text."""
-    return {m[1]: int(m[2]) for m in re.finditer(r"localparam int (\w+) = (\d+);", text)}
+    """{name: value} of the integer localparams in text; a value is a number
+    or a sum or difference of numbers and earlier localparams (N_ADC + N_DRIVE)."""
+    params = {}
+    for m in re.finditer(r"localparam int (\w+) = ([\w+\- ]+);", text):
+        terms = re.findall(r"([+-]?)\s*(\w+)", m[2])
+        if all(t.isdigit() or t in params for _, t in terms):
+            params[m[1]] = sum((-1 if sign == '-' else 1) * (int(t) if t.isdigit() else params[t])
+                               for sign, t in terms)
+    return params
 
 
 def cfg_structs(text):

@@ -1,24 +1,26 @@
+`default_nettype none
+
 // TX path (plan §2.2): the TX LO in the dac_clk domain, one DUC per drive
 // (interpolation and domain crossing to dac_clk) and the DAC output select.
 module tx_chain
     import llrf_shell_pkg::*;
 (
-    input              dsp_clk,
-    input              dsp_reset,
-    input  bb_t        drive_i [N_DRIVE],
-    input  bb_t        drive_q [N_DRIVE],
+    input wire         dsp_clk,
+    input wire         dsp_reset,
+    input wire bb_t        drive_i [N_DRIVE],
+    input wire bb_t        drive_q [N_DRIVE],
 
-    input              dac_clk,
+    input wire         dac_clk,
     // TX LO and output select, dac_clk domain
-    input  [17:0]      dds_amplitude,
-    input  [18:0]      dds_phase_shift,
-    input  [31:0]      dds_phase_step,
-    input  [11:0]      dds_modulo,
-    input              duc_spectral_flip,
-    input              tx_afe_spectral_flip,
-    input  [1:0]       dac_drive_sel,
-    output [DW-1:0]    dac_data_a_out,
-    output [DW-1:0]    dac_data_b_out
+    input wire [17:0]      dds_amplitude,
+    input wire [18:0]      dds_phase_shift,
+    input wire [31:0]      dds_phase_step,
+    input wire [11:0]      dds_modulo,
+    input wire         duc_spectral_flip,
+    input wire         tx_afe_spectral_flip,
+    input wire [1:0]       dac_drive_sel,
+    output logic [DW-1:0]    dac_data_a_out,
+    output logic [DW-1:0]    dac_data_b_out
 );
 
 wire tx_dds_reset;
@@ -99,3 +101,5 @@ assign dac_data_a_out = dac_data_a;
 assign dac_data_b_out = dac_data_b;
 
 endmodule
+
+`default_nettype wire

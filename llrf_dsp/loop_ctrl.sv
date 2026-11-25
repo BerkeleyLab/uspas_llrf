@@ -1,3 +1,5 @@
+`default_nettype none
+
 // One feedback loop with pulse and sinusoidal modulation (plan §1.2, steps 5
 // and 13).
 //
@@ -23,45 +25,45 @@ module loop_ctrl
 #(
     parameter EW = 15         // dsp_core error width
 ) (
-    input dsp_clk,
-    input dsp_reset,
-    input loop_cfg_t cfg,           // registers loopN_*
+    input wire dsp_clk,
+    input wire dsp_reset,
+    input wire loop_cfg_t cfg,           // registers loopN_*
 
-    input trig,                     // pulse start
-    input pulse_mode,               // 1: drive only while the pulse is on
-    input drive_permit,             // drive enable and permits, from the shell
-    input signed [DWBB-1:0] phs_offset,  // design hook, added to the phase setpoint
-    input [DWBB:0] rx_phase_offset,
-    input [DWBB:0] tx_phase_offset,
+    input wire trig,                     // pulse start
+    input wire pulse_mode,               // 1: drive only while the pulse is on
+    input wire drive_permit,             // drive enable and permits, from the shell
+    input wire signed [DWBB-1:0] phs_offset,  // design hook, added to the phase setpoint
+    input wire [DWBB:0] rx_phase_offset,
+    input wire [DWBB:0] tx_phase_offset,
 
     // field in, drive out
-    input signed [DWBB-1:0] field_i,
-    input signed [DWBB-1:0] field_q,
-    output signed [DWBB-1:0] drive_i,
-    output signed [DWBB-1:0] drive_q,
-    output drive_on,
+    input wire signed [DWBB-1:0] field_i,
+    input wire signed [DWBB-1:0] field_q,
+    output logic signed [DWBB-1:0] drive_i,
+    output logic signed [DWBB-1:0] drive_q,
+    output logic drive_on,
 
     // status and design hooks
-    output signed [DWBB-1:0] amp_measured,
-    output signed [DWBB-1:0] phs_measured,
-    output signed [EW-1:0] err_amp,
-    output signed [EW-1:0] err_phs,
-    output pulse_dval,
-    output pulse_last,
-    output [PULSE_AW-1:0] pulse_idx,
-    output [PULSE_AW-1:0] pulse_clk,     // dsp clocks into the pulse (any res_shift)
-    output signed [DWBB-1:0] amp_setpoint_mod,  // setpoints after modulation
-    output signed [DWBB-1:0] phs_setpoint_mod,  // (and clamp), into dsp_core
-    output [DWBB:0] sin_phase,                  // the sinusoid's dds phase (slow data, step 13b)
+    output logic signed [DWBB-1:0] amp_measured,
+    output logic signed [DWBB-1:0] phs_measured,
+    output logic signed [EW-1:0] err_amp,
+    output logic signed [EW-1:0] err_phs,
+    output logic pulse_dval,
+    output logic pulse_last,
+    output logic [PULSE_AW-1:0] pulse_idx,
+    output logic [PULSE_AW-1:0] pulse_clk,     // dsp clocks into the pulse (any res_shift)
+    output logic signed [DWBB-1:0] amp_setpoint_mod,  // setpoints after modulation
+    output logic signed [DWBB-1:0] phs_setpoint_mod,  // (and clamp), into dsp_core
+    output logic [DWBB:0] sin_phase,                  // the sinusoid's dds phase (slow data, step 13b)
 
     // modulation table localbus port
-    input lb_clk,
-    input [MOD_AW-1:0] lb_addr,
-    input [DWBB-1:0] lb_wdata,
-    input lb_write_amp_mod,
-    input lb_write_phs_mod,
-    output [DWBB-1:0] lb_rdata_amp_mod,
-    output [DWBB-1:0] lb_rdata_phs_mod
+    input wire lb_clk,
+    input wire [MOD_AW-1:0] lb_addr,
+    input wire [DWBB-1:0] lb_wdata,
+    input wire lb_write_amp_mod,
+    input wire lb_write_phs_mod,
+    output logic [DWBB-1:0] lb_rdata_amp_mod,
+    output logic [DWBB-1:0] lb_rdata_phs_mod
 );
 
 // ---------------------------------------------------------------------------
@@ -117,8 +119,8 @@ dds #(.DWLO(DWBB), .DWH(32)) sin_dds (
 );
 
 // gates, aligned with the table read data (1 clock after the index)
-reg amp_mod_gate = 1'b0, phs_mod_gate = 1'b0;
-always @(posedge dsp_clk) begin
+logic amp_mod_gate = 1'b0, phs_mod_gate = 1'b0;
+always_ff @(posedge dsp_clk) begin
     amp_mod_gate <= in_mod && cfg.amp_mod_enable;
     phs_mod_gate <= in_mod && cfg.phs_mod_enable;
 end
@@ -146,8 +148,8 @@ wire signed [DWBB-1:0] amp_clamped = cfg.amp_enable ? amp_sat :
 wire signed [DWBB-1:0] phs_sum = cfg.phs_setpoint + (phs_mod_gate ? phs_mod : ZERO)
                                 + (cfg.phs_sin_enable ? sin_mod : ZERO) + phs_offset;
 
-reg signed [DWBB-1:0] amp_sp = 0, phs_sp = 0;
-always @(posedge dsp_clk) begin
+logic signed [DWBB-1:0] amp_sp = 0, phs_sp = 0;
+always_ff @(posedge dsp_clk) begin
     amp_sp <= amp_clamped;
     phs_sp <= phs_sum;
 end
@@ -189,3 +191,5 @@ assign drive_i = drive_on ? drive_i_ctl : ZERO;
 assign drive_q = drive_on ? drive_q_ctl : ZERO;
 
 endmodule
+
+`default_nettype wire

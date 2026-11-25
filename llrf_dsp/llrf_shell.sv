@@ -1,3 +1,5 @@
+`default_nettype none
+
 // Base llrf_shell (plan §2.1): the generated register file, the shared
 // blocks (rx_chain, diag, loops, tx_chain), and the design-owned permits,
 // trigger selection, network analyzer and EVR timing.
@@ -15,44 +17,44 @@ module llrf_shell
     localparam integer MON_RW = 44           // must <= 44, see ccfilt.v:51
 ) (
     // Localbus interface
-    input                lb_clk,
-    input [LB_ADW-1:0]   lb_addr,
-    input                lb_write,
-    input                lb_read,
-    input                lb_rvalid,
-    input [31:0]         lb_wdata,
-    output [31:0]        lb_rdata,
-    input                lb_prefill,
+    input wire           lb_clk,
+    input wire [LB_ADW-1:0]   lb_addr,
+    input wire           lb_write,
+    input wire           lb_read,
+    input wire           lb_rvalid,
+    input wire [31:0]         lb_wdata,
+    output logic [31:0]        lb_rdata,
+    input wire           lb_prefill,
 
     // Digitizer interface
-    input                dsp_clk,
-    input [DW*N_ADC-1:0] adc_data_in,
-    input                dac_clk,
-    output [DW-1:0]      dac_data_a_out,
-    output [DW-1:0]      dac_data_b_out,
+    input wire           dsp_clk,
+    input wire [DW*N_ADC-1:0] adc_data_in,
+    input wire           dac_clk,
+    output logic [DW-1:0]      dac_data_a_out,
+    output logic [DW-1:0]      dac_data_b_out,
 
     // Interlock interface
-    input                drive_permit_in,     // From RF Drive Control
-    input                slow_permit_in,      // From Master Interlock PLC
-    output               fast_permit_out,     // To RF Drive Control
-    output               fast_rf_permit_out,  // To Master Interlock PLC
-    output [0:0]         evg_permit_out,      // To EVG
-    output [0:0]         hpa_permit_out,      // To HPA (Oscillation Protection)
+    input wire           drive_permit_in,     // From RF Drive Control
+    input wire           slow_permit_in,      // From Master Interlock PLC
+    output logic         fast_permit_out,     // To RF Drive Control
+    output logic         fast_rf_permit_out,  // To Master Interlock PLC
+    output logic [0:0]         evg_permit_out,      // To EVG
+    output logic [0:0]         hpa_permit_out,      // To HPA (Oscillation Protection)
 
     // ARC Interlock interface
-    input [2:0]          arc_permit_in,
-    output [2:0]         arc_test_out,
-    output               arc_reset_out,
+    input wire [2:0]          arc_permit_in,
+    output logic [2:0]         arc_test_out,
+    output logic         arc_reset_out,
 
-    output               trig_out,
+    output logic         trig_out,
     // GT transceiver interface
-    input                gt_rxclk,
-    input [15:0]         gt_rxdata,
-    input [1:0]          gt_rxcharisk,
+    input wire           gt_rxclk,
+    input wire [15:0]         gt_rxdata,
+    input wire [1:0]          gt_rxcharisk,
 
     // External trigger interface: dsp_clk domain (the SoC synchronizes the
     // selected pin, soc/common/system.v)
-    input                ext_trigger
+    input wire           ext_trigger
 );
 
 // ---------------------
@@ -138,7 +140,7 @@ reg_tech_cdc slow_permit_cdc  (.C(dsp_clk), .I(slow_permit_in), .O(slow_permit_s
 wire external_permit_in;    // external permit input
 wire internal_permit_out;   // internal generated permit output
 wire [0:0] inlk_arc_permit; // internal permit from power and arc protection
-reg hpa_osc_permit = 1'b1;  // internal permit from HPA oscillation detection, XXX TODO
+logic hpa_osc_permit = 1'b1;  // internal permit from HPA oscillation detection, XXX TODO
 
 assign external_permit_in = cfg_dsp.ext_permit_bypass ? 1'b1 : (drive_permit_sync && slow_permit_sync);
 assign hpa_permit_out = hpa_osc_permit;
@@ -157,26 +159,26 @@ assign evg_permit_out = soft_drive_enable[0] && sum_drive_enable;  // XXX ALSU s
 // ---------------------
 wire wave_trig;
 wire int_trig, evr_trig, ext_trig;  // dsp_clk domain
-reg [31:0] trig_count = 0;
+logic [31:0] trig_count = 0;
 
 // external trigger (synchronized in the SoC), rising edge
-reg ext_trigger1 = 0;
-always @(posedge dsp_clk) ext_trigger1 <= ext_trigger;
+logic ext_trigger1 = 0;
+always_ff @(posedge dsp_clk) ext_trigger1 <= ext_trigger;
 assign ext_trig = ext_trigger & ~ext_trigger1;
 
 // internal trigger, every int_trigger_period clocks; >= so that a shorter
 // period written during a count fires on the next clock instead of after
 // the counter wraps (2^32 clocks)
-reg [31:0] int_trig_cnt = 0;
+logic [31:0] int_trig_cnt = 0;
 assign int_trig = (int_trig_cnt >= cfg_dsp.int_trigger_period - 1);
-always @(posedge dsp_clk) begin
+always_ff @(posedge dsp_clk) begin
     int_trig_cnt <= (dsp_reset || int_trig) ? 0 : int_trig_cnt + 1'b1;
     trig_count <= dsp_reset ? 0 : trig_count + wave_trig;
 end
 
 wire cbuf_sync;
-reg wave_trig_i = 0;
-always @(posedge dsp_clk) begin
+logic wave_trig_i = 0;
+always_ff @(posedge dsp_clk) begin
     case (cfg_dsp.wave_trig_sel)
         WAVE_TRIG_INT:   wave_trig_i <= int_trig;
         WAVE_TRIG_EXT:   wave_trig_i <= ext_trig;
@@ -203,9 +205,9 @@ pulse_gen #(.AW(24)) trig_delay_gen (
 assign trig_out = wave_trig;
 
 // Periodically pass the status to the lb_clk domain
-reg [2:0] xcnt = 0;
+logic [2:0] xcnt = 0;
 wire dsp_tick = &xcnt;
-always @(posedge dsp_clk) xcnt <= xcnt + 1'b1;
+always_ff @(posedge dsp_clk) xcnt <= xcnt + 1'b1;
 
 // ---------------------
 // Diagnostics: signal buffers, cic_waves, RF power and ARC interlocks
@@ -216,6 +218,17 @@ wire [N_CH-1:0] inlk_hi_lb, inlk_lo_lb, inlk_status_lb, first_fault_status_lb, i
 wire [0:0] inlk_permit_out_lb, arc_permit_sum_lb, arc_testing_lb;
 wire [2:0] arc_permit_raw_lb, arc_permit_latch_lb;
 logic [DWBB:0] sin_phase [N_DRIVE];  // each loop's sinusoid phase (loops), into the slow data
+// cic_waves' registers (their names are the register map's)
+cic_cfg_t cic_cfg;
+assign cic_cfg = '{
+    wave_samp_per:   cfg_dsp.wave_samp_per,
+    chan_keep:       cfg_dsp.chan_keep,
+    base_period:     cfg_dsp.cic_base_period,
+    wave_shift:      cfg_dsp.cic_wave_shift,
+    inlk_wave_shift: cfg_dsp.inlk_wave_shift,
+    post_delay:      cfg_dsp.cbuf_post_delay,
+    dsp_tag:         cfg_dsp.dsp_tag
+};
 diag #(
     .F_DSP_HZ        (F_DSP_HZ),
     .CBUF_DW         (CBUF_DW),
@@ -228,7 +241,6 @@ diag #(
     .dsp_clk               (dsp_clk),
     .dsp_reset             (dsp_reset),
     .dsp_tick              (dsp_tick),
-    .adc_data_in           (adc_data_in),
     .adc                   (adc),
     .sig_i                 (sig_i_data),
     .sig_q                 (sig_q_data),
@@ -238,13 +250,7 @@ diag #(
     .record_en             (sum_drive_enable),
     .evr_timestamp         (evr_live_ts_dsp),
     .sin_phase             (sin_phase),
-    .wave_samp_per         (cfg_dsp.wave_samp_per),
-    .chan_keep             (cfg_dsp.chan_keep),
-    .cic_base_period       (cfg_dsp.cic_base_period),
-    .cic_wave_shift        (cfg_dsp.cic_wave_shift),
-    .inlk_wave_shift       (cfg_dsp.inlk_wave_shift),
-    .cbuf_post_delay       (cfg_dsp.cbuf_post_delay),
-    .dsp_tag               (cfg_dsp.dsp_tag),
+    .cic_cfg               (cic_cfg),
     .slow_snap_cic         (cfg_dsp.slow_snap_cic),
     .inlk_cfg              (cfg_dsp.inlk),
     .arc_cfg               (cfg_dsp.arc),
@@ -423,8 +429,8 @@ assign status_lb.arc_testing = arc_testing_lb;
 
 // Self-consistent readout of all 64 bits of evr_live_ts_dsp: the high word
 // is latched when the dsp_clk status bank is snapshot (evr_live_ts_lo slot 0)
-reg [31:0] evr_live_ts_hi = 0;
-always @(posedge dsp_clk) if (xfer_snap) evr_live_ts_hi <= evr_live_ts_dsp[63:32];
+logic [31:0] evr_live_ts_hi = 0;
+always_ff @(posedge dsp_clk) if (xfer_snap) evr_live_ts_hi <= evr_live_ts_dsp[63:32];
 assign status_dsp.evr_live_ts_lo = evr_live_ts_dsp[31:0];
 assign status_dsp.evr_live_ts_hi = evr_live_ts_hi;
 assign status_dsp.loop0_amp_setpoint_mod = amp_setpoint_mod[0];
@@ -441,3 +447,5 @@ assign status_dsp.hpa_permit_out = hpa_permit_out;
 assign status_dsp.drive_permit_out = sum_drive_enable;
 
 endmodule
+
+`default_nettype wire

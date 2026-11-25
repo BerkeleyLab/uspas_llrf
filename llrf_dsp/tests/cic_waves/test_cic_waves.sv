@@ -26,7 +26,7 @@ module test_cic_waves
     input                      dsp_reset,
 
     input                      iq_dval,
-    input signed [DWIQ-1:0]    iq_data [0:2*N_CH-1],      // CH0..CH(2*N_CH-1)
+    input signed [DWIQ-1:0]    iq_data [0:2*N_CH-1],      // I of channel n at 2*n, Q at 2*n+1
 
     input  signed [DW-1:0]     slow_bridge_data_in [0:N_ADC-1],
     input      [63:0]          evr_timestamp,
@@ -68,22 +68,24 @@ module test_cic_waves
     output     [15:0]          slow_rdata
 );
 
-    // Pack flattened iq_data for cic_waves
-    wire [2*N_CH*DWIQ-1:0] iq_data_flat;
-    genvar ch;
-    generate
-        for (ch = 0; ch < 2*N_CH; ch = ch + 1) begin : gen_iq_flat
-            assign iq_data_flat[DWIQ*ch +: DWIQ] = iq_data[ch];
-        end
-    endgenerate
+    // slow_aux comes in as one vector (cocotb drives it as an integer), first
+    // word in the MSBs, as slow_bridge_shell reads it; cic_waves takes an array
+    localparam int N_AUX = 4;
+    logic [15:0] slow_aux_words [N_AUX];
+    always_comb
+        for (int n = 0; n < N_AUX; n++) slow_aux_words[n] = slow_aux[16*(N_AUX-1-n) +: 16];
 
-    // Pack slow bridge data in flatten vector
-    wire [DW*N_ADC-1:0] slow_bridge_data_in_flat;
-    generate
-        for (ch = 0; ch < N_ADC; ch = ch + 1) begin : gen_slow_flat
-            assign slow_bridge_data_in_flat[DW*ch +: DW] = slow_bridge_data_in[ch];
-        end
-    endgenerate
+    // cic_waves' control registers as its struct
+    llrf_shell_pkg::cic_cfg_t cic_cfg;
+    assign cic_cfg = '{
+        wave_samp_per:   cic_wave_samp_per,
+        chan_keep:       cic_chan_keep,
+        base_period:     cic_base_period,
+        wave_shift:      cic_wave_shift,
+        inlk_wave_shift: inlk_wave_shift,
+        post_delay:      cbuf_post_delay,
+        dsp_tag:         dsp_tag
+    };
 
     logic cbuf_buf_flip;
     logic we_cbuf_buf_flip;
@@ -129,25 +131,19 @@ module test_cic_waves
         .CBUF_AW       (CBUF_AW),
         .CIC_SHIFT_BASE(CIC_SHIFT_BASE),
         .INLK_SHIFT_BASE(INLK_SHIFT_BASE),
-        .N_SLOW_AUX    (4)
+        .N_SLOW_AUX    (N_AUX)
     ) dut (
         .dsp_clk            (dsp_clk),
         .dsp_reset          (dsp_reset),
         .iq_dval            (iq_dval),
-        .iq_data            (iq_data_flat),
+        .iq_data            (iq_data),
 
-        .slow_bridge_data_in(slow_bridge_data_in_flat),
+        .slow_bridge_data_in(slow_bridge_data_in),
         .slow_snap          (cbuf_transferred),
         .evr_timestamp      (evr_timestamp),
-        .slow_aux           (slow_aux),
+        .slow_aux           (slow_aux_words),
 
-        .cic_wave_samp_per  (cic_wave_samp_per),
-        .cic_chan_keep      (cic_chan_keep),
-        .cic_base_period    (cic_base_period),
-        .cic_wave_shift     (cic_wave_shift),
-        .inlk_wave_shift    (inlk_wave_shift),
-        .cbuf_post_delay    (cbuf_post_delay),
-        .dsp_tag            (dsp_tag),
+        .cic_cfg            (cic_cfg),
 
         .wave_trig          (wave_trig_i),
         .cbuf_free_run      (wave_trig_sel == WAVE_TRIG_ALWAYS),

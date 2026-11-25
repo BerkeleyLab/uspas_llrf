@@ -1,3 +1,5 @@
+`default_nettype none
+
 // Diagnostics (plan §2.2): raw and I/Q signal buffers, cic_waves (circular
 // buffer, slow readout, interlock stream), the RF power interlock
 // (monitor_inlk), the ARC interlock (arc_inlk), and their readback words
@@ -13,78 +15,71 @@ module diag
     parameter integer INLK_SHIFT_BASE = 11,
     parameter integer MON_RW = 44
 ) (
-    input                 dsp_clk,
-    input                 dsp_reset,
-    input                 dsp_tick,          // periodic status transfer to lb_clk
-    input  [DW*N_ADC-1:0] adc_data_in,       // slow readout min/max
-    input  adc_t          adc [N_ADC],
-    input  bb_t           sig_i [N_CH],      // ADC channels, then drives
-    input  bb_t           sig_q [N_CH],
-    input                 wave_trig,
-    input  [31:0]         buf_delay,         // dsp clocks from wave_trig to both captures
-    input                 cbuf_free_run,
-    input                 record_en,         // drive enabled: record, first fault detection
-    input  [63:0]         evr_timestamp,
-    input  [DWBB:0]       sin_phase [N_DRIVE],  // each loop's sinusoid phase, into the slow data
+    input wire            dsp_clk,
+    input wire            dsp_reset,
+    input wire            dsp_tick,          // periodic status transfer to lb_clk
+    input wire adc_t          adc [N_ADC],
+    input wire bb_t           sig_i [N_CH],      // ADC channels, then drives
+    input wire bb_t           sig_q [N_CH],
+    input wire            wave_trig,
+    input wire [31:0]         buf_delay,         // dsp clocks from wave_trig to both captures
+    input wire            cbuf_free_run,
+    input wire            record_en,         // drive enabled: record, first fault detection
+    input wire [63:0]         evr_timestamp,
+    input wire [DWBB:0]       sin_phase [N_DRIVE],  // each loop's sinusoid phase, into the slow data
 
     // configuration, dsp_clk domain
-    input  [6:0]          wave_samp_per,
-    input  [9:0]          chan_keep,
-    input  [6:0]          cic_base_period,
-    input  [3:0]          cic_wave_shift,
-    input  [3:0]          inlk_wave_shift,
-    input  [15:0]         cbuf_post_delay,
-    input  [7:0]          dsp_tag,
-    input                 slow_snap_cic,
-    input  inlk_cfg_t     inlk_cfg,          // monitor_inlk
-    input  arc_cfg_t      arc_cfg,           // arc_inlk
+    input wire cic_cfg_t      cic_cfg,           // cic_waves
+    input wire            slow_snap_cic,
+    input wire inlk_cfg_t     inlk_cfg,          // monitor_inlk
+    input wire arc_cfg_t      arc_cfg,           // arc_inlk
     // monitor_inlk thresholds and modes (register tables)
-    input  [15:0]         inlk_amp_lo,
-    output [INLK_AW-1:0]  inlk_amp_lo_addr,
-    input  [15:0]         inlk_amp_hi,
-    output [INLK_AW-1:0]  inlk_amp_hi_addr,
-    input  [1:0]          inlk_inlk_mode,
-    output [INLK_AW-1:0]  inlk_inlk_mode_addr,
+    input wire [15:0]         inlk_amp_lo,
+    output logic [INLK_AW-1:0]  inlk_amp_lo_addr,
+    input wire [15:0]         inlk_amp_hi,
+    output logic [INLK_AW-1:0]  inlk_amp_hi_addr,
+    input wire [1:0]          inlk_inlk_mode,
+    output logic [INLK_AW-1:0]  inlk_inlk_mode_addr,
 
     // ARC detectors
-    input  [2:0]          arc_permit_in,
-    output [2:0]          arc_test_out,
-    output                arc_reset_out,
+    input wire [2:0]          arc_permit_in,
+    output logic [2:0]          arc_test_out,
+    output logic          arc_reset_out,
 
     // dsp_clk outputs
-    output                cbuf_sync,
-    output [0:0]          inlk_arc_permit,   // RF power and ARC permits
-    output [31:0]         sig_buf_count,
+    output logic          cbuf_sync,
+    output logic [0:0]          inlk_arc_permit,   // RF power and ARC permits
+    output logic [31:0]         sig_buf_count,
 
     // localbus
-    input                 lb_clk,
-    input                 lb_read,
-    input  [LB_ADW-1:0]   lb_addr,
-    input  [LB_ADW-1:0]   lb_addr_d1,        // read address of the data on rd_*
-    input                 sig_buf_flip,
-    input                 circle_buf_flip,
-    output [31:0]         rd_circle_ready,
-    output [31:0]         rd_sig_buf_ready,
-    output [31:0]         rd_sig_iq_buf_ready,
-    output [31:0]         rd_slow,
-    output [31:0]         rd_mon_amp,
-    output [31:0]         rd_mon_phs,
-    output [31:0]         rd_fault_amp,
-    output [31:0]         rd_adc_buf [N_ADC],
-    output [31:0]         rd_sig_i_buf [N_CH],
-    output [31:0]         rd_sig_q_buf [N_CH],
-    output [31:0]         rd_cbuf,
+    input wire            lb_clk,
+    input wire            lb_read,
+    input wire [LB_ADW-1:0]   lb_addr,
+    input wire [LB_ADW-1:0]   lb_addr_d1,        // read address of the data on rd_*
+    input wire            sig_buf_flip,
+    input wire            circle_buf_flip,
+    output logic [31:0]         rd_circle_ready,
+    output logic [31:0]         rd_sig_buf_ready,
+    output logic [31:0]         rd_sig_iq_buf_ready,
+    output logic [31:0]         rd_slow,
+    output logic [31:0]         rd_mon_amp,
+    output logic [31:0]         rd_mon_phs,
+    output logic [31:0]         rd_fault_amp,
+    output logic [31:0]         rd_adc_buf [N_ADC],
+    output logic [31:0]         rd_sig_i_buf [N_CH],
+    output logic [31:0]         rd_sig_q_buf [N_CH],
+    output logic [31:0]         rd_cbuf,
     // lb_clk status
-    output [N_CH-1:0]     inlk_hi_lb,
-    output [N_CH-1:0]     inlk_lo_lb,
-    output [N_CH-1:0]     inlk_status_lb,
-    output [N_CH-1:0]     first_fault_status_lb,
-    output [N_CH-1:0]     inlk_latch_lb,
-    output [0:0]          inlk_permit_out_lb,
-    output [2:0]          arc_permit_raw_lb,
-    output [2:0]          arc_permit_latch_lb,
-    output [0:0]          arc_permit_sum_lb,
-    output [0:0]          arc_testing_lb
+    output logic [N_CH-1:0]     inlk_hi_lb,
+    output logic [N_CH-1:0]     inlk_lo_lb,
+    output logic [N_CH-1:0]     inlk_status_lb,
+    output logic [N_CH-1:0]     first_fault_status_lb,
+    output logic [N_CH-1:0]     inlk_latch_lb,
+    output logic [0:0]          inlk_permit_out_lb,
+    output logic [2:0]          arc_permit_raw_lb,
+    output logic [2:0]          arc_permit_latch_lb,
+    output logic [0:0]          arc_permit_sum_lb,
+    output logic [0:0]          arc_testing_lb
 );
 
 // ---------------------
@@ -100,7 +95,7 @@ wire [2*N_CH-1:0] sig_iq_buf_ready;
 wire [2*N_CH-1:0] sig_buf_iq_transferred;
 wire signed [DWBB-1:0] sig_i_buf_out [0:N_CH-1];
 wire signed [DWBB-1:0] sig_q_buf_out [0:N_CH-1];
-wire [2*N_CH*DWBB-1:0] sig_iq_flat;  // for cic_wave_recorder
+wire signed [DWBB-1:0] sig_iq [0:2*N_CH-1];  // for cic_waves: I of channel n at 2*n, Q at 2*n+1
 
 // data stream strobes for all raw, I and Q buffers
 wire sig_buf_dval, sig_buf_last;
@@ -136,8 +131,8 @@ generate for (ch = 0; ch < N_ADC; ch = ch + 1) begin: gen_adc_raw
 end endgenerate
 
 generate for (ch = 0; ch < N_CH; ch = ch + 1) begin: gen_sig_iq
-    assign sig_iq_flat[DWBB*(2*ch+0) +:DWBB] = sig_i[ch];
-    assign sig_iq_flat[DWBB*(2*ch+1) +:DWBB] = sig_q[ch];
+    assign sig_iq[2*ch+0] = sig_i[ch];
+    assign sig_iq[2*ch+1] = sig_q[ch];
 
     sig_buf #(.AW(SIG_BUF_AW), .DW(DWBB)) sig_i_buf (
         .sig_clk        (dsp_clk                ),
@@ -207,10 +202,12 @@ wire slow_snap = slow_snap_cic ? cbuf_transferred : sig_buf_iq_transferred[0];
 // per loop, the sinusoid's 19-bit phase as two words,
 // {13'b0, phase[18:16]} then phase[15:0]; loop 0 first
 localparam N_SLOW_AUX = 2 * N_DRIVE;
-logic [16*N_SLOW_AUX-1:0] slow_aux;
+logic [15:0] slow_aux [N_SLOW_AUX];
 always_comb
-    for (int n = 0; n < N_DRIVE; n++)
-        slow_aux[16*N_SLOW_AUX-1-32*n -: 32] = {13'b0, sin_phase[n]};
+    for (int n = 0; n < N_DRIVE; n++) begin
+        slow_aux[2*n]   = {13'b0, sin_phase[n][DWBB:16]};
+        slow_aux[2*n+1] = sin_phase[n][15:0];
+    end
 
 wire [15:0] slow_rdata;
 wire slow_ready;
@@ -229,20 +226,13 @@ cic_waves #(
     .dsp_clk            (dsp_clk),
     .dsp_reset          (dsp_reset),
     .iq_dval            (1'b1),
-    .iq_data            (sig_iq_flat),
+    .iq_data            (sig_iq),
 
-    .slow_bridge_data_in(adc_data_in),
+    .slow_bridge_data_in(adc),
     .slow_snap          (slow_snap),
     .evr_timestamp      (evr_timestamp),
     .slow_aux           (slow_aux),
-    .cic_wave_samp_per  (wave_samp_per),
-
-    .cic_chan_keep      (chan_keep),
-    .cic_base_period    (cic_base_period),
-    .cic_wave_shift     (cic_wave_shift),
-    .inlk_wave_shift    (inlk_wave_shift),
-    .cbuf_post_delay    (cbuf_post_delay),
-    .dsp_tag            (dsp_tag),
+    .cic_cfg            (cic_cfg),
 
     .wave_trig          (cbuf_trig),
     .cbuf_free_run      (cbuf_free_run),
@@ -266,8 +256,8 @@ cic_waves #(
 assign rd_cbuf = {{(32-CBUF_DW){1'b0}}, cbuf_out};
 assign rd_slow = {16'b0, slow_rdata};
 
-reg [1:0] llrf_circle_ready = 0;
-always @(posedge lb_clk) llrf_circle_ready <= {slow_ready, cbuf_ready};
+logic [1:0] llrf_circle_ready = 0;
+always_ff @(posedge lb_clk) llrf_circle_ready <= {slow_ready, cbuf_ready};
 assign rd_circle_ready = {30'b0, llrf_circle_ready};
 
 // ---------------------
@@ -368,8 +358,8 @@ data_xdomain #(.size(5*N_CH+1)) inlk_stat_xdomain (
 );
 
 // Latch fault record amplitude per channel, addressed by fault_addr_out
-reg [16*N_CH-1:0] fault_amp_r = 0;
-always @(posedge dsp_clk) if (fault_valid_out && fault_addr_out < 4'(N_CH))
+logic [16*N_CH-1:0] fault_amp_r = 0;
+always_ff @(posedge dsp_clk) if (fault_valid_out && fault_addr_out < 4'(N_CH))
     fault_amp_r[16*fault_addr_out +: 16] <= fault_amp_out;
 
 wire [16*N_CH-1:0] fault_amp_xd;
@@ -394,3 +384,5 @@ data_xdomain #(.size(1+3+3+1)) arc_stat_xdomain (
 );
 
 endmodule
+
+`default_nettype wire

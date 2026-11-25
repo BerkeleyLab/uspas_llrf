@@ -26,7 +26,7 @@ VERILOG_SOURCES +=  $(DSP_DIR)/fchan_subset.v
 VERILOG_SOURCES +=  $(DSP_DIR)/demand_gpt.v
 
 VERILOG_SOURCES +=  $(APP_DSP_DIR)/pulse_gen.v
-VERILOG_SOURCES +=  $(APP_DSP_DIR)/cic_waves.v
+VERILOG_SOURCES +=  $(APP_DSP_DIR)/cic_waves.sv
 VERILOG_SOURCES +=  $(APP_DSP_DIR)/cic_timing.v
 VERILOG_SOURCES +=  $(APP_DSP_DIR)/slow_bridge_shell.v
 

@@ -30,7 +30,7 @@ DAC_DRIVE_OPTIONS = [
 # Except for Always, recording stops once the buffer is full and restarts
 # on the next trigger.
 # cbuf_post_delay powers up as 0, which disables the fault record freeze
-# (cic_waves.v); the dash sets this instead so a permit drop is recorded.
+# (cic_waves.sv); the dash sets this instead so a permit drop is recorded.
 CBUF_POST_DELAY_DEFAULT = 1
 
 WAVE_TRIG_OPTIONS = [
@@ -1449,7 +1449,7 @@ def create_dash_app(llrf_app: LLRFApp) -> dash.Dash:
         prevent_initial_call=True
     )
     def set_cbuf_post_delay(value):
-        # cic_waves.v: circle buffer stops writing value cbuf_sync's after
+        # cic_waves.sv: circle buffer stops writing value cbuf_sync's after
         # record_en (sum_drive_enable) drops; 0 disables the freeze.
         if value is None:
             return ""
