@@ -39,7 +39,7 @@ from pathlib import Path
 from typing import Optional
 
 # register domain -> localbus copy in llrf_shell (data_xdomain from lb_clk)
-DOMAINS = {'lb': 'lb', 'dsp': 'lb1', 'dac': 'lb2', 'evr': 'lb3'}
+DOMAINS = {'lb': 'lb', 'dsp': 'lb_dsp', 'dac': 'lb_dac', 'evr': 'lb_evr'}
 LB_HI = 17           # localbus address MSB (newad -w)
 RW_BASE = 0x11000    # rw register window, mirrored for readback
 MIRROR_MAX_AW = 5    # registers and tables up to 2^5 entries are mirrored
@@ -638,14 +638,15 @@ def regs_sv(m, source):
            "// rw registers (with the readback mirror), status words and the readback mux.\n",
            "module llrf_shell_regs\n    import llrf_shell_regmap_pkg::*;\n(\n", "\n".join(io), "\n);\n\n",
            "wire [31:0] lb_data = lb_wdata;\n",
-           "wire lb1_clk = dsp_clk, lb2_clk = dac_clk, lb3_clk = gt_rxclk;\n",
-           "wire lb1_write, lb2_write, lb3_write;\n",
-           f"wire [{LB_HI}:0] lb1_addr, lb2_addr, lb3_addr;\n",
-           "wire [31:0] lb1_data, lb2_data, lb3_data;\n",
+           "wire lb_dsp_clk = dsp_clk, lb_dac_clk = dac_clk, lb_evr_clk = gt_rxclk;\n",
+           "wire lb_dsp_write, lb_dac_write, lb_evr_write;\n",
+           f"wire [{LB_HI}:0] lb_dsp_addr, lb_dac_addr, lb_evr_addr;\n",
+           "wire [31:0] lb_dsp_data, lb_dac_data, lb_evr_data;\n",
            "lb_xdomain lb_xdomain (\n    .lb_clk(lb_clk), .lb_write(lb_write), .lb_addr(lb_addr), .lb_data(lb_data),\n"
-           "    .lb1_clk(lb1_clk), .lb1_write(lb1_write), .lb1_addr(lb1_addr), .lb1_data(lb1_data),\n"
-           "    .lb2_clk(lb2_clk), .lb2_write(lb2_write), .lb2_addr(lb2_addr), .lb2_data(lb2_data),\n"
-           "    .lb3_clk(lb3_clk), .lb3_write(lb3_write), .lb3_addr(lb3_addr), .lb3_data(lb3_data)\n);\n\n"]
+           "    .lb_dsp_clk(lb_dsp_clk), .lb_dsp_write(lb_dsp_write), .lb_dsp_addr(lb_dsp_addr), .lb_dsp_data(lb_dsp_data),\n"
+           "    .lb_dac_clk(lb_dac_clk), .lb_dac_write(lb_dac_write), .lb_dac_addr(lb_dac_addr), .lb_dac_data(lb_dac_data),\n"
+           "    .lb_evr_clk(lb_evr_clk), .lb_evr_write(lb_evr_write), .lb_evr_addr(lb_evr_addr),"
+           " .lb_evr_data(lb_evr_data)\n);\n\n"]
     out += [decode_sv(r, addr[r.name]) for r in m.regs]
     out.append(inst_assign_sv(m.regs))
     out.append(f"\n// readback mirror of the rw registers\nwire [31:0] mirror_out;\n"
