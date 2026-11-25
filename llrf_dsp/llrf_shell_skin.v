@@ -92,7 +92,7 @@ always @(posedge dsp_clk) begin
 	arc_permit_in_r <= arc_permit_in;
 end
 
-// External Trigger
+// External Trigger (stands in for the SoC's synchronizer, soc/common/system.v)
 (* magic_cdc *) reg [0:0] ext_trigger_r=0;
 always @(posedge dsp_clk) begin
     ext_trigger_r <= ext_trigger;

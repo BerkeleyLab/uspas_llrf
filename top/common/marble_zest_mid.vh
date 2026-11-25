@@ -67,10 +67,11 @@ assign ext_mem_packed_ret = 33'b0;
 assign ext_irq = 4'b0;
 `endif
 
+wire        dsp_clk;  // the shell's; the SoC syncs the external trigger to it
 system #(
     .LB_READ_DELAY(LB_READ_DELAY),
     .LB_ADW(22),
-    .SYSTEM_HEX_PATH("system32.dat")
+    .SYSTEM_HEX_PATH(SOC_IMAGE)  // set by the file that includes this one
 ) system_inst (
     .clk            (clk),
     .cpu_reset      (reset_system),
@@ -97,6 +98,7 @@ system #(
 `else
     .PMOD3          (ZEST_PMOD2),
 `endif
+    .dsp_clk        (dsp_clk),
     .trig_from_dsp    (trig_from_dsp),
     .trig_to_dsp    (trig_to_dsp),
     .uart_tx        (UART_TX),
@@ -172,12 +174,11 @@ always @(*) begin
     endcase
 end
 assign lb_rdata = git_rev_id_sel ? git_rev_id :
-                    json_rom_sel ? config_rom_out : lb_rdata_r;
+                    json_rom_sel ? {16'b0, config_rom_out} : lb_rdata_r;
 
 // ----------------------------------
 // LLRF Subsystem, @ lb_base_0
 // ---------------------------------
-wire        dsp_clk;
 wire [16*8-1:0] adc_out_data;
 wire dac_clk_out;
 wire [15:0] dac_a_out;
@@ -242,7 +243,7 @@ marble_bsp #(
     .DSP_FREQ_MHZ       (`DSP_FREQ_MHZ),
     .IP(IP), .MAC(MAC),
     .LB_READ_DELAY(LB_READ_DELAY),
-    .GT_TYPE("GTX")
+    .GT_TYPE(BSP_GT_TYPE)  // set by the file that includes this one
 ) marble_inst (
     .gmii_tx_clk    (gmii_tx_clk  ),
     .gmii_txd       (gmii_txd     ),

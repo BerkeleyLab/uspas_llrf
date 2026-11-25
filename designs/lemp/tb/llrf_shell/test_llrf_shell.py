@@ -72,6 +72,13 @@ async def test_pulse_modulation(dut, loop):
     await tb.test_pulse_modulation(loop)
 
 
+@cocotb.test(timeout_time=300, timeout_unit='us')
+@cocotb.parametrize(loop=['loop0', 'loop1'])
+async def test_shorten_mid_count(dut, loop):
+    tb = TB_llrf_shell(dut, f_config='LEMP', regmap_json_path='../../llrf_shell.json')
+    await tb.test_shorten_mid_count(loop)
+
+
 @cocotb.test(timeout_time=100, timeout_unit='us')
 async def test_buf_delay(dut):
     tb = TB_llrf_shell(dut, f_config='LEMP', regmap_json_path='../../llrf_shell.json')

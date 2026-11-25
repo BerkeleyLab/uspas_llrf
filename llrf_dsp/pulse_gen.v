@@ -4,7 +4,9 @@
 // pulse_dval (valid while pulse_dval is high, 0 otherwise) and indexes
 // per-pulse lookup tables, one entry per 2^res strobes. pulse_clk =
 // count - start, registered the same way: the strobe count into the pulse,
-// at full resolution whatever res is.
+// at full resolution whatever res is. The pulse ends once the count reaches
+// start + high_len, also when a shorter start or high_len puts the end
+// behind a running count: the pulse then ends on the next clock.
 module pulse_gen #(
     parameter AW=12,
     parameter RW=4
@@ -30,7 +32,7 @@ always @(posedge clk) begin
     end_val <= start + high_len;
 end
 
-wire is_last = (pc == end_val);
+wire is_last = (pc >= end_val);
 wire is_at_start = (pc >= start);
 wire in_pulse = counting && is_at_start && !is_last;
 wire [AW:0] pc_rel = pc - start;

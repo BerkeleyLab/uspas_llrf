@@ -17,7 +17,8 @@ def wrap_signed(value, width):
 class PulseGen:
     """pulse_gen.v: pulse_dval for count in [start, start+high_len),
     pulse_idx = (count - start) >> res and pulse_clk = count - start
-    registered with pulse_dval."""
+    registered with pulse_dval. The pulse ends once the count reaches
+    start + high_len, at once if a shorter setting puts that behind it."""
 
     def __init__(self, aw=32):
         self.aw = aw
@@ -32,10 +33,10 @@ class PulseGen:
 
     @property
     def last(self):
-        return int(self.counting and self.pc == self.end_val)
+        return int(self.counting and self.pc >= self.end_val)
 
     def step(self, trigger, start, high_len, stb=1, res=0):
-        is_last = self.pc == self.end_val
+        is_last = self.pc >= self.end_val
         in_pulse = self.counting and self.pc >= start and not is_last
         if is_last:
             counting = 0

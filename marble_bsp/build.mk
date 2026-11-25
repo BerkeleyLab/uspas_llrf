@@ -42,6 +42,12 @@ $(MODULE).json: $(GEN_DIR)/$(MODULE).json
 $(MODULE)_expand.v: $(BSP_SRC)
 	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(BSP_SRC)
 
+# source list for the top level (top/common/top_rules.mk): include directories,
+# then every source the BSP needs, DSP_V and SIM_V included (the top level
+# merges the lists and drops the files the blocks share), absolute paths
+$(MODULE).f: $(BSP_SRC) $(DSP_V) $(SIM_V)
+	printf '%s\n' $(addprefix +incdir+,$(abspath $(patsubst -I%,%,$(filter -I%,$(VFLAGS_DEP))) $(GEN_DIR))) $(abspath $^) > $@
+
 # the testbench compiles everything, with the sources named: a module missing
 # from the lists is an error at elaboration
 # register names for the testbench (regmap_$(MODULE).vh), from the generated JSON
@@ -50,4 +56,4 @@ $(TEST_BENCH): $(BSP_SRC) $(DSP_V) $(SIM_V) $(GEN_DIR)/regmap_$(MODULE).vh
 
 CLEAN += $(MODULE).json $(MODULE)_init_regs.json
 CLEAN_DIRS += $(GEN_DIR)
-CLEAN += $(MODULE)_expand.v
+CLEAN += $(MODULE)_expand.v $(MODULE).f

@@ -21,6 +21,13 @@ SRC_V  += $(BOARD_SUPPORT_DIR)/fmc11x/dco_buf.v \
 		  $(BOARD_SUPPORT_DIR)/fmc11x/iserdes_pack.v \
 		  $(BOARD_SUPPORT_DIR)/fmc11x/idelay_wrap.v
 OBJS   += bootloader.o 0x0e0.lds
+# make TOPSIM=1 (in its own build directory): the firmware for topsim
+# (top/common/top_rules.mk), the SIMULATION build of system.c, which reads the
+# XADC and initializes the shell but not the Marble's I2C devices or the
+# Zest, which topsim does not model
+ifneq ($(TOPSIM),)
+CFLAGS += -DSIMULATION
+endif
 
 all: $(TARGET)_top.bit
 
@@ -54,9 +61,14 @@ EXCLUDE = $(addprefix $(DSP_DIR)/, dpram.v flag_xdomain.v data_xdomain.v reg_del
 system_expand.v: $(SRC_V)
 	$(VERILOG) $(SYNTH_OPT) -E -o$@ $(filter-out $(EXCLUDE),$(filter %.v, $^))
 
+# source list for the top level (top/common/top_rules.mk): every SoC source,
+# including the ones it shares with the DSP shell (EXCLUDE), absolute paths
+system.f: $(SRC_V)
+	printf '%s\n' $(abspath $(filter %.v, $^)) > $@
+
 CLEAN += $(TARGET)_top.bin $(TARGET)_top.bit $(TARGET)_top.xdc
 CLEAN += zest_pinmap.txt zest_fmc_dp.xdc
-CLEAN += system_expand.v
+CLEAN += system_expand.v system.f
 CLEAN += xvlog.pb xvlog.log
 CLEAN_DIRS += .Xil _xilinx xsim.dir
 include $(BUILD_DIR)/bottom_rules.mk

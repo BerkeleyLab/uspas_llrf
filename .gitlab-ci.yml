@@ -87,7 +87,7 @@ default:
     - soc/common/**/*.{v,vh,sv,c,h,S,lds,mk,py,toml,xdc,txt}
     - soc/common/**/Makefile
   top_common: &top_common
-    - top/common/**/*.{v,vh,sv,xdc,tcl,mk,cfg,csv,json}
+    - top/common/**/*.{v,vh,sv,xdc,tcl,mk,cfg,csv,json,py,c,cpp}
   # one design's firmware and bitstream sources (matrix variable TARGET)
   target_rtl: &target_rtl
     - designs/$TARGET/*.{v,sv,vh,svh,py}
@@ -243,6 +243,37 @@ llrf_shell_test:
   parallel:
     matrix:
       - TARGET: [alsu, uspas, lemp, awa]
+
+# Board-level lint of marble_zest_top with all blocks' source lists (widths,
+# missing ports, multiple drivers in the top files); building the merged JSON
+# on the way also checks the base addresses against the localbus decode
+# (check_lb_map.py). Verilator and Yosys's Xilinx cell library, no Vivado.
+top_lint:
+  stage: test
+  rules: *rules_rtl
+  script:
+    - make -C top/${TARGET} lint
+  parallel:
+    matrix:
+      - TARGET: [alsu, uspas, lemp, awa, pip-ii]
+
+# Verilator simulation of the top (marble_zest_frame.v): boots the SoC's
+# firmware (its SIMULATION build) and checks over LEEP, through a localhost
+# UDP bridge (no tap device): the config ROM, every block's registers, the
+# firmware's self-test and system_bist_pass, and no aliased registers
+# (top/common/topsim_test.py).
+topsim_test:
+  stage: test
+  rules: *rules_rtl
+  script:
+    - make -C top/${TARGET} topsim_test
+  artifacts:
+    when: always
+    paths:
+      - top/${TARGET}/topsim_console.log
+  parallel:
+    matrix:
+      - TARGET: [alsu, uspas, lemp, awa, pip-ii]
 
 soc_system_test:
   stage: test

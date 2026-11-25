@@ -17,7 +17,7 @@ settings.vams: settings.json
 
 $(DEPDIR)/$(APP_NAME).d: $(APP_NAME).v $(VERILOG_AUTOGEN)
 	@set -e; mkdir -p $(DEPDIR); \
-	$(MAKEDEP) && (printf "$(APP_NAME)_expand.v $(APP_NAME)_cdc_expand.v $@: "; \
+	$(MAKEDEP) && (printf "$(APP_NAME)_expand.v $(APP_NAME)_cdc_expand.v $(APP_NAME).f $@: "; \
 	sort -ur $@.$$$$ | tr '\n' ' '; printf "\n" ) > $@ && rm -f $@.$$$$
 
 $(AUTOGEN_DIR)/%_expand.v: %.v $(AUTOGEN_DIR)/%_auto.vh $(AUTOGEN_DIR)/addr_map_%.vh
@@ -46,6 +46,11 @@ $(APP_NAME)_expand.v: $(APP_NAME).v
 $(APP_NAME)_cdc_expand.v: $(APP_NAME).v
 	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(filter %.v, $^)
 
+# source list for the top level (top/lemp, top/common/top_rules.mk): the
+# include directories, then the scanned sources (the .d file), absolute paths
+$(APP_NAME).f: $(APP_NAME).v
+	printf '%s\n' $(addprefix +incdir+,$(abspath $(patsubst -I%,%,$(filter -I%,$(VFLAGS_DEP))) .)) $(abspath $(filter %.v, $^)) > $@
+
 $(APP_NAME)_init_regs.json: $(APP_NAME)_tb
 	$(VVP) $< $(VVP_FLAGS) +gen_init="$@"
 
@@ -66,6 +71,9 @@ ifneq (,$(findstring _expand,$(MAKECMDGOALS)))
     -include $(DEPDIR)/$(APP_NAME).d
     -include $(TEST_BENCH_D)
 endif
+ifneq (,$(findstring .f,$(MAKECMDGOALS)))
+    -include $(DEPDIR)/$(APP_NAME).d
+endif
 ifneq (,$(findstring _cdc,$(MAKECMDGOALS)))
     -include $(DEPDIR)/$(APP_NAME).d
 endif
@@ -75,5 +83,5 @@ ifeq (,$(MAKECMDGOALS))
 endif
 CLEAN += settings.vams
 CLEAN += $(APP_NAME).json $(APP_NAME)_init_regs.json
-CLEAN += $(APP_NAME)_expand.v
+CLEAN += $(APP_NAME)_expand.v $(APP_NAME).f
 CLEAN += cordicg_b22.v

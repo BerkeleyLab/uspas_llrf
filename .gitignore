@@ -75,7 +75,21 @@ top/*/marble_zest.json
 top/*/bit_stamp_mod
 llrf_dsp/tests/llrf/cordicg_b22.v
 soc/*/build/
-top/*/topsim.d
 top/*/system32.dat
 top/*/obj_dir/
 top/*/Vmarble_zest_frame
+# source lists and lint/topsim inputs written by make (step 14b)
+designs/*/llrf_shell.f
+designs/lemp/interlock/interlock_wrapper.f
+marble_bsp/marble_bsp.f
+soc/**/synth/system.f
+top/*/*.f
+top/*/*.vlt
+top/*/ports_only.v
+top/*/xilinx_lint_cells.v
+top/*/topsim_cdc.txt
+top/*/topsim_yosys.json
+soc/*/build_topsim/
+top/*/topsim_console.log
+top/*/topsim_sv2v.v
+top/*/topsim32.dat

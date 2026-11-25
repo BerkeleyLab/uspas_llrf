@@ -20,6 +20,8 @@ module marble_zest_frame #(
     //
     output          PHY_RSTN,
     inout [7:0]     PMOD1,
+    inout [7:0]     PMOD2,
+    inout [7:0]     ZEST_PMOD1,
     inout [7:0]     ZEST_PMOD2,
     // Mailbox SPI
     input           FPGA_SCK,
@@ -69,8 +71,26 @@ wire clk = gmii_tx_clk;
 wire MGT_RX_6_N=0, MGT_RX_6_P=0;
 // UART below
 wire UART_CTS, UART_RX, UART_TX;
+// Board nets that marble_zest_top.v has as ports: the GT reference clock
+// (also the recovered clock of gt_wrapper's GT_SIM model), I2C (no devices on
+// it here), and the Zest's HDMI pins (design hooks use them:
+// top/lemp/design_mid.vh). The PMODs are ports, as pads: the SoC selects
+// its external trigger among them (pins it drives itself included).
+wire GTREFCLK_P = gt_refclk, GTREFCLK_N = ~gt_refclk;
+wire I2C_SCL, I2C_SDA, I2C_RST;
+wire ZEST_HDMI_CK_P, ZEST_HDMI_CK_N, ZEST_HDMI_D0_P, ZEST_HDMI_D0_N;
+wire ZEST_HDMI_D1_P, ZEST_HDMI_D1_N, ZEST_HDMI_D2_P, ZEST_HDMI_D2_N;
+wire ZEST_HDMI_DET, ZEST_HDMI_SCL, ZEST_HDMI_SDA, ZEST_HDMI_CEC;
+// gt_wrapper's model of the GT, in place of the Vivado-generated GT IP
+localparam BSP_GT_TYPE = "GT_SIM";
+// topsim's firmware image (top_rules.mk), named apart from the bitstream's
+// system32.dat, which Vivado finds by name
+localparam SOC_IMAGE = "topsim32.dat";
 
 `include "marble_zest_mid.vh"
+
+// the Zest's DAC clock, here the ADC clock
+assign dac_clk_out = dsp_clk;
 
 // Set clock domain of 8 x 16-bit ADC data
 assign dsp_clk = dsp_clk_p;
@@ -86,7 +106,7 @@ always @(posedge gmii_tx_clk) uart_resetn <= 1;
 simpleuart uart(.clk(gmii_tx_clk), .resetn(uart_resetn),
     .ser_rx(UART_TX), .ser_tx(UART_RX),
     .cfg_divider(20'd1085),  // 115200 baud
-    .b_do(b_do), .b_dv(b_dv), .b_re(1'b1),   // results
+    .b_do(b_do), .b_dv(b_dv), .b_re(1'b1), .b_busy(),   // results
     .b_we(b_we_r), .b_di(b_di_r)  // we can send, too
 );
 assign UART_CTS = 0;

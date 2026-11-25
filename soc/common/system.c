@@ -127,6 +127,8 @@ int main(void) {
     pass &= init_llrf(&llrf_init_data);
 #endif  // #ifdef XSIM_DBG
     printf(pass ? "PASS\n":"FAIL\n");
+    // topsim (top/common/top_rules.mk) reads it over LEEP
+    set_llrf_bist_pass(pass);
 #else   // #ifdef SIMULATION
     printf(" _   _ ____  ____   _    ____    _     _     ____  _____ \n");
     printf("| | | / ___||  _ \\ / \\  / ___|  | |   | |   |  _ \\|  ___|\n");

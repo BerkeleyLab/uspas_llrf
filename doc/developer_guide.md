@@ -103,6 +103,32 @@ make
 # Shared rules: top/common/top_rules.mk; SoC firmware is built in soc/<design>/build/
 make -C top/uspas
 make -C top/awa
+# Building marble_zest.json (part of every build) checks its base addresses
+# against the localbus decode in top/common/marble_zest_mid.vh (check_lb_map.py)
+```
+
+### 5a. Top-Level Checks (no Vivado)
+```bash
+# Lint marble_zest_top with every block's source list (CI job top_lint): widths,
+# missing ports and multiple drivers in the top files (marble_zest_top.v,
+# marble_zest_mid.vh, the design_*.vh hooks); the blocks are linted on their own.
+# Xilinx primitives come from Yosys's cell library. A constant second driver
+# (assign x = 0) is folded away by Verilator and not reported.
+make -C top/uspas lint
+
+# Verilator simulation of the top (marble_zest_frame.v: no Zest, no Xilinx I/O),
+# then its CI test (topsim_test): boots the firmware's SIMULATION build and checks
+# the config ROM, every block's registers, the self-test and system_bist_pass
+# over LEEP, through a localhost UDP bridge (top/common/udp_tap.c; no tap device)
+make -C top/uspas topsim
+make -C top/uspas topsim_test
+# By hand: ./Vmarble_zest_frame in top/uspas, then leep://127.0.0.1:8030.
+# TOPSIM_FW=full runs the bitstream's firmware (its Marble and Zest init wait for
+# devices topsim does not model); TOPSIM_TRACE=1 builds with FST tracing (+trace),
+# which needs a lot of memory; TOPSIM_NET=tap uses a tap device instead.
+
+# CDC check of the whole top, crossings between blocks included (about 2.5 min)
+make -C top/uspas topsim_cdc.txt
 ```
 
 ### 6. Hardware Deployment & Testing (LEEP)

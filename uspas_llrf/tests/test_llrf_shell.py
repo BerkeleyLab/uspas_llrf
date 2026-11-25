@@ -660,6 +660,71 @@ class TB_llrf_shell:
             await self.lb.write_reg(f'{lp}_amp_sin_enable', 0)
             await self.lb.write_reg(f'{lp}_phs_sin_enable', 0)
 
+    async def test_shorten_mid_count(self, loop='loop0', long=1 << 20, short=1000, behind=3000):
+        """Plan step 14a: a shorter int_trigger_period written during a
+        count, or loopN_pulse_high_len during a pulse, takes effect on the
+        next clock: the internal trigger fires and the pulse ends.
+        (Compared with ==, as before, the trigger would wait for its
+        counter to wrap, 2**32 clocks, and the pulse for 2**33.) The new
+        settings then hold: the next trigger comes short clocks later, the
+        next pulse lasts short clocks."""
+        dut = self.dut
+        n = int(loop[-1])
+        self.log_banner(f'Shortened settings mid-count, {loop}')
+        lc = self.shell_sig('gen_loops')[n].loop_ctrl
+        int_trig, cnt = self.shell_sig('int_trig'), self.shell_sig('int_trig_cnt')
+
+        async def clocks_until(cond, limit):
+            k = 0
+            while True:
+                await RisingEdge(dut.dsp_clk)
+                await ReadOnly()
+                if cond():
+                    return k
+                k += 1
+                assert k < limit, f"not within {limit} clocks"
+
+        # internal trigger: a long period, then a shorter one behind the count
+        await self.lb.write_reg('int_trigger_period', long)
+        await clocks_until(lambda: int(cnt.value) >= behind, long + behind)
+        await RisingEdge(dut.dsp_clk)
+        await self.lb.write_reg('int_trigger_period', short)
+        at_write = int(cnt.value)
+        assert at_write > short
+        k = await clocks_until(lambda: int(int_trig.value), 50)
+        cocotb.log.info(f'int_trig {k} clocks after the write, count {at_write} > period {short}')
+        k = await clocks_until(lambda: int(int_trig.value), 2 * short)
+        assert k + 1 == short, f"next trigger after {k + 1} clocks, period {short}"
+
+        # loop pulse: software trigger, a long pulse, then a shorter
+        # high_len behind the count
+        regs = {'wave_trig_sel': int(WaveTrigSel.Software), 'trigger_delay': 0,
+                f'{loop}_pulse_start': 0, f'{loop}_pulse_high_len': short}
+        for name, value in regs.items():
+            await self.lb.write_reg(name, value)
+        await clocks_until(lambda: not int(lc.pulse_gen.counting.value), long)  # a pulse left running
+        await self.lb.write_reg(f'{loop}_pulse_high_len', long)
+        await ClockCycles(dut.dsp_clk, 20)  # register crossing
+        await self.lb.write_reg('soft_trigger', 1)
+        await clocks_until(lambda: int(lc.pulse_gen.pc.value) >= behind, long + behind)
+        await RisingEdge(dut.dsp_clk)
+        await self.lb.write_reg(f'{loop}_pulse_high_len', short)
+        at_write = int(lc.pulse_gen.pc.value)
+        assert at_write > short and int(lc.pulse_dval.value)
+        k = await clocks_until(lambda: not int(lc.pulse_dval.value), 50)
+        assert not int(lc.pulse_gen.counting.value)
+        cocotb.log.info(f'{loop} pulse ended {k} clocks after the write, count {at_write} > high_len {short}')
+        await RisingEdge(dut.dsp_clk)
+        await self.lb.write_reg('soft_trigger', 1)
+        await clocks_until(lambda: int(lc.pulse_dval.value), 100)
+        k = await clocks_until(lambda: not int(lc.pulse_dval.value), 2 * short)
+        assert k + 1 == short, f"next pulse lasted {k + 1} clocks, high_len {short}"
+
+        # restore the boot settings (shortening is safe now)
+        for name in ('int_trigger_period', 'wave_trig_sel', 'trigger_delay',
+                     f'{loop}_pulse_start', f'{loop}_pulse_high_len'):
+            await self.lb.write_reg(name, int(getattr(self.llrf.init_regs, name)))
+
     async def test_sin_phase_snapshot(self, n_buffers=2):
         """Each loop's sinusoid phase in the slow data (plan step 13b): the
         dds phases at the buffer sync that ends the buffer handed over (the
