@@ -119,7 +119,7 @@ wire clk_locked;
 
 wire sysclk0, sysclk;
 IBUFDS_GTE2 passi_125(
-    .I(SYSCLK_P), .IB(SYSCLK_N), .CEB(1'b0), .O(sysclk0)
+    .I(SYSCLK_P), .IB(SYSCLK_N), .CEB(1'b0), .O(sysclk0), .ODIV2()
 );
 // UG472 Figure 1-4
 BUFH passg_125(
@@ -142,6 +142,8 @@ xilinx7_clocks #(
     .clk_out0 (gmii_tx_clk),
     .clk_out1 (clk_200),
     .clk_out2 (gmii_tx_clk90),
+    .clk_out3f(),
+    .sysclk_buf(),
     .locked   (clk_locked)
 );
 
@@ -153,7 +155,13 @@ IDELAYCTRL idelayctrl_inst (
 );
 
 wire BOOT_CCLK;
-STARTUPE2 set_cclk(.USRCCLKO(BOOT_CCLK), .USRCCLKTS(1'b0));
+// only the configuration clock is used; the other pins are left unconnected,
+// listed so that the top-level lint sees every port of the instance
+STARTUPE2 set_cclk(
+    .USRCCLKO(BOOT_CCLK), .USRCCLKTS(1'b0),
+    .CLK(), .GSR(), .GTS(), .KEYCLEARB(), .PACK(), .USRDONEO(), .USRDONETS(),
+    .CFGCLK(), .CFGMCLK(), .EOS(), .PREQ()
+);
 
 wire in_use;  // ignored in synthesis
 
@@ -180,7 +188,9 @@ gmii_to_rgmii #( .in_phase_tx_clk(1)) gmii_to_rgmii_i (
     .gmii_rx_er     (gmii_rx_er),
     .clk_div        (1'b0),
     .idelay_ce      (1'b0),
-    .idelay_value_in(5'b0)
+    .idelay_value_in(5'b0),
+    .idelay_value_out_ctl(),
+    .idelay_value_out_data()
 );
 
 `ifndef DSP_FREQ_MHZ
@@ -190,6 +200,8 @@ gmii_to_rgmii #( .in_phase_tx_clk(1)) gmii_to_rgmii_i (
 // ---------------------------------
 // Share code with simulation build
 // Includes instantiation of system, llrf_shell, and marble_bsp.
+localparam BSP_GT_TYPE = "GTX";  // the GT IP (marble_bsp)
+localparam SOC_IMAGE = "system32.dat";  // the firmware (soc/<design>/build/)
 `include "marble_zest_mid.vh"
 // ---------------------------------
 

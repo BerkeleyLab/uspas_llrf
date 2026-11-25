@@ -81,6 +81,7 @@ module system_tb;
         .PMOD1              (PMOD1),
         .PMOD2              (PMOD2),
         .PMOD3              (PMOD3),
+        .dsp_clk            (clk),
         .trig_from_dsp      (trig_from_dsp),
         .trig_to_dsp        (trig_to_dsp),
         .uart_tx            (uart_tx),

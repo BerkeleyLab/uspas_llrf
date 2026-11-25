@@ -19,8 +19,9 @@ module system #(
     inout [7:0]     PMOD3,
 
     // logical pins
+    input           dsp_clk,        // clock of trig_to_dsp
     input           trig_from_dsp,
-    output          trig_to_dsp,
+    output          trig_to_dsp,    // dsp_clk domain
 
     output          uart_tx,
     input           uart_rx,
@@ -313,9 +314,27 @@ assign I2C_RST      = gpio_z[2]; // to enable I2C mux, set high
 
 wire [31:0] pmods = {PMOD3, PMOD2, PMOD1, PMOD0};
 
-// external trigger mapping to dsp
-wire [4:0] trig_inp_sel = gpio_z[8 +: 5];
-assign trig_to_dsp = pmods[trig_inp_sel];
+// external trigger mapping to dsp, in dsp_clk: every pin and the select
+// (a GPIO register, registered here in clk because gpio_z combines the
+// GPIO's enable and value) cross into dsp_clk on their own synchronizers,
+// then the mux selects among synchronized pins, so no logic sits in front
+// of a synchronizer (a mux of the pins, or a select from clk, would). The
+// select is set at boot; while it changes, its bits may arrive a clock
+// apart, so the output can show another pin for a clock (a spurious edge).
+reg [4:0] trig_inp_sel = 0;
+always @(posedge clk) trig_inp_sel <= gpio_z[8 +: 5];
+wire [31:0] pmods_dsp;
+wire [4:0] trig_inp_sel_dsp;
+generate
+    genvar jx;
+    for (jx=0; jx<32; jx=jx+1) begin : trig_pin_sync
+        reg_tech_cdc trigx(.I(pmods[jx]), .C(dsp_clk), .O(pmods_dsp[jx]));
+    end
+    for (jx=0; jx<5; jx=jx+1) begin : trig_sel_sync
+        reg_tech_cdc selx(.I(trig_inp_sel[jx]), .C(dsp_clk), .O(trig_inp_sel_dsp[jx]));
+    end
+endgenerate
+assign trig_to_dsp = pmods_dsp[trig_inp_sel_dsp];
 
 // dsp trigger mapping to PMOD0
 wire [7:0] trig_out_sel = gpio_z[16 +: 8];

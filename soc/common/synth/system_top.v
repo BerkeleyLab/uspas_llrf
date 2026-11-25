@@ -144,6 +144,7 @@ system #(
     .PMOD1          (PMOD2),
     .PMOD2          (ZEST_PMOD1),
     .PMOD3          (ZEST_PMOD2),
+    .dsp_clk        (clk),  // no DSP here; trig_to_dsp is unused
     .trig_to_dsp    (),
     .uart_tx        (UART_TX),
     .uart_rx        (UART_RX),

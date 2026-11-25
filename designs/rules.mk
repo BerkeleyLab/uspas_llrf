@@ -57,6 +57,12 @@ $(MODULE)_expand.v: $(SV_SRC) $(LIB_SRC)
 	cat $@.sv2v $@.lib > $@
 	rm -f $@.sv2v $@.lib
 
+# source list for the top level (top/common/top_rules.mk): the include
+# directory, then the SV sources and the Verilog library, one absolute path
+# per line (Verilator -f and iverilog -c read it)
+$(MODULE).f: $(SV_SRC) $(LIB_SRC)
+	printf '%s\n' +incdir+$(abspath $(GEN_DIR)) $(abspath $^) > $@
+
 # lint of the SystemVerilog sources with Verilator: any warning fails, width
 # warnings included (the cocotb TBs build with -Wno-width, which only the
 # Verilog library needs; its warnings are waived in lint_waivers.vlt).
@@ -86,5 +92,5 @@ llrf_shell_yosys.json: $(APP_DSP_DIR)/llrf_shell_skin.v llrf_shell_expand.v $(SH
 # exercise with make llrf_shell_expand.v llrf_shell_cdc.txt
 
 CLEAN += llrf_shell_yosys.json llrf_shell_cdc.txt
-CLEAN += $(MODULE)_expand.v $(MODULE).json $(MODULE)_init_regs.json cordicg_b22.v
+CLEAN += $(MODULE)_expand.v $(MODULE).f $(MODULE).json $(MODULE)_init_regs.json cordicg_b22.v
 CLEAN_DIRS += $(GEN_DIR)

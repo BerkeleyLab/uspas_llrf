@@ -19,6 +19,20 @@ class TB:
         dut.res.value = 0
         cocotb.start_soon(Clock(dut.clk, 8, unit="ns").start())
 
+    async def idle(self):
+        """End a pulse left running by an earlier test (start = high_len = 0:
+        the end is behind any count) and restart the model idle."""
+        dut = self.dut
+        for _ in range(3):
+            await FallingEdge(dut.clk)
+            dut.trigger.value = 0
+            dut.start.value = 0
+            dut.high_len.value = 0
+        await RisingEdge(dut.clk)
+        await ReadOnly()
+        assert int(dut.pulse_dval.value) == 0
+        self.model = PulseGen(self.aw)
+
     async def cycle(self, trigger=0, start=None, high_len=None, stb=1, res=None):
         """Drive inputs on the falling edge, step the model on the rising
         edge, and check pulse_dval, pulse_idx, pulse_clk and pulse_last against it."""
@@ -135,3 +149,48 @@ async def test_random(dut):
         for _ in range(start + high_len + 20):
             await tb.cycle(trigger=int(rng.random() < 0.01),
                            stb=int(rng.random() < 0.8))
+
+
+@cocotb.test(timeout_time=20, timeout_unit='us')
+@cocotb.parametrize(
+    case=['high_len_behind', 'start_behind', 'high_len_ahead'],
+)
+async def test_shorten(dut, case):
+    """A shorter high_len or start written during a pulse: if the new end is
+    behind the count, the pulse ends on the next clock (with ==, the count
+    would run on to 2**(AW+1)); if it is ahead, the pulse ends there. A
+    trigger then starts a full pulse of the new settings."""
+    tb = TB(dut)
+    await tb.idle()
+    # (start, high_len) before and after the write, at a count of about 200
+    before, after = {'high_len_behind': ((100, 400), (100, 20)),   # end 500 -> 120
+                     'start_behind': ((100, 120), (10, 120)),      # end 220 -> 130
+                     'high_len_ahead': ((100, 400), (100, 150)),   # end 500 -> 250
+                     }[case]
+    await tb.cycle(start=before[0], high_len=before[1])
+    await tb.cycle()
+    await tb.cycle(trigger=1)
+    for _ in range(200):
+        await tb.cycle()
+    assert tb.model.dval and tb.model.pc > 150
+    pc_at_write = tb.model.pc
+    await tb.cycle(start=after[0], high_len=after[1])
+    end = sum(after)
+    clocks = 1
+    while tb.model.counting:
+        await tb.cycle()
+        clocks += 1
+        assert clocks < 1000, "pulse did not end"
+    if end <= pc_at_write:
+        assert clocks <= 3, f"ended {clocks} clocks after the write"
+    else:
+        assert clocks >= end - pc_at_write, f"ended {clocks} clocks after the write"
+    # a new pulse has the new settings
+    await tb.cycle()
+    await tb.cycle(trigger=1)
+    dvals = 0
+    for _ in range(end + 5):
+        d, _ = await tb.cycle()
+        dvals += d
+    assert dvals == after[1]
+    assert tb.model.counting == 0

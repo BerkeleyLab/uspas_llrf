@@ -50,7 +50,8 @@ module llrf_shell
     input [15:0]         gt_rxdata,
     input [1:0]          gt_rxcharisk,
 
-    // External trigger interface
+    // External trigger interface: dsp_clk domain (the SoC synchronizes the
+    // selected pin, soc/common/system.v)
     input                ext_trigger
 );
 
@@ -158,16 +159,16 @@ wire wave_trig;
 wire int_trig, evr_trig, ext_trig;  // dsp_clk domain
 reg [31:0] trig_count = 0;
 
-// external trigger, rising edge
-wire ext_trigger_sync;
-reg_tech_cdc trigx_0(.I(ext_trigger), .C(dsp_clk), .O(ext_trigger_sync));
-reg ext_trigger_sync1 = 0;
-always @(posedge dsp_clk) ext_trigger_sync1 <= ext_trigger_sync;
-assign ext_trig = ext_trigger_sync & ~ext_trigger_sync1;
+// external trigger (synchronized in the SoC), rising edge
+reg ext_trigger1 = 0;
+always @(posedge dsp_clk) ext_trigger1 <= ext_trigger;
+assign ext_trig = ext_trigger & ~ext_trigger1;
 
-// internal trigger
+// internal trigger, every int_trigger_period clocks; >= so that a shorter
+// period written during a count fires on the next clock instead of after
+// the counter wraps (2^32 clocks)
 reg [31:0] int_trig_cnt = 0;
-assign int_trig = (int_trig_cnt == cfg_dsp.int_trigger_period - 1);
+assign int_trig = (int_trig_cnt >= cfg_dsp.int_trigger_period - 1);
 always @(posedge dsp_clk) begin
     int_trig_cnt <= (dsp_reset || int_trig) ? 0 : int_trig_cnt + 1'b1;
     trig_count <= dsp_reset ? 0 : trig_count + wave_trig;
