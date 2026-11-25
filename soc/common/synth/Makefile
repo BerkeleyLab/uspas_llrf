@@ -56,19 +56,15 @@ system_top.xdc: top.xdc timing.xdc zest_fmc_dp.xdc
 system_config: $(TARGET)_top.bit
 	openocd -f $(BOARD_SUPPORT_DIR)/marblemini/marble.cfg -c "transport select jtag; init; xc7_program xc7.tap; pld load 0 $<; exit"
 
-# this is to avoid vivado critical warnings about duplicated / redefination of module since they are already in DSP
-EXCLUDE = $(addprefix $(DSP_DIR)/, dpram.v flag_xdomain.v data_xdomain.v reg_delay.v reg_tech_cdc.v freq_gcount.v freq_count.v)
-system_expand.v: $(SRC_V)
-	$(VERILOG) $(SYNTH_OPT) -E -o$@ $(filter-out $(EXCLUDE),$(filter %.v, $^))
-
-# source list for the top level (top/common/top_rules.mk): every SoC source,
-# including the ones it shares with the DSP shell (EXCLUDE), absolute paths
+# source list for the top level (top/common/top_rules.mk; Vivado, lint and
+# topsim read it): every SoC source, including the ones it shares with the
+# DSP shell (the merged list keeps one copy), absolute paths
 system.f: $(SRC_V)
 	printf '%s\n' $(abspath $(filter %.v, $^)) > $@
 
 CLEAN += $(TARGET)_top.bin $(TARGET)_top.bit $(TARGET)_top.xdc
 CLEAN += zest_pinmap.txt zest_fmc_dp.xdc
-CLEAN += system_expand.v system.f
+CLEAN += system.f
 CLEAN += xvlog.pb xvlog.log
 CLEAN_DIRS += .Xil _xilinx xsim.dir
 include $(BUILD_DIR)/bottom_rules.mk

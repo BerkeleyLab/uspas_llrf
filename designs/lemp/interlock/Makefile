@@ -24,9 +24,8 @@ all: $(TEST_BENCH) $(CHECKS)
 include build.mk
 
 # =====
-# check of basic CDC-correctness: interlock_wrapper_expand.v leaves out the
-# modules the top level already gets from llrf_shell_expand.v (EXCLUDE in
-# build.mk), so the check reads interlock_wrapper_cdc_expand.v, which has them
+# check of basic CDC-correctness, on one preprocessed file with every module
+# the wrapper instantiates (interlock_wrapper_cdc_expand.v, build.mk)
 interlock_wrapper_yosys.json: interlock_wrapper_skin.v interlock_wrapper_cdc_expand.v $(BUILD_DIR)/cdc_snitch_proc.ys
 	$(YOSYS_JSON_PRECHECK)
 	$(YOSYS) --version

@@ -54,11 +54,16 @@ close $fp
 
 set flist_work ""
 set flist_lib ""
-# Filter out VHDL sources that need adding to libraries
+set include_dirs ""
+# The list is top_rules.mk's merged source list (+incdir+<dir> lines, then
+# sources; .sv files are read as SystemVerilog), then constraints and the
+# firmware image. Filter out VHDL sources that need adding to libraries
 foreach l $f_lines {
-   if { [string match "*-library*" $l] } {
+   if { [string match "+incdir+*" $l] } {
+      lappend include_dirs [string range $l 8 end]
+   } elseif { [string match "*-library*" $l] } {
       lappend flist_lib $l
-   } else {
+   } elseif { $l ne "" } {
       lappend flist_work $l
    }
 }
@@ -74,8 +79,8 @@ puts "Adding all other sources"
 puts $flist_work
 add_files $flist_work
 
-# `include search order: the design directory (top/<design>), then top/common
-set include_dirs [list [file normalize .] [file normalize [file dirname [info script]]]]
+# `include search order, from the list: the design directory (top/<design>),
+# then top/common, then the blocks' directories
 set_property include_dirs $include_dirs [current_fileset]
 puts "Include dirs: $include_dirs"
 

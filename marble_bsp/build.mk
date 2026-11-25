@@ -15,14 +15,14 @@ BADGER_V  := $(addprefix $(BADGER_DIR)/, $(BADGER_V)) $(BADGER_DIR)/tests/spi_ga
 GEN_V     = rtefi_blob.v construct_tx_table.v
 # EVR GT wrapper, and the MMC mailbox with its memory
 BOARD_V   = $(SERIAL_IO_DIR)/EVG_EVR/evr_gt_wrapper.v $(PROJECTS_DIR)/test_marble_family/mmc_mailbox.v $(HOMELESS_DIR)/fake_dpram.v
-# shared with the DSP shell: the top level gets them from llrf_shell_expand.v,
-# so marble_bsp_expand.v leaves them out (duplicate modules in Vivado)
+# bedrock DSP modules, some shared with the DSP shell and the SoC (the top
+# level's merged source list keeps one copy)
 DSP_V     = dpram.v data_xdomain.v flag_xdomain.v freq_count.v freq_gcount.v phase_diff.v phaset.v reg_delay.v reg_tech_cdc.v
 DSP_V    := $(addprefix $(DSP_DIR)/, $(DSP_V))
 # only for simulation (spi_flash's SPI engine)
 SIM_V     = $(PICORV_DIR)/gateware/spi_engine.v
 
-BSP_SRC   = $(MODULE).v $(GEN_DIR)/$(MODULE)_regs.v $(GEN_V) $(BOARD_V) $(BADGER_V)
+BSP_SRC   = $(MODULE).v $(GEN_DIR)/$(MODULE)_regs.v $(GEN_V) $(BOARD_V) $(BADGER_V) $(DSP_V)
 
 # Registers, status words and windows: uspas_llrf/regmap.py --bsp writes the
 # register file (plain Verilog) and the JSON
@@ -38,22 +38,19 @@ $(GEN_DIR)/regmap_%.vh: %.json
 $(MODULE).json: $(GEN_DIR)/$(MODULE).json
 	cp $< $@
 
-# the sources are the explicit BSP_SRC (DSP_V is not in it, see above)
-$(MODULE)_expand.v: $(BSP_SRC)
-	$(VERILOG) $(VFLAGS_DEP) -E -o $@ $(BSP_SRC)
-
-# source list for the top level (top/common/top_rules.mk): include directories,
-# then every source the BSP needs, DSP_V and SIM_V included (the top level
-# merges the lists and drops the files the blocks share), absolute paths
-$(MODULE).f: $(BSP_SRC) $(DSP_V) $(SIM_V)
+# source list for the top level (top/common/top_rules.mk; Vivado, lint and
+# topsim read it): include directories, then every source the BSP needs, SIM_V
+# included (the top level merges the lists and drops the files the blocks
+# share), absolute paths
+$(MODULE).f: $(BSP_SRC) $(SIM_V)
 	printf '%s\n' $(addprefix +incdir+,$(abspath $(patsubst -I%,%,$(filter -I%,$(VFLAGS_DEP))) $(GEN_DIR))) $(abspath $^) > $@
 
 # the testbench compiles everything, with the sources named: a module missing
 # from the lists is an error at elaboration
 # register names for the testbench (regmap_$(MODULE).vh), from the generated JSON
 VFLAGS += -I$(GEN_DIR)
-$(TEST_BENCH): $(BSP_SRC) $(DSP_V) $(SIM_V) $(GEN_DIR)/regmap_$(MODULE).vh
+$(TEST_BENCH): $(BSP_SRC) $(SIM_V) $(GEN_DIR)/regmap_$(MODULE).vh
 
 CLEAN += $(MODULE).json $(MODULE)_init_regs.json
 CLEAN_DIRS += $(GEN_DIR)
-CLEAN += $(MODULE)_expand.v $(MODULE).f
+CLEAN += $(MODULE).f
