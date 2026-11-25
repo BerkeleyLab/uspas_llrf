@@ -257,7 +257,7 @@ top_lint:
     matrix:
       - TARGET: [alsu, uspas, lemp, awa, pip-ii]
 
-# Verilator simulation of the top (marble_zest_frame.v): boots the SoC's
+# Verilator simulation of the top (marble_zest_frame.sv): boots the SoC's
 # firmware (its SIMULATION build) and checks over LEEP, through a localhost
 # UDP bridge (no tap device): the config ROM, every block's registers, the
 # firmware's self-test and system_bist_pass, and no aliased registers

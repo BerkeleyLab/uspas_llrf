@@ -16,7 +16,6 @@ module llrf_shell
     parameter integer CBUF_DW = 24,
     parameter integer CBUF_AW = 16,
     parameter integer SIG_BUF_AW = MAP_SIG_BUF_AW,  // buffer depth; at most the map's windows (sim: less)
-    parameter integer NI = 8,           // interlocks latched by interlock_wrapper
     parameter integer DSP_EV1 = 151,    // EVR event codes to dsp_clk: ACCL
     parameter integer DSP_EV2 = 152,    //   STBY
     parameter integer DSP_EV3 = 1,      //   fiducial
@@ -28,20 +27,14 @@ module llrf_shell
 ) (
     // Localbus interface
     input wire           lb_clk,
-    input wire [LB_ADW-1:0]   lb_addr,
-    input wire           lb_write,
-    input wire           lb_read,
-    input wire           lb_rvalid,
-    input wire [31:0]         lb_wdata,
-    output logic [31:0]        lb_rdata,
-    input wire           lb_prefill,
+    input wire lb_req_t  lb_req,          // write, read, rvalid, prefill, addr, wdata
+    output logic [LB_DW-1:0]   lb_rdata,
 
     // Digitizer interface
     input wire           dsp_clk,
-    input wire [DW*N_ADC-1:0] adc_data_in,
+    input wire adc_t [N_ADC-1:0] adc_in,     // ADC n in adc_in[n]
     input wire           dac_clk,
-    output logic [DW-1:0]      dac_data_a_out,
-    output logic [DW-1:0]      dac_data_b_out,
+    output dac_t [1:0]         dac_out,       // DAC A in dac_out[0], B in dac_out[1]
 
     // Interlock interface
     input wire           drive_permit_in,     // From RF Drive Control
@@ -66,21 +59,34 @@ module llrf_shell
     // selected pin, soc/common/system.v)
     input wire           ext_trigger,
 
-    // LEMP interlock (interlock_wrapper): RX LO and its reset, latched trips
-    output logic         dds_reset_out,
-    output logic [DWLO-1:0]    dds_cos,
-    output logic [DWLO-1:0]    dds_sin,
-    input wire [NI-1:0]      intlk_latch_in,
-    // PMOD triggers: modulator, SSSB, scope, spare
-    output logic [3:0]         pmod_trigs,
-    // SSSB (solid state sub-booster)
-    input wire           sssb_alarm,
-    input wire           sssb_rf_status,
-    output logic         sssb_rf_switch_out,
-    output logic         sssb_rst_out,
-    // EVR events ACCL, STBY, fiducial, TS1&4 (dsp_clk strobes)
-    output logic [3:0]         evr_events
+    // Design I/O (design_pkg): interlock_wrapper, PMOD triggers, SSSB, EVR
+    // events, connected in top/lemp/design_mid.vh
+    input wire design_pkg::design_in_t    design_in,
+    output design_pkg::design_out_t       design_out
 );
+
+// the typed ports under the names the body uses
+wire [LB_ADW-1:0] lb_addr = lb_req.addr;
+wire              lb_write = lb_req.write;
+wire              lb_read = lb_req.read;
+wire              lb_rvalid = lb_req.rvalid;
+wire [LB_DW-1:0]  lb_wdata = lb_req.wdata;
+wire              lb_prefill = lb_req.prefill;
+wire [DW*N_ADC-1:0] adc_data_in = adc_in;  // the same bits, ADC 0 in the LSBs
+logic [DW-1:0] dac_data_a_out, dac_data_b_out;
+assign dac_out = {dac_data_b_out, dac_data_a_out};
+localparam int NI = design_pkg::NI;
+wire [NI-1:0]     intlk_latch_in = design_in.intlk_latch;
+wire              sssb_alarm = design_in.sssb_alarm;
+wire              sssb_rf_status = design_in.sssb_rf_status;
+logic             dds_reset_out;
+logic [DWLO-1:0]  dds_cos, dds_sin;
+logic [3:0]       pmod_trigs;
+logic             sssb_rf_switch_out, sssb_rst_out;
+logic [3:0]       evr_events;
+assign design_out = '{dds_reset: dds_reset_out, dds_cos: dds_cos, dds_sin: dds_sin,
+                      pmod_trigs: pmod_trigs, sssb_rf_switch: sssb_rf_switch_out,
+                      sssb_rst: sssb_rst_out, evr_events: evr_events};
 
 // ---------------------
 // Registers, status and readback

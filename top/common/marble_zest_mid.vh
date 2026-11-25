@@ -1,5 +1,5 @@
 // This file is used by
-//   marble_zest_top.v (synthesis) and marble_zest_frame.v (simulation)
+//   marble_zest_top.sv (synthesis) and marble_zest_frame.sv (simulation)
 // It instantiates
 //   system()  // PicoRV Subsystem
 //   config_romx()
@@ -179,10 +179,11 @@ assign lb_rdata = git_rev_id_sel ? git_rev_id :
 // ----------------------------------
 // LLRF Subsystem, @ lb_base_0
 // ---------------------------------
-wire [16*8-1:0] adc_out_data;
+llrf_shell_pkg::adc_t [llrf_shell_pkg::N_ADC-1:0] adc_out_data;  // ADC n in adc_out_data[n]
 wire dac_clk_out;
-wire [15:0] dac_a_out;
-wire [15:0] dac_b_out;
+llrf_shell_pkg::dac_t [1:0] dac_out;  // A in dac_out[0], B in dac_out[1]
+wire [15:0] dac_a_out = dac_out[0];
+wire [15:0] dac_b_out = dac_out[1];
 wire gt_rxclk;
 wire [1:0] gt_rxcharisk;
 wire [15:0] gt_rxdata;
@@ -197,25 +198,25 @@ assign drive_permit_in = 1'b1;
 assign slow_permit_in  = 1'b1;
 assign arc_permit_in   = 3'b0;
 `endif
-// Declarations of design signals used in design_shell_ports.vh
-`include "design_shell_wires.vh"
+// the shell's localbus: segment 0's strobes, as one lb_req_t
+llrf_shell_pkg::lb_req_t lb_req_0;
+assign lb_req_0 = '{write: lb_write_0, read: lb_read_0, rvalid: lb_rvalid, prefill: lb_prefill,
+                    addr: lb_addr[17:0], wdata: lb_wdata};
+// the shell's design I/O (design_pkg): design_mid.vh drives design_in and
+// uses design_out
+design_pkg::design_in_t  design_in;
+design_pkg::design_out_t design_out;
 llrf_shell #(
     .F_DSP_HZ       ($rtoi(`DSP_FREQ_MHZ * 1e6))  // arc_inlk pulse timing (A2)
 ) llrf_inst (
     .lb_clk         (lb_clk),
-    .lb_addr        (lb_addr[17:0]),
-    .lb_write       (lb_write_0),
-    .lb_read        (lb_read_0),
-    .lb_wdata       (lb_wdata),
+    .lb_req         (lb_req_0),
     .lb_rdata       (lb_rdata_0),
-    .lb_rvalid      (lb_rvalid),
-    .lb_prefill     (lb_prefill),
 
     .dsp_clk        (dsp_clk),
-    .adc_data_in    (adc_out_data),
+    .adc_in         (adc_out_data),
     .dac_clk        (dac_clk_out),
-    .dac_data_a_out (dac_a_out),
-    .dac_data_b_out (dac_b_out),
+    .dac_out        (dac_out),
 
     .drive_permit_in    (drive_permit_in),
     .slow_permit_in     (slow_permit_in),
@@ -232,8 +233,9 @@ llrf_shell #(
     .gt_rxcharisk    (gt_rxcharisk),
     // to wave trigger
     .trig_out        (trig_from_dsp),  // output
-    .ext_trigger     (trig_to_dsp)   // input
-`include "design_shell_ports.vh"
+    .ext_trigger     (trig_to_dsp),  // input
+    .design_in       (design_in),
+    .design_out      (design_out)
 );
 
 // ----------------------------------

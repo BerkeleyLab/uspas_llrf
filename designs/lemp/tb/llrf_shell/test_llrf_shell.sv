@@ -65,6 +65,22 @@ module test_llrf_shell #(
     end endgenerate
 
 
+    // the shell's typed ports, from this wrapper's flat ones (cocotb drives these)
+    llrf_shell_pkg::lb_req_t lb_req;
+    assign lb_req = '{write: lb_write, read: lb_read, rvalid: lb_rvalid, prefill: 1'b0,
+                      addr: lb_addr, wdata: lb_wdata};
+    llrf_shell_pkg::dac_t [1:0] dac_out;
+    assign dac_array_out[0] = dac_out[0];
+    assign dac_array_out[1] = dac_out[1];
+    design_pkg::design_in_t design_in;
+    design_pkg::design_out_t design_out;
+    assign design_in = '{intlk_latch: intlk_latch_in, sssb_alarm: sssb_alarm,
+                         sssb_rf_status: sssb_rf_status};
+    assign {dds_reset_out, dds_cos, dds_sin} = {design_out.dds_reset, design_out.dds_cos, design_out.dds_sin};
+    assign pmod_trigs = design_out.pmod_trigs;
+    assign {sssb_rf_switch_out, sssb_rst_out} = {design_out.sssb_rf_switch, design_out.sssb_rst};
+    assign evr_events = design_out.evr_events;
+
     llrf_shell #(
         .SIG_BUF_AW     (SIG_BUF_AW),
         .CBUF_AW        (CBUF_AW),
@@ -72,19 +88,13 @@ module test_llrf_shell #(
         .EVR_TRIG_WINDOW (EVR_TRIG_WINDOW)
     ) llrf_shell (
         .lb_clk,
-        .lb_write,
-        .lb_addr,
-        .lb_wdata,
+        .lb_req,
         .lb_rdata,
-        .lb_read,
-        .lb_rvalid,
-        .lb_prefill     (1'b0),
 
         .dsp_clk,
-        .adc_data_in,
+        .adc_in         (adc_data_in),
         .dac_clk,
-        .dac_data_a_out (dac_array_out[0]),
-        .dac_data_b_out (dac_array_out[1]),
+        .dac_out,
 
         .drive_permit_in (1'b1),
         .slow_permit_in  (1'b1),
@@ -97,15 +107,7 @@ module test_llrf_shell #(
         .gt_rxcharisk,
         .ext_trigger     (1'b0),
 
-        .intlk_latch_in,
-        .pmod_trigs,
-        .sssb_alarm,
-        .sssb_rf_status,
-        .sssb_rf_switch_out,
-        .sssb_rst_out,
-        .evr_events,
-        .dds_reset_out,
-        .dds_cos,
-        .dds_sin
+        .design_in,
+        .design_out
     );
 endmodule

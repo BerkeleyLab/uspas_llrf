@@ -100,19 +100,15 @@ end
 
 llrf_shell #(.CBUF_AW(11)) dsp (
     .lb_clk             (lb_clk),
-    .lb_addr            (lb_addr_r),
-    .lb_write           (lb_write_r),
-    .lb_read            (lb_read_r),
-    .lb_rvalid          (lb_rvalid_r),
-    .lb_wdata           (lb_wdata_r),
+    // lb_req_t (llrf_dsp/llrf_shell_pkg.sv) in its field order: write, read,
+    // rvalid, prefill, addr, wdata (a flat vector in the sv2v-converted shell)
+    .lb_req             ({lb_write_r, lb_read_r, lb_rvalid_r, lb_prefill_r, lb_addr_r, lb_wdata_r}),
     .lb_rdata           (lb_rdata_x),
-    .lb_prefill         (lb_prefill_r),
 
     .dsp_clk            (dsp_clk),
-    .adc_data_in        (adc_data_in_r),
+    .adc_in             (adc_data_in_r),  // adc_t [N_ADC-1:0]: ADC 0 in the LSBs
     .dac_clk            (dac_clk),
-    .dac_data_a_out     (dac_data_a_out),
-    .dac_data_b_out     (dac_data_b_out),
+    .dac_out            ({dac_data_b_out, dac_data_a_out}),
 
     .drive_permit_in    (drive_permit_in_r),
     .slow_permit_in     (slow_permit_in_r),
@@ -127,7 +123,9 @@ llrf_shell #(.CBUF_AW(11)) dsp (
     .gt_rxdata          (gt_rxdata_good_r),
     .gt_rxcharisk       (gt_rxcharisk_good_r),
     .trig_out           (trig_out),
-    .ext_trigger        (ext_trigger_r)
+    .ext_trigger        (ext_trigger_r),
+    .design_in          (1'b0),  // the base shell's design_pkg: one unused bit
+    .design_out         ()
 );
 
 endmodule

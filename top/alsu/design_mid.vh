@@ -2,6 +2,8 @@
 // Enabled by the DESIGN_OWNS_* and DESIGN_SOC_EXPANSION defines in
 // top/alsu/Makefile.
 
+assign design_in = '0;  // the base shell: no design I/O
+
 // PMOD1: ARC detectors
 assign arc_permit_in = PMOD1[6:4];
 assign PMOD1[2:0]    = arc_test_out;

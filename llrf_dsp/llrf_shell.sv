@@ -18,20 +18,14 @@ module llrf_shell
 ) (
     // Localbus interface
     input wire           lb_clk,
-    input wire [LB_ADW-1:0]   lb_addr,
-    input wire           lb_write,
-    input wire           lb_read,
-    input wire           lb_rvalid,
-    input wire [31:0]         lb_wdata,
-    output logic [31:0]        lb_rdata,
-    input wire           lb_prefill,
+    input wire lb_req_t  lb_req,          // write, read, rvalid, prefill, addr, wdata
+    output logic [LB_DW-1:0]   lb_rdata,
 
     // Digitizer interface
     input wire           dsp_clk,
-    input wire [DW*N_ADC-1:0] adc_data_in,
+    input wire adc_t [N_ADC-1:0] adc_in,     // ADC n in adc_in[n]
     input wire           dac_clk,
-    output logic [DW-1:0]      dac_data_a_out,
-    output logic [DW-1:0]      dac_data_b_out,
+    output dac_t [1:0]         dac_out,       // DAC A in dac_out[0], B in dac_out[1]
 
     // Interlock interface
     input wire           drive_permit_in,     // From RF Drive Control
@@ -54,8 +48,24 @@ module llrf_shell
 
     // External trigger interface: dsp_clk domain (the SoC synchronizes the
     // selected pin, soc/common/system.v)
-    input wire           ext_trigger
+    input wire           ext_trigger,
+
+    // Design I/O (design_pkg): none in the base shell
+    input wire design_pkg::design_in_t    design_in,
+    output design_pkg::design_out_t       design_out
 );
+
+// the typed ports under the names the body uses
+wire [LB_ADW-1:0] lb_addr = lb_req.addr;
+wire              lb_write = lb_req.write;
+wire              lb_read = lb_req.read;
+wire              lb_rvalid = lb_req.rvalid;
+wire [LB_DW-1:0]  lb_wdata = lb_req.wdata;
+wire              lb_prefill = lb_req.prefill;
+wire [DW*N_ADC-1:0] adc_data_in = adc_in;  // the same bits, ADC 0 in the LSBs
+logic [DW-1:0] dac_data_a_out, dac_data_b_out;
+assign dac_out = {dac_data_b_out, dac_data_a_out};
+assign design_out = '0;
 
 // ---------------------
 // Registers, status and readback

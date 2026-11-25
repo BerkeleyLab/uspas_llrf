@@ -71,7 +71,7 @@ wire clk = gmii_tx_clk;
 wire MGT_RX_6_N=0, MGT_RX_6_P=0;
 // UART below
 wire UART_CTS, UART_RX, UART_TX;
-// Board nets that marble_zest_top.v has as ports: the GT reference clock
+// Board nets that marble_zest_top.sv has as ports: the GT reference clock
 // (also the recovered clock of gt_wrapper's GT_SIM model), I2C (no devices on
 // it here), and the Zest's HDMI pins (design hooks use them:
 // top/lemp/design_mid.vh). The PMODs are ports, as pads: the SoC selects

@@ -3,14 +3,30 @@
 // branch (2e25cd9) top/marble_zest, plan step 9e.
 
 // ----------------------------------
+// the shell's design I/O (designs/lemp/design_pkg.sv)
+// ----------------------------------
+wire [7:0]  intlk_latch;     // interlock_wrapper latched faults
+reg         sssb_alarm = 0;  // SSSB status in (ZEST_PMOD1)
+reg         sssb_rf_status = 0;
+assign design_in = '{intlk_latch: intlk_latch, sssb_alarm: sssb_alarm,
+                     sssb_rf_status: sssb_rf_status};
+wire        dds_reset = design_out.dds_reset;  // RX LO, to interlock_wrapper's DDC
+wire [17:0] dds_cos = design_out.dds_cos;
+wire [17:0] dds_sin = design_out.dds_sin;
+wire [3:0]  pmod_trigs = design_out.pmod_trigs;    // PMOD triggers
+wire        sssb_rf_switch = design_out.sssb_rf_switch;  // SSSB controls out (ZEST_PMOD1)
+wire        sssb_rst = design_out.sssb_rst;
+wire [3:0]  evr_events = design_out.evr_events;    // EVR event strobes, for diagnostics
+
+// ----------------------------------
 // interlock_wrapper, @ lb_base_2 (designs/lemp/interlock, newad, D23)
 // ----------------------------------
 wire        mod_permit_out;
 wire        status_modulator_in;
 wire        dsp_dac_pll_locked = 1'b1;
-wire signed [15:0] kly_rev_in  = adc_out_data[3*16-1:2*16];  // ADC2  J6  Kly REV
-wire signed [15:0] beam_vol_in = adc_out_data[7*16-1:6*16];  // ADC6 J10 Beam Voltage
-wire signed [15:0] beam_cur_in = adc_out_data[8*16-1:7*16];  // ADC7 J11 Beam Current
+wire signed [15:0] kly_rev_in  = adc_out_data[2];  // ADC2  J6  Kly REV
+wire signed [15:0] beam_vol_in = adc_out_data[6];  // ADC6 J10 Beam Voltage
+wire signed [15:0] beam_cur_in = adc_out_data[7];  // ADC7 J11 Beam Current
 wire [7:0]  intlk_fault;
 wire [7:0]  intlk_firstf;
 wire        intlk_trig;
@@ -121,7 +137,7 @@ always @(posedge dsp_clk) begin
     sssb_rf_status <= ZEST_PMOD1[7];
 end
 
-// The HDMI pairs stay inout ports of marble_zest_top.v; these OBUFDS make
+// The HDMI pairs stay inout ports of marble_zest_top.sv; these OBUFDS make
 // them fixed LVDS outputs (no tristate buffer, as on the LEMP branch)
 `ifndef SIMULATE
 OBUFDS #(

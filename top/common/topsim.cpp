@@ -1,7 +1,7 @@
 // Based on badger/tests/hw_test_sim.cpp
 #include <verilated.h>
 
-// Include model header, generated from Verilating "marble_zest_frame.v"
+// Include model header, generated from Verilating "marble_zest_frame.sv"
 #include "Vmarble_zest_frame.h"
 #if VM_TRACE
 #include <verilated_fst_c.h>

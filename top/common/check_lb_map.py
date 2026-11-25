@@ -16,6 +16,10 @@ merge_json.py checks that names are unique; this checks the addresses.
     reads would return the overlay;
   - no two blocks' registers overlap.
 
+A typed block (llrf_shell) takes an lb_req_t, `.lb_req(lb_req_0)`; the
+check then reads the write and read strobes from lb_req_0's assignment
+pattern (`assign lb_req_0 = '{write: lb_write_0, read: lb_read_0, ...}`).
+
 A block JSON is named after its module (llrf_shell.json, marble_bsp.json,
 interlock_wrapper.json); marble_zest_top.json holds the overlays.
 """
@@ -103,7 +107,11 @@ def decode(text, defines):
             continue
         lsb = int(m.group(2) or 0)
         overlays.append((sel, num(m.group(3)) << lsb, 1 << lsb))
-    return seg_shift, read, strobe, overlays, instances(text)
+    # lb_req_t structs built from strobes: name -> {field: net}
+    reqs = {}
+    for name, fields in re.findall(r"assign\s+(\w+)\s*=\s*'\{(.*?)\}\s*;", text, flags=re.S):
+        reqs[name] = dict(re.findall(r'(\w+)\s*:\s*([\w\[\]:]+)', fields))
+    return seg_shift, read, strobe, overlays, instances(text), reqs
 
 
 def entries(fn):
@@ -120,7 +128,7 @@ def entries(fn):
 def check(vh_files, block_jsons, merged_json, defines):
     errors = []
     text = ''.join(open(f).read() + '\n' for f in vh_files)
-    seg_shift, read, strobe, overlays, insts = decode(text, defines)
+    seg_shift, read, strobe, overlays, insts, reqs = decode(text, defines)
     seg_size = 1 << seg_shift
     merged = entries(merged_json)
     owner = {}
@@ -147,6 +155,12 @@ def check(vh_files, block_jsons, merged_json, defines):
             continue
         inst = found[0]
         rdata, write, rd = port(inst, 'lb_rdata'), port(inst, 'lb_write'), port(inst, 'lb_read')
+        req = port(inst, 'lb_req')  # a typed block (llrf_shell): the strobes are lb_req_t fields
+        if req is not None:
+            if req not in reqs:
+                errors.append(f'{block}: .lb_req({req}) is not assigned from an assignment pattern')
+                continue
+            write, rd = reqs[req].get('write'), reqs[req].get('read')
         segs = [s for s, net in read.items() if net == rdata]
         seg = segs[0] if len(segs) == 1 else None
         if seg is None:

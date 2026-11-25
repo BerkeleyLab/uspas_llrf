@@ -5,6 +5,8 @@ DESIGN_DSP_DIR        = ../..
 COCOTB_TOPLEVEL       = test_llrf_shell
 COCOTB_TEST_MODULES   = test_llrf_shell
 
+# the packages the wrapper takes its types from (sv2v leaves none in the expansion)
+VERILOG_SOURCES += $(APP_DSP_DIR)/llrf_shell_pkg.sv $(DESIGN_DSP_DIR)/design_pkg.sv
 VERILOG_SOURCES += $(DESIGN_DSP_DIR)/llrf_shell_expand.v
 VERILOG_SOURCES += test_llrf_shell.sv  # LEMP ports
 CUSTOM_SIM_DEPS += $(DESIGN_DSP_DIR)/llrf_shell.json

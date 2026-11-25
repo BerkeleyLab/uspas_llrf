@@ -11,7 +11,7 @@
  * are expected) are dropped.
  *
  * TOPSIM_UDP_PORT sets the local port (default 8030). The FPGA's MAC and IP
- * are marble_zest_frame.v's defaults.
+ * are marble_zest_frame.sv's defaults.
  */
 #include <arpa/inet.h>
 #include <netinet/in.h>

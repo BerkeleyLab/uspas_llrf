@@ -14,7 +14,20 @@ package llrf_shell_pkg;
     localparam int LB_DW = 32;
 
     typedef logic signed [DW-1:0] adc_t;
+    typedef logic [DW-1:0] dac_t;
     typedef logic signed [DWBB-1:0] bb_t;
+
+    // localbus request: what the master drives (plan 14c); lb_clk and the
+    // read data (lb_rdata, LB_DW bits) are separate ports. A block's port is
+    // `input wire lb_req_t`; the top builds one per segment from its strobes.
+    typedef struct packed {
+        logic              write;
+        logic              read;
+        logic              rvalid;   // the read data is sampled (READ_DELAY after read)
+        logic              prefill;
+        logic [LB_ADW-1:0] addr;
+        logic [LB_DW-1:0]  wdata;
+    } lb_req_t;
 
     // wave_trig_sel encoding (uspas_llrf.regmap.WaveTrigSel)
     localparam logic [2:0] WAVE_TRIG_INT    = 3'd0,  // internal trigger
