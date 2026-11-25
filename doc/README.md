@@ -93,7 +93,7 @@ The design can be found in [soc/common](soc/common), where:
 
 ## Top level synthesize
 
-We use LBNL Bedrock's Makefile based building system to find dependencies and synthesize the bitstream file in `top/<design>/` (for example [top/uspas](top/uspas)), with shared rules and sources in [top/common](top/common). The top level RTL `marble_zest_top.v` assembles the soft core, board support package and LLRF DSP together.
+We use LBNL Bedrock's Makefile based building system to find dependencies and synthesize the bitstream file in `top/<design>/` (for example [top/uspas](top/uspas)), with shared rules and sources in [top/common](top/common). The top level RTL `marble_zest_top.sv` assembles the soft core, board support package and LLRF DSP together.
 
 ## Board Support Package (BSP)
 

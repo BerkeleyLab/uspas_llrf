@@ -37,7 +37,10 @@ cordicg_b22.v:
 
 # rw registers, status words and readback mux, and the whole JSON
 # (uspas_llrf/regmap.py, extended by design.py)
-SV_SRC  = $(APP_DSP_DIR)/llrf_shell_pkg.sv $(GEN_DIR)/llrf_shell_regmap_pkg.sv
+# the design's I/O types (design_in_t, design_out_t): the base shell's, or the
+# design's own with its shell (lemp sets DESIGN_PKG = design_pkg.sv)
+DESIGN_PKG ?= $(APP_DSP_DIR)/design_pkg.sv
+SV_SRC  = $(APP_DSP_DIR)/llrf_shell_pkg.sv $(DESIGN_PKG) $(GEN_DIR)/llrf_shell_regmap_pkg.sv
 SV_SRC += $(addprefix $(APP_DSP_DIR)/, monitor_inlk.sv arc_inlk.sv loop_ctrl.sv)
 SV_SRC += $(addprefix $(APP_DSP_DIR)/, lb_xdomain.sv lb_rd_mux.sv rx_chain.sv tx_chain.sv cic_waves.sv diag.sv loops.sv)
 SV_SRC += $(DESIGN_SV_SRC) $(GEN_DIR)/llrf_shell_regs.sv $(SHELL_SRC)

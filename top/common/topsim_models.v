@@ -1,5 +1,5 @@
 // Simulation models for topsim (top/common/top_rules.mk) of the Xilinx
-// primitives that marble_zest_frame.v still contains.
+// primitives that marble_zest_frame.sv still contains.
 
 // XADC: the SoC's xadc_pack reads it through the DRP and waits for DRDY. This
 // answers every read one clock after DEN, with the temperature register at

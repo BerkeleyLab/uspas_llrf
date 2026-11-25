@@ -64,7 +64,7 @@ flowchart LR
 
 `make -C top/lemp` builds the LEMP bitstream on the shared `top/common/` base. The LEMP parts are in `top/lemp/`, as on the LEMP branch's `top/marble_zest` (2e25cd9):
 - `design_mid.vh`: `interlock_wrapper` on localbus segment 2 (`designs/lemp/interlock/`) and the pin logic below;
-- `design_shell_ports.vh` and `design_shell_wires.vh`: the LEMP shell ports;
+- `designs/lemp/design_pkg.sv`: the types of the LEMP shell's `design_in` and `design_out` ports (interlock latches, SSSB, DDS LO, PMOD triggers, EVR events), which `design_mid.vh` drives and uses;
 - `design.xdc`: the PMOD pulls.
 
 The `Makefile` defines release the PMODs from the SoC (`DESIGN_OWNS_PMOD1/2`, `DESIGN_OWNS_ZEST_PMOD1/2`), and add segment 2 to the localbus read mux (`DESIGN_LB_SEG2`).

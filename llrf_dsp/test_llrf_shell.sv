@@ -49,25 +49,27 @@ module test_llrf_shell #(
     end endgenerate
 
 
+    // the shell's typed ports, from this wrapper's flat ones (cocotb drives these)
+    llrf_shell_pkg::lb_req_t lb_req;
+    assign lb_req = '{write: lb_write, read: lb_read, rvalid: lb_rvalid, prefill: 1'b0,
+                      addr: lb_addr, wdata: lb_wdata};
+    llrf_shell_pkg::dac_t [1:0] dac_out;
+    assign dac_array_out[0] = dac_out[0];
+    assign dac_array_out[1] = dac_out[1];
+
     llrf_shell #(
         .SIG_BUF_AW     (SIG_BUF_AW),
         .CBUF_AW        (CBUF_AW),
         .F_DSP_HZ       (F_DSP_HZ)
     ) llrf_shell (
         .lb_clk,
-        .lb_write,
-        .lb_addr,
-        .lb_wdata,
+        .lb_req,
         .lb_rdata,
-        .lb_read,
-        .lb_rvalid,
-        .lb_prefill     (1'b0),
 
         .dsp_clk,
-        .adc_data_in,
+        .adc_in         (adc_data_in),
         .dac_clk,
-        .dac_data_a_out (dac_array_out[0]),
-        .dac_data_b_out (dac_array_out[1]),
+        .dac_out,
 
         .drive_permit_in (1'b1),
         .slow_permit_in  (1'b1),
@@ -77,6 +79,9 @@ module test_llrf_shell #(
 
         .gt_rxclk,
         .gt_rxdata,
-        .gt_rxcharisk
+        .gt_rxcharisk,
+
+        .design_in      ('0),
+        .design_out     ()
     );
 endmodule

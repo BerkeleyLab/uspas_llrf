@@ -13,10 +13,9 @@
 #   PIN_MAP     pin map for top.xdc (default: top/common/pin_map.csv)
 #   GT_TCL      GT setup TCL sourced by Vivado (default: EVR GTX)
 #   SOC_DESIGN  soc/<name>/ used for firmware and SoC settings (default: DESIGN)
-# Verilog hooks: design_mid.vh (extra IP and the design's use of board pins),
-# design_shell_ports.vh (extra llrf_shell ports) and design_shell_wires.vh
-# (declarations of the signals those ports use);
-# a copy in top/<design>/ takes precedence over the empty one in top/common/.
+# Verilog hook: design_mid.vh (extra IP, the design's use of board pins, and
+# the shell's design_in/design_out, typed by the design's design_pkg); a copy
+# in top/<design>/ takes precedence over the one in top/common/.
 
 include $(TOP)settings.mk
 
@@ -60,7 +59,7 @@ MERGE_F  = $(PYTHON) $(TOP_COMMON_DIR)/merge_src_lists.py -o $@ --incdir $(CURDI
 	--src $(filter %.v %.sv,$^) -- $(filter %.f,$^)
 
 # the board top (synthesis)
-$(TARGET)_top.f: $(TOP_COMMON_DIR)/$(TARGET)_top.v config_romx.v $(SERIAL_IO_DIR)/gmii_to_rgmii.v $(TOP_SRC) $(BLOCK_F) $(TOP_COMMON_DIR)/merge_src_lists.py
+$(TARGET)_top.f: $(TOP_COMMON_DIR)/$(TARGET)_top.sv config_romx.v $(SERIAL_IO_DIR)/gmii_to_rgmii.v $(TOP_SRC) $(BLOCK_F) $(TOP_COMMON_DIR)/merge_src_lists.py
 	$(MERGE_F)
 
 IP_JSON := $(DESIGNS_DIR)/$(DESIGN)/llrf_shell.json $(BSP_DIR)/marble_bsp.json $(TOP_COMMON_DIR)/marble_zest_top.json $(IP_JSON)
@@ -176,7 +175,7 @@ $(TARGET)_top_lint.vlt: $(BLOCK_F) $(TOP_COMMON_DIR)/top_rules.mk
 	    for r in "" "-rule SPECIFYIGN "; do echo "lint_off $$r-file \"$$f\""; done; done; } > $@
 
 # ===== topsim: Verilator simulation of the top
-# marble_zest_frame.v is the top without the Zest and the Xilinx I/O (it
+# marble_zest_frame.sv is the top without the Zest and the Xilinx I/O (it
 # includes the same marble_zest_mid.vh); topsim.cpp drives the clocks, the
 # UART (printed) and Ethernet through badger's ethernet_model.c. With
 # TOPSIM_NET=udp (default) udp_tap.c bridges a localhost UDP port to it
@@ -191,12 +190,12 @@ ETH_TESTS    = $(BADGER_DIR)/tests
 TOPSIM_C     = $(TOP_COMMON_DIR)/topsim.cpp $(ETH_TESTS)/ethernet_model.c $(ETH_TESTS)/crc32.c
 TOPSIM_C    += $(if $(filter tap,$(TOPSIM_NET)),$(ETH_TESTS)/tap_alloc.c,$(TOP_COMMON_DIR)/udp_tap.c)
 # the frame, its UART and the XADC model (topsim_models.v), then the blocks
-topsim.f: $(TOP_COMMON_DIR)/marble_zest_frame.v config_romx.v $(SERIAL_IO_DIR)/simpleuart.v $(TOP_COMMON_DIR)/topsim_models.v $(BLOCK_F) $(TOP_COMMON_DIR)/merge_src_lists.py
+topsim.f: $(TOP_COMMON_DIR)/marble_zest_frame.sv config_romx.v $(SERIAL_IO_DIR)/simpleuart.v $(TOP_COMMON_DIR)/topsim_models.v $(BLOCK_F) $(TOP_COMMON_DIR)/merge_src_lists.py
 	$(MERGE_F)
 # the lint waivers, and the frame's UART (bedrock)
 topsim.vlt: $(TARGET)_top_lint.vlt
 	{ cat $<; echo 'lint_off -file "$(abspath $(SERIAL_IO_DIR)/simpleuart.v)"'; } > $@
-# The SoC's memory image, topsim32.dat (marble_zest_frame.v), read when the
+# The SoC's memory image, topsim32.dat (marble_zest_frame.sv), read when the
 # simulation starts ($$readmemh), so a new one needs no rebuild; named apart
 # from the bitstream's system32.dat, which Vivado finds by name.
 # TOPSIM_FW=sim (default): the firmware's SIMULATION build
@@ -234,7 +233,7 @@ SV2V    ?= sv2v
 CDC_DEFS = $(sort $(LINT_DEFS))
 CDC_EXTRA_V = $(addprefix $(BEDROCK_DIR)/dsp/, half_filt.v sat_add.v)
 topsim_sv2v.v: topsim.f
-	$(SV2V) $(CDC_DEFS) $$(grep '\.sv$$' $<) > $@
+	$(SV2V) $(CDC_DEFS) $$(sed -n 's/^+incdir+/-I/p' $< | tr '\n' ' ') $$(grep '\.sv$$' $<) > $@
 # Yosys also elaborates memory_pack with its default image, system32.hex
 system32.hex: topsim32.dat
 	cp $< $@

@@ -110,13 +110,13 @@ make -C top/awa
 ### 5a. Top-Level Checks (no Vivado)
 ```bash
 # Lint marble_zest_top with every block's source list (CI job top_lint): widths,
-# missing ports and multiple drivers in the top files (marble_zest_top.v,
+# missing ports and multiple drivers in the top files (marble_zest_top.sv,
 # marble_zest_mid.vh, the design_*.vh hooks); the blocks are linted on their own.
 # Xilinx primitives come from Yosys's cell library. A constant second driver
 # (assign x = 0) is folded away by Verilator and not reported.
 make -C top/uspas lint
 
-# Verilator simulation of the top (marble_zest_frame.v: no Zest, no Xilinx I/O),
+# Verilator simulation of the top (marble_zest_frame.sv: no Zest, no Xilinx I/O),
 # then its CI test (topsim_test): boots the firmware's SIMULATION build and checks
 # the config ROM, every block's registers, the self-test and system_bist_pass
 # over LEEP, through a localhost UDP bridge (top/common/udp_tap.c; no tap device)
@@ -194,8 +194,8 @@ uspas_llrf/
 │   ├── common/                # PicoRV32 RISC-V soft-core SoC (system.v, firmware, sim/, top_sim/, synth/)
 │   └── <design>/              # Per-design firmware: design.mk, settings_design.h, init_zest.c, init_marble.c
 ├── top/
-│   ├── common/                # Top-level FPGA integration (`marble_zest_top.v`), top_rules.mk, Vivado TCL, topsim
-│   └── <design>/              # Per-design build directory (Makefile; optional design_mid.vh, design_shell_ports.vh, design_shell_wires.vh, design.xdc)
+│   ├── common/                # Top-level FPGA integration (`marble_zest_top.sv`), top_rules.mk, Vivado TCL, topsim
+│   └── <design>/              # Per-design build directory (Makefile; optional design_mid.vh, design.xdc)
 ├── epics/                     # EPICS Display Builder UI screens (BOB files)
 └── doc/                       # System documentation and Jupyter demonstration notebooks
 ```
